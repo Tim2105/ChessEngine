@@ -71,6 +71,83 @@ enum {
     BLACK_QUEENSIDE_CASTLE = 8
 };
 
+bool isSlidingPiece[13] = {
+    false, false, false, true, true, true, false, false, false, true, true, true, false
+};
+
+std::vector<int32_t> directions[13] = {
+    {},
+    {},
+    {-21,-19,-12, -8,  8, 12, 19, 21},
+    {-11, -9,  9, 11},
+    {-10, -1,  1, 10},
+    {-11, -10, -9, -1, 1, 9, 10, 11},
+    {-11, -10, -9, -1, 1, 9, 10, 11},
+    {},
+    {-21,-19,-12, -8,  8, 12, 19, 21},
+    {-11, -9,  9, 11},
+    {-10, -1,  1, 10},
+    {-11, -10, -9, -1, 1, 9, 10, 11},
+    {-11, -10, -9, -1, 1, 9, 10, 11}
+};
+
+/**
+ * @brief Enthält alle notwendigen Informationen um einen Zug rückgängig zu machen.
+ */
+class MoveHistoryEntry {
+    friend class Board;
+
+    private:
+        /**
+         * @brief Der Zug der rückgängig gemacht werden soll.
+         */
+        Move move;
+
+        /**
+         * @brief Speichert den Typ der geschlagenen Figur.
+         */
+        int32_t capturedPiece;
+
+        /**
+         * @brief Speichert alle möglichen Rochaden vor diesem Zug.
+         */
+        int32_t castlePermission;
+
+        /**
+         * @brief Speichert die Position eines möglichen En Passant Zuges vor diesem Zug(wenn möglich).
+         */
+        int32_t enPassantSquare;
+
+        /**
+         * @brief Der 50-Zug Counter vor diesem Zug.
+         */
+        int32_t fiftyMoveRule;
+
+        /**
+         * @brief Speichert den Hashwert vor diesem Zug.
+         */
+        uint64_t hashValue;
+    
+    public:
+        /**
+         * @brief Erstellt einen neuen MoveHistoryEntry.
+         * @param move Der Zug der rückgängig gemacht werden soll.
+         * @param capturedPiece Speichert den Typ der geschlagenen Figur.
+         * @param castlePermission Speichert alle möglichen Rochaden vor diesem Zug.
+         * @param enPassantSquare Speichert die Position eines möglichen En Passant Zuges vor diesem Zug(wenn möglich).
+         * @param fiftyMoveRule Der 50-Zug Counter vor diesem Zug.
+         * @param hashValue Speichert den Hashwert vor diesem Zug.
+         */
+        MoveHistoryEntry(Move move, int32_t capturedPiece, int32_t castlePermission, int32_t enPassantSquare, int32_t fiftyMoveRule, uint64_t hashValue) {
+            this->move = move;
+            this->capturedPiece = capturedPiece;
+            this->castlePermission = castlePermission;
+            this->enPassantSquare = enPassantSquare;
+            this->fiftyMoveRule = fiftyMoveRule;
+            this->hashValue = hashValue;
+        }
+};
+
 /**
  * @brief Stellt ein Schachbrett dar.
  * Die Klasse Board stellt ein Schachbrett dar und enthält Methoden zur Zuggeneration.
@@ -146,12 +223,12 @@ class Board {
          * @brief Der Zobristhash des Schachbretts.
          * https://www.chessprogramming.org/Zobrist_Hashing
          */
-        uint64_t hashKey;
+        uint64_t hashValue;
 
         /**
-         * @brief Speichert alle gespielten Züge.
+         * @brief Speichert alle gespielten Züge und notwendige Informationen um diesen effizient rückgängig zu machen.
          */
-        std::vector<Move> moveHistory;
+        std::vector<MoveHistoryEntry> moveHistory;
 
         /**
          * @brief Array zur Konvertierung der 10x12 Notation in 8x8 Notation.
@@ -164,6 +241,9 @@ class Board {
          */
         int32_t mailbox64[64];
 
+        /**
+         * @brief Initialisiert die Mailbox-Arrays
+         */
         void initMailbox();
 
     public:

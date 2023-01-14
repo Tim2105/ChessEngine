@@ -10,9 +10,6 @@ Board::~Board() {
 
 }
 
-/**
- * @brief Initialisiert die Mailbox-Arrays
- */
 void Board::initMailbox() {
     for(int i = 0; i < 120; i++)
         mailbox[i] = -1;
@@ -26,4 +23,6 @@ void Board::initMailbox() {
             index++;
         }
     }
+
+    
 }
