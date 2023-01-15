@@ -24,6 +24,11 @@ class Move {
         friend std::ostream& operator<< (std::ostream& os, Move& m);
 
         /**
+         * @brief Gibt den Zug als String zurück.
+         */
+        std::string toString();
+
+        /**
          * @brief Gibt den Ausgangspunkt des Zuges zurück.
          */
         int32_t getOrigin();
@@ -92,6 +97,11 @@ class Move {
          * @brief Überprüft ob es sich um einen Promotionzug auf Dame handelt.
          */
         bool isPromotionQueen();
+
+        /**
+         * @brief Vergleicht zwei Züge.
+         */
+        bool operator==(const Move& other) const;
 };
 
 #endif

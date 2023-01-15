@@ -14,40 +14,56 @@ Move::~Move() {
 }
 
 std::ostream& operator<<(std::ostream &os, Move &m) {
+    os << m.toString();
+
+    return os;
+}
+
+std::string Move::toString() {
     std::string origin = "";
     std::string destination = "";
     std::string flags = "";
 
-    origin += 'A' + SQ2F(m.getOrigin());
-    origin += std::to_string(SQ2R(m.getOrigin()) + 1);
+    origin += 'A' + SQ2F(getOrigin());
+    origin += std::to_string(SQ2R(getOrigin()) + 1);
 
-    destination += 'A' + SQ2F(m.getDestination());
-    destination += std::to_string(SQ2R(m.getDestination()) + 1);
+    destination += 'A' + SQ2F(getDestination());
+    destination += std::to_string(SQ2R(getDestination()) + 1);
 
-    if (m.isDoublePawn()) {
+    if(isDoublePawn()) {
         flags += " DOUBLE_PAWN";
     }
-    if (m.isCastle()) {
-        if (m.isKingsideCastle()) {
+    if(isCastle()) {
+        if(isKingsideCastle()) {
             flags += " KINGSIDE_CASTLE";
         }
-        if (m.isQueensideCastle()) {
+        if(isQueensideCastle()) {
             flags += " QUEENSIDE_CASTLE";
         }
     } 
-    if (m.isCapture()) {
+    if(isCapture()) {
         flags += " CAPTURE";
     }
-    if (m.isEnPassant()) {
+    if(isEnPassant()) {
         flags += " EN_PASSANT";
     }
-    if (m.isPromotion()) {
+    if(isPromotion()) {
         flags += " PROMOTION";
+        if(isPromotionKnight()) {
+            flags += " KNIGHT";
+        }
+        if(isPromotionBishop()) {
+            flags += " BISHOP";
+        }
+        if(isPromotionRook()) {
+            flags += " ROOK";
+        }
+        if(isPromotionQueen()) {
+            flags += " QUEEN";
+        }
     }
 
-    os << origin << "->" << destination << flags;
-
-    return os;
+    return origin + "->" + destination + flags;
 }
 
 int32_t Move::getOrigin() {
@@ -91,18 +107,21 @@ bool Move::isPromotion() {
 }
 
 bool Move::isPromotionKnight() {
-    return (move & 0xF) == MOVE_PROMOTION_KNIGHT;
+    return (move & 0b1011) == MOVE_PROMOTION_KNIGHT;
 }
 
 bool Move::isPromotionBishop() {
-    return (move & 0xF) == MOVE_PROMOTION_BISHOP;
+    return (move & 0b1011) == MOVE_PROMOTION_BISHOP;
 }
 
 bool Move::isPromotionRook() {
-    return (move & 0xF) == MOVE_PROMOTION_ROOK;
+    return (move & 0b1011) == MOVE_PROMOTION_ROOK;
 }
 
 bool Move::isPromotionQueen() {
-    return (move & 0xF) == MOVE_PROMOTION_QUEEN;
+    return (move & 0b1011) == MOVE_PROMOTION_QUEEN;
 }
 
+bool Move::operator==(const Move& other) const {
+    return move == other.move;
+}

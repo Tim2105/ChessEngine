@@ -17,6 +17,17 @@ printf("ASSERTION FAILED: In %s on line %d\n", \
 #define SQ2F(sq) (( (sq) % 10 ) - 1 )
 #define SQ2R(sq) (( (sq) / 10 ) - 2 )
 
+#define TYPEOF(p) ((p) & 7)
+
+enum {
+    PAWN = 1,
+    KNIGHT,
+    BISHOP,
+    ROOK,
+    QUEEN,
+    KING
+};
+
 enum {
     EMPTY,
     WHITE_PAWN,
@@ -25,13 +36,21 @@ enum {
     WHITE_ROOK,
     WHITE_QUEEN,
     WHITE_KING,
-    BLACK_PAWN = 8,
+    BLACK_PAWN = 9,
     BLACK_KNIGHT,
     BLACK_BISHOP,
     BLACK_ROOK,
     BLACK_QUEEN,
     BLACK_KING
 };
+
+#include <stdint.h>
+
+extern int32_t KNIGHT_ATTACKS[];
+
+extern int32_t DIAGONAL_ATTACKS[];
+
+extern int32_t STRAIGHT_ATTACKS[];
 
 enum {
     FILE_A,

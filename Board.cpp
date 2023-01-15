@@ -1,6 +1,7 @@
 #include "Board.h"
 #include <iostream>
 #include <stdio.h>
+#include "OrderedMoveList.h"
 
 Board::Board() {
     initMailbox();
@@ -13,13 +14,15 @@ Board::Board() {
                        BLACK_KINGSIDE_CASTLE |
                        BLACK_QUEENSIDE_CASTLE;
     ply = 0;
+
+    generateBitboards();
 }
 
 Board::Board(std::string fen) {
     initMailbox();
 
     // Spielfeld-Array und Figurlisten leeren
-    for(int i = 0; i < 14; i++)
+    for(int i = 0; i < 15; i++)
         pieceList[i].clear();
     
     for(int i = 0; i < 120; i++)
@@ -103,6 +106,8 @@ Board::Board(std::string fen) {
 
     // Anzahl der bereits gespielten Halbzüge auslesen
     ply = std::stoi(fen) - 1;
+
+    generateBitboards();
 }
 
 Board::~Board() {
@@ -124,10 +129,225 @@ void Board::initMailbox() {
     }    
 }
 
-std::vector<Move> Board::generateWhitePawnMoves() {
-    std::vector<Move> moves;
-    moves.reserve(16);
+void Board::generateBitboards() {
+    // weißer Bauer
+    uint64_t res = 0ULL;
+    for(int i : pieceList[WHITE_PAWN])
+        res |= (1ULL << mailbox[i]);
+    
+    pieceBitboard[WHITE_PAWN] = Bitboard(res);
 
+    // weißer Springer
+    res = 0ULL;
+    for(int i : pieceList[WHITE_KNIGHT])
+        res |= (1ULL << mailbox[i]);
+
+    pieceBitboard[WHITE_KNIGHT] = Bitboard(res);
+
+    // weißer Läufer
+    res = 0ULL;
+    for(int i : pieceList[WHITE_BISHOP])
+        res |= (1ULL << mailbox[i]);
+
+    pieceBitboard[WHITE_BISHOP] = Bitboard(res);
+
+    // weißer Turm
+    res = 0ULL;
+    for(int i : pieceList[WHITE_ROOK])
+        res |= (1ULL << mailbox[i]);
+
+    pieceBitboard[WHITE_ROOK] = Bitboard(res);
+
+    // weiße Dame
+    res = 0ULL;
+    for(int i : pieceList[WHITE_QUEEN])
+        res |= (1ULL << mailbox[i]);
+
+    pieceBitboard[WHITE_QUEEN] = Bitboard(res);
+
+    // weißer König
+    res = 0ULL;
+    for(int i : pieceList[WHITE_KING])
+        res |= (1ULL << mailbox[i]);
+
+    pieceBitboard[WHITE_KING] = Bitboard(res);
+
+    // schwarzer Bauer
+    res = 0ULL;
+    for(int i : pieceList[BLACK_PAWN])
+        res |= (1ULL << mailbox[i]);
+
+    pieceBitboard[BLACK_PAWN] = Bitboard(res);
+
+    // schwarzer Springer
+    res = 0ULL;
+    for(int i : pieceList[BLACK_KNIGHT])
+        res |= (1ULL << mailbox[i]);
+
+    pieceBitboard[BLACK_KNIGHT] = Bitboard(res);
+
+    // schwarzer Läufer
+    res = 0ULL;
+    for(int i : pieceList[BLACK_BISHOP])
+        res |= (1ULL << mailbox[i]);
+
+    pieceBitboard[BLACK_BISHOP] = Bitboard(res);
+
+    // schwarzer Turm
+    res = 0ULL;
+    for(int i : pieceList[BLACK_ROOK])
+        res |= (1ULL << mailbox[i]);
+
+    pieceBitboard[BLACK_ROOK] = Bitboard(res);
+
+    // schwarze Dame
+    res = 0ULL;
+    for(int i : pieceList[BLACK_QUEEN])
+        res |= (1ULL << mailbox[i]);
+
+    pieceBitboard[BLACK_QUEEN] = Bitboard(res);
+
+    // schwarzer König
+    res = 0ULL;
+    for(int i : pieceList[BLACK_KING])
+        res |= (1ULL << mailbox[i]);
+
+    pieceBitboard[BLACK_KING] = Bitboard(res);
+
+    // alle weißen Figuren
+    whitePiecesBitboard = pieceBitboard[WHITE_PAWN] |
+                  pieceBitboard[WHITE_KNIGHT] |
+                  pieceBitboard[WHITE_BISHOP] |
+                  pieceBitboard[WHITE_ROOK] |
+                  pieceBitboard[WHITE_QUEEN];
+
+    // alle schwarzen Figuren
+    blackPiecesBitboard = pieceBitboard[BLACK_PAWN] |
+                  pieceBitboard[BLACK_KNIGHT] |
+                  pieceBitboard[BLACK_BISHOP] |
+                  pieceBitboard[BLACK_ROOK] |
+                  pieceBitboard[BLACK_QUEEN];
+    
+    // alle Figuren
+    allPiecesBitboard = whitePiecesBitboard | blackPiecesBitboard;
+}
+
+bool Board::isLegal(Move move) {
+    int32_t ownSide = side;
+    int32_t enemySide = (side == WHITE) ? BLACK : WHITE;
+    int32_t origin = move.getOrigin();
+    int32_t destination = move.getDestination();
+    int32_t pieceType = TYPEOF(pieces[origin]);
+
+    // Spezialfall: En Passant
+    if(move.isEnPassant()) {
+        ASSERT(enPassantSquare != NO_SQ);
+
+        // Das occupied-Bitboard muss so angepasst werden,
+        // dass der En Passant geschlagene Bauer nicht mehr existiert
+        Bitboard modifiedBitboard = allPiecesBitboard;
+        modifiedBitboard.clearBit(mailbox[origin]);
+        modifiedBitboard.clearBit(mailbox[enPassantSquare]);
+        modifiedBitboard.setBit(mailbox[destination]);
+
+        // Überprüfe, ob der König im Schach steht
+        int32_t kingSquare = pieceList[ownSide | KING][0];
+        return !squareAttacked(kingSquare, enemySide, modifiedBitboard);
+    }
+
+    int32_t kingSquare = pieceList[ownSide | KING][0];
+
+    // Spezialfall: Rochade
+    if(move.isCastle()) {
+        // Der König, sein Ausgangsfeld und das Feld, dass er überspringt dürfen nicht im Schach stehen
+        if(move.isKingsideCastle())
+            return !squareAttacked(kingSquare, enemySide, allPiecesBitboard) &&
+                   !squareAttacked(kingSquare + 1, enemySide, allPiecesBitboard) &&
+                   !squareAttacked(kingSquare + 2, enemySide, allPiecesBitboard);
+        else
+            return !squareAttacked(kingSquare, enemySide, allPiecesBitboard) &&
+                   !squareAttacked(kingSquare - 1, enemySide, allPiecesBitboard) &&
+                   !squareAttacked(kingSquare - 2, enemySide, allPiecesBitboard);
+    }
+
+    // Spezialfall: Der König wird bewegt
+    if(pieceType == KING) {
+        // Der König darf sich nicht ins Schach bewegen
+        return !squareAttacked(destination, enemySide, allPiecesBitboard);
+    }
+
+    // Überprüfe, ob die bewegte Figur den König beschützt
+    Bitboard modifiedBitboard = allPiecesBitboard;
+    modifiedBitboard.clearBit(mailbox[origin]);
+    modifiedBitboard.setBit(mailbox[destination]);
+
+    return !squareAttacked(kingSquare, enemySide, modifiedBitboard);
+}
+
+bool Board::squareAttacked(int32_t sq120, int32_t ownSide, Bitboard occupied) {
+    int32_t sq64 = mailbox[sq120];
+    int32_t otherSide = (ownSide == WHITE) ? BLACK : WHITE;
+
+    // Diagonale Angriffe
+    if(diagonalAttackBitboard(sq64, occupied) & (pieceBitboard[ownSide | BISHOP] | pieceBitboard[ownSide | QUEEN]))
+        return true;
+
+    // Waaagerechte Angriffe
+    if(straightAttackBitboard(sq64, occupied) & (pieceBitboard[ownSide | ROOK] | pieceBitboard[ownSide | QUEEN]))
+        return true;
+
+    // Springer Angriffe
+    if(knightAttackBitboard(sq64) & pieceBitboard[ownSide | KNIGHT])
+        return true;
+    
+    // Bauer Angriffe
+    if(pawnAttackBitboard(sq64, otherSide) & pieceBitboard[ownSide | PAWN])
+        return true;
+    
+    // König Angriffe
+    if(kingAttackBitboard(sq64) & pieceBitboard[ownSide | KING])
+        return true;
+    
+    return false;
+}
+
+std::vector<Move> Board::generatePseudoLegalMoves() {
+    std::vector<Move> moves;
+    moves.reserve(256);
+
+    if(side == WHITE) {
+        generateWhitePawnMoves(moves);
+        generateWhiteKnightMoves(moves);
+        generateWhiteBishopMoves(moves);
+        generateWhiteRookMoves(moves);
+        generateWhiteQueenMoves(moves);
+        generateWhiteKingMoves(moves);
+    }
+    else {
+        generateBlackPawnMoves(moves);
+        generateBlackKnightMoves(moves);
+        generateBlackBishopMoves(moves);
+        generateBlackRookMoves(moves);
+        generateBlackQueenMoves(moves);
+        generateBlackKingMoves(moves);
+    }
+
+    return moves;
+}
+
+std::list<Move> Board::generateLegalMoves() {
+    std::vector<Move> moves = generatePseudoLegalMoves();
+    OrderedMoveList legalMoves;
+
+    for(Move move : moves) {
+        if(isLegal(move))
+            legalMoves.addMove(move);
+    }
+
+    return legalMoves.getMoves();
+}
+
+void Board::generateWhitePawnMoves(std::vector<Move>& moves) {
     for(int sq : pieceList[WHITE_PAWN]) {
         ASSERT(pieces[sq] == WHITE_PAWN);
         ASSERT(mailbox[sq] != NO_SQ);
@@ -185,14 +405,9 @@ std::vector<Move> Board::generateWhitePawnMoves() {
                 moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
         }
     }
-
-    return moves;
 }
 
-std::vector<Move> Board::generateBlackPawnMoves() {
-    std::vector<Move> moves;
-    moves.reserve(16);
-
+void Board::generateBlackPawnMoves(std::vector<Move>& moves) {
     for(int sq : pieceList[BLACK_PAWN]) {
         ASSERT(pieces[sq] == BLACK_PAWN);
         ASSERT(mailbox[sq] != NO_SQ);
@@ -250,6 +465,254 @@ std::vector<Move> Board::generateBlackPawnMoves() {
                 moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
         }
     }
+}
 
-    return moves;
+void Board::generateWhiteKnightMoves(std::vector<Move>& moves) {
+    for(int sq : pieceList[WHITE_KNIGHT]) {
+        ASSERT(pieces[sq] == WHITE_KNIGHT);
+        ASSERT(mailbox[sq] != NO_SQ);
+
+        for(int i = 0; i < 8; i++) {
+            int n_sq = sq + KNIGHT_ATTACKS[i];
+            if(mailbox[n_sq] != NO_SQ) {
+                if(pieces[n_sq] == EMPTY)
+                    moves.push_back(Move(sq, n_sq, MOVE_QUIET));
+                else if((pieces[n_sq] & COLOR_MASK) == BLACK)
+                    moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
+            }
+        }
+    }
+}
+
+void Board::generateBlackKnightMoves(std::vector<Move>& moves) {
+    for(int sq : pieceList[BLACK_KNIGHT]) {
+        ASSERT(pieces[sq] == BLACK_KNIGHT);
+        ASSERT(mailbox[sq] != NO_SQ);
+
+        for(int i = 0; i < 8; i++) {
+            int n_sq = sq + KNIGHT_ATTACKS[i];
+            if(mailbox[n_sq] != NO_SQ) {
+                if(pieces[n_sq] == EMPTY)
+                    moves.push_back(Move(sq, n_sq, MOVE_QUIET));
+                else if((pieces[n_sq] & COLOR_MASK) == WHITE)
+                    moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
+            }
+        }
+    }
+}
+
+void Board::generateWhiteRookMoves(std::vector<Move>& moves) {
+    for(int sq : pieceList[WHITE_BISHOP]) {
+        ASSERT(pieces[sq] == WHITE_BISHOP);
+        ASSERT(mailbox[sq] != NO_SQ);
+
+        for(int i = 0; i < 4; i++) {
+            int n_sq = sq + DIAGONAL_ATTACKS[i];
+            while(mailbox[n_sq] != NO_SQ) {
+                if(pieces[n_sq] == EMPTY)
+                    moves.push_back(Move(sq, n_sq, MOVE_QUIET));
+                else if((pieces[n_sq] & COLOR_MASK) == BLACK) {
+                    moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
+                    break;
+                }
+                else
+                    break;
+
+                n_sq += DIAGONAL_ATTACKS[i];
+            }
+        }
+    }
+}
+
+void Board::generateBlackRookMoves(std::vector<Move>& moves) {
+    for(int sq : pieceList[BLACK_BISHOP]) {
+        ASSERT(pieces[sq] == BLACK_BISHOP);
+        ASSERT(mailbox[sq] != NO_SQ);
+
+        for(int i = 0; i < 4; i++) {
+            int n_sq = sq + DIAGONAL_ATTACKS[i];
+            while(mailbox[n_sq] != NO_SQ) {
+                if(pieces[n_sq] == EMPTY)
+                    moves.push_back(Move(sq, n_sq, MOVE_QUIET));
+                else if((pieces[n_sq] & COLOR_MASK) == WHITE) {
+                    moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
+                    break;
+                }
+                else
+                    break;
+
+                n_sq += DIAGONAL_ATTACKS[i];
+            }
+        }
+    }
+}
+
+void Board::generateWhiteBishopMoves(std::vector<Move>& moves) {
+    for(int sq : pieceList[WHITE_ROOK]) {
+        ASSERT(pieces[sq] == WHITE_ROOK);
+        ASSERT(mailbox[sq] != NO_SQ);
+
+        for(int i = 0; i < 4; i++) {
+            int n_sq = sq + STRAIGHT_ATTACKS[i];
+            while(mailbox[n_sq] != NO_SQ) {
+                if(pieces[n_sq] == EMPTY)
+                    moves.push_back(Move(sq, n_sq, MOVE_QUIET));
+                else if((pieces[n_sq] & COLOR_MASK) == BLACK) {
+                    moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
+                    break;
+                }
+                else
+                    break;
+
+                n_sq += STRAIGHT_ATTACKS[i];
+            }
+        }
+    }
+}
+
+void Board::generateBlackBishopMoves(std::vector<Move>& moves) {
+    for(int sq : pieceList[BLACK_ROOK]) {
+        ASSERT(pieces[sq] == BLACK_ROOK);
+        ASSERT(mailbox[sq] != NO_SQ);
+
+        for(int i = 0; i < 4; i++) {
+            int n_sq = sq + STRAIGHT_ATTACKS[i];
+            while(mailbox[n_sq] != NO_SQ) {
+                if(pieces[n_sq] == EMPTY)
+                    moves.push_back(Move(sq, n_sq, MOVE_QUIET));
+                else if((pieces[n_sq] & COLOR_MASK) == WHITE) {
+                    moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
+                    break;
+                }
+                else
+                    break;
+
+                n_sq += STRAIGHT_ATTACKS[i];
+            }
+        }
+    }
+}
+
+void Board::generateWhiteQueenMoves(std::vector<Move>& moves) {
+    int32_t QUEEN_ATTACKS[8] = {
+        DIAGONAL_ATTACKS[0], DIAGONAL_ATTACKS[1], DIAGONAL_ATTACKS[2], DIAGONAL_ATTACKS[3],
+        STRAIGHT_ATTACKS[0], STRAIGHT_ATTACKS[1], STRAIGHT_ATTACKS[2], STRAIGHT_ATTACKS[3]
+    };
+
+    for(int sq : pieceList[WHITE_QUEEN]) {
+        ASSERT(pieces[sq] == WHITE_QUEEN);
+        ASSERT(mailbox[sq] != NO_SQ);
+
+        for(int i = 0; i < 8; i++) {
+            int n_sq = sq + QUEEN_ATTACKS[i];
+            while(mailbox[n_sq] != NO_SQ) {
+                if(pieces[n_sq] == EMPTY)
+                    moves.push_back(Move(sq, n_sq, MOVE_QUIET));
+                else if((pieces[n_sq] & COLOR_MASK) == BLACK) {
+                    moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
+                    break;
+                }
+                else
+                    break;
+
+                n_sq += QUEEN_ATTACKS[i];
+            }
+        }
+    }
+}
+
+void Board::generateBlackQueenMoves(std::vector<Move>& moves) {
+    int32_t QUEEN_ATTACKS[8] = {
+        DIAGONAL_ATTACKS[0], DIAGONAL_ATTACKS[1], DIAGONAL_ATTACKS[2], DIAGONAL_ATTACKS[3],
+        STRAIGHT_ATTACKS[0], STRAIGHT_ATTACKS[1], STRAIGHT_ATTACKS[2], STRAIGHT_ATTACKS[3]
+    };
+
+    for(int sq : pieceList[BLACK_QUEEN]) {
+        ASSERT(pieces[sq] == BLACK_QUEEN);
+        ASSERT(mailbox[sq] != NO_SQ);
+
+        for(int i = 0; i < 8; i++) {
+            int n_sq = sq + QUEEN_ATTACKS[i];
+            while(mailbox[n_sq] != NO_SQ) {
+                if(pieces[n_sq] == EMPTY)
+                    moves.push_back(Move(sq, n_sq, MOVE_QUIET));
+                else if((pieces[n_sq] & COLOR_MASK) == WHITE) {
+                    moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
+                    break;
+                }
+                else
+                    break;
+
+                n_sq += QUEEN_ATTACKS[i];
+            }
+        }
+    }
+}
+
+void Board::generateWhiteKingMoves(std::vector<Move>& moves) {
+    int32_t KING_ATTACKS[8] = {
+        DIAGONAL_ATTACKS[0], DIAGONAL_ATTACKS[1], DIAGONAL_ATTACKS[2], DIAGONAL_ATTACKS[3],
+        STRAIGHT_ATTACKS[0], STRAIGHT_ATTACKS[1], STRAIGHT_ATTACKS[2], STRAIGHT_ATTACKS[3]
+    };
+
+    for(int sq : pieceList[WHITE_KING]) {
+        ASSERT(pieces[sq] == WHITE_KING);
+        ASSERT(mailbox[sq] != NO_SQ);
+
+        for(int i = 0; i < 8; i++) {
+            int n_sq = sq + KING_ATTACKS[i];
+            if(mailbox[n_sq] != NO_SQ) {
+                if(pieces[n_sq] == EMPTY)
+                    moves.push_back(Move(sq, n_sq, MOVE_QUIET));
+                else if((pieces[n_sq] & COLOR_MASK) == BLACK)
+                    moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
+            }
+        }
+    }
+
+    if(castlingPermission & WHITE_KINGSIDE_CASTLE) {
+        if(pieces[F1] == EMPTY && pieces[G1] == EMPTY) {
+            moves.push_back(Move(E1, G1, MOVE_KINGSIDE_CASTLE));
+        }
+    }
+
+    if(castlingPermission & WHITE_QUEENSIDE_CASTLE) {
+        if(pieces[D1] == EMPTY && pieces[C1] == EMPTY && pieces[B1] == EMPTY) {
+            moves.push_back(Move(E1, C1, MOVE_QUEENSIDE_CASTLE));
+        }
+    }
+}
+
+void Board::generateBlackKingMoves(std::vector<Move>& moves) {
+    int32_t KING_ATTACKS[8] = {
+        DIAGONAL_ATTACKS[0], DIAGONAL_ATTACKS[1], DIAGONAL_ATTACKS[2], DIAGONAL_ATTACKS[3],
+        STRAIGHT_ATTACKS[0], STRAIGHT_ATTACKS[1], STRAIGHT_ATTACKS[2], STRAIGHT_ATTACKS[3]
+    };
+
+    for(int sq : pieceList[BLACK_KING]) {
+        ASSERT(pieces[sq] == BLACK_KING);
+        ASSERT(mailbox[sq] != NO_SQ);
+
+        for(int i = 0; i < 8; i++) {
+            int n_sq = sq + KING_ATTACKS[i];
+            if(mailbox[n_sq] != NO_SQ) {
+                if(pieces[n_sq] == EMPTY)
+                    moves.push_back(Move(sq, n_sq, MOVE_QUIET));
+                else if((pieces[n_sq] & COLOR_MASK) == WHITE)
+                    moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
+            }
+        }
+    }
+
+    if(castlingPermission & BLACK_KINGSIDE_CASTLE) {
+        if(pieces[F8] == EMPTY && pieces[G8] == EMPTY) {
+            moves.push_back(Move(E8, G8, MOVE_KINGSIDE_CASTLE));
+        }
+    }
+
+    if(castlingPermission & BLACK_QUEENSIDE_CASTLE) {
+        if(pieces[D8] == EMPTY && pieces[C8] == EMPTY && pieces[B8] == EMPTY) {
+            moves.push_back(Move(E8, C8, MOVE_QUEENSIDE_CASTLE));
+        }
+    }
 }

@@ -3,10 +3,12 @@
 
 #include <stdint.h>
 #include <vector>
+#include <list>
 #include "Move.h"
 #include "Definitions.h"
 #include <stdio.h>
 #include <string>
+#include "Bitboard.h"
 
 /**
  * @brief Enthält alle notwendigen Informationen um einen Zug rückgängig zu machen.
@@ -44,6 +46,11 @@ class MoveHistoryEntry {
          * @brief Speichert den Hashwert vor diesem Zug.
          */
         uint64_t hashValue;
+
+        /**
+         * @brief Speichert das 'belegt'-Bitboard vor diesem Zug.
+         */
+        Bitboard occupied;
     
     public:
         /**
@@ -73,7 +80,6 @@ class MoveHistoryEntry {
 class Board {
 
     private:
-    public:
          /**
           * @brief Stellt das Schachbrett in 10x12 Notation dar.
           * https://www.chessprogramming.org/10x12_Board
@@ -97,7 +103,7 @@ class Board {
          * @brief Enthält eine Liste aller Figuren für jeden Figurentyp auf dem Schachbrett.
          * Speichert den Index der Position.
          */
-        std::vector<int32_t> pieceList[14] = {
+        std::vector<int32_t> pieceList[15] = {
             {},
             {A2, B2, C2, D2, E2, F2, G2, H2},
             {B1, G1},
@@ -105,6 +111,7 @@ class Board {
             {A1, H1},
             {D1},
             {E1},
+            {},
             {},
             {A7, B7, C7, D7, E7, F7, G7, H7},
             {B8, G8}, 
@@ -146,13 +153,33 @@ class Board {
         uint64_t hashValue;
 
         /**
+         * @brief Speichert alle von Figuren(nicht Könige) belegten Felder.
+         */
+        Bitboard allPiecesBitboard;
+
+        /**
+         * @brief Speichert alle Felder, auf denen sich weiße Figuren(außer König) befinden.
+         */
+        Bitboard whitePiecesBitboard;
+
+        /**
+         * @brief Speichert alle Felder, auf denen sich schwarze Figuren(außer König) befinden.
+         */
+        Bitboard blackPiecesBitboard;
+
+        /**
+         * @brief Speichert alle Felder, auf denen sich Figuren befinden.
+         */
+        Bitboard pieceBitboard[15];
+
+        /**
          * @brief Speichert alle gespielten Züge und notwendige Informationen um diesen effizient rückgängig zu machen.
          */
         std::vector<MoveHistoryEntry> moveHistory;
 
         /**
          * @brief Array zur Konvertierung der 10x12 Notation in 8x8 Notation.
-         * Invalide Felder werden mit -1 markiert.
+         * Invalide Felder werden als NO_SQ markiert.
          */
         int32_t mailbox[120];
 
@@ -167,64 +194,74 @@ class Board {
         void initMailbox();
 
         /**
+         * @brief Generiert ein Bitboard, das alle besetzten Felder enthält(König ausgeschlossen).
+         */
+        void generateBitboards();
+
+        /**
+         * @brief Überprüft, ob ein Zug legal ist.
+         */
+        bool isLegal(Move move);
+
+        /**
          * @brief Generiert alle Pseudo-Legalen Züge für die weißen Bauern.
          */
-        std::vector<Move> generateWhitePawnMoves();
+        void generateWhitePawnMoves(std::vector<Move>& moves);
 
         /**
          * @brief Generiert alle Pseudo-Legalen Züge für die schwarzen Bauern.
          */
-        std::vector<Move> generateBlackPawnMoves();
+        void generateBlackPawnMoves(std::vector<Move>& moves);
 
         /**
          * @brief Generiert alle Pseudo-Legalen Züge für die weißen Springer.
          */
-        std::vector<Move> generateWhiteKnightMoves();
+        void generateWhiteKnightMoves(std::vector<Move>& moves);
 
         /**
          * @brief Generiert alle Pseudo-Legalen Züge für die schwarzen Springer.
          */
-        std::vector<Move> generateBlackKnightMoves();
+        void generateBlackKnightMoves(std::vector<Move>& moves);
 
         /**
          * @brief Generiert alle Pseudo-Legalen Züge für die weißen Läufer.
          */
-        std::vector<Move> generateWhiteBishopMoves();
+        void generateWhiteBishopMoves(std::vector<Move>& moves);
 
         /**
          * @brief Generiert alle Pseudo-Legalen Züge für die schwarzen Läufer.
          */
-        std::vector<Move> generateBlackBishopMoves();
+        void generateBlackBishopMoves(std::vector<Move>& moves);
 
         /**
          * @brief Generiert alle Pseudo-Legalen Züge für die weißen Türme.
          */
-        std::vector<Move> generateWhiteRookMoves();
+        void generateWhiteRookMoves(std::vector<Move>& moves);
 
         /**
          * @brief Generiert alle Pseudo-Legalen Züge für die schwarzen Türme.
          */
-        std::vector<Move> generateBlackRookMoves();
+        void generateBlackRookMoves(std::vector<Move>& moves);
 
         /**
          * @brief Generiert alle Pseudo-Legalen Züge für die weißen Damen.
          */
-        std::vector<Move> generateWhiteQueenMoves();
+        void generateWhiteQueenMoves(std::vector<Move>& moves);
 
         /**
          * @brief Generiert alle Pseudo-Legalen Züge für die schwarzen Damen.
          */
-        std::vector<Move> generateBlackQueenMoves();
+        void generateBlackQueenMoves(std::vector<Move>& moves);
 
         /**
          * @brief Generiert alle Pseudo-Legalen Züge für den weißen König.
          */
-        std::vector<Move> generateWhiteKingMoves();
+        void generateWhiteKingMoves(std::vector<Move>& moves);
 
         /**
          * @brief Generiert alle Pseudo-Legalen Züge für den schwarzen König.
          */
-        std::vector<Move> generateBlackKingMoves();
+        void generateBlackKingMoves(std::vector<Move>& moves);
 
     public:
         /**
@@ -245,6 +282,19 @@ class Board {
          * Pseudo-Legale Züge sind Züge, die auf dem Schachbrett möglich sind, aber eventuell den eigenen König im Schach lassen.
          */
         std::vector<Move> generatePseudoLegalMoves();
+
+        /**
+         * @brief Generiert alle Legalen Züge und gibt sie nach ihrer Stärke bewertet zurück.
+         * Legale Züge sind Züge, die auf dem Schachbrett möglich sind und den eigenen König nicht im Schach lassen.
+         */
+        std::list<Move> generateLegalMoves();
+
+        /**
+         * @brief Überprüft bei einem anzugebenden Belegbitboard, ob ein Feld von einer bestimmten Seite angegriffen wird.
+         * 
+         * @param square Das Feld, das überprüft werden soll(in 120er Notation).
+         */
+        bool squareAttacked(int32_t square, int32_t side, Bitboard occupied);
 };
 
 #endif

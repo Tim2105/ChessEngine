@@ -2,9 +2,9 @@
 #include "Board.h"
 
 int main() {
-    Board board("rnbqk1nr/p1p1b1Pp/1p1P4/8/4pP2/1P6/P2P2PP/RNBQKBNR b KQkq f3 0 1");
+    Board board("rnb1k2r/pp1q1p1p/1bp1pnp1/3p4/4PB1N/1BN2PP1/PPPQ2PP/R3K2R w KQkq - 0 1");
 
-    for(Move m : board.generateBlackPawnMoves())
+    for(Move m : board.generateLegalMoves())
         std::cout << m << std::endl;
 
     return 0;
