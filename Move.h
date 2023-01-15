@@ -2,19 +2,15 @@
 #define MOVE_H
 
 #include <stdint.h>
+#include <iostream>
+#include "Definitions.h"
 
-#define MOVE_QUIET 0
-#define MOVE_DOUBLE_PAWN 1
-#define MOVE_KINGSIDE_CASTLE 2
-#define MOVE_QUEENSIDE_CASTLE 3
-#define MOVE_CAPTURE 4
-#define MOVE_EN_PASSANT 5
-#define MOVE_PROMOTION 8
-#define MOVE_PROMOTION_KNIGHT 8
-#define MOVE_PROMOTION_BISHOP 9
-#define MOVE_PROMOTION_ROOK 10
-#define MOVE_PROMOTION_QUEEN 11
-
+/**
+ * @brief Kapselt einen Zug.
+ * Die Klasse Move stellt alle Informationen über einen Zug in einem 32-bit Integer dar.
+ * Die Bits 11-17 repräsentieren den Ausgangspunkt des Zuges, die Bits 4-10 das Zielfeld und die Bits 0-3 Flags für Spezialzüge.
+ * Im Gegensatz zur Klasse Board ist diese Klasse weniger auf Performance sondern mehr auf Speichereffizienz ausgelegt.
+ */
 class Move {
 
     private:
@@ -24,6 +20,8 @@ class Move {
         Move();
         Move(int32_t origin, int32_t destination, int32_t flags);
         virtual ~Move();
+
+        friend std::ostream& operator<< (std::ostream& os, Move& m);
 
         /**
          * @brief Gibt den Ausgangspunkt des Zuges zurück.

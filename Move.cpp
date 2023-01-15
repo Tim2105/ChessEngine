@@ -1,39 +1,81 @@
 #include "Move.h"
+#include <string>
 
 Move::Move() {
     
 }
 
 Move::Move(int32_t origin, int32_t destination, int32_t flags) {
-    move = (origin << 12) | (destination << 6) | flags;
+    move = (origin << 11) | (destination << 4) | flags;
+}
+
+Move::~Move() {
+    
+}
+
+std::ostream& operator<<(std::ostream &os, Move &m) {
+    std::string origin = "";
+    std::string destination = "";
+    std::string flags = "";
+
+    origin += 'A' + SQ2F(m.getOrigin());
+    origin += std::to_string(SQ2R(m.getOrigin()) + 1);
+
+    destination += 'A' + SQ2F(m.getDestination());
+    destination += std::to_string(SQ2R(m.getDestination()) + 1);
+
+    if (m.isDoublePawn()) {
+        flags += " DOUBLE_PAWN";
+    }
+    if (m.isCastle()) {
+        if (m.isKingsideCastle()) {
+            flags += " KINGSIDE_CASTLE";
+        }
+        if (m.isQueensideCastle()) {
+            flags += " QUEENSIDE_CASTLE";
+        }
+    } 
+    if (m.isCapture()) {
+        flags += " CAPTURE";
+    }
+    if (m.isEnPassant()) {
+        flags += " EN_PASSANT";
+    }
+    if (m.isPromotion()) {
+        flags += " PROMOTION";
+    }
+
+    os << origin << "->" << destination << flags;
+
+    return os;
 }
 
 int32_t Move::getOrigin() {
-    return (move >> 12) & 0x3F;
+    return (move >> 11) & 0x7F;
 }
 
 int32_t Move::getDestination() {
-    return (move >> 6) & 0x3F;
+    return (move >> 4) & 0x7F;
 }
 
 bool Move::isQuiet() {
-    return (move & 0x3F) == MOVE_QUIET;
+    return (move & 0xF) == MOVE_QUIET;
 }
 
 bool Move::isDoublePawn() {
-    return (move & 0x3F) == MOVE_DOUBLE_PAWN;
+    return (move & 0xF) == MOVE_DOUBLE_PAWN;
 }
 
 bool Move::isCastle() {
-    return (move & 0x3F) == MOVE_KINGSIDE_CASTLE || (move & 0x3F) == MOVE_QUEENSIDE_CASTLE;
+    return (move & 0xF) == MOVE_KINGSIDE_CASTLE || (move & 0xF) == MOVE_QUEENSIDE_CASTLE;
 }
 
 bool Move::isKingsideCastle() {
-    return (move & 0x3F) == MOVE_KINGSIDE_CASTLE;
+    return (move & 0xF) == MOVE_KINGSIDE_CASTLE;
 }
 
 bool Move::isQueensideCastle() {
-    return (move & 0x3F) == MOVE_QUEENSIDE_CASTLE;
+    return (move & 0xF) == MOVE_QUEENSIDE_CASTLE;
 }
 
 bool Move::isCapture() {
@@ -41,7 +83,7 @@ bool Move::isCapture() {
 }
 
 bool Move::isEnPassant() {
-    return (move & 0x3F) == MOVE_EN_PASSANT;
+    return (move & 0xF) == MOVE_EN_PASSANT;
 }
 
 bool Move::isPromotion() {
@@ -49,18 +91,18 @@ bool Move::isPromotion() {
 }
 
 bool Move::isPromotionKnight() {
-    return (move & 0x3F) == MOVE_PROMOTION_KNIGHT;
+    return (move & 0xF) == MOVE_PROMOTION_KNIGHT;
 }
 
 bool Move::isPromotionBishop() {
-    return (move & 0x3F) == MOVE_PROMOTION_BISHOP;
+    return (move & 0xF) == MOVE_PROMOTION_BISHOP;
 }
 
 bool Move::isPromotionRook() {
-    return (move & 0x3F) == MOVE_PROMOTION_ROOK;
+    return (move & 0xF) == MOVE_PROMOTION_ROOK;
 }
 
 bool Move::isPromotionQueen() {
-    return (move & 0x3F) == MOVE_PROMOTION_QUEEN;
+    return (move & 0xF) == MOVE_PROMOTION_QUEEN;
 }
 
