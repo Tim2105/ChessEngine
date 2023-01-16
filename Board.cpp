@@ -239,41 +239,43 @@ bool Board::isLegal(Move move) {
     int32_t destination = move.getDestination();
     int32_t pieceType = TYPEOF(pieces[origin]);
 
+    Bitboard allPiecesPlusEnemyKing = allPiecesBitboard | pieceBitboard[enemySide | KING];
+
     // Spezialfall: En Passant
     if(move.isEnPassant()) {
         ASSERT(enPassantSquare != NO_SQ);
 
         // Das occupied-Bitboard muss so angepasst werden,
         // dass der En Passant geschlagene Bauer nicht mehr existiert
-        Bitboard modifiedBitboard = allPiecesBitboard;
+        Bitboard modifiedBitboard = allPiecesPlusEnemyKing;
         modifiedBitboard.clearBit(mailbox[origin]);
         modifiedBitboard.clearBit(mailbox[enPassantSquare]);
         modifiedBitboard.setBit(mailbox[destination]);
 
         // Überprüfe, ob der König im Schach steht
-        int32_t kingSquare = pieceList[ownSide | KING][0];
+        int32_t kingSquare = pieceList[ownSide | KING].front();
         return !squareAttacked(kingSquare, enemySide, modifiedBitboard);
     }
 
-    int32_t kingSquare = pieceList[ownSide | KING][0];
+    int32_t kingSquare = pieceList[ownSide | KING].front();
 
     // Spezialfall: Rochade
     if(move.isCastle()) {
         // Der König, sein Ausgangsfeld und das Feld, dass er überspringt dürfen nicht im Schach stehen
         if(move.isKingsideCastle())
-            return !squareAttacked(kingSquare, enemySide, allPiecesBitboard) &&
-                   !squareAttacked(kingSquare + 1, enemySide, allPiecesBitboard) &&
-                   !squareAttacked(kingSquare + 2, enemySide, allPiecesBitboard);
+            return !squareAttacked(kingSquare, enemySide, allPiecesPlusEnemyKing) &&
+                   !squareAttacked(kingSquare + 1, enemySide, allPiecesPlusEnemyKing) &&
+                   !squareAttacked(kingSquare + 2, enemySide, allPiecesPlusEnemyKing);
         else
-            return !squareAttacked(kingSquare, enemySide, allPiecesBitboard) &&
-                   !squareAttacked(kingSquare - 1, enemySide, allPiecesBitboard) &&
-                   !squareAttacked(kingSquare - 2, enemySide, allPiecesBitboard);
+            return !squareAttacked(kingSquare, enemySide, allPiecesPlusEnemyKing) &&
+                   !squareAttacked(kingSquare - 1, enemySide, allPiecesPlusEnemyKing) &&
+                   !squareAttacked(kingSquare - 2, enemySide, allPiecesPlusEnemyKing);
     }
 
     // Spezialfall: Der König wird bewegt
     if(pieceType == KING) {
         // Der König darf sich nicht ins Schach bewegen
-        return !squareAttacked(destination, enemySide, allPiecesBitboard);
+        return !squareAttacked(destination, enemySide, allPiecesPlusEnemyKing);
     }
 
     // Überprüfe, ob die bewegte Figur den König beschützt
@@ -281,7 +283,313 @@ bool Board::isLegal(Move move) {
     modifiedBitboard.clearBit(mailbox[origin]);
     modifiedBitboard.setBit(mailbox[destination]);
 
-    return !squareAttacked(kingSquare, enemySide, modifiedBitboard);
+    return !squareAttacked(kingSquare, enemySide, allPiecesPlusEnemyKing);
+}
+
+void Board::makeMove(Move m) {
+    int32_t origin = m.getOrigin();
+    int32_t destination = m.getDestination();
+    int32_t origin64 = mailbox[origin];
+    int32_t destination64 = mailbox[destination];
+    int32_t pieceType = pieces[origin];
+    int32_t capturedPieceType = pieces[destination];
+
+    // Speichere den Zustand des Spielfeldes, um den Zug später wieder rückgängig machen zu können
+    MoveHistoryEntry entry(m);
+    entry.capturedPiece = capturedPieceType;
+    entry.castlingPermission = castlingPermission;
+    entry.enPassantSquare = enPassantSquare;
+    entry.fiftyMoveRule = fiftyMoveRule;
+    entry.hashValue = hashValue;
+
+    moveHistory.push_back(entry);
+
+    // Zug ausführen
+    ASSERT(pieceType != EMPTY);
+    ASSERT((pieceType & COLOR_MASK) == side);
+    if(capturedPieceType != EMPTY)
+        ASSERT((capturedPieceType & COLOR_MASK) != side);
+
+    // Spezialfall: En Passant
+    if(m.isEnPassant()) {
+        ASSERT(enPassantSquare != NO_SQ);
+
+        // Entferne den geschlagenen Bauern
+        int32_t capturedPawnType = pieces[enPassantSquare];
+        ASSERT(capturedPawnType == (side | PAWN));
+
+        int32_t enPassantSquare64 = mailbox[enPassantSquare];
+        pieces[enPassantSquare] = EMPTY;
+        pieceList[capturedPawnType].remove(enPassantSquare);
+        pieceBitboard[capturedPawnType].clearBit(enPassantSquare64);
+        allPiecesBitboard.clearBit(enPassantSquare64);
+        if(side == WHITE)
+            blackPiecesBitboard.clearBit(enPassantSquare64);
+        else
+            whitePiecesBitboard.clearBit(enPassantSquare64);
+    }
+
+    // Spezialfall: Rochade
+    if(m.isCastle()) {
+        if(m.isKingsideCastle()) {
+            // Turm auf Königsseite bewegen
+            ASSERT(TYPEOF(pieces[origin + 3]) == ROOK);
+            pieces[origin + 3] = EMPTY;
+            pieces[origin + 1] = side | ROOK;
+            pieceList[side | ROOK].remove(origin + 3);
+            pieceList[side | ROOK].push_back(origin + 1);
+            pieceBitboard[side | ROOK].clearBit(origin64 + 3);
+            pieceBitboard[side | ROOK].setBit(origin64 + 1);
+            allPiecesBitboard.clearBit(origin64 + 3);
+            allPiecesBitboard.setBit(origin64 + 1);
+            if(side == WHITE) {
+                whitePiecesBitboard.clearBit(origin64 + 3);
+                whitePiecesBitboard.setBit(origin64 + 1);
+            }
+            else {
+                blackPiecesBitboard.clearBit(origin64 + 3);
+                blackPiecesBitboard.setBit(origin64 + 1);
+            }
+        } else {
+            // Turm auf Damenseite bewegen
+            ASSERT(TYPEOF(pieces[origin - 4]) == ROOK);
+            pieces[origin - 4] = EMPTY;
+            pieces[origin - 1] = side | ROOK;
+            pieceList[side | ROOK].remove(origin - 4);
+            pieceList[side | ROOK].push_back(origin - 1);
+            pieceBitboard[side | ROOK].clearBit(origin64 - 4);
+            pieceBitboard[side | ROOK].setBit(origin64 - 1);
+            allPiecesBitboard.clearBit(origin64 - 4);
+            allPiecesBitboard.setBit(origin64 - 1);
+            if(side == WHITE) {
+                whitePiecesBitboard.clearBit(origin64 - 4);
+                whitePiecesBitboard.setBit(origin64 - 1);
+            }
+            else {
+                blackPiecesBitboard.clearBit(origin64 - 4);
+                blackPiecesBitboard.setBit(origin64 - 1);
+            }
+        }
+    }
+
+    // Bewege die Figur
+    pieces[origin] = EMPTY;
+    pieces[destination] = pieceType;
+    pieceList[pieceType].remove(origin);
+    pieceList[pieceType].push_back(destination);
+    pieceBitboard[pieceType].clearBit(origin64);
+    pieceBitboard[pieceType].setBit(destination64);
+    allPiecesBitboard.clearBit(origin64);
+    allPiecesBitboard.setBit(destination64);
+    if(side == WHITE) {
+        whitePiecesBitboard.clearBit(origin64);
+        whitePiecesBitboard.setBit(destination64);
+    }
+    else {
+        blackPiecesBitboard.clearBit(origin64);
+        blackPiecesBitboard.setBit(destination64);
+    }
+
+    // Spezialfall: Schlagen
+    if(capturedPieceType != EMPTY && !m.isEnPassant()) {
+        pieceList[capturedPieceType].remove(destination);
+        pieceBitboard[capturedPieceType].clearBit(destination64);
+        if(side == WHITE)
+            blackPiecesBitboard.clearBit(destination64);
+        else
+            whitePiecesBitboard.clearBit(destination64);
+    }
+
+    // Spezialfall: Bauernumwandlung
+    if(m.isPromotion()) {
+        int32_t promotedPieceType = EMPTY;
+        if(m.isPromotionQueen())
+            promotedPieceType = QUEEN;
+        else if(m.isPromotionRook())
+            promotedPieceType = ROOK;
+        else if(m.isPromotionBishop())
+            promotedPieceType = BISHOP;
+        else if(m.isPromotionKnight())
+            promotedPieceType = KNIGHT;
+        else
+            ASSERT(false);
+
+        // Entferne den Bauern, die allgemeinen Bitboards müssen nicht angepasst werden
+        pieceList[side | PAWN].remove(destination);
+        pieceBitboard[side | PAWN].clearBit(destination64);
+
+        // Füge die neue Figur hinzu
+        pieces[destination] = side | promotedPieceType;
+        pieceList[side | promotedPieceType].push_back(destination);
+        pieceBitboard[side | promotedPieceType].setBit(destination64);
+    }
+
+    // Aktualisiere Rochandenrechte und En Passant
+    enPassantSquare = NO_SQ;
+
+    if(TYPEOF(pieceType) == KING || TYPEOF(capturedPieceType) == ROOK) {
+        if(pieceType == WHITE_KING)
+            castlingPermission &= ~WHITE_KINGSIDE_CASTLE;
+        else if(pieceType == BLACK_KING)
+            castlingPermission &= ~BLACK_KINGSIDE_CASTLE;
+        else if(pieceType == WHITE_ROOK && origin == A1)
+            castlingPermission &= ~WHITE_QUEENSIDE_CASTLE;
+        else if(pieceType == WHITE_ROOK && origin == H1)
+            castlingPermission &= ~WHITE_KINGSIDE_CASTLE;
+        else if(pieceType == BLACK_ROOK && origin == A8)
+            castlingPermission &= ~BLACK_QUEENSIDE_CASTLE;
+        else if(pieceType == BLACK_ROOK && origin == H8)
+            castlingPermission &= ~BLACK_KINGSIDE_CASTLE;
+    }
+
+    if(TYPEOF(pieceType) == PAWN && m.isDoublePawn()) {
+        if(side == WHITE)
+            enPassantSquare = destination - 10;
+        else
+            enPassantSquare = destination + 10;
+    }
+
+    // Aktualisiere den Spielzustand
+    if(capturedPieceType != EMPTY || TYPEOF(pieceType) == PAWN)
+        fiftyMoveRule = 0;
+    else
+        fiftyMoveRule++;
+
+    side = (side == WHITE) ? BLACK : WHITE;
+    ply++;
+}
+
+void Board::undoMove() {
+    MoveHistoryEntry moveEntry = moveHistory.back();
+    Move move = moveEntry.move;
+    moveHistory.pop_back();
+
+    int32_t origin = move.getOrigin();
+    int32_t destination = move.getDestination();
+    int32_t origin64 = mailbox[origin];
+    int32_t destination64 = mailbox[destination];
+    int32_t pieceType = pieces[destination];
+    int32_t capturedPieceType = moveEntry.capturedPiece;
+
+    // Mache den Spielzustand rückgängig
+    ply--;
+    side = (side == WHITE) ? BLACK : WHITE;
+    fiftyMoveRule = moveEntry.fiftyMoveRule;
+    enPassantSquare = moveEntry.enPassantSquare;
+    castlingPermission = moveEntry.castlingPermission;
+
+    // Spezialfall: Bauernumwandlung
+    if(move.isPromotion()) {
+        int32_t promotedPieceType = EMPTY;
+        if(move.isPromotionQueen())
+            promotedPieceType = QUEEN;
+        else if(move.isPromotionRook())
+            promotedPieceType = ROOK;
+        else if(move.isPromotionBishop())
+            promotedPieceType = BISHOP;
+        else if(move.isPromotionKnight())
+            promotedPieceType = KNIGHT;
+        else
+            ASSERT(false);
+
+        // Entferne die neue Figur, die allgemeinen Bitboards müssen nicht angepasst werden
+        pieceList[side | promotedPieceType].remove(destination);
+        pieceBitboard[side | promotedPieceType].clearBit(destination64);
+
+        // Füge den Bauern hinzu
+        pieces[destination] = side | PAWN;
+        pieceList[side | PAWN].push_back(destination);
+        pieceBitboard[side | PAWN].setBit(destination64);
+    }
+
+    // Mache den Zug rückgängig
+    pieces[origin] = pieceType;
+    pieces[destination] = EMPTY;
+    pieceList[pieceType].remove(destination);
+    pieceList[pieceType].push_back(origin);
+    pieceBitboard[pieceType].clearBit(destination64);
+    pieceBitboard[pieceType].setBit(origin64);
+    allPiecesBitboard.clearBit(destination64);
+    allPiecesBitboard.setBit(origin64);
+    if(side == WHITE) {
+        whitePiecesBitboard.clearBit(destination64);
+        whitePiecesBitboard.setBit(origin64);
+    } else {
+        blackPiecesBitboard.clearBit(destination64);
+        blackPiecesBitboard.setBit(origin64);
+    }
+
+    // Spezialfall: Schlagen
+    if(capturedPieceType != EMPTY && !move.isEnPassant()) {
+        pieces[destination] = capturedPieceType;
+        pieceList[capturedPieceType].push_back(destination);
+        pieceBitboard[capturedPieceType].setBit(destination64);
+        allPiecesBitboard.setBit(destination64);
+        if(side == WHITE)
+            blackPiecesBitboard.setBit(destination64);
+        else
+            whitePiecesBitboard.setBit(destination64);
+    }
+
+    // Spezialfall: Rochade
+    if(move.isCastle()) {
+        if(move.isKingsideCastle()) {
+            // Rochade auf Königsseite
+            ASSERT(TYPEOF(pieces[origin + 1]) == ROOK);
+            ASSERT(pieces[origin + 3] == EMPTY);
+            pieces[origin + 3] = side | ROOK;
+            pieces[origin + 1] = EMPTY;
+            pieceList[side | ROOK].remove(origin + 1);
+            pieceList[side | ROOK].push_back(origin + 3);
+            pieceBitboard[side | ROOK].clearBit(origin64 + 1);
+            pieceBitboard[side | ROOK].setBit(origin64 + 3);
+            allPiecesBitboard.clearBit(origin64 + 1);
+            allPiecesBitboard.setBit(origin64 + 3);
+            if(side == WHITE) {
+                whitePiecesBitboard.clearBit(origin64 + 1);
+                whitePiecesBitboard.setBit(origin64 + 3);
+            } else {
+                blackPiecesBitboard.clearBit(origin64 + 1);
+                blackPiecesBitboard.setBit(origin64 + 3);
+            }
+        } else {
+            // Rochade auf Damenseite
+            ASSERT(TYPEOF(pieces[origin - 1]) == ROOK);
+            ASSERT(pieces[origin - 4] == EMPTY);
+            pieces[origin - 4] = side | ROOK;
+            pieces[origin - 1] = EMPTY;
+            pieceList[side | ROOK].remove(origin - 1);
+            pieceList[side | ROOK].push_back(origin - 4);
+            pieceBitboard[side | ROOK].clearBit(origin64 - 1);
+            pieceBitboard[side | ROOK].setBit(origin64 - 4);
+            allPiecesBitboard.clearBit(origin64 - 1);
+            allPiecesBitboard.setBit(origin64 - 4);
+            if(side == WHITE) {
+                whitePiecesBitboard.clearBit(origin64 - 1);
+                whitePiecesBitboard.setBit(origin64 - 4);
+            } else {
+                blackPiecesBitboard.clearBit(origin64 - 1);
+                blackPiecesBitboard.setBit(origin64 - 4);
+            }
+        }
+    }
+
+    // Spezialfall: En Passant
+    if(move.isEnPassant()) {
+        ASSERT(enPassantSquare != NO_SQ);
+        ASSERT(pieces[enPassantSquare] == EMPTY);
+        ASSERT(TYPEOF(capturedPieceType) == PAWN);
+
+        int32_t enPassantSquare64 = mailbox[enPassantSquare];
+        pieces[enPassantSquare] = capturedPieceType;
+        pieceList[capturedPieceType].push_back(enPassantSquare);
+        pieceBitboard[capturedPieceType].setBit(enPassantSquare64);
+        allPiecesBitboard.setBit(enPassantSquare64);
+        if(side == WHITE)
+            blackPiecesBitboard.setBit(enPassantSquare64);
+        else
+            whitePiecesBitboard.setBit(enPassantSquare64);
+    }
 }
 
 bool Board::squareAttacked(int32_t sq120, int32_t ownSide, Bitboard occupied) {
@@ -311,408 +619,179 @@ bool Board::squareAttacked(int32_t sq120, int32_t ownSide, Bitboard occupied) {
     return false;
 }
 
+bool Board::squareAttacked(int32_t sq120, int32_t ownSide, Bitboard occupied, Bitboard& attackerRays) {
+    return numSquareAttackers(sq120, ownSide, occupied, attackerRays) > 0;
+}
+
+int32_t Board::numSquareAttackers(int32_t sq120, int32_t ownSide, Bitboard occupied) {
+    int32_t sq64 = mailbox[sq120];
+    int32_t otherSide = (ownSide == WHITE) ? BLACK : WHITE;
+    int32_t numAttackers = 0;
+
+    // Diagonale Angriffe
+    Bitboard diagonalAttackers = diagonalAttackBitboard(sq64, occupied) & (pieceBitboard[ownSide | BISHOP] | pieceBitboard[ownSide | QUEEN]);
+    numAttackers += diagonalAttackers.getNumberOfSetBits();
+
+    // Waaagerechte Angriffe
+    Bitboard straightAttackers = straightAttackBitboard(sq64, occupied) & (pieceBitboard[ownSide | ROOK] | pieceBitboard[ownSide | QUEEN]);
+    numAttackers += straightAttackers.getNumberOfSetBits();
+
+    // Springer Angriffe
+    Bitboard knightAttackers = knightAttackBitboard(sq64) & pieceBitboard[ownSide | KNIGHT];
+    numAttackers += knightAttackers.getNumberOfSetBits();
+
+    // Bauer Angriffe
+    Bitboard pawnAttackers = pawnAttackBitboard(sq64, otherSide) & pieceBitboard[ownSide | PAWN];
+    numAttackers += pawnAttackers.getNumberOfSetBits();
+
+    // König Angriffe
+    Bitboard kingAttackers = kingAttackBitboard(sq64) & pieceBitboard[ownSide | KING];
+    numAttackers += kingAttackers.getNumberOfSetBits();
+
+    return numAttackers;
+}
+
+int32_t Board::numSquareAttackers(int32_t sq120, int32_t ownSide, Bitboard occupied, Bitboard& attackerRays) {
+    int32_t sq64 = mailbox[sq120];
+    int32_t otherSide = (ownSide == WHITE) ? BLACK : WHITE;
+    int32_t numAttackers = 0;
+
+    // Diagonale Angriffe
+    Bitboard diagonalAttackers = diagonalAttackBitboard(sq64, occupied) & (pieceBitboard[ownSide | BISHOP] | pieceBitboard[ownSide | QUEEN]);
+    numAttackers += diagonalAttackers.getNumberOfSetBits();
+    attackerRays |= diagonalAttackUntilBlocked(sq64, pieceBitboard[ownSide | BISHOP] | pieceBitboard[ownSide | QUEEN], occupied);
+
+    // Waaagerechte Angriffe
+    Bitboard straightAttackers = straightAttackBitboard(sq64, occupied) & (pieceBitboard[ownSide | ROOK] | pieceBitboard[ownSide | QUEEN]);
+    numAttackers += straightAttackers.getNumberOfSetBits();
+    attackerRays |= straightAttackUntilBlocked(sq64, pieceBitboard[ownSide | ROOK] | pieceBitboard[ownSide | QUEEN], occupied);
+
+    // Springer Angriffe
+    Bitboard knightAttackers = knightAttackBitboard(sq64) & pieceBitboard[ownSide | KNIGHT];
+    numAttackers += knightAttackers.getNumberOfSetBits();
+    attackerRays |= knightAttackers;
+
+    // Bauer Angriffe
+    Bitboard pawnAttackers = pawnAttackBitboard(sq64, otherSide) & pieceBitboard[ownSide | PAWN];
+    numAttackers += pawnAttackers.getNumberOfSetBits();
+    attackerRays |= pawnAttackers;
+
+    // König Angriffe
+    Bitboard kingAttackers = kingAttackBitboard(sq64) & pieceBitboard[ownSide | KING];
+    numAttackers += kingAttackers.getNumberOfSetBits();
+    attackerRays |= kingAttackers;
+
+    return numAttackers;
+}
+
+void Board::generatePinnedPiecesBitboards(int32_t side, Bitboard& pinnedPieces, int32_t* pinnedDirections) {
+    int32_t kingSquare = pieceList[side | KING].front();
+    int32_t kingSquare64 = mailbox[kingSquare];
+    int32_t otherSide = side ^ COLOR_MASK;
+    Bitboard enemyPiecesPlusKing;
+    if(side == WHITE)
+        enemyPiecesPlusKing = blackPiecesBitboard | pieceBitboard[BLACK | KING];
+    else
+        enemyPiecesPlusKing = whitePiecesBitboard | pieceBitboard[WHITE | KING];
+
+    Bitboard ownPieces = side == WHITE ? whitePiecesBitboard : blackPiecesBitboard;
+
+    // Diagonale Angriffe
+    int diagonalPins[4];
+    int diagonalPinDirections[4];
+
+    int numDiagonalPins = getDiagonallyPinnedToSquare(
+                            kingSquare64,
+                            ownPieces,
+                            pieceBitboard[otherSide | QUEEN] | pieceBitboard[otherSide | BISHOP],
+                            enemyPiecesPlusKing,
+                            diagonalPins,
+                            diagonalPinDirections
+                        );
+    
+    // Waaagerechte Angriffe
+    int straightPins[4];
+    int straightPinDirections[4];
+
+    int numStraightPins = getStraightPinnedToSquare(
+                            kingSquare64,
+                            ownPieces,
+                            pieceBitboard[otherSide | QUEEN] | pieceBitboard[otherSide | ROOK],
+                            enemyPiecesPlusKing,
+                            straightPins,
+                            straightPinDirections
+                        );
+    
+    // Pins zusammenfassen
+    for(int i = 0; i < numDiagonalPins; i++) {
+        pinnedPieces.setBit(diagonalPins[i]);
+        pinnedDirections[diagonalPins[i]] = diagonalPinDirections[i];
+    }
+
+    for(int i = 0; i < numStraightPins; i++) {
+        pinnedPieces.setBit(straightPins[i]);
+        pinnedDirections[straightPins[i]] = straightPinDirections[i];
+    }
+}
+
 std::vector<Move> Board::generatePseudoLegalMoves() {
     std::vector<Move> moves;
     moves.reserve(256);
 
     if(side == WHITE) {
-        generateWhitePawnMoves(moves);
-        generateWhiteKnightMoves(moves);
-        generateWhiteBishopMoves(moves);
-        generateWhiteRookMoves(moves);
-        generateWhiteQueenMoves(moves);
-        generateWhiteKingMoves(moves);
-    }
-    else {
-        generateBlackPawnMoves(moves);
-        generateBlackKnightMoves(moves);
-        generateBlackBishopMoves(moves);
-        generateBlackRookMoves(moves);
-        generateBlackQueenMoves(moves);
-        generateBlackKingMoves(moves);
+        Movegen::generatePseudoLegalWhitePawnMoves(moves, *this);
+        Movegen::generatePseudoLegalWhiteKnightMoves(moves, *this);
+        Movegen::generatePseudoLegalWhiteBishopMoves(moves, *this);
+        Movegen::generatePseudoLegalWhiteRookMoves(moves, *this);
+        Movegen::generatePseudoLegalWhiteQueenMoves(moves, *this);
+        Movegen::generatePseudoLegalWhiteKingMoves(moves, *this);
+    } else {
+        Movegen::generatePseudoLegalBlackPawnMoves(moves, *this);
+        Movegen::generatePseudoLegalBlackKnightMoves(moves, *this);
+        Movegen::generatePseudoLegalBlackBishopMoves(moves, *this);
+        Movegen::generatePseudoLegalBlackRookMoves(moves, *this);
+        Movegen::generatePseudoLegalBlackQueenMoves(moves, *this);
+        Movegen::generatePseudoLegalBlackKingMoves(moves, *this);
     }
 
     return moves;
 }
 
-std::list<Move> Board::generateLegalMoves() {
-    std::vector<Move> moves = generatePseudoLegalMoves();
-    OrderedMoveList legalMoves;
+std::vector<Move> Board::generateLegalMoves() {
+    std::vector<Move> legalMoves;
+    legalMoves.reserve(256);
 
-    for(Move move : moves) {
-        if(isLegal(move))
-            legalMoves.addMove(move);
+    if(side == WHITE) {
+        Bitboard attackingRays;
+        int32_t numAttackers = numSquareAttackers(pieceList[WHITE_KING].front(), BLACK, allPiecesBitboard | pieceBitboard[BLACK_KING], attackingRays);
+
+        Bitboard pinnedPieces;
+        int pinnedDirections[64];
+
+        generatePinnedPiecesBitboards(WHITE, pinnedPieces, pinnedDirections);
+
+        Movegen::generateWhitePawnMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+        Movegen::generateWhiteKnightMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces);
+        Movegen::generateWhiteBishopMoves(legalMoves, *this, numAttackers, attackingRays);
+        Movegen::generateWhiteRookMoves(legalMoves, *this, numAttackers, attackingRays);
+        Movegen::generateWhiteQueenMoves(legalMoves, *this, numAttackers, attackingRays);
+        Movegen::generateWhiteKingMoves(legalMoves, *this);
+    } else {
+        Bitboard attackingRays;
+        int32_t numAttackers = numSquareAttackers(pieceList[WHITE_KING].front(), BLACK, allPiecesBitboard | pieceBitboard[BLACK_KING], attackingRays);
+
+        Bitboard pinnedPieces;
+        int pinnedDirections[64];
+
+        generatePinnedPiecesBitboards(BLACK, pinnedPieces, pinnedDirections);
+
+        Movegen::generateBlackPawnMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+        Movegen::generateBlackKnightMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces);
+        Movegen::generateBlackBishopMoves(legalMoves, *this, numAttackers, attackingRays);
+        Movegen::generateBlackRookMoves(legalMoves, *this, numAttackers, attackingRays);
+        Movegen::generateBlackQueenMoves(legalMoves, *this, numAttackers, attackingRays);
+        Movegen::generateBlackKingMoves(legalMoves, *this);
     }
 
-    return legalMoves.getMoves();
-}
-
-void Board::generateWhitePawnMoves(std::vector<Move>& moves) {
-    for(int sq : pieceList[WHITE_PAWN]) {
-        ASSERT(pieces[sq] == WHITE_PAWN);
-        ASSERT(mailbox[sq] != NO_SQ);
-
-        int32_t file = SQ2F(sq);
-        int32_t rank = SQ2R(sq);
-
-        int32_t destForw = FR2SQ(file, rank + 1);
-
-        if(pieces[destForw] == EMPTY) {
-            if(rank == RANK_7) {
-                moves.push_back(Move(sq, destForw, MOVE_PROMOTION_KNIGHT));
-                moves.push_back(Move(sq, destForw, MOVE_PROMOTION_BISHOP));
-                moves.push_back(Move(sq, destForw, MOVE_PROMOTION_ROOK));
-                moves.push_back(Move(sq, destForw, MOVE_PROMOTION_QUEEN));
-            }
-            else
-                moves.push_back(Move(sq, destForw, MOVE_QUIET));
-        }
-
-        if(rank == RANK_2) {
-            int32_t destForw2 = FR2SQ(file, rank + 2);
-            if(pieces[destForw] == EMPTY && pieces[destForw2] == EMPTY)
-                moves.push_back(Move(sq, destForw2, MOVE_DOUBLE_PAWN));
-        }
-
-        int32_t destLeft = FR2SQ(file - 1, rank + 1);
-        if(mailbox[destLeft] != NO_SQ && pieces[destLeft] != EMPTY && (pieces[destLeft] & COLOR_MASK) == BLACK) {
-            if(rank == RANK_7) {
-                moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_KNIGHT));
-                moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_BISHOP));
-                moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_ROOK));
-                moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_QUEEN));
-            }
-            else
-                moves.push_back(Move(sq, destLeft, MOVE_CAPTURE));
-        }
-
-        int32_t destRight = FR2SQ(file + 1, rank + 1);
-        if(mailbox[destRight] != NO_SQ && pieces[destRight] != EMPTY && (pieces[destRight] & COLOR_MASK) == BLACK) {
-            if(rank == RANK_7) {
-                moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_KNIGHT));
-                moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_BISHOP));
-                moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_ROOK));
-                moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_QUEEN));
-            }
-            else
-                moves.push_back(Move(sq, destRight, MOVE_CAPTURE));
-        }
-
-        if(enPassantSquare != NO_SQ) {
-            if(enPassantSquare == destLeft)
-                moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
-            else if(enPassantSquare == destRight)
-                moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
-        }
-    }
-}
-
-void Board::generateBlackPawnMoves(std::vector<Move>& moves) {
-    for(int sq : pieceList[BLACK_PAWN]) {
-        ASSERT(pieces[sq] == BLACK_PAWN);
-        ASSERT(mailbox[sq] != NO_SQ);
-
-        int32_t file = SQ2F(sq);
-        int32_t rank = SQ2R(sq);
-
-        int32_t destForw = FR2SQ(file, rank - 1);
-
-        if(pieces[destForw] == EMPTY) {
-            if(rank == RANK_2) {
-                moves.push_back(Move(sq, destForw, MOVE_PROMOTION_KNIGHT));
-                moves.push_back(Move(sq, destForw, MOVE_PROMOTION_BISHOP));
-                moves.push_back(Move(sq, destForw, MOVE_PROMOTION_ROOK));
-                moves.push_back(Move(sq, destForw, MOVE_PROMOTION_QUEEN));
-            }
-            else
-                moves.push_back(Move(sq, destForw, MOVE_QUIET));
-        }
-
-        if(rank == RANK_7) {
-            int32_t destForw2 = FR2SQ(file, rank - 2);
-            if(pieces[destForw] == EMPTY && pieces[destForw2] == EMPTY)
-                moves.push_back(Move(sq, destForw2, MOVE_DOUBLE_PAWN));
-        }
-
-        int32_t destLeft = FR2SQ(file - 1, rank - 1);
-        if(mailbox[destLeft] != NO_SQ && pieces[destLeft] != EMPTY && (pieces[destLeft] & COLOR_MASK) == WHITE) {
-            if(rank == RANK_2) {
-                moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_KNIGHT));
-                moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_BISHOP));
-                moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_ROOK));
-                moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_QUEEN));
-            }
-            else
-                moves.push_back(Move(sq, destLeft, MOVE_CAPTURE));
-        }
-
-        int32_t destRight = FR2SQ(file + 1, rank - 1);
-        if(mailbox[destRight] != NO_SQ && pieces[destRight] != EMPTY && (pieces[destRight] & COLOR_MASK) == WHITE) {
-            if(rank == RANK_2) {
-                moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_KNIGHT));
-                moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_BISHOP));
-                moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_ROOK));
-                moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_QUEEN));
-            }
-            else
-                moves.push_back(Move(sq, destRight, MOVE_CAPTURE));
-        }
-
-        if(enPassantSquare != NO_SQ) {
-            if(enPassantSquare == destLeft)
-                moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
-            else if(enPassantSquare == destRight)
-                moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
-        }
-    }
-}
-
-void Board::generateWhiteKnightMoves(std::vector<Move>& moves) {
-    for(int sq : pieceList[WHITE_KNIGHT]) {
-        ASSERT(pieces[sq] == WHITE_KNIGHT);
-        ASSERT(mailbox[sq] != NO_SQ);
-
-        for(int i = 0; i < 8; i++) {
-            int n_sq = sq + KNIGHT_ATTACKS[i];
-            if(mailbox[n_sq] != NO_SQ) {
-                if(pieces[n_sq] == EMPTY)
-                    moves.push_back(Move(sq, n_sq, MOVE_QUIET));
-                else if((pieces[n_sq] & COLOR_MASK) == BLACK)
-                    moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
-            }
-        }
-    }
-}
-
-void Board::generateBlackKnightMoves(std::vector<Move>& moves) {
-    for(int sq : pieceList[BLACK_KNIGHT]) {
-        ASSERT(pieces[sq] == BLACK_KNIGHT);
-        ASSERT(mailbox[sq] != NO_SQ);
-
-        for(int i = 0; i < 8; i++) {
-            int n_sq = sq + KNIGHT_ATTACKS[i];
-            if(mailbox[n_sq] != NO_SQ) {
-                if(pieces[n_sq] == EMPTY)
-                    moves.push_back(Move(sq, n_sq, MOVE_QUIET));
-                else if((pieces[n_sq] & COLOR_MASK) == WHITE)
-                    moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
-            }
-        }
-    }
-}
-
-void Board::generateWhiteRookMoves(std::vector<Move>& moves) {
-    for(int sq : pieceList[WHITE_BISHOP]) {
-        ASSERT(pieces[sq] == WHITE_BISHOP);
-        ASSERT(mailbox[sq] != NO_SQ);
-
-        for(int i = 0; i < 4; i++) {
-            int n_sq = sq + DIAGONAL_ATTACKS[i];
-            while(mailbox[n_sq] != NO_SQ) {
-                if(pieces[n_sq] == EMPTY)
-                    moves.push_back(Move(sq, n_sq, MOVE_QUIET));
-                else if((pieces[n_sq] & COLOR_MASK) == BLACK) {
-                    moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
-                    break;
-                }
-                else
-                    break;
-
-                n_sq += DIAGONAL_ATTACKS[i];
-            }
-        }
-    }
-}
-
-void Board::generateBlackRookMoves(std::vector<Move>& moves) {
-    for(int sq : pieceList[BLACK_BISHOP]) {
-        ASSERT(pieces[sq] == BLACK_BISHOP);
-        ASSERT(mailbox[sq] != NO_SQ);
-
-        for(int i = 0; i < 4; i++) {
-            int n_sq = sq + DIAGONAL_ATTACKS[i];
-            while(mailbox[n_sq] != NO_SQ) {
-                if(pieces[n_sq] == EMPTY)
-                    moves.push_back(Move(sq, n_sq, MOVE_QUIET));
-                else if((pieces[n_sq] & COLOR_MASK) == WHITE) {
-                    moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
-                    break;
-                }
-                else
-                    break;
-
-                n_sq += DIAGONAL_ATTACKS[i];
-            }
-        }
-    }
-}
-
-void Board::generateWhiteBishopMoves(std::vector<Move>& moves) {
-    for(int sq : pieceList[WHITE_ROOK]) {
-        ASSERT(pieces[sq] == WHITE_ROOK);
-        ASSERT(mailbox[sq] != NO_SQ);
-
-        for(int i = 0; i < 4; i++) {
-            int n_sq = sq + STRAIGHT_ATTACKS[i];
-            while(mailbox[n_sq] != NO_SQ) {
-                if(pieces[n_sq] == EMPTY)
-                    moves.push_back(Move(sq, n_sq, MOVE_QUIET));
-                else if((pieces[n_sq] & COLOR_MASK) == BLACK) {
-                    moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
-                    break;
-                }
-                else
-                    break;
-
-                n_sq += STRAIGHT_ATTACKS[i];
-            }
-        }
-    }
-}
-
-void Board::generateBlackBishopMoves(std::vector<Move>& moves) {
-    for(int sq : pieceList[BLACK_ROOK]) {
-        ASSERT(pieces[sq] == BLACK_ROOK);
-        ASSERT(mailbox[sq] != NO_SQ);
-
-        for(int i = 0; i < 4; i++) {
-            int n_sq = sq + STRAIGHT_ATTACKS[i];
-            while(mailbox[n_sq] != NO_SQ) {
-                if(pieces[n_sq] == EMPTY)
-                    moves.push_back(Move(sq, n_sq, MOVE_QUIET));
-                else if((pieces[n_sq] & COLOR_MASK) == WHITE) {
-                    moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
-                    break;
-                }
-                else
-                    break;
-
-                n_sq += STRAIGHT_ATTACKS[i];
-            }
-        }
-    }
-}
-
-void Board::generateWhiteQueenMoves(std::vector<Move>& moves) {
-    int32_t QUEEN_ATTACKS[8] = {
-        DIAGONAL_ATTACKS[0], DIAGONAL_ATTACKS[1], DIAGONAL_ATTACKS[2], DIAGONAL_ATTACKS[3],
-        STRAIGHT_ATTACKS[0], STRAIGHT_ATTACKS[1], STRAIGHT_ATTACKS[2], STRAIGHT_ATTACKS[3]
-    };
-
-    for(int sq : pieceList[WHITE_QUEEN]) {
-        ASSERT(pieces[sq] == WHITE_QUEEN);
-        ASSERT(mailbox[sq] != NO_SQ);
-
-        for(int i = 0; i < 8; i++) {
-            int n_sq = sq + QUEEN_ATTACKS[i];
-            while(mailbox[n_sq] != NO_SQ) {
-                if(pieces[n_sq] == EMPTY)
-                    moves.push_back(Move(sq, n_sq, MOVE_QUIET));
-                else if((pieces[n_sq] & COLOR_MASK) == BLACK) {
-                    moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
-                    break;
-                }
-                else
-                    break;
-
-                n_sq += QUEEN_ATTACKS[i];
-            }
-        }
-    }
-}
-
-void Board::generateBlackQueenMoves(std::vector<Move>& moves) {
-    int32_t QUEEN_ATTACKS[8] = {
-        DIAGONAL_ATTACKS[0], DIAGONAL_ATTACKS[1], DIAGONAL_ATTACKS[2], DIAGONAL_ATTACKS[3],
-        STRAIGHT_ATTACKS[0], STRAIGHT_ATTACKS[1], STRAIGHT_ATTACKS[2], STRAIGHT_ATTACKS[3]
-    };
-
-    for(int sq : pieceList[BLACK_QUEEN]) {
-        ASSERT(pieces[sq] == BLACK_QUEEN);
-        ASSERT(mailbox[sq] != NO_SQ);
-
-        for(int i = 0; i < 8; i++) {
-            int n_sq = sq + QUEEN_ATTACKS[i];
-            while(mailbox[n_sq] != NO_SQ) {
-                if(pieces[n_sq] == EMPTY)
-                    moves.push_back(Move(sq, n_sq, MOVE_QUIET));
-                else if((pieces[n_sq] & COLOR_MASK) == WHITE) {
-                    moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
-                    break;
-                }
-                else
-                    break;
-
-                n_sq += QUEEN_ATTACKS[i];
-            }
-        }
-    }
-}
-
-void Board::generateWhiteKingMoves(std::vector<Move>& moves) {
-    int32_t KING_ATTACKS[8] = {
-        DIAGONAL_ATTACKS[0], DIAGONAL_ATTACKS[1], DIAGONAL_ATTACKS[2], DIAGONAL_ATTACKS[3],
-        STRAIGHT_ATTACKS[0], STRAIGHT_ATTACKS[1], STRAIGHT_ATTACKS[2], STRAIGHT_ATTACKS[3]
-    };
-
-    for(int sq : pieceList[WHITE_KING]) {
-        ASSERT(pieces[sq] == WHITE_KING);
-        ASSERT(mailbox[sq] != NO_SQ);
-
-        for(int i = 0; i < 8; i++) {
-            int n_sq = sq + KING_ATTACKS[i];
-            if(mailbox[n_sq] != NO_SQ) {
-                if(pieces[n_sq] == EMPTY)
-                    moves.push_back(Move(sq, n_sq, MOVE_QUIET));
-                else if((pieces[n_sq] & COLOR_MASK) == BLACK)
-                    moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
-            }
-        }
-    }
-
-    if(castlingPermission & WHITE_KINGSIDE_CASTLE) {
-        if(pieces[F1] == EMPTY && pieces[G1] == EMPTY) {
-            moves.push_back(Move(E1, G1, MOVE_KINGSIDE_CASTLE));
-        }
-    }
-
-    if(castlingPermission & WHITE_QUEENSIDE_CASTLE) {
-        if(pieces[D1] == EMPTY && pieces[C1] == EMPTY && pieces[B1] == EMPTY) {
-            moves.push_back(Move(E1, C1, MOVE_QUEENSIDE_CASTLE));
-        }
-    }
-}
-
-void Board::generateBlackKingMoves(std::vector<Move>& moves) {
-    int32_t KING_ATTACKS[8] = {
-        DIAGONAL_ATTACKS[0], DIAGONAL_ATTACKS[1], DIAGONAL_ATTACKS[2], DIAGONAL_ATTACKS[3],
-        STRAIGHT_ATTACKS[0], STRAIGHT_ATTACKS[1], STRAIGHT_ATTACKS[2], STRAIGHT_ATTACKS[3]
-    };
-
-    for(int sq : pieceList[BLACK_KING]) {
-        ASSERT(pieces[sq] == BLACK_KING);
-        ASSERT(mailbox[sq] != NO_SQ);
-
-        for(int i = 0; i < 8; i++) {
-            int n_sq = sq + KING_ATTACKS[i];
-            if(mailbox[n_sq] != NO_SQ) {
-                if(pieces[n_sq] == EMPTY)
-                    moves.push_back(Move(sq, n_sq, MOVE_QUIET));
-                else if((pieces[n_sq] & COLOR_MASK) == WHITE)
-                    moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
-            }
-        }
-    }
-
-    if(castlingPermission & BLACK_KINGSIDE_CASTLE) {
-        if(pieces[F8] == EMPTY && pieces[G8] == EMPTY) {
-            moves.push_back(Move(E8, G8, MOVE_KINGSIDE_CASTLE));
-        }
-    }
-
-    if(castlingPermission & BLACK_QUEENSIDE_CASTLE) {
-        if(pieces[D8] == EMPTY && pieces[C8] == EMPTY && pieces[B8] == EMPTY) {
-            moves.push_back(Move(E8, C8, MOVE_QUEENSIDE_CASTLE));
-        }
-    }
+    return legalMoves;
 }

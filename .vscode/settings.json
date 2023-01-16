@@ -38,6 +38,8 @@
         "xutility": "cpp",
         "string": "cpp",
         "algorithm": "cpp",
-        "list": "cpp"
+        "list": "cpp",
+        "chrono": "cpp",
+        "ratio": "cpp"
     }
 }

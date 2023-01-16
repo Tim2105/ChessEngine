@@ -115,7 +115,7 @@ class Bitboard {
  * @param sq Das Feld in 64er Notation.
  * @param occupied Das Bitboard mit den besetzten Feldern.
  */
-Bitboard diagonalAttackBitboard(int32_t sq, const Bitboard& occupied);
+Bitboard diagonalAttackBitboard(int32_t sq, const Bitboard occupied);
 
 /**
  * @brief Liefert ein Bitboard, dass, ausgehend von einem Feld, alle Felder enthält die von einer horizontal/vertikal laufenden Figur angegriffen werden.
@@ -123,7 +123,7 @@ Bitboard diagonalAttackBitboard(int32_t sq, const Bitboard& occupied);
  * @param sq Das Feld in 64er Notation.
  * @param occupied Das Bitboard mit den besetzten Feldern.
  */
-Bitboard straightAttackBitboard(int32_t sq, const Bitboard& occupied);
+Bitboard straightAttackBitboard(int32_t sq, const Bitboard occupied);
 
 /**
  * @brief Liefert ein Bitboard, dass, ausgehend von einem Feld, alle Felder enthält die von einer Springer angegriffen werden.
@@ -146,5 +146,47 @@ Bitboard pawnAttackBitboard(int32_t sq, int32_t side);
  * @param sq Das Feld in 64er Notation.
  */
 Bitboard kingAttackBitboard(int32_t sq);
+
+/**
+ * @brief Gibt ein Bitboard aller Diagonalen zurück, die von einem Feld aus eine Liste von Zielen angreifen.
+ * Diagonale, die aus dem Spielfeld herausgehen, werden ignoriert.
+ * 
+ * @param sq Das Feld in 64er Notation.
+ */
+Bitboard diagonalAttackUntilBlocked(int32_t sq, const Bitboard target, const Bitboard occupied);
+
+/**
+ * @brief Gibt ein Bitboard aller Geraden zurück, die von einem Feld aus eine Liste von Zielen angreifen.
+ * Geraden, die aus dem Spielfeld herausgehen, werden ignoriert.
+ * 
+ * @param sq Das Feld in 64er Notation.
+ */
+Bitboard straightAttackUntilBlocked(int32_t sq, const Bitboard target, const Bitboard occupied);
+
+/**
+ * @brief Überprüft, ob auf einem Spielfeld eine/mehrere Figuren an ein Feld diagonal gefesselt ist.
+ * 
+ * @param sq Das Feld in 64er Notation.
+ * @param ownPieces Das Bitboard mit den eigenen Figuren(die möglicherweise gefesselt sein könnten).
+ * @param enemyPieces Das Bitboard mit den gegnerischen Figuren(die möglicherweise die Fesselung verursachen).
+ * @param occupied Das Bitboard mit allen Figuren, die weder eigene noch fesselnde Figuren sind.
+ * @param pinnedSquare Die Felder, auf denen die gefesselten Figuren stehen(muss mind. Größe 4 haben).
+ * @param pinnedDirection Die Richtungen, aus denen die Figuren gefesselt sind(muss mind. Größe 4 haben).
+ * @return Die Anzahl der gefesselten Figuren.
+ */
+int32_t getDiagonallyPinnedToSquare(int32_t sq, Bitboard ownPieces, Bitboard enemyPieces, Bitboard occupied, int32_t* pinnedSquare, int32_t* pinnedDirection);
+
+/**
+ * @brief Überprüft, ob auf einem Spielfeld eine/mehrere Figuren an ein Feld geradlinig gefesselt ist.
+ * 
+ * @param sq Das Feld in 64er Notation.
+ * @param ownPieces Das Bitboard mit den eigenen Figuren(die möglicherweise gefesselt sein könnten).
+ * @param enemyPieces Das Bitboard mit den gegnerischen Figuren(die möglicherweise die Fesselung verursachen).
+ * @param occupied Das Bitboard mit allen Figuren, die weder eigene noch fesselnde Figuren sind.
+ * @param pinnedSquare Die Felder, auf denen die gefesselten Figuren stehen(muss mind. Größe 4 haben).
+ * @param pinnedDirection Die Richtungen, aus denen die Figuren gefesselt sind(muss mind. Größe 4 haben).
+ * @return Die Anzahl der gefesselten Figuren.
+ */
+int32_t getStraightPinnedToSquare(int32_t sq, Bitboard ownPieces, Bitboard enemyPieces, Bitboard occupied, int32_t* pinnedSquare, int32_t* pinnedDirection);
 
 #endif

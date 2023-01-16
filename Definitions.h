@@ -110,4 +110,13 @@ enum {
 #define MOVE_PROMOTION_ROOK 10
 #define MOVE_PROMOTION_QUEEN 11
 
+#define NORTH 10
+#define SOUTH -10
+#define EAST 1
+#define WEST -1
+#define NORTH_EAST 11
+#define NORTH_WEST 9
+#define SOUTH_EAST -9
+#define SOUTH_WEST -11
+
 #endif

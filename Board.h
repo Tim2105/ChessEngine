@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string>
 #include "Bitboard.h"
+#include "Movegen.h"
 
 /**
  * @brief Enthält alle notwendigen Informationen um einen Zug rückgängig zu machen.
@@ -46,11 +47,6 @@ class MoveHistoryEntry {
          * @brief Speichert den Hashwert vor diesem Zug.
          */
         uint64_t hashValue;
-
-        /**
-         * @brief Speichert das 'belegt'-Bitboard vor diesem Zug.
-         */
-        Bitboard occupied;
     
     public:
         /**
@@ -70,6 +66,19 @@ class MoveHistoryEntry {
             this->fiftyMoveRule = fiftyMoveRule;
             this->hashValue = hashValue;
         }
+
+        /**
+         * @brief Erstellt einen neuen MoveHistoryEntry.
+         * @param move Der Zug der rückgängig gemacht werden soll.
+         */
+        MoveHistoryEntry(Move move) {
+            this->move = move;
+            this->capturedPiece = EMPTY;
+            this->castlingPermission = 0;
+            this->enPassantSquare = 0;
+            this->fiftyMoveRule = 0;
+            this->hashValue = 0;
+        }
 };
 
 /**
@@ -78,6 +87,7 @@ class MoveHistoryEntry {
  * Dieser Teil des Programms ist sehr Performancekritisch und folgt daher nicht strikt den Regeln der Objektorientierten Programmierung.
  */
 class Board {
+    friend class Movegen;
 
     private:
          /**
@@ -103,7 +113,7 @@ class Board {
          * @brief Enthält eine Liste aller Figuren für jeden Figurentyp auf dem Schachbrett.
          * Speichert den Index der Position.
          */
-        std::vector<int32_t> pieceList[15] = {
+        std::list<int32_t> pieceList[15] = {
             {},
             {A2, B2, C2, D2, E2, F2, G2, H2},
             {B1, G1},
@@ -199,69 +209,19 @@ class Board {
         void generateBitboards();
 
         /**
+         * @brief Generiert ein Bitboard, das alle Felder enthält, auf denen sich gefesselte Figuren befinden.
+         * Außerdem wird die Richtung, aus der die Figuren gefesselt sind, in einem 64 int großen Array gespeichert(in 120er Notation).
+         * 
+         * @param side Die Seite, für die gefesselte Figuren gefunden werden sollen.
+         * @param pinnedPiecesBitboard Das Bitboard, das alle gefesselten Figuren enthält.
+         * @param pinnedPiecesDirection Das Array, in dem die Richtung, aus der die Figuren gefesselt sind, gespeichert wird(muss mind. 8 groß sein).
+         */
+        void generatePinnedPiecesBitboards(int32_t side, Bitboard& pinnedPiecesBitboard, int32_t* pinnedPiecesDirection);
+
+        /**
          * @brief Überprüft, ob ein Zug legal ist.
          */
         bool isLegal(Move move);
-
-        /**
-         * @brief Generiert alle Pseudo-Legalen Züge für die weißen Bauern.
-         */
-        void generateWhitePawnMoves(std::vector<Move>& moves);
-
-        /**
-         * @brief Generiert alle Pseudo-Legalen Züge für die schwarzen Bauern.
-         */
-        void generateBlackPawnMoves(std::vector<Move>& moves);
-
-        /**
-         * @brief Generiert alle Pseudo-Legalen Züge für die weißen Springer.
-         */
-        void generateWhiteKnightMoves(std::vector<Move>& moves);
-
-        /**
-         * @brief Generiert alle Pseudo-Legalen Züge für die schwarzen Springer.
-         */
-        void generateBlackKnightMoves(std::vector<Move>& moves);
-
-        /**
-         * @brief Generiert alle Pseudo-Legalen Züge für die weißen Läufer.
-         */
-        void generateWhiteBishopMoves(std::vector<Move>& moves);
-
-        /**
-         * @brief Generiert alle Pseudo-Legalen Züge für die schwarzen Läufer.
-         */
-        void generateBlackBishopMoves(std::vector<Move>& moves);
-
-        /**
-         * @brief Generiert alle Pseudo-Legalen Züge für die weißen Türme.
-         */
-        void generateWhiteRookMoves(std::vector<Move>& moves);
-
-        /**
-         * @brief Generiert alle Pseudo-Legalen Züge für die schwarzen Türme.
-         */
-        void generateBlackRookMoves(std::vector<Move>& moves);
-
-        /**
-         * @brief Generiert alle Pseudo-Legalen Züge für die weißen Damen.
-         */
-        void generateWhiteQueenMoves(std::vector<Move>& moves);
-
-        /**
-         * @brief Generiert alle Pseudo-Legalen Züge für die schwarzen Damen.
-         */
-        void generateBlackQueenMoves(std::vector<Move>& moves);
-
-        /**
-         * @brief Generiert alle Pseudo-Legalen Züge für den weißen König.
-         */
-        void generateWhiteKingMoves(std::vector<Move>& moves);
-
-        /**
-         * @brief Generiert alle Pseudo-Legalen Züge für den schwarzen König.
-         */
-        void generateBlackKingMoves(std::vector<Move>& moves);
 
     public:
         /**
@@ -287,7 +247,17 @@ class Board {
          * @brief Generiert alle Legalen Züge und gibt sie nach ihrer Stärke bewertet zurück.
          * Legale Züge sind Züge, die auf dem Schachbrett möglich sind und den eigenen König nicht im Schach lassen.
          */
-        std::list<Move> generateLegalMoves();
+        std::vector<Move> generateLegalMoves();
+
+        /**
+         * @brief Führt einen Zug aus.
+         */
+        void makeMove(Move move);
+
+        /**
+         * @brief Macht den letzten gespielten Zug rückgängig.
+         */
+        void undoMove();
 
         /**
          * @brief Überprüft bei einem anzugebenden Belegbitboard, ob ein Feld von einer bestimmten Seite angegriffen wird.
@@ -295,6 +265,29 @@ class Board {
          * @param square Das Feld, das überprüft werden soll(in 120er Notation).
          */
         bool squareAttacked(int32_t square, int32_t side, Bitboard occupied);
+
+        /**
+         * @brief Überprüft bei einem anzugebenden Belegbitboard, ob ein Feld von einer bestimmten Seite angegriffen wird.
+         * 
+         * @param square Das Feld, das überprüft werden soll(in 120er Notation).
+         * @param attackingRays Gibt dein Bitboard mit allen Angreifern zurück. Bei laufenden Figuren sind außerdem sind außerdem die Verbindungsfelder mit enthalten.
+         */
+        bool squareAttacked(int32_t square, int32_t side, Bitboard occupied, Bitboard& attackingRays);
+
+        /**
+         * @brief Gibt die Anzahl der angreifenden Figuren eines Feldes zurück.
+         * 
+         * @param square Das Feld, das überprüft werden soll(in 120er Notation).
+         */
+        int32_t numSquareAttackers(int32_t square, int32_t side, Bitboard occupied);
+
+        /**
+         * @brief Gibt die Anzahl der angreifenden Figuren eines Feldes zurück.
+         * 
+         * @param square Das Feld, das überprüft werden soll(in 120er Notation).
+         * @param attackingRays Gibt dein Bitboard mit allen Angreifern zurück. Bei laufenden Figuren sind außerdem sind außerdem die Verbindungsfelder mit enthalten.
+         */
+        int32_t numSquareAttackers(int32_t square, int32_t side, Bitboard occupied, Bitboard& attackingRays);
 };
 
 #endif

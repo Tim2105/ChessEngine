@@ -22,9 +22,10 @@ void OrderedMoveList::addMove(const Move& move) {
     IntMovePair pair;
     pair.move = move;
     pair.value = scoreMove(move);
-    moves.insert(std::upper_bound(moves.begin(), moves.end(), pair, [](const IntMovePair& a, const IntMovePair& b) {
-        return a.value > b.value;
-    }), pair);
+    // moves.insert(std::upper_bound(moves.begin(), moves.end(), pair, [](const IntMovePair& a, const IntMovePair& b) {
+    //     return a.value > b.value;
+    // }), pair);
+    moves.push_back(pair);
 }
 
 void OrderedMoveList::addMoves(const std::list<Move>& moves) {
