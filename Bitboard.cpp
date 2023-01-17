@@ -353,12 +353,15 @@ Bitboard straightAttackUntilBlocked(int32_t sq, const Bitboard targets, const Bi
 int32_t getDiagonallyPinnedToSquare(int32_t sq, Bitboard ownPieces,
                                     Bitboard enemyPieces, Bitboard occupied,
                                     int32_t* pinnedSquares, int32_t* pinnedDirections) {
-    
     int32_t numPins = 0;
     int32_t pinnedSquare = -1;
 
+    Bitboard temp;
+
     // Diagonale nach oben rechts 
     for(int32_t i = sq + 9; i < 64 && i % 8 != 0; i += 9) {
+        temp.setBit(i);
+
         if(ownPieces.getBit(i)) {
             if(pinnedSquare != -1)
                 break;
@@ -378,6 +381,8 @@ int32_t getDiagonallyPinnedToSquare(int32_t sq, Bitboard ownPieces,
                 break;
         }
     }
+
+    temp = 0ULL;
 
     // Diagonale nach unten links
     pinnedSquare = -1;
@@ -402,6 +407,8 @@ int32_t getDiagonallyPinnedToSquare(int32_t sq, Bitboard ownPieces,
         }
     }
 
+    temp = 0ULL;
+
     // Diagonale nach unten rechts
     pinnedSquare = -1;
     for(int32_t i = sq + 7; i < 64 && i % 8 != 7; i += 7) {
@@ -424,6 +431,8 @@ int32_t getDiagonallyPinnedToSquare(int32_t sq, Bitboard ownPieces,
                 break;
         }
     }
+
+    temp = 0ULL;
 
     // Diagonale nach oben links
     pinnedSquare = -1;

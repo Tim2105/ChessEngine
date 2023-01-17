@@ -172,7 +172,6 @@ Bitboard straightAttackUntilBlocked(int32_t sq, const Bitboard target, const Bit
  * @param occupied Das Bitboard mit allen Figuren, die weder eigene noch fesselnde Figuren sind.
  * @param pinnedSquare Die Felder, auf denen die gefesselten Figuren stehen(muss mind. Größe 4 haben).
  * @param pinnedDirection Die Richtungen, aus denen die Figuren gefesselt sind(muss mind. Größe 4 haben).
- * @return Die Anzahl der gefesselten Figuren.
  */
 int32_t getDiagonallyPinnedToSquare(int32_t sq, Bitboard ownPieces, Bitboard enemyPieces, Bitboard occupied, int32_t* pinnedSquare, int32_t* pinnedDirection);
 
@@ -185,7 +184,6 @@ int32_t getDiagonallyPinnedToSquare(int32_t sq, Bitboard ownPieces, Bitboard ene
  * @param occupied Das Bitboard mit allen Figuren, die weder eigene noch fesselnde Figuren sind.
  * @param pinnedSquare Die Felder, auf denen die gefesselten Figuren stehen(muss mind. Größe 4 haben).
  * @param pinnedDirection Die Richtungen, aus denen die Figuren gefesselt sind(muss mind. Größe 4 haben).
- * @return Die Anzahl der gefesselten Figuren.
  */
 int32_t getStraightPinnedToSquare(int32_t sq, Bitboard ownPieces, Bitboard enemyPieces, Bitboard occupied, int32_t* pinnedSquare, int32_t* pinnedDirection);
 

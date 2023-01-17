@@ -90,6 +90,7 @@ class Board {
     friend class Movegen;
 
     private:
+    public:
          /**
           * @brief Stellt das Schachbrett in 10x12 Notation dar.
           * https://www.chessprogramming.org/10x12_Board
@@ -209,6 +210,13 @@ class Board {
         void generateBitboards();
 
         /**
+         * @brief Generiert ein Bitboard mit allen Feldern, die von einer Seite angegriffen werden.
+         * 
+         * @param side Die Seite.
+         */
+        Bitboard generateAttackBitboard(int32_t side);
+
+        /**
          * @brief Generiert ein Bitboard, das alle Felder enthält, auf denen sich gefesselte Figuren befinden.
          * Außerdem wird die Richtung, aus der die Figuren gefesselt sind, in einem 64 int großen Array gespeichert(in 120er Notation).
          * 
@@ -216,7 +224,8 @@ class Board {
          * @param pinnedPiecesBitboard Das Bitboard, das alle gefesselten Figuren enthält.
          * @param pinnedPiecesDirection Das Array, in dem die Richtung, aus der die Figuren gefesselt sind, gespeichert wird(muss mind. 8 groß sein).
          */
-        void generatePinnedPiecesBitboards(int32_t side, Bitboard& pinnedPiecesBitboard, int32_t* pinnedPiecesDirection);
+        void generatePinnedPiecesBitboards(int32_t side, Bitboard& pinnedPiecesBitboard,
+                                           int32_t* pinnedPiecesDirection);
 
         /**
          * @brief Überprüft, ob ein Zug legal ist.

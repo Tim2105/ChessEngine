@@ -234,7 +234,7 @@ void Board::generateBitboards() {
 
 bool Board::isLegal(Move move) {
     int32_t ownSide = side;
-    int32_t enemySide = (side == WHITE) ? BLACK : WHITE;
+    int32_t enemySide = side ^ COLOR_MASK;
     int32_t origin = move.getOrigin();
     int32_t destination = move.getDestination();
     int32_t pieceType = TYPEOF(pieces[origin]);
@@ -247,9 +247,11 @@ bool Board::isLegal(Move move) {
 
         // Das occupied-Bitboard muss so angepasst werden,
         // dass der En Passant geschlagene Bauer nicht mehr existiert
+        int32_t capturedPawnSquare = enPassantSquare + (ownSide == WHITE ? SOUTH : NORTH);
+
         Bitboard modifiedBitboard = allPiecesPlusEnemyKing;
         modifiedBitboard.clearBit(mailbox[origin]);
-        modifiedBitboard.clearBit(mailbox[enPassantSquare]);
+        modifiedBitboard.clearBit(mailbox[capturedPawnSquare]);
         modifiedBitboard.setBit(mailbox[destination]);
 
         // Überprüfe, ob der König im Schach steht
@@ -293,6 +295,10 @@ void Board::makeMove(Move m) {
     int32_t destination64 = mailbox[destination];
     int32_t pieceType = pieces[origin];
     int32_t capturedPieceType = pieces[destination];
+    int32_t enPassantCaptureSq = enPassantSquare + (side == WHITE ? SOUTH : NORTH);
+
+    if(m.isEnPassant())
+        capturedPieceType = pieces[enPassantCaptureSq];
 
     // Speichere den Zustand des Spielfeldes, um den Zug später wieder rückgängig machen zu können
     MoveHistoryEntry entry(m);
@@ -315,13 +321,13 @@ void Board::makeMove(Move m) {
         ASSERT(enPassantSquare != NO_SQ);
 
         // Entferne den geschlagenen Bauern
-        int32_t capturedPawnType = pieces[enPassantSquare];
-        ASSERT(capturedPawnType == (side | PAWN));
+        int32_t other = side ^ COLOR_MASK;
+        ASSERT(capturedPieceType == (other | PAWN));
 
-        int32_t enPassantSquare64 = mailbox[enPassantSquare];
-        pieces[enPassantSquare] = EMPTY;
-        pieceList[capturedPawnType].remove(enPassantSquare);
-        pieceBitboard[capturedPawnType].clearBit(enPassantSquare64);
+        int32_t enPassantSquare64 = mailbox[enPassantCaptureSq];
+        pieces[enPassantCaptureSq] = EMPTY;
+        pieceList[capturedPieceType].remove(enPassantCaptureSq);
+        pieceBitboard[capturedPieceType].clearBit(enPassantSquare64);
         allPiecesBitboard.clearBit(enPassantSquare64);
         if(side == WHITE)
             blackPiecesBitboard.clearBit(enPassantSquare64);
@@ -427,11 +433,11 @@ void Board::makeMove(Move m) {
     // Aktualisiere Rochandenrechte und En Passant
     enPassantSquare = NO_SQ;
 
-    if(TYPEOF(pieceType) == KING || TYPEOF(capturedPieceType) == ROOK) {
+    if(TYPEOF(pieceType) == KING || TYPEOF(pieceType) == ROOK) {
         if(pieceType == WHITE_KING)
-            castlingPermission &= ~WHITE_KINGSIDE_CASTLE;
+            castlingPermission &= ~(WHITE_KINGSIDE_CASTLE | WHITE_QUEENSIDE_CASTLE);
         else if(pieceType == BLACK_KING)
-            castlingPermission &= ~BLACK_KINGSIDE_CASTLE;
+            castlingPermission &= ~(BLACK_KINGSIDE_CASTLE | BLACK_QUEENSIDE_CASTLE);
         else if(pieceType == WHITE_ROOK && origin == A1)
             castlingPermission &= ~WHITE_QUEENSIDE_CASTLE;
         else if(pieceType == WHITE_ROOK && origin == H1)
@@ -442,11 +448,22 @@ void Board::makeMove(Move m) {
             castlingPermission &= ~BLACK_KINGSIDE_CASTLE;
     }
 
-    if(TYPEOF(pieceType) == PAWN && m.isDoublePawn()) {
+    if(TYPEOF(capturedPieceType) == ROOK) {
+        if(capturedPieceType == WHITE_ROOK && destination == A1)
+            castlingPermission &= ~WHITE_QUEENSIDE_CASTLE;
+        else if(capturedPieceType == WHITE_ROOK && destination == H1)
+            castlingPermission &= ~WHITE_KINGSIDE_CASTLE;
+        else if(capturedPieceType == BLACK_ROOK && destination == A8)
+            castlingPermission &= ~BLACK_QUEENSIDE_CASTLE;
+        else if(capturedPieceType == BLACK_ROOK && destination == H8)
+            castlingPermission &= ~BLACK_KINGSIDE_CASTLE;
+    }
+
+    if(m.isDoublePawn()) {
         if(side == WHITE)
-            enPassantSquare = destination - 10;
+            enPassantSquare = destination + SOUTH;
         else
-            enPassantSquare = destination + 10;
+            enPassantSquare = destination + NORTH;
     }
 
     // Aktualisiere den Spielzustand
@@ -455,7 +472,7 @@ void Board::makeMove(Move m) {
     else
         fiftyMoveRule++;
 
-    side = (side == WHITE) ? BLACK : WHITE;
+    side = side ^ COLOR_MASK;
     ply++;
 }
 
@@ -473,10 +490,12 @@ void Board::undoMove() {
 
     // Mache den Spielzustand rückgängig
     ply--;
-    side = (side == WHITE) ? BLACK : WHITE;
+    side = side ^ COLOR_MASK;
     fiftyMoveRule = moveEntry.fiftyMoveRule;
     enPassantSquare = moveEntry.enPassantSquare;
     castlingPermission = moveEntry.castlingPermission;
+
+    int32_t enPassantCaptureSq = enPassantSquare + (side == WHITE ? SOUTH : NORTH);
 
     // Spezialfall: Bauernumwandlung
     if(move.isPromotion()) {
@@ -491,6 +510,8 @@ void Board::undoMove() {
             promotedPieceType = KNIGHT;
         else
             ASSERT(false);
+        
+        pieceType = side | PAWN;
 
         // Entferne die neue Figur, die allgemeinen Bitboards müssen nicht angepasst werden
         pieceList[side | promotedPieceType].remove(destination);
@@ -577,12 +598,12 @@ void Board::undoMove() {
     // Spezialfall: En Passant
     if(move.isEnPassant()) {
         ASSERT(enPassantSquare != NO_SQ);
-        ASSERT(pieces[enPassantSquare] == EMPTY);
+        ASSERT(pieces[enPassantCaptureSq] == EMPTY);
         ASSERT(TYPEOF(capturedPieceType) == PAWN);
 
-        int32_t enPassantSquare64 = mailbox[enPassantSquare];
-        pieces[enPassantSquare] = capturedPieceType;
-        pieceList[capturedPieceType].push_back(enPassantSquare);
+        int32_t enPassantSquare64 = mailbox[enPassantCaptureSq];
+        pieces[enPassantCaptureSq] = capturedPieceType;
+        pieceList[capturedPieceType].push_back(enPassantCaptureSq);
         pieceBitboard[capturedPieceType].setBit(enPassantSquare64);
         allPiecesBitboard.setBit(enPassantSquare64);
         if(side == WHITE)
@@ -684,7 +705,56 @@ int32_t Board::numSquareAttackers(int32_t sq120, int32_t ownSide, Bitboard occup
     return numAttackers;
 }
 
-void Board::generatePinnedPiecesBitboards(int32_t side, Bitboard& pinnedPieces, int32_t* pinnedDirections) {
+Bitboard Board::generateAttackBitboard(int32_t side) {
+    Bitboard attackBitboard;
+    Bitboard piecesPlusOwnKing = allPiecesBitboard | pieceBitboard[side | KING];
+    
+    // Diagonale Angriffe
+    for(int sq : pieceList[side | BISHOP]) {
+        int sq64 = mailbox[sq];
+        attackBitboard |= diagonalAttackBitboard(sq64, piecesPlusOwnKing);
+    }
+
+    for(int sq : pieceList[side | QUEEN]) {
+        int sq64 = mailbox[sq];
+        attackBitboard |= diagonalAttackBitboard(sq64, piecesPlusOwnKing);
+    }
+
+    // Waagerechte Angriffe
+    for(int sq : pieceList[side | ROOK]) {
+        int sq64 = mailbox[sq];
+        attackBitboard |= straightAttackBitboard(sq64, piecesPlusOwnKing);
+    }
+
+    for(int sq : pieceList[side | QUEEN]) {
+        int sq64 = mailbox[sq];
+        attackBitboard |= straightAttackBitboard(sq64, piecesPlusOwnKing);
+    }
+
+    // Springer Angriffe
+    for(int sq : pieceList[side | KNIGHT]) {
+        int sq64 = mailbox[sq];
+        attackBitboard |= knightAttackBitboard(sq64);
+    }
+
+    // Bauer Angriffe
+    for(int sq : pieceList[side | PAWN]) {
+        int sq64 = mailbox[sq];
+        attackBitboard |= pawnAttackBitboard(sq64, side);
+    }
+
+    // König Angriffe
+    for(int sq : pieceList[side | KING]) {
+        int sq64 = mailbox[sq];
+        attackBitboard |= kingAttackBitboard(sq64);
+    }
+
+    return attackBitboard;
+}
+
+void Board::generatePinnedPiecesBitboards(int32_t side, Bitboard& pinnedPiecesBitboard,
+                                          int32_t* pinnedPiecesDirection) {
+
     int32_t kingSquare = pieceList[side | KING].front();
     int32_t kingSquare64 = mailbox[kingSquare];
     int32_t otherSide = side ^ COLOR_MASK;
@@ -700,37 +770,33 @@ void Board::generatePinnedPiecesBitboards(int32_t side, Bitboard& pinnedPieces, 
     int diagonalPins[4];
     int diagonalPinDirections[4];
 
-    int numDiagonalPins = getDiagonallyPinnedToSquare(
-                            kingSquare64,
-                            ownPieces,
-                            pieceBitboard[otherSide | QUEEN] | pieceBitboard[otherSide | BISHOP],
-                            enemyPiecesPlusKing,
-                            diagonalPins,
-                            diagonalPinDirections
-                        );
+    int32_t numDiagonalPins = getDiagonallyPinnedToSquare(kingSquare64,
+                                ownPieces,
+                                pieceBitboard[otherSide | QUEEN] | pieceBitboard[otherSide | BISHOP],
+                                enemyPiecesPlusKing,
+                                diagonalPins,
+                                diagonalPinDirections);
     
     // Waaagerechte Angriffe
     int straightPins[4];
     int straightPinDirections[4];
 
-    int numStraightPins = getStraightPinnedToSquare(
-                            kingSquare64,
-                            ownPieces,
-                            pieceBitboard[otherSide | QUEEN] | pieceBitboard[otherSide | ROOK],
-                            enemyPiecesPlusKing,
-                            straightPins,
-                            straightPinDirections
-                        );
+    int32_t numStraightPins = getStraightPinnedToSquare(kingSquare64,
+                              ownPieces,
+                              pieceBitboard[otherSide | QUEEN] | pieceBitboard[otherSide | ROOK],
+                              enemyPiecesPlusKing,
+                              straightPins,
+                              straightPinDirections);
     
     // Pins zusammenfassen
     for(int i = 0; i < numDiagonalPins; i++) {
-        pinnedPieces.setBit(diagonalPins[i]);
-        pinnedDirections[diagonalPins[i]] = diagonalPinDirections[i];
+        pinnedPiecesBitboard.setBit(diagonalPins[i]);
+        pinnedPiecesDirection[diagonalPins[i]] = diagonalPinDirections[i];
     }
 
     for(int i = 0; i < numStraightPins; i++) {
-        pinnedPieces.setBit(straightPins[i]);
-        pinnedDirections[straightPins[i]] = straightPinDirections[i];
+        pinnedPiecesBitboard.setBit(straightPins[i]);
+        pinnedPiecesDirection[straightPins[i]] = straightPinDirections[i];
     }
 }
 
@@ -762,6 +828,8 @@ std::vector<Move> Board::generateLegalMoves() {
     legalMoves.reserve(256);
 
     if(side == WHITE) {
+        Bitboard attackedSquares = generateAttackBitboard(BLACK);
+
         Bitboard attackingRays;
         int32_t numAttackers = numSquareAttackers(pieceList[WHITE_KING].front(), BLACK, allPiecesBitboard | pieceBitboard[BLACK_KING], attackingRays);
 
@@ -772,13 +840,15 @@ std::vector<Move> Board::generateLegalMoves() {
 
         Movegen::generateWhitePawnMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
         Movegen::generateWhiteKnightMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces);
-        Movegen::generateWhiteBishopMoves(legalMoves, *this, numAttackers, attackingRays);
-        Movegen::generateWhiteRookMoves(legalMoves, *this, numAttackers, attackingRays);
-        Movegen::generateWhiteQueenMoves(legalMoves, *this, numAttackers, attackingRays);
-        Movegen::generateWhiteKingMoves(legalMoves, *this);
+        Movegen::generateWhiteBishopMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+        Movegen::generateWhiteRookMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+        Movegen::generateWhiteQueenMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+        Movegen::generateWhiteKingMoves(legalMoves, *this, attackedSquares);
     } else {
+        Bitboard attackedSquares = generateAttackBitboard(WHITE);
+
         Bitboard attackingRays;
-        int32_t numAttackers = numSquareAttackers(pieceList[WHITE_KING].front(), BLACK, allPiecesBitboard | pieceBitboard[BLACK_KING], attackingRays);
+        int32_t numAttackers = numSquareAttackers(pieceList[BLACK_KING].front(), WHITE, allPiecesBitboard | pieceBitboard[WHITE_KING], attackingRays);
 
         Bitboard pinnedPieces;
         int pinnedDirections[64];
@@ -787,10 +857,10 @@ std::vector<Move> Board::generateLegalMoves() {
 
         Movegen::generateBlackPawnMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
         Movegen::generateBlackKnightMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces);
-        Movegen::generateBlackBishopMoves(legalMoves, *this, numAttackers, attackingRays);
-        Movegen::generateBlackRookMoves(legalMoves, *this, numAttackers, attackingRays);
-        Movegen::generateBlackQueenMoves(legalMoves, *this, numAttackers, attackingRays);
-        Movegen::generateBlackKingMoves(legalMoves, *this);
+        Movegen::generateBlackBishopMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+        Movegen::generateBlackRookMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+        Movegen::generateBlackQueenMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+        Movegen::generateBlackKingMoves(legalMoves, *this, attackedSquares);
     }
 
     return legalMoves;

@@ -83,7 +83,9 @@ class Movegen {
          * @param pinnedPiecesBitboard Bitboard, das alle gefesselten Figuren enthält.
          * @param pinnedDirections Array in 64er Notation, das für jedes Feld die Richtung angibt, in die die Figur darauf sie gefesselt ist(wenn existent).
          */
-        static void generateWhitePawnMoves(std::vector<Move>& moves, Board& board, int32_t numAttackers, Bitboard attackingRays, Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
+        static void generateWhitePawnMoves(std::vector<Move>& moves, Board& board,
+                                           int32_t numAttackers, Bitboard attackingRays,
+                                           Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
 
         /**
          * @brief Generiert alle legalen Züge für die schwarzen Bauern.
@@ -92,7 +94,9 @@ class Movegen {
          * @param pinnedPiecesBitboard Bitboard, das alle gefesselten Figuren enthält.
          * @param pinnedDirections Array in 64er Notation, das für jedes Feld die Richtung angibt, in die die Figur darauf sie gefesselt ist(wenn existent).
          */
-        static void generateBlackPawnMoves(std::vector<Move>& moves, Board& board, int32_t numAttackers, Bitboard attackingRays, Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
+        static void generateBlackPawnMoves(std::vector<Move>& moves, Board& board,
+                                           int32_t numAttackers, Bitboard attackingRays,
+                                           Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
 
         /**
          * @brief Generiert alle legalen Züge für die weißen Springer.
@@ -100,7 +104,9 @@ class Movegen {
          * @param attackingRays Bitboard, das alle Diagonalen und Geraden enthält, auf denen der eigene König angegriffen wird.
          * @param pinnedPiecesBitboard Bitboard, das alle gefesselten Figuren enthält.
          */
-        static void generateWhiteKnightMoves(std::vector<Move>& moves, Board& board, int32_t numAttackers, Bitboard attackingRays, Bitboard pinnedPiecesBitboard);
+        static void generateWhiteKnightMoves(std::vector<Move>& moves, Board& board,
+                                             int32_t numAttackers, Bitboard attackingRays,
+                                             Bitboard pinnedPiecesBitboard);
 
         /**
          * @brief Generiert alle legalen Züge für die schwarzen Springer.
@@ -108,59 +114,87 @@ class Movegen {
          * @param attackingRays Bitboard, das alle Diagonalen und Geraden enthält, auf denen der eigene König angegriffen wird.
          * @param pinnedPiecesBitboard Bitboard, das alle gefesselten Figuren enthält.
          */
-        static void generateBlackKnightMoves(std::vector<Move>& moves, Board& board, int32_t numAttackers, Bitboard attackingRays, Bitboard pinnedPiecesBitboard);
+        static void generateBlackKnightMoves(std::vector<Move>& moves, Board& board,
+                                             int32_t numAttackers, Bitboard attackingRays,
+                                             Bitboard pinnedPiecesBitboard);
 
         /**
          * @brief Generiert alle legalen Züge für die weißen Läufer.
          * @param numAttackers Gibt an, wie viele gegnerische Figuren den eigenen König angreifen.
          * @param attackingRays Bitboard, das alle Diagonalen und Geraden enthält, auf denen der eigene König angegriffen wird.
+         * @param pinnedPiecesBitboard Bitboard, das alle gefesselten Figuren enthält.
+         * @param pinnedDirections Array in 64er Notation, das für jedes Feld die Richtung angibt, in die die Figur darauf sie gefesselt ist(wenn existent).
          */
-        static void generateWhiteBishopMoves(std::vector<Move>& moves, Board& board, int32_t numAttackers, Bitboard attackingRays);
+        static void generateWhiteBishopMoves(std::vector<Move>& moves, Board& board,
+                                             int32_t numAttackers, Bitboard attackingRays,
+                                             Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
 
         /**
          * @brief Generiert alle legalen Züge für die schwarzen Läufer.
          * @param numAttackers Gibt an, wie viele gegnerische Figuren den eigenen König angreifen.
          * @param attackingRays Bitboard, das alle Diagonalen und Geraden enthält, auf denen der eigene König angegriffen wird.
+         * @param pinnedPiecesBitboard Bitboard, das alle gefesselten Figuren enthält.
+         * @param pinnedDirections Array in 64er Notation, das für jedes Feld die Richtung angibt, in die die Figur darauf sie gefesselt ist(wenn existent).
          */
-        static void generateBlackBishopMoves(std::vector<Move>& moves, Board& board, int32_t numAttackers, Bitboard attackingRays);
+        static void generateBlackBishopMoves(std::vector<Move>& moves, Board& board,
+                                             int32_t numAttackers, Bitboard attackingRays,
+                                             Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
 
         /**
          * @brief Generiert alle legalen Züge für die weißen Türme.
          * @param numAttackers Gibt an, wie viele gegnerische Figuren den eigenen König angreifen.
          * @param attackingRays Bitboard, das alle Diagonalen und Geraden enthält, auf denen der eigene König angegriffen wird.
+         * @param pinnedPiecesBitboard Bitboard, das alle gefesselten Figuren enthält.
+         * @param pinnedDirections Array in 64er Notation, das für jedes Feld die Richtung angibt, in die die Figur darauf sie gefesselt ist(wenn existent).
          */
-        static void generateWhiteRookMoves(std::vector<Move>& moves, Board& board, int32_t numAttackers, Bitboard attackingRays);
+        static void generateWhiteRookMoves(std::vector<Move>& moves, Board& board,
+                                           int32_t numAttackers, Bitboard attackingRays,
+                                           Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
 
         /**
          * @brief Generiert alle legalen Züge für die schwarzen Türme.
          * @param numAttackers Gibt an, wie viele gegnerische Figuren den eigenen König angreifen.
          * @param attackingRays Bitboard, das alle Diagonalen und Geraden enthält, auf denen der eigene König angegriffen wird.
+         * @param pinnedPiecesBitboard Bitboard, das alle gefesselten Figuren enthält.
+         * @param pinnedDirections Array in 64er Notation, das für jedes Feld die Richtung angibt, in die die Figur darauf sie gefesselt ist(wenn existent).
          */
-        static void generateBlackRookMoves(std::vector<Move>& moves, Board& board, int32_t numAttackers, Bitboard attackingRays);
+        static void generateBlackRookMoves(std::vector<Move>& moves, Board& board,
+                                           int32_t numAttackers, Bitboard attackingRays,
+                                           Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
 
         /**
          * @brief Generiert alle legalen Züge für die weißen Damen.
          * @param numAttackers Gibt an, wie viele gegnerische Figuren den eigenen König angreifen.
          * @param attackingRays Bitboard, das alle Diagonalen und Geraden enthält, auf denen der eigene König angegriffen wird.
+         * @param pinnedPiecesBitboard Bitboard, das alle gefesselten Figuren enthält.
+         * @param pinnedDirections Array in 64er Notation, das für jedes Feld die Richtung angibt, in die die Figur darauf sie gefesselt ist(wenn existent).
          */
-        static void generateWhiteQueenMoves(std::vector<Move>& moves, Board& board, int32_t numAttackers, Bitboard attackingRays);
+        static void generateWhiteQueenMoves(std::vector<Move>& moves, Board& board,
+                                            int32_t numAttackers, Bitboard attackingRays,
+                                            Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
 
         /**
          * @brief Generiert alle legalen Züge für die schwarzen Damen.
          * @param numAttackers Gibt an, wie viele gegnerische Figuren den eigenen König angreifen.
          * @param attackingRays Bitboard, das alle Diagonalen und Geraden enthält, auf denen der eigene König angegriffen wird.
+         * @param pinnedPiecesBitboard Bitboard, das alle gefesselten Figuren enthält.
+         * @param pinnedDirections Array in 64er Notation, das für jedes Feld die Richtung angibt, in die die Figur darauf sie gefesselt ist(wenn existent).
          */
-        static void generateBlackQueenMoves(std::vector<Move>& moves, Board& board, int32_t numAttackers, Bitboard attackingRays);
+        static void generateBlackQueenMoves(std::vector<Move>& moves, Board& board,
+                                            int32_t numAttackers, Bitboard attackingRays,
+                                            Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
 
         /**
          * @brief Generiert alle legalen Züge für den weißen König.
+         * @param attackedSquares Bitboard, das alle Felder enthält, die die gegnerischen Figuren angreifen.
          */
-        static void generateWhiteKingMoves(std::vector<Move>& moves, Board& board);
+        static void generateWhiteKingMoves(std::vector<Move>& moves, Board& board, Bitboard attackedSquares);
 
         /**
          * @brief Generiert alle legalen Züge für den schwarzen König.
+         * @param attackedSquares Bitboard, das alle Felder enthält, die die gegnerischen Figuren angreifen.
          */
-        static void generateBlackKingMoves(std::vector<Move>& moves, Board& board);
+        static void generateBlackKingMoves(std::vector<Move>& moves, Board& board, Bitboard attackedSquares);
 
 };
 

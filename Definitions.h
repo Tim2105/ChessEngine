@@ -10,6 +10,7 @@
 if(!(x)) { \
 printf("ASSERTION FAILED: In %s on line %d\n", \
         __FILE__, __LINE__); \
+        __debugbreak(); \
 }
 #endif
 
