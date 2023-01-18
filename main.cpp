@@ -56,30 +56,32 @@ void perft(Board& board, int depth, int& count, int& captures, int& enPassants, 
 }
 
 int main() {
-    Board board("r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1");
+    Board board("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 5 1");
+
+    std::cout << board.fenString() << std::endl;
 
     // for(Move m : board.generateLegalMoves()) {
     //     std::cout << m << std::endl;
     // }
 
-    for(int i = 1; i < 6; i++) {
-        int count = 0, captures = 0, enPassants = 0, castles = 0, promotions = 0;
+    // for(int i = 1; i < 6; i++) {
+    //     int count = 0, captures = 0, enPassants = 0, castles = 0, promotions = 0;
 
-        // Zeitmessung
-        auto start = std::chrono::high_resolution_clock::now();
+    //     // Zeitmessung
+    //     auto start = std::chrono::high_resolution_clock::now();
 
-        perft(board, i, count, captures, enPassants, castles, promotions);
+    //     perft(board, i, count, captures, enPassants, castles, promotions);
 
-        auto end = std::chrono::high_resolution_clock::now();
+    //     auto end = std::chrono::high_resolution_clock::now();
 
-        std::chrono::duration<double> elapsed = end - start;
+    //     std::chrono::duration<double> elapsed = end - start;
 
-        std::cout << "Perft(depth " << i << ", " << elapsed.count() << "s): " << std::endl;
-        std::cout << "    Nodes: " << count << std::endl;
-        std::cout << "    Captures: " << captures << std::endl;
-        std::cout << "    En Passants: " << enPassants << std::endl;
-        std::cout << "    Castles: " << castles << std::endl;
-    }
+    //     std::cout << "Perft(depth " << i << ", " << elapsed.count() << "s): " << std::endl;
+    //     std::cout << "    Nodes: " << count << std::endl;
+    //     std::cout << "    Captures: " << captures << std::endl;
+    //     std::cout << "    En Passants: " << enPassants << std::endl;
+    //     std::cout << "    Castles: " << castles << std::endl;
+    // }
 
     return 0;
 }

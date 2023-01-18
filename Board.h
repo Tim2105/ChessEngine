@@ -269,6 +269,11 @@ class Board {
         void undoMove();
 
         /**
+         * @brief Wandelt die aktuelle Stellung in eine FEN-Notation um.
+         */
+        std::string fenString() const;
+
+        /**
          * @brief Überprüft bei einem anzugebenden Belegbitboard, ob ein Feld von einer bestimmten Seite angegriffen wird.
          * 
          * @param square Das Feld, das überprüft werden soll(in 120er Notation).

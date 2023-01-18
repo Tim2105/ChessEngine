@@ -865,3 +865,119 @@ std::vector<Move> Board::generateLegalMoves() {
 
     return legalMoves;
 }
+
+std::string Board::fenString() const {
+    std::string fen = "";
+
+    int emptySquares = 0;
+
+    for(int r = RANK_8; r >= RANK_1; r--) {
+        for(int f = FILE_A; f <= FILE_H; f++) {
+            int square = mailbox64[r * 8 + f];
+
+            if(pieces[square] == EMPTY) {
+                emptySquares++;
+            } else {
+                if(emptySquares > 0) {
+                    fen += std::to_string(emptySquares);
+                    emptySquares = 0;
+                }
+
+                char pieceChar;
+
+                switch(pieces[square]) {
+                    case WHITE_PAWN:
+                        pieceChar = 'P';
+                        break;
+                    case WHITE_KNIGHT:
+                        pieceChar = 'N';
+                        break;
+                    case WHITE_BISHOP:
+                        pieceChar = 'B';
+                        break;
+                    case WHITE_ROOK:
+                        pieceChar = 'R';
+                        break;
+                    case WHITE_QUEEN:
+                        pieceChar = 'Q';
+                        break;
+                    case WHITE_KING:
+                        pieceChar = 'K';
+                        break;
+                    case BLACK_PAWN:
+                        pieceChar = 'p';
+                        break;
+                    case BLACK_KNIGHT:
+                        pieceChar = 'n';
+                        break;
+                    case BLACK_BISHOP:
+                        pieceChar = 'b';
+                        break;
+                    case BLACK_ROOK:
+                        pieceChar = 'r';
+                        break;
+                    case BLACK_QUEEN:
+                        pieceChar = 'q';
+                        break;
+                    case BLACK_KING:
+                        pieceChar = 'k';
+                        break;
+                }
+
+                fen += pieceChar;
+            }
+        }
+
+        if(emptySquares > 0) {
+            fen += std::to_string(emptySquares);
+            emptySquares = 0;
+        }
+
+        if(r > RANK_1)
+            fen += "/";
+    }
+
+    fen += " ";
+
+    if(side == WHITE)
+        fen += "w";
+    else
+        fen += "b";
+    
+    fen += " ";
+
+    if(castlingPermission == 0)
+        fen += "-";
+    else {
+        if(castlingPermission & WHITE_KINGSIDE_CASTLE)
+            fen += "K";
+        if(castlingPermission & WHITE_QUEENSIDE_CASTLE)
+            fen += "Q";
+        if(castlingPermission & BLACK_KINGSIDE_CASTLE)
+            fen += "k";
+        if(castlingPermission & BLACK_QUEENSIDE_CASTLE)
+            fen += "q";
+    }
+
+    fen += " ";
+
+    if(enPassantSquare == NO_SQ)
+        fen += "-";
+    else {
+        char file = 'a' + SQ2F(enPassantSquare);
+        char rank = '1' + SQ2R(enPassantSquare);
+
+        fen += file;
+        fen += rank;
+    }
+
+    fen += " ";
+
+    fen += std::to_string(fiftyMoveRule);
+
+    fen += " ";
+
+    fen += std::to_string(ply + 1);
+
+    return fen;
+}
