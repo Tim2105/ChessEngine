@@ -84,8 +84,8 @@ class Movegen {
          * @param pinnedDirections Array in 64er Notation, das für jedes Feld die Richtung angibt, in die die Figur darauf sie gefesselt ist(wenn existent).
          */
         static void generateWhitePawnMoves(std::vector<Move>& moves, Board& board,
-                                           int32_t numAttackers, Bitboard attackingRays,
-                                           Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
+                                            int32_t numAttackers, Bitboard attackingRays,
+                                            Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
 
         /**
          * @brief Generiert alle legalen Züge für die schwarzen Bauern.
@@ -95,8 +95,8 @@ class Movegen {
          * @param pinnedDirections Array in 64er Notation, das für jedes Feld die Richtung angibt, in die die Figur darauf sie gefesselt ist(wenn existent).
          */
         static void generateBlackPawnMoves(std::vector<Move>& moves, Board& board,
-                                           int32_t numAttackers, Bitboard attackingRays,
-                                           Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
+                                            int32_t numAttackers, Bitboard attackingRays,
+                                            Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
 
         /**
          * @brief Generiert alle legalen Züge für die weißen Springer.
@@ -105,8 +105,8 @@ class Movegen {
          * @param pinnedPiecesBitboard Bitboard, das alle gefesselten Figuren enthält.
          */
         static void generateWhiteKnightMoves(std::vector<Move>& moves, Board& board,
-                                             int32_t numAttackers, Bitboard attackingRays,
-                                             Bitboard pinnedPiecesBitboard);
+                                                int32_t numAttackers, Bitboard attackingRays,
+                                                Bitboard pinnedPiecesBitboard);
 
         /**
          * @brief Generiert alle legalen Züge für die schwarzen Springer.
@@ -115,8 +115,8 @@ class Movegen {
          * @param pinnedPiecesBitboard Bitboard, das alle gefesselten Figuren enthält.
          */
         static void generateBlackKnightMoves(std::vector<Move>& moves, Board& board,
-                                             int32_t numAttackers, Bitboard attackingRays,
-                                             Bitboard pinnedPiecesBitboard);
+                                                int32_t numAttackers, Bitboard attackingRays,
+                                                Bitboard pinnedPiecesBitboard);
 
         /**
          * @brief Generiert alle legalen Züge für die weißen Läufer.
@@ -126,8 +126,8 @@ class Movegen {
          * @param pinnedDirections Array in 64er Notation, das für jedes Feld die Richtung angibt, in die die Figur darauf sie gefesselt ist(wenn existent).
          */
         static void generateWhiteBishopMoves(std::vector<Move>& moves, Board& board,
-                                             int32_t numAttackers, Bitboard attackingRays,
-                                             Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
+                                                int32_t numAttackers, Bitboard attackingRays,
+                                                Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
 
         /**
          * @brief Generiert alle legalen Züge für die schwarzen Läufer.
@@ -137,8 +137,8 @@ class Movegen {
          * @param pinnedDirections Array in 64er Notation, das für jedes Feld die Richtung angibt, in die die Figur darauf sie gefesselt ist(wenn existent).
          */
         static void generateBlackBishopMoves(std::vector<Move>& moves, Board& board,
-                                             int32_t numAttackers, Bitboard attackingRays,
-                                             Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
+                                                int32_t numAttackers, Bitboard attackingRays,
+                                                Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
 
         /**
          * @brief Generiert alle legalen Züge für die weißen Türme.
@@ -148,8 +148,8 @@ class Movegen {
          * @param pinnedDirections Array in 64er Notation, das für jedes Feld die Richtung angibt, in die die Figur darauf sie gefesselt ist(wenn existent).
          */
         static void generateWhiteRookMoves(std::vector<Move>& moves, Board& board,
-                                           int32_t numAttackers, Bitboard attackingRays,
-                                           Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
+                                            int32_t numAttackers, Bitboard attackingRays,
+                                            Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
 
         /**
          * @brief Generiert alle legalen Züge für die schwarzen Türme.
@@ -159,8 +159,8 @@ class Movegen {
          * @param pinnedDirections Array in 64er Notation, das für jedes Feld die Richtung angibt, in die die Figur darauf sie gefesselt ist(wenn existent).
          */
         static void generateBlackRookMoves(std::vector<Move>& moves, Board& board,
-                                           int32_t numAttackers, Bitboard attackingRays,
-                                           Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
+                                            int32_t numAttackers, Bitboard attackingRays,
+                                            Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
 
         /**
          * @brief Generiert alle legalen Züge für die weißen Damen.
@@ -195,7 +195,6 @@ class Movegen {
          * @param attackedSquares Bitboard, das alle Felder enthält, die die gegnerischen Figuren angreifen.
          */
         static void generateBlackKingMoves(std::vector<Move>& moves, Board& board, Bitboard attackedSquares);
-
 };
 
 #endif

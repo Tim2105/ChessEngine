@@ -392,23 +392,22 @@ void Movegen::generateWhitePawnMoves(std::vector<Move>& moves, Board& b,
 
             bool pinned = pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]);
 
-            // Bei En Passant Zügen gibt es so viele Ausnahmen und Sonderfälle, dass die Züge einfach aufwendig auf Legalität geprüft werden
-            // Weil En Passant Züge so selten sind, ist das kein Problem
-            if(b.enPassantSquare != NO_SQ) {
-                if(b.enPassantSquare == destLeft) {
-                    Move m(sq, destLeft, MOVE_EN_PASSANT);
-                    if(b.isLegal(m))
-                        moves.push_back(m);
-                } else if(b.enPassantSquare == destRight) {
-                    Move m(sq, destRight, MOVE_EN_PASSANT);
-                    if(b.isLegal(m))
-                        moves.push_back(m);
-                }
-            }
-
             // Wenn der Bauer gefesselt ist, kann er sich nicht bewegen
             if(pinned)
                 continue;
+
+            // En-Passant Züge befreien den König nur aus dem Schach, wenn der geschlagene Bauer der Angreifer ist
+            if(b.enPassantSquare != NO_SQ) {
+                int32_t captureSquare = b.enPassantSquare + SOUTH;
+
+                if(b.enPassantSquare == destLeft) {
+                    if(attackingRays.getBit(b.mailbox[captureSquare]))
+                        moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
+                } else if(b.enPassantSquare == destRight) {
+                    if(attackingRays.getBit(b.mailbox[captureSquare]))
+                        moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
+                }
+            }
             
             // Wenn der Bauer den Angreifer blockiert, ist der Zug legal
             // Ein blockierende Zug kann kein normaler Schlagzug sein, weil der Bauer sonst nicht gefesselt wäre
@@ -423,6 +422,27 @@ void Movegen::generateWhitePawnMoves(std::vector<Move>& moves, Board& b,
                     moves.push_back(Move(sq, destForw, MOVE_QUIET));
             } else if(rank == RANK_2 && attackingRays & Bitboard(1ULL << b.mailbox[destForw2]) && b.pieces[destForw2] == EMPTY && b.pieces[destForw] == EMPTY)
                 moves.push_back(Move(sq, destForw2, MOVE_DOUBLE_PAWN));
+            
+            // Wenn der Bauer den Angreifer schlagen kann, ist der Zug legal
+            if(b.pieces[destLeft] != EMPTY && attackingRays & Bitboard(1ULL << b.mailbox[destLeft]) && (b.pieces[destLeft] & COLOR_MASK) == BLACK) {
+                // Promotion
+                if(rank == RANK_7) {
+                        moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_QUEEN));
+                        moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_ROOK));
+                        moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_BISHOP));
+                        moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_KNIGHT));
+                } else
+                    moves.push_back(Move(sq, destLeft, MOVE_CAPTURE));
+            } else if(b.pieces[destRight] != EMPTY && attackingRays & Bitboard(1ULL << b.mailbox[destRight]) && (b.pieces[destRight] & COLOR_MASK) == BLACK) {
+                // Promotion
+                if(rank == RANK_7) {
+                        moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_QUEEN));
+                        moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_ROOK));
+                        moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_BISHOP));
+                        moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_KNIGHT));
+                } else
+                    moves.push_back(Move(sq, destRight, MOVE_CAPTURE));
+            }
         }
     } else {
         for(int sq : b.pieceList[WHITE_PAWN]) {
@@ -439,25 +459,59 @@ void Movegen::generateWhitePawnMoves(std::vector<Move>& moves, Board& b,
 
             bool pinned = pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]);
 
-            // Bei En Passant Zügen gibt es so viele Ausnahmen und Sonderfälle, dass die Züge einfach aufwendig auf Legalität geprüft werden
-            // Weil En Passant Züge so selten sind, ist das kein Problem
+            // En-Passant Züge entfernen 2 Figuren aus einer Reihe, daher muss immer überprüft werden, ob der König nach dem Zug im Schach stände
+            // -> Ein En-Passant Zug mit einem ungefesselten Bauer kann illegal sein
             if(b.enPassantSquare != NO_SQ) {
+                int32_t captureSquare = b.enPassantSquare + SOUTH;
+                int32_t kingSquare = b.pieceList[WHITE_KING].front();
+
                 if(b.enPassantSquare == destLeft) {
-                    Move m(sq, destLeft, MOVE_EN_PASSANT);
-                    if(b.isLegal(m))
-                        moves.push_back(m);
+                    Bitboard allPiecesAfterMove = b.allPiecesBitboard | b.pieceBitboard[BLACK_KING];
+                    allPiecesAfterMove.clearBit(b.mailbox[sq]);
+                    allPiecesAfterMove.clearBit(b.mailbox[captureSquare]);
+
+                    if(!b.squareAttacked(kingSquare, BLACK, allPiecesAfterMove))
+                        moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
+
                 } else if(b.enPassantSquare == destRight) {
-                    Move m(sq, destRight, MOVE_EN_PASSANT);
-                    if(b.isLegal(m))
-                        moves.push_back(m);
+                    Bitboard allPiecesAfterMove = b.allPiecesBitboard | b.pieceBitboard[BLACK_KING];
+                    allPiecesAfterMove.clearBit(b.mailbox[sq]);
+                    allPiecesAfterMove.clearBit(b.mailbox[captureSquare]);
+
+                    if(!b.squareAttacked(kingSquare, BLACK, allPiecesAfterMove))
+                        moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
                 }
             }
 
             // Überprüfe, ob der Bauer horizontal oder diagonal gefesselt ist
-            // Wenn ja, kann er sich nicht bewegen
+            // Wenn ja, kann er sich nur bewegen, wenn er den Angreifer schlägt(diagonal)
             if(pinned) {
                 int32_t pinDir = pinDirections[b.mailbox[sq]];
-                if(!(pinDir == NORTH ||pinDir == SOUTH))
+                if(pinDir == SOUTH_EAST || pinDir == NORTH_WEST) {
+                    if(b.pieces[destLeft] != EMPTY && (b.pieces[destLeft] & COLOR_MASK) == BLACK) {
+                        // Promotion
+                        if(rank == RANK_7) {
+                                moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_QUEEN));
+                                moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_ROOK));
+                                moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_BISHOP));
+                                moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_KNIGHT));
+                        } else
+                            moves.push_back(Move(sq, destLeft, MOVE_CAPTURE));
+                    }
+                } else if(pinDir == SOUTH_WEST || pinDir == NORTH_EAST) {
+                    if(b.pieces[destRight] != EMPTY && (b.pieces[destRight] & COLOR_MASK) == BLACK) {
+                        // Promotion
+                        if(rank == RANK_7) {
+                                moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_QUEEN));
+                                moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_ROOK));
+                                moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_BISHOP));
+                                moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_KNIGHT));
+                        } else
+                            moves.push_back(Move(sq, destRight, MOVE_CAPTURE));
+                    }
+                }
+                
+                if(!(pinDir == NORTH || pinDir == SOUTH))
                     continue;
             }
             
@@ -532,23 +586,22 @@ void Movegen::generateBlackPawnMoves(std::vector<Move>& moves, Board& b,
 
             bool pinned = pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]);
 
-            // Bei En Passant Zügen gibt es so viele Ausnahmen und Sonderfälle, dass die Züge einfach aufwendig auf Legalität geprüft werden
-            // Weil En Passant Züge so selten sind, ist das kein Problem
-            if(b.enPassantSquare != NO_SQ) {
-                if(b.enPassantSquare == destLeft) {
-                    Move m(sq, destLeft, MOVE_EN_PASSANT);
-                    if(b.isLegal(m))
-                        moves.push_back(m);
-                } else if(b.enPassantSquare == destRight) {
-                    Move m(sq, destRight, MOVE_EN_PASSANT);
-                    if(b.isLegal(m))
-                        moves.push_back(m);
-                }
-            }
-
             // Wenn der Bauer gefesselt ist, kann er sich nicht bewegen
             if(pinned)
                 continue;
+            
+            // En-Passant Züge befreien den König nur aus dem Schach, wenn der geschlagene Bauer der Angreifer ist
+            if(b.enPassantSquare != NO_SQ) {
+                int32_t captureSquare = b.enPassantSquare + NORTH;
+
+                if(b.enPassantSquare == destLeft) {
+                    if(attackingRays.getBit(b.mailbox[captureSquare]))
+                        moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
+                } else if(b.enPassantSquare == destRight) {
+                    if(attackingRays.getBit(b.mailbox[captureSquare]))
+                        moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
+                }
+            }
             
             // Wenn der Bauer den Angreifer blockiert, ist der Zug legal
             // Ein blockierende Zug kann kein normaler Schlagzug sein, weil der Bauer sonst nicht gefesselt wäre
@@ -561,8 +614,28 @@ void Movegen::generateBlackPawnMoves(std::vector<Move>& moves, Board& b,
                         moves.push_back(Move(sq, destForw, MOVE_PROMOTION_KNIGHT));
                 } else
                     moves.push_back(Move(sq, destForw, MOVE_QUIET));
-            } else if(rank == RANK_7 && attackingRays & Bitboard(1ULL << b.mailbox[destForw2]) && b.pieces[destForw2] == EMPTY && b.pieces[destForw] == EMPTY) {
+            } else if(rank == RANK_7 && attackingRays & Bitboard(1ULL << b.mailbox[destForw2]) && b.pieces[destForw2] == EMPTY && b.pieces[destForw] == EMPTY)
                 moves.push_back(Move(sq, destForw2, MOVE_DOUBLE_PAWN));
+            
+            // Wenn der Bauer den Angreifer schlagen kann, ist der Zug legal
+            if(b.pieces[destLeft] != EMPTY && attackingRays & Bitboard(1ULL << b.mailbox[destLeft]) && (b.pieces[destLeft] & COLOR_MASK) == WHITE) {
+                // Promotion
+                if(rank == RANK_2) {
+                        moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_QUEEN));
+                        moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_ROOK));
+                        moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_BISHOP));
+                        moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_KNIGHT));
+                } else
+                    moves.push_back(Move(sq, destLeft, MOVE_CAPTURE));
+            } else if(b.pieces[destRight] != EMPTY && attackingRays & Bitboard(1ULL << b.mailbox[destRight]) && (b.pieces[destRight] & COLOR_MASK) == WHITE) {
+                // Promotion
+                if(rank == RANK_2) {
+                        moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_QUEEN));
+                        moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_ROOK));
+                        moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_BISHOP));
+                        moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_KNIGHT));
+                } else
+                    moves.push_back(Move(sq, destRight, MOVE_CAPTURE));
             }
         }
     } else {
@@ -580,25 +653,60 @@ void Movegen::generateBlackPawnMoves(std::vector<Move>& moves, Board& b,
 
             bool pinned = pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]);
 
-            // Bei En Passant Zügen gibt es so viele Ausnahmen und Sonderfälle, dass die Züge einfach aufwendig auf Legalität geprüft werden
-            // Weil En Passant Züge so selten sind, ist das kein Problem
+            // En-Passant Züge entfernen 2 Figuren aus einer Reihe, daher muss immer überprüft werden, ob der König nach dem Zug im Schach stände
+            // -> Ein En-Passant Zug mit einem ungefesselten Bauer kann illegal sein
             if(b.enPassantSquare != NO_SQ) {
+                int32_t captureSquare = b.enPassantSquare + NORTH;
+                int32_t kingSquare = b.pieceList[BLACK_KING].front();
+
                 if(b.enPassantSquare == destLeft) {
-                    Move m(sq, destLeft, MOVE_EN_PASSANT);
-                    if(b.isLegal(m))
-                        moves.push_back(m);
+                    Bitboard allPiecesAfterMove = b.allPiecesBitboard | b.pieceBitboard[WHITE_KING];
+                    allPiecesAfterMove.clearBit(b.mailbox[sq]);
+                    allPiecesAfterMove.clearBit(b.mailbox[captureSquare]);
+
+                    if(!b.squareAttacked(kingSquare, WHITE, allPiecesAfterMove))
+                        moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
+
                 } else if(b.enPassantSquare == destRight) {
-                    Move m(sq, destRight, MOVE_EN_PASSANT);
-                    if(b.isLegal(m))
-                        moves.push_back(m);
+                    Bitboard allPiecesAfterMove = b.allPiecesBitboard | b.pieceBitboard[WHITE_KING];
+                    allPiecesAfterMove.clearBit(b.mailbox[sq]);
+                    allPiecesAfterMove.clearBit(b.mailbox[captureSquare]);
+
+                    if(!b.squareAttacked(kingSquare, WHITE, allPiecesAfterMove))
+                        moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
                 }
             }
 
             // Überprüfe, ob der Bauer horizontal oder diagonal gefesselt ist
-            // Wenn ja, kann er sich nicht bewegen
+            // Wenn ja, kann er sich nur bewegen, wenn er den Angreifer schlägt(diagonal)
             if(pinned) {
                 int32_t pinDir = pinDirections[b.mailbox[sq]];
-                if(!(pinDir == NORTH ||pinDir == SOUTH))
+                
+                if(pinDir == NORTH_EAST || pinDir == SOUTH_WEST) {
+                    if(b.pieces[destLeft] != EMPTY && (b.pieces[destLeft] & COLOR_MASK) == WHITE) {
+                        // Promotion
+                        if(rank == RANK_2) {
+                            moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_QUEEN));
+                            moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_ROOK));
+                            moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_BISHOP));
+                            moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_KNIGHT));
+                        } else
+                            moves.push_back(Move(sq, destLeft, MOVE_CAPTURE));
+                    }
+                } else if(pinDir == NORTH_WEST || pinDir == SOUTH_EAST) {
+                    if(b.pieces[destRight] != EMPTY && (b.pieces[destRight] & COLOR_MASK) == WHITE) {
+                        // Promotion
+                        if(rank == RANK_2) {
+                            moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_QUEEN));
+                            moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_ROOK));
+                            moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_BISHOP));
+                            moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_KNIGHT));
+                        } else
+                            moves.push_back(Move(sq, destRight, MOVE_CAPTURE));
+                    }
+                }
+                
+                if(!(pinDir == NORTH || pinDir == SOUTH))
                     continue;
             }
 
@@ -668,6 +776,9 @@ void Movegen::generateWhiteKnightMoves(std::vector<Move>& moves, Board& b,
 
             for(int i = 0; i < 8; i++) {
                 int n_sq = sq + KNIGHT_ATTACKS[i];
+
+                if(b.mailbox[n_sq] == NO_SQ)
+                    continue;
                 
                 // Wenn der Springer den Angreifer schlagen oder sich dazwischen stellen kann, ist der Zug legal
                 if(attackingRays & Bitboard(1ULL << b.mailbox[n_sq]))
@@ -720,6 +831,9 @@ void Movegen::generateBlackKnightMoves(std::vector<Move>& moves, Board& b,
 
             for(int i = 0; i < 8; i++) {
                 int n_sq = sq + KNIGHT_ATTACKS[i];
+
+                if(b.mailbox[n_sq] == NO_SQ)
+                    continue;
                 
                 // Wenn der Springer den Angreifer schlagen oder sich dazwischen stellen kann, ist der Zug legal
                 if(attackingRays & Bitboard(1ULL << b.mailbox[n_sq]))

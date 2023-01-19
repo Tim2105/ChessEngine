@@ -2,6 +2,8 @@
 #include "Board.h"
 #include <chrono>
 #include "Bitboard.h"
+#include "Test.h"
+#include <map>
 
 void testBoardIntegrity(Board& board) {
     for(int piece = 0; piece < 15; piece++) {
@@ -26,6 +28,14 @@ void testBoardIntegrity(Board& board) {
             ASSERT(board.pieceBitboard[piece].getBit(board.mailbox[sq]));
         }
     }
+
+    Bitboard whitePiecesBitboard = board.pieceBitboard[WHITE_PAWN] | board.pieceBitboard[WHITE_KNIGHT] | board.pieceBitboard[WHITE_BISHOP] | board.pieceBitboard[WHITE_ROOK] | board.pieceBitboard[WHITE_QUEEN];
+    Bitboard blackPiecesBitboard = board.pieceBitboard[BLACK_PAWN] | board.pieceBitboard[BLACK_KNIGHT] | board.pieceBitboard[BLACK_BISHOP] | board.pieceBitboard[BLACK_ROOK] | board.pieceBitboard[BLACK_QUEEN];
+
+    ASSERT(whitePiecesBitboard == board.whitePiecesBitboard);
+    ASSERT(blackPiecesBitboard == board.blackPiecesBitboard);
+
+    ASSERT((whitePiecesBitboard | blackPiecesBitboard) == board.allPiecesBitboard);
 }
 
 // perft(4) dauert knapp 7s
@@ -47,41 +57,37 @@ void perft(Board& board, int depth, int& count, int& captures, int& enPassants, 
                 promotions++;
         }
 
+        int countPrev = count;
+
         board.makeMove(m);
-        testBoardIntegrity(board);
         perft(board, depth - 1, count, captures, enPassants, castles, promotions);
         board.undoMove();
-        testBoardIntegrity(board);
     }
 }
 
 int main() {
-    Board board("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 5 1");
+    Board board;
 
-    std::cout << board.fenString() << std::endl;
+    for(int i = 1; i < 5; i++) {
+        int count = 0, captures = 0, enPassants = 0, castles = 0, promotions = 0;
 
-    // for(Move m : board.generateLegalMoves()) {
-    //     std::cout << m << std::endl;
-    // }
+        // Zeitmessung
+        auto start = std::chrono::high_resolution_clock::now();
 
-    // for(int i = 1; i < 6; i++) {
-    //     int count = 0, captures = 0, enPassants = 0, castles = 0, promotions = 0;
+        perft(board, i, count, captures, enPassants, castles, promotions);
 
-    //     // Zeitmessung
-    //     auto start = std::chrono::high_resolution_clock::now();
+        auto end = std::chrono::high_resolution_clock::now();
 
-    //     perft(board, i, count, captures, enPassants, castles, promotions);
+        std::chrono::duration<double> elapsed = end - start;
 
-    //     auto end = std::chrono::high_resolution_clock::now();
-
-    //     std::chrono::duration<double> elapsed = end - start;
-
-    //     std::cout << "Perft(depth " << i << ", " << elapsed.count() << "s): " << std::endl;
-    //     std::cout << "    Nodes: " << count << std::endl;
-    //     std::cout << "    Captures: " << captures << std::endl;
-    //     std::cout << "    En Passants: " << enPassants << std::endl;
-    //     std::cout << "    Castles: " << castles << std::endl;
-    // }
+        std::cout << "Perft(depth " << i << ", " << elapsed.count() << "s): " << std::endl;
+        std::cout << "    Nodes: " << count << std::endl;
+        std::cout << "    Captures: " << captures << std::endl;
+        std::cout << "    En Passants: " << enPassants << std::endl;
+        std::cout << "    Castles: " << castles << std::endl;
+        std::cout << "    Promotions: " << promotions << std::endl;
+        std::cout << "    Nodes/s: " << count / elapsed.count() << std::endl;
+    }
 
     return 0;
 }

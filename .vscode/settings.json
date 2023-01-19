@@ -40,6 +40,9 @@
         "algorithm": "cpp",
         "list": "cpp",
         "chrono": "cpp",
-        "ratio": "cpp"
+        "ratio": "cpp",
+        "fstream": "cpp",
+        "map": "cpp",
+        "xtree": "cpp"
     }
 }

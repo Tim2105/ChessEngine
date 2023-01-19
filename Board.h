@@ -18,6 +18,7 @@ class MoveHistoryEntry {
     friend class Board;
 
     private:
+    public:
         /**
          * @brief Der Zug der rückgängig gemacht werden soll.
          */
@@ -88,7 +89,7 @@ class MoveHistoryEntry {
  */
 class Board {
     friend class Movegen;
-
+    
     private:
     public:
          /**
@@ -227,16 +228,17 @@ class Board {
         void generatePinnedPiecesBitboards(int32_t side, Bitboard& pinnedPiecesBitboard,
                                            int32_t* pinnedPiecesDirection);
 
-        /**
-         * @brief Überprüft, ob ein Zug legal ist.
-         */
-        bool isLegal(Move move);
-
     public:
         /**
          * @brief Erstellt ein neues Schachbrett.
          */
         Board();
+
+        /**
+         * @brief Erstellt ein neues Schachbrett, das eine Kopie eines anderen Schachbretts ist.
+         * @param other Das andere Schachbrett.
+         */
+        Board(const Board& other);
 
         /**
          * @brief Erstellt ausgehend von einem FEN-String ein neues Schachbrett.

@@ -21,87 +21,97 @@ class Move {
         Move(int32_t origin, int32_t destination, int32_t flags);
         virtual ~Move();
 
-        friend std::ostream& operator<< (std::ostream& os, Move& m);
+        friend std::ostream& operator<< (std::ostream& os, const Move& m);
 
         /**
          * @brief Gibt den Zug als String zurück.
          */
-        std::string toString();
+        std::string toString() const;
 
         /**
          * @brief Gibt den Ausgangspunkt des Zuges zurück.
          */
-        int32_t getOrigin();
+        int32_t getOrigin() const;
 
         /**
          * @brief Gibt das Zielfeld des Zuges zurück.
          */
-        int32_t getDestination();
+        int32_t getDestination() const;
 
         /**
          * @brief Überprüft ob ein Zug 'leise' ist, also keine Figur geschlagen wird und es kein Spezialzug ist.
          */
-        bool isQuiet();
+        bool isQuiet() const;
 
         /**
          * @brief Überprüft ob es sich um einen Doppelschritt handelt.
          */
-        bool isDoublePawn();
+        bool isDoublePawn() const;
 
         /**
          * @brief Überprüft ob es sich um einen Rochadezug handelt.
          */
-        bool isCastle();
+        bool isCastle() const;
 
         /**
          * @brief Überprüft ob es sich um eine Rochade auf Königsseite handelt.
          */
-        bool isKingsideCastle();
+        bool isKingsideCastle() const;
 
         /**
          * @brief Überprüft ob es sich um eine Rochade auf Damenseite handelt.
          */
-        bool isQueensideCastle();
+        bool isQueensideCastle() const;
 
         /**
          * @brief Überprüft ob der Zug eine Figur schlägt.
          */
-        bool isCapture();
+        bool isCapture() const;
 
         /**
          * @brief Überprüft ob es sich um einen En Passant Zug handelt.
          */
-        bool isEnPassant();
+        bool isEnPassant() const;
 
         /**
          * @brief Überprüft ob es sich um einen Promotionzug handelt.
          */
-        bool isPromotion();
+        bool isPromotion() const;
 
         /**
          * @brief Überprüft ob es sich um einen Promotionzug auf Springer handelt.
          */
-        bool isPromotionKnight();
+        bool isPromotionKnight() const;
 
         /**
          * @brief Überprüft ob es sich um einen Promotionzug auf Läufer handelt.
          */
-        bool isPromotionBishop();
+        bool isPromotionBishop() const;
 
         /**
          * @brief Überprüft ob es sich um einen Promotionzug auf Turm handelt.
          */
-        bool isPromotionRook();
+        bool isPromotionRook() const;
 
         /**
          * @brief Überprüft ob es sich um einen Promotionzug auf Dame handelt.
          */
-        bool isPromotionQueen();
+        bool isPromotionQueen() const;
 
         /**
          * @brief Vergleicht zwei Züge.
          */
         bool operator==(const Move& other) const;
+
+        /**
+         * @brief Vergleicht zwei Züge.
+         */
+        bool operator<(const Move& other) const;
+
+        /**
+         * @brief Vergleicht zwei Züge.
+         */
+        bool operator>(const Move& other) const;
 };
 
 #endif

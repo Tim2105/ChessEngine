@@ -18,6 +18,24 @@ Board::Board() {
     generateBitboards();
 }
 
+Board::Board(const Board& b) {
+    initMailbox();
+
+    for(int i = 0; i < 15; i++)
+        pieceList[i] = b.pieceList[i];
+    
+    for(int i = 0; i < 120; i++)
+        pieces[i] = b.pieces[i];
+
+    side = b.side;
+    enPassantSquare = b.enPassantSquare;
+    fiftyMoveRule = b.fiftyMoveRule;
+    castlingPermission = b.castlingPermission;
+    ply = b.ply;
+
+    generateBitboards();
+}
+
 Board::Board(std::string fen) {
     initMailbox();
 
@@ -104,8 +122,9 @@ Board::Board(std::string fen) {
     fiftyMoveRule = std::stoi(fen.substr(0, indexNextSection));
     fen = fen.substr(indexNextSection + 1);
 
-    // Anzahl der bereits gespielten Halbzüge auslesen
-    ply = std::stoi(fen) - 1;
+    // Anzahl der bereits gespielten Züge auslesen
+    int plyAdd = side == WHITE ? 0 : 1;
+    ply = (std::stoi(fen) - 1) * 2 + plyAdd;
 
     generateBitboards();
 }
@@ -232,62 +251,6 @@ void Board::generateBitboards() {
     allPiecesBitboard = whitePiecesBitboard | blackPiecesBitboard;
 }
 
-bool Board::isLegal(Move move) {
-    int32_t ownSide = side;
-    int32_t enemySide = side ^ COLOR_MASK;
-    int32_t origin = move.getOrigin();
-    int32_t destination = move.getDestination();
-    int32_t pieceType = TYPEOF(pieces[origin]);
-
-    Bitboard allPiecesPlusEnemyKing = allPiecesBitboard | pieceBitboard[enemySide | KING];
-
-    // Spezialfall: En Passant
-    if(move.isEnPassant()) {
-        ASSERT(enPassantSquare != NO_SQ);
-
-        // Das occupied-Bitboard muss so angepasst werden,
-        // dass der En Passant geschlagene Bauer nicht mehr existiert
-        int32_t capturedPawnSquare = enPassantSquare + (ownSide == WHITE ? SOUTH : NORTH);
-
-        Bitboard modifiedBitboard = allPiecesPlusEnemyKing;
-        modifiedBitboard.clearBit(mailbox[origin]);
-        modifiedBitboard.clearBit(mailbox[capturedPawnSquare]);
-        modifiedBitboard.setBit(mailbox[destination]);
-
-        // Überprüfe, ob der König im Schach steht
-        int32_t kingSquare = pieceList[ownSide | KING].front();
-        return !squareAttacked(kingSquare, enemySide, modifiedBitboard);
-    }
-
-    int32_t kingSquare = pieceList[ownSide | KING].front();
-
-    // Spezialfall: Rochade
-    if(move.isCastle()) {
-        // Der König, sein Ausgangsfeld und das Feld, dass er überspringt dürfen nicht im Schach stehen
-        if(move.isKingsideCastle())
-            return !squareAttacked(kingSquare, enemySide, allPiecesPlusEnemyKing) &&
-                   !squareAttacked(kingSquare + 1, enemySide, allPiecesPlusEnemyKing) &&
-                   !squareAttacked(kingSquare + 2, enemySide, allPiecesPlusEnemyKing);
-        else
-            return !squareAttacked(kingSquare, enemySide, allPiecesPlusEnemyKing) &&
-                   !squareAttacked(kingSquare - 1, enemySide, allPiecesPlusEnemyKing) &&
-                   !squareAttacked(kingSquare - 2, enemySide, allPiecesPlusEnemyKing);
-    }
-
-    // Spezialfall: Der König wird bewegt
-    if(pieceType == KING) {
-        // Der König darf sich nicht ins Schach bewegen
-        return !squareAttacked(destination, enemySide, allPiecesPlusEnemyKing);
-    }
-
-    // Überprüfe, ob die bewegte Figur den König beschützt
-    Bitboard modifiedBitboard = allPiecesBitboard;
-    modifiedBitboard.clearBit(mailbox[origin]);
-    modifiedBitboard.setBit(mailbox[destination]);
-
-    return !squareAttacked(kingSquare, enemySide, allPiecesPlusEnemyKing);
-}
-
 void Board::makeMove(Move m) {
     int32_t origin = m.getOrigin();
     int32_t destination = m.getDestination();
@@ -309,6 +272,9 @@ void Board::makeMove(Move m) {
     entry.hashValue = hashValue;
 
     moveHistory.push_back(entry);
+
+    if(m.toString() == "E8->D7 CAPTURE")
+        int i = 0;
 
     // Zug ausführen
     ASSERT(pieceType != EMPTY);
@@ -385,15 +351,18 @@ void Board::makeMove(Move m) {
     pieceList[pieceType].push_back(destination);
     pieceBitboard[pieceType].clearBit(origin64);
     pieceBitboard[pieceType].setBit(destination64);
-    allPiecesBitboard.clearBit(origin64);
-    allPiecesBitboard.setBit(destination64);
-    if(side == WHITE) {
-        whitePiecesBitboard.clearBit(origin64);
-        whitePiecesBitboard.setBit(destination64);
-    }
-    else {
-        blackPiecesBitboard.clearBit(origin64);
-        blackPiecesBitboard.setBit(destination64);
+
+    // Könige sind in den allgemeinen Bitboards nicht enthalten
+    if(TYPEOF(pieceType) != KING) {
+        allPiecesBitboard.clearBit(origin64);
+        allPiecesBitboard.setBit(destination64);
+        if(side == WHITE) {
+            whitePiecesBitboard.clearBit(origin64);
+            whitePiecesBitboard.setBit(destination64);
+        } else {
+            blackPiecesBitboard.clearBit(origin64);
+            blackPiecesBitboard.setBit(destination64);
+        }
     }
 
     // Spezialfall: Schlagen
@@ -404,6 +373,10 @@ void Board::makeMove(Move m) {
             blackPiecesBitboard.clearBit(destination64);
         else
             whitePiecesBitboard.clearBit(destination64);
+        
+        // Wenn die schlagende Figur ein König ist, muss das Feld aus dem allgemeinen Bitboard entfernt werden
+        if(TYPEOF(pieceType) == KING)
+            allPiecesBitboard.clearBit(destination64);
     }
 
     // Spezialfall: Bauernumwandlung
@@ -530,14 +503,18 @@ void Board::undoMove() {
     pieceList[pieceType].push_back(origin);
     pieceBitboard[pieceType].clearBit(destination64);
     pieceBitboard[pieceType].setBit(origin64);
-    allPiecesBitboard.clearBit(destination64);
-    allPiecesBitboard.setBit(origin64);
-    if(side == WHITE) {
-        whitePiecesBitboard.clearBit(destination64);
-        whitePiecesBitboard.setBit(origin64);
-    } else {
-        blackPiecesBitboard.clearBit(destination64);
-        blackPiecesBitboard.setBit(origin64);
+
+    // Könige sind in den allgemeinen Bitboards nicht enthalten
+    if(TYPEOF(pieceType) != KING) {
+        allPiecesBitboard.clearBit(destination64);
+        allPiecesBitboard.setBit(origin64);
+        if(side == WHITE) {
+            whitePiecesBitboard.clearBit(destination64);
+            whitePiecesBitboard.setBit(origin64);
+        } else {
+            blackPiecesBitboard.clearBit(destination64);
+            blackPiecesBitboard.setBit(origin64);
+        }
     }
 
     // Spezialfall: Schlagen
@@ -977,7 +954,9 @@ std::string Board::fenString() const {
 
     fen += " ";
 
-    fen += std::to_string(ply + 1);
+    int fullMoves = (ply / 2) + 1;
+
+    fen += std::to_string(fullMoves);
 
     return fen;
 }
