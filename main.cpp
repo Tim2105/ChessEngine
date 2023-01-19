@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 #include "Board.h"
 #include <chrono>
 #include "Bitboard.h"
@@ -38,7 +39,7 @@ void testBoardIntegrity(Board& board) {
     ASSERT((whitePiecesBitboard | blackPiecesBitboard) == board.allPiecesBitboard);
 }
 
-// perft(4) dauert knapp 7s
+// perft(4) dauert knapp 0.37s
 void perft(Board& board, int depth, int& count, int& captures, int& enPassants, int& castles, int& promotions) {
     if(depth == 0) {
         return;
@@ -68,7 +69,7 @@ void perft(Board& board, int depth, int& count, int& captures, int& enPassants, 
 int main() {
     Board board;
 
-    for(int i = 1; i < 5; i++) {
+    for(int i = 1; i < 6; i++) {
         int count = 0, captures = 0, enPassants = 0, castles = 0, promotions = 0;
 
         // Zeitmessung
@@ -80,13 +81,13 @@ int main() {
 
         std::chrono::duration<double> elapsed = end - start;
 
-        std::cout << "Perft(depth " << i << ", " << elapsed.count() << "s): " << std::endl;
+        std::cout << "Perft(depth " << i << ", " << std::setprecision(3) << elapsed.count() << "s): " << std::endl;
         std::cout << "    Nodes: " << count << std::endl;
         std::cout << "    Captures: " << captures << std::endl;
         std::cout << "    En Passants: " << enPassants << std::endl;
         std::cout << "    Castles: " << castles << std::endl;
         std::cout << "    Promotions: " << promotions << std::endl;
-        std::cout << "    Nodes/s: " << count / elapsed.count() << std::endl;
+        std::cout << "    Nodes/s: " << std::fixed << std::setprecision(0) << count / elapsed.count() << std::endl;
     }
 
     return 0;

@@ -1,10 +1,7 @@
 #include "Movegen.h"
 
-void Movegen::generatePseudoLegalWhitePawnMoves(std::vector<Move>& moves, Board& b) {
-    for(int sq : b.pieceList[WHITE_PAWN]) {
-        ASSERT(b.pieces[sq] == WHITE_PAWN);
-        ASSERT(b.mailbox[sq] != NO_SQ);
-
+void Movegen::generatePseudoLegalWhitePawnMoves(Array<Move, 256>& moves, Board& b) {
+    for(int& sq : b.pieceList[WHITE_PAWN]) {
         int32_t file = SQ2F(sq);
         int32_t rank = SQ2R(sq);
 
@@ -60,11 +57,8 @@ void Movegen::generatePseudoLegalWhitePawnMoves(std::vector<Move>& moves, Board&
     }
 }
 
-void Movegen::generatePseudoLegalBlackPawnMoves(std::vector<Move>& moves, Board& b) {
-    for(int sq : b.pieceList[BLACK_PAWN]) {
-        ASSERT(b.pieces[sq] == BLACK_PAWN);
-        ASSERT(b.mailbox[sq] != NO_SQ);
-
+void Movegen::generatePseudoLegalBlackPawnMoves(Array<Move, 256>& moves, Board& b) {
+    for(int& sq : b.pieceList[BLACK_PAWN]) {
         int32_t file = SQ2F(sq);
         int32_t rank = SQ2R(sq);
 
@@ -120,11 +114,8 @@ void Movegen::generatePseudoLegalBlackPawnMoves(std::vector<Move>& moves, Board&
     }
 }
 
-void Movegen::generatePseudoLegalWhiteKnightMoves(std::vector<Move>& moves, Board& b) {
-    for(int sq : b.pieceList[WHITE_KNIGHT]) {
-        ASSERT(b.pieces[sq] == WHITE_KNIGHT);
-        ASSERT(b.mailbox[sq] != NO_SQ);
-
+void Movegen::generatePseudoLegalWhiteKnightMoves(Array<Move, 256>& moves, Board& b) {
+    for(int& sq : b.pieceList[WHITE_KNIGHT]) {
         for(int i = 0; i < 8; i++) {
             int n_sq = sq + KNIGHT_ATTACKS[i];
             if(b.mailbox[n_sq] != NO_SQ) {
@@ -137,11 +128,8 @@ void Movegen::generatePseudoLegalWhiteKnightMoves(std::vector<Move>& moves, Boar
     }
 }
 
-void Movegen:: generatePseudoLegalBlackKnightMoves(std::vector<Move>& moves, Board& b) {
-    for(int sq : b.pieceList[BLACK_KNIGHT]) {
-        ASSERT(b.pieces[sq] == BLACK_KNIGHT);
-        ASSERT(b.mailbox[sq] != NO_SQ);
-
+void Movegen:: generatePseudoLegalBlackKnightMoves(Array<Move, 256>& moves, Board& b) {
+    for(int& sq : b.pieceList[BLACK_KNIGHT]) {
         for(int i = 0; i < 8; i++) {
             int n_sq = sq + KNIGHT_ATTACKS[i];
             if(b.mailbox[n_sq] != NO_SQ) {
@@ -154,11 +142,8 @@ void Movegen:: generatePseudoLegalBlackKnightMoves(std::vector<Move>& moves, Boa
     }
 }
 
-void Movegen::generatePseudoLegalWhiteRookMoves(std::vector<Move>& moves, Board& b) {
-    for(int sq : b.pieceList[WHITE_BISHOP]) {
-        ASSERT(b.pieces[sq] == WHITE_BISHOP);
-        ASSERT(b.mailbox[sq] != NO_SQ);
-
+void Movegen::generatePseudoLegalWhiteRookMoves(Array<Move, 256>& moves, Board& b) {
+    for(int& sq : b.pieceList[WHITE_BISHOP]) {
         for(int i = 0; i < 4; i++) {
             int n_sq = sq + DIAGONAL_ATTACKS[i];
             while(b.mailbox[n_sq] != NO_SQ) {
@@ -177,11 +162,8 @@ void Movegen::generatePseudoLegalWhiteRookMoves(std::vector<Move>& moves, Board&
     }
 }
 
-void Movegen::generatePseudoLegalBlackRookMoves(std::vector<Move>& moves, Board& b) {
-    for(int sq : b.pieceList[BLACK_BISHOP]) {
-        ASSERT(b.pieces[sq] == BLACK_BISHOP);
-        ASSERT(b.mailbox[sq] != NO_SQ);
-
+void Movegen::generatePseudoLegalBlackRookMoves(Array<Move, 256>& moves, Board& b) {
+    for(int& sq : b.pieceList[BLACK_BISHOP]) {
         for(int i = 0; i < 4; i++) {
             int n_sq = sq + DIAGONAL_ATTACKS[i];
             while(b.mailbox[n_sq] != NO_SQ) {
@@ -200,11 +182,8 @@ void Movegen::generatePseudoLegalBlackRookMoves(std::vector<Move>& moves, Board&
     }
 }
 
-void Movegen::generatePseudoLegalWhiteBishopMoves(std::vector<Move>& moves, Board& b) {
-    for(int sq : b.pieceList[WHITE_ROOK]) {
-        ASSERT(b.pieces[sq] == WHITE_ROOK);
-        ASSERT(b.mailbox[sq] != NO_SQ);
-
+void Movegen::generatePseudoLegalWhiteBishopMoves(Array<Move, 256>& moves, Board& b) {
+    for(int& sq : b.pieceList[WHITE_ROOK]) {
         for(int i = 0; i < 4; i++) {
             int n_sq = sq + STRAIGHT_ATTACKS[i];
             while(b.mailbox[n_sq] != NO_SQ) {
@@ -223,11 +202,8 @@ void Movegen::generatePseudoLegalWhiteBishopMoves(std::vector<Move>& moves, Boar
     }
 }
 
-void Movegen::generatePseudoLegalBlackBishopMoves(std::vector<Move>& moves, Board& b) {
-    for(int sq : b.pieceList[BLACK_ROOK]) {
-        ASSERT(b.pieces[sq] == BLACK_ROOK);
-        ASSERT(b.mailbox[sq] != NO_SQ);
-
+void Movegen::generatePseudoLegalBlackBishopMoves(Array<Move, 256>& moves, Board& b) {
+    for(int& sq : b.pieceList[BLACK_ROOK]) {
         for(int i = 0; i < 4; i++) {
             int n_sq = sq + STRAIGHT_ATTACKS[i];
             while(b.mailbox[n_sq] != NO_SQ) {
@@ -246,16 +222,13 @@ void Movegen::generatePseudoLegalBlackBishopMoves(std::vector<Move>& moves, Boar
     }
 }
 
-void Movegen::generatePseudoLegalWhiteQueenMoves(std::vector<Move>& moves, Board& b) {
+void Movegen::generatePseudoLegalWhiteQueenMoves(Array<Move, 256>& moves, Board& b) {
     int32_t QUEEN_ATTACKS[8] = {
         DIAGONAL_ATTACKS[0], DIAGONAL_ATTACKS[1], DIAGONAL_ATTACKS[2], DIAGONAL_ATTACKS[3],
         STRAIGHT_ATTACKS[0], STRAIGHT_ATTACKS[1], STRAIGHT_ATTACKS[2], STRAIGHT_ATTACKS[3]
     };
 
-    for(int sq : b.pieceList[WHITE_QUEEN]) {
-        ASSERT(b.pieces[sq] == WHITE_QUEEN);
-        ASSERT(b.mailbox[sq] != NO_SQ);
-
+    for(int& sq : b.pieceList[WHITE_QUEEN]) {
         for(int i = 0; i < 8; i++) {
             int n_sq = sq + QUEEN_ATTACKS[i];
             while(b.mailbox[n_sq] != NO_SQ) {
@@ -274,16 +247,13 @@ void Movegen::generatePseudoLegalWhiteQueenMoves(std::vector<Move>& moves, Board
     }
 }
 
-void Movegen::generatePseudoLegalBlackQueenMoves(std::vector<Move>& moves, Board& b) {
+void Movegen::generatePseudoLegalBlackQueenMoves(Array<Move, 256>& moves, Board& b) {
     int32_t QUEEN_ATTACKS[8] = {
         DIAGONAL_ATTACKS[0], DIAGONAL_ATTACKS[1], DIAGONAL_ATTACKS[2], DIAGONAL_ATTACKS[3],
         STRAIGHT_ATTACKS[0], STRAIGHT_ATTACKS[1], STRAIGHT_ATTACKS[2], STRAIGHT_ATTACKS[3]
     };
 
-    for(int sq : b.pieceList[BLACK_QUEEN]) {
-        ASSERT(b.pieces[sq] == BLACK_QUEEN);
-        ASSERT(b.mailbox[sq] != NO_SQ);
-
+    for(int& sq : b.pieceList[BLACK_QUEEN]) {
         for(int i = 0; i < 8; i++) {
             int n_sq = sq + QUEEN_ATTACKS[i];
             while(b.mailbox[n_sq] != NO_SQ) {
@@ -302,16 +272,13 @@ void Movegen::generatePseudoLegalBlackQueenMoves(std::vector<Move>& moves, Board
     }
 }
 
-void Movegen::generatePseudoLegalWhiteKingMoves(std::vector<Move>& moves, Board& b) {
+void Movegen::generatePseudoLegalWhiteKingMoves(Array<Move, 256>& moves, Board& b) {
     int32_t KING_ATTACKS[8] = {
         DIAGONAL_ATTACKS[0], DIAGONAL_ATTACKS[1], DIAGONAL_ATTACKS[2], DIAGONAL_ATTACKS[3],
         STRAIGHT_ATTACKS[0], STRAIGHT_ATTACKS[1], STRAIGHT_ATTACKS[2], STRAIGHT_ATTACKS[3]
     };
 
     int sq = b.pieceList[WHITE_KING].front();
-    ASSERT(b.pieces[sq] == WHITE_KING);
-    ASSERT(b.mailbox[sq] != NO_SQ);
-
     for(int i = 0; i < 8; i++) {
         int n_sq = sq + KING_ATTACKS[i];
         if(b.mailbox[n_sq] != NO_SQ) {
@@ -335,16 +302,13 @@ void Movegen::generatePseudoLegalWhiteKingMoves(std::vector<Move>& moves, Board&
     }
 }
 
-void Movegen::generatePseudoLegalBlackKingMoves(std::vector<Move>& moves, Board& b) {
+void Movegen::generatePseudoLegalBlackKingMoves(Array<Move, 256>& moves, Board& b) {
     int32_t KING_ATTACKS[8] = {
         DIAGONAL_ATTACKS[0], DIAGONAL_ATTACKS[1], DIAGONAL_ATTACKS[2], DIAGONAL_ATTACKS[3],
         STRAIGHT_ATTACKS[0], STRAIGHT_ATTACKS[1], STRAIGHT_ATTACKS[2], STRAIGHT_ATTACKS[3]
     };
 
     int sq = b.pieceList[BLACK_KING].front();
-    ASSERT(b.pieces[sq] == BLACK_KING);
-    ASSERT(b.mailbox[sq] != NO_SQ);
-
     for(int i = 0; i < 8; i++) {
         int n_sq = sq + KING_ATTACKS[i];
         if(b.mailbox[n_sq] != NO_SQ) {
@@ -368,7 +332,7 @@ void Movegen::generatePseudoLegalBlackKingMoves(std::vector<Move>& moves, Board&
     }
 }
 
-void Movegen::generateWhitePawnMoves(std::vector<Move>& moves, Board& b,
+void Movegen::generateWhitePawnMoves(Array<Move, 256>& moves, Board& b,
                                      int32_t numAttackers, Bitboard attackingRays,
                                      Bitboard pinnedPiecesBitboard, int32_t* pinDirections) {
     // Wenn der eigene König von mehr als einer Figur angegriffen wird, muss er sich bewegen
@@ -378,10 +342,7 @@ void Movegen::generateWhitePawnMoves(std::vector<Move>& moves, Board& b,
 
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Bauer den Angreifer schlagen oder den König schützen
     if(numAttackers == 1) {
-        for(int sq : b.pieceList[WHITE_PAWN]) {
-            ASSERT(b.pieces[sq] == WHITE_PAWN);
-            ASSERT(b.mailbox[sq] != NO_SQ);
-
+        for(int& sq : b.pieceList[WHITE_PAWN]) {
             int32_t file = SQ2F(sq);
             int32_t rank = SQ2R(sq);
 
@@ -445,10 +406,7 @@ void Movegen::generateWhitePawnMoves(std::vector<Move>& moves, Board& b,
             }
         }
     } else {
-        for(int sq : b.pieceList[WHITE_PAWN]) {
-            ASSERT(b.pieces[sq] == WHITE_PAWN);
-            ASSERT(b.mailbox[sq] != NO_SQ);
-
+        for(int& sq : b.pieceList[WHITE_PAWN]) {
             int32_t file = SQ2F(sq);
             int32_t rank = SQ2R(sq);
 
@@ -561,7 +519,7 @@ void Movegen::generateWhitePawnMoves(std::vector<Move>& moves, Board& b,
     }
 }
 
-void Movegen::generateBlackPawnMoves(std::vector<Move>& moves, Board& b,
+void Movegen::generateBlackPawnMoves(Array<Move, 256>& moves, Board& b,
                                      int32_t numAttackers, Bitboard attackingRays,
                                      Bitboard pinnedPiecesBitboard, int32_t* pinDirections) {
     
@@ -572,10 +530,7 @@ void Movegen::generateBlackPawnMoves(std::vector<Move>& moves, Board& b,
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Bauer den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int sq : b.pieceList[BLACK_PAWN]) {
-            ASSERT(b.pieces[sq] == BLACK_PAWN);
-            ASSERT(b.mailbox[sq] != NO_SQ);
-
+        for(int& sq : b.pieceList[BLACK_PAWN]) {
             int32_t file = SQ2F(sq);
             int32_t rank = SQ2R(sq);
 
@@ -639,10 +594,7 @@ void Movegen::generateBlackPawnMoves(std::vector<Move>& moves, Board& b,
             }
         }
     } else {
-        for(int sq : b.pieceList[BLACK_PAWN]) {
-            ASSERT(b.pieces[sq] == BLACK_PAWN);
-            ASSERT(b.mailbox[sq] != NO_SQ);
-
+        for(int& sq : b.pieceList[BLACK_PAWN]) {
             int32_t file = SQ2F(sq);
             int32_t rank = SQ2R(sq);
 
@@ -756,7 +708,7 @@ void Movegen::generateBlackPawnMoves(std::vector<Move>& moves, Board& b,
     }
 }
 
-void Movegen::generateWhiteKnightMoves(std::vector<Move>& moves, Board& b,
+void Movegen::generateWhiteKnightMoves(Array<Move, 256>& moves, Board& b,
                                        int32_t numAttackers, Bitboard attackingRays,
                                        Bitboard pinnedPieces) {
     // Wenn der eigene König von mehr als einer Figur angegriffen wird, muss er sich bewegen
@@ -766,10 +718,7 @@ void Movegen::generateWhiteKnightMoves(std::vector<Move>& moves, Board& b,
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Springer den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int sq : b.pieceList[WHITE_KNIGHT]) {
-            ASSERT(b.pieces[sq] == WHITE_KNIGHT);
-            ASSERT(b.mailbox[sq] != NO_SQ);
-
+        for(int& sq : b.pieceList[WHITE_KNIGHT]) {
             // Wenn der Springer gefesselt ist, kann er sich nicht bewegen
             if(pinnedPieces & Bitboard(1ULL << b.mailbox[sq]))
                 continue;
@@ -789,10 +738,7 @@ void Movegen::generateWhiteKnightMoves(std::vector<Move>& moves, Board& b,
             }
         }
     } else {
-        for(int sq : b.pieceList[WHITE_KNIGHT]) {
-            ASSERT(b.pieces[sq] == WHITE_KNIGHT);
-            ASSERT(b.mailbox[sq] != NO_SQ);
-
+        for(int& sq : b.pieceList[WHITE_KNIGHT]) {
             // Wenn der Springer gefesselt ist, kann er sich nicht bewegen
             if(pinnedPieces & Bitboard(1ULL << b.mailbox[sq]))
                 continue;
@@ -811,7 +757,7 @@ void Movegen::generateWhiteKnightMoves(std::vector<Move>& moves, Board& b,
     }
 }
 
-void Movegen::generateBlackKnightMoves(std::vector<Move>& moves, Board& b,
+void Movegen::generateBlackKnightMoves(Array<Move, 256>& moves, Board& b,
                                        int32_t numAttackers, Bitboard attackingRays,
                                        Bitboard pinnedPieces) {
     // Wenn der eigene König von mehr als einer Figur angegriffen wird, muss er sich bewegen
@@ -821,10 +767,7 @@ void Movegen::generateBlackKnightMoves(std::vector<Move>& moves, Board& b,
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Springer den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int sq : b.pieceList[BLACK_KNIGHT]) {
-            ASSERT(b.pieces[sq] == BLACK_KNIGHT);
-            ASSERT(b.mailbox[sq] != NO_SQ);
-
+        for(int& sq : b.pieceList[BLACK_KNIGHT]) {
             // Wenn der Springer gefesselt ist, kann er sich nicht bewegen
             if(pinnedPieces & Bitboard(1ULL << b.mailbox[sq]))
                 continue;
@@ -844,10 +787,7 @@ void Movegen::generateBlackKnightMoves(std::vector<Move>& moves, Board& b,
             }
         }
     } else {
-        for(int sq : b.pieceList[BLACK_KNIGHT]) {
-            ASSERT(b.pieces[sq] == BLACK_KNIGHT);
-            ASSERT(b.mailbox[sq] != NO_SQ);
-
+        for(int& sq : b.pieceList[BLACK_KNIGHT]) {
             // Wenn der Springer gefesselt ist, kann er sich nicht bewegen
             if(pinnedPieces & Bitboard(1ULL << b.mailbox[sq]))
                 continue;
@@ -866,7 +806,7 @@ void Movegen::generateBlackKnightMoves(std::vector<Move>& moves, Board& b,
     }
 }
 
-void Movegen::generateWhiteBishopMoves(std::vector<Move>& moves, Board& b,
+void Movegen::generateWhiteBishopMoves(Array<Move, 256>& moves, Board& b,
                                        int32_t numAttackers, Bitboard attackingRays,
                                        Bitboard pinnedPiecesBitboard, int32_t* pinDirections) {
     // Wenn der eigene König von mehr als einer Figur angegriffen wird, muss er sich bewegen
@@ -876,10 +816,7 @@ void Movegen::generateWhiteBishopMoves(std::vector<Move>& moves, Board& b,
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Läufer den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int sq : b.pieceList[WHITE_BISHOP]) {
-            ASSERT(b.pieces[sq] == WHITE_BISHOP);
-            ASSERT(b.mailbox[sq] != NO_SQ);
-
+        for(int& sq : b.pieceList[WHITE_BISHOP]) {
             // Wenn der Läufer gefesselt ist, kann er sich nicht bewegen
             if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]))
                 continue;
@@ -905,10 +842,7 @@ void Movegen::generateWhiteBishopMoves(std::vector<Move>& moves, Board& b,
             }
         }
     } else {
-        for(int sq : b.pieceList[WHITE_BISHOP]) {
-            ASSERT(b.pieces[sq] == WHITE_BISHOP);
-            ASSERT(b.mailbox[sq] != NO_SQ);
-
+        for(int& sq : b.pieceList[WHITE_BISHOP]) {
             // Wenn der Läufer gefesselt ist, muss er sich in oder gegen die Richtung bewegen, in die er gefesselt ist
             if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq])) {
                 int32_t pinDirection = pinDirections[b.mailbox[sq]];
@@ -988,7 +922,7 @@ void Movegen::generateWhiteBishopMoves(std::vector<Move>& moves, Board& b,
     }
 }
 
-void Movegen::generateBlackBishopMoves(std::vector<Move>& moves, Board& b,
+void Movegen::generateBlackBishopMoves(Array<Move, 256>& moves, Board& b,
                                        int32_t numAttackers, Bitboard attackingRays,
                                        Bitboard pinnedPiecesBitboard, int32_t* pinDirections) {
     // Wenn der eigene König von mehr als einer Figur angegriffen wird, muss er sich bewegen
@@ -998,10 +932,7 @@ void Movegen::generateBlackBishopMoves(std::vector<Move>& moves, Board& b,
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Läufer den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int sq : b.pieceList[BLACK_BISHOP]) {
-            ASSERT(b.pieces[sq] == BLACK_BISHOP);
-            ASSERT(b.mailbox[sq] != NO_SQ);
-
+        for(int& sq : b.pieceList[BLACK_BISHOP]) {
             // Wenn der Läufer gefesselt ist, kann er sich nicht bewegen
             if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]))
                 continue;
@@ -1027,10 +958,7 @@ void Movegen::generateBlackBishopMoves(std::vector<Move>& moves, Board& b,
             }
         }
     } else {
-        for(int sq : b.pieceList[BLACK_BISHOP]) {
-            ASSERT(b.pieces[sq] == BLACK_BISHOP);
-            ASSERT(b.mailbox[sq] != NO_SQ);
-
+        for(int& sq : b.pieceList[BLACK_BISHOP]) {
             // Wenn der Läufer gefesselt ist, muss er sich in oder gegen die Richtung bewegen, in die er gefesselt ist
             if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq])) {
                 int32_t pinDirection = pinDirections[b.mailbox[sq]];
@@ -1110,7 +1038,7 @@ void Movegen::generateBlackBishopMoves(std::vector<Move>& moves, Board& b,
     }
 }
 
-void Movegen::generateWhiteRookMoves(std::vector<Move>& moves, Board& b,
+void Movegen::generateWhiteRookMoves(Array<Move, 256>& moves, Board& b,
                                      int32_t numAttackers, Bitboard attackingRays,
                                      Bitboard pinnedPiecesBitboard, int32_t* pinDirections) {
     // Wenn der eigene König von mehr als einer Figur angegriffen wird, muss er sich bewegen
@@ -1120,10 +1048,7 @@ void Movegen::generateWhiteRookMoves(std::vector<Move>& moves, Board& b,
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Turm den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int sq : b.pieceList[WHITE_ROOK]) {
-            ASSERT(b.pieces[sq] == WHITE_ROOK);
-            ASSERT(b.mailbox[sq] != NO_SQ);
-
+        for(int& sq : b.pieceList[WHITE_ROOK]) {
             // Wenn der Turm gefesselt ist, kann er sich nicht bewegen
             if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]))
                 continue;
@@ -1149,10 +1074,7 @@ void Movegen::generateWhiteRookMoves(std::vector<Move>& moves, Board& b,
             }
         }
     } else {
-        for(int sq : b.pieceList[WHITE_ROOK]) {
-            ASSERT(b.pieces[sq] == WHITE_ROOK);
-            ASSERT(b.mailbox[sq] != NO_SQ);
-
+        for(int& sq : b.pieceList[WHITE_ROOK]) {
             // Wenn der Turm gefesselt ist, muss er sich in oder gegen die Richtung bewegen, in die er gefesselt ist
             if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq])) {
                 int32_t pinDirection = pinDirections[b.mailbox[sq]];
@@ -1232,7 +1154,7 @@ void Movegen::generateWhiteRookMoves(std::vector<Move>& moves, Board& b,
     }
 }
 
-void Movegen::generateBlackRookMoves(std::vector<Move>& moves, Board& b,
+void Movegen::generateBlackRookMoves(Array<Move, 256>& moves, Board& b,
                                      int32_t numAttackers, Bitboard attackingRays,
                                      Bitboard pinnedPiecesBitboard, int32_t* pinDirections) {
     // Wenn der eigene König von mehr als einer Figur angegriffen wird, muss er sich bewegen
@@ -1242,10 +1164,7 @@ void Movegen::generateBlackRookMoves(std::vector<Move>& moves, Board& b,
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Turm den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int sq : b.pieceList[BLACK_ROOK]) {
-            ASSERT(b.pieces[sq] == BLACK_ROOK);
-            ASSERT(b.mailbox[sq] != NO_SQ);
-
+        for(int& sq : b.pieceList[BLACK_ROOK]) {
             // Wenn der Turm gefesselt ist, kann er sich nicht bewegen
             if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]))
                 continue;
@@ -1271,10 +1190,7 @@ void Movegen::generateBlackRookMoves(std::vector<Move>& moves, Board& b,
             }
         }
     } else {
-        for(int sq : b.pieceList[BLACK_ROOK]) {
-            ASSERT(b.pieces[sq] == BLACK_ROOK);
-            ASSERT(b.mailbox[sq] != NO_SQ);
-
+        for(int& sq : b.pieceList[BLACK_ROOK]) {
             // Wenn der Turm gefesselt ist, muss er sich in oder gegen die Richtung bewegen, in die er gefesselt ist
             if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq])) {
                 int32_t pinDirection = pinDirections[b.mailbox[sq]];
@@ -1354,7 +1270,7 @@ void Movegen::generateBlackRookMoves(std::vector<Move>& moves, Board& b,
     }
 }
 
-void Movegen::generateWhiteQueenMoves(std::vector<Move>& moves, Board& b,
+void Movegen::generateWhiteQueenMoves(Array<Move, 256>& moves, Board& b,
                                       int32_t numAttackers, Bitboard attackingRays,
                                       Bitboard pinnedPiecesBitboard, int32_t* pinDirections) {
     // Wenn der eigene König von mehr als einer Figur angegriffen wird, muss er sich bewegen
@@ -1364,10 +1280,7 @@ void Movegen::generateWhiteQueenMoves(std::vector<Move>& moves, Board& b,
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann die Dame den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int sq : b.pieceList[WHITE_QUEEN]) {
-            ASSERT(b.pieces[sq] == WHITE_QUEEN);
-            ASSERT(b.mailbox[sq] != NO_SQ);
-
+        for(int& sq : b.pieceList[WHITE_QUEEN]) {
             // Wenn die Dame gefesselt ist, kann sie sich nicht bewegen
             if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]))
                 continue;
@@ -1415,10 +1328,7 @@ void Movegen::generateWhiteQueenMoves(std::vector<Move>& moves, Board& b,
             }
         }
     } else {
-        for(int sq : b.pieceList[WHITE_QUEEN]) {
-            ASSERT(b.pieces[sq] == WHITE_QUEEN);
-            ASSERT(b.mailbox[sq] != NO_SQ);
-
+        for(int& sq : b.pieceList[WHITE_QUEEN]) {
             // Wenn die Dame gefesselt ist, muss sie sich in oder gegen die Richtung bewegen, in die sie gefesselt ist
             if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq])) {
                 int32_t pinDirection = pinDirections[b.mailbox[sq]];
@@ -1569,7 +1479,7 @@ void Movegen::generateWhiteQueenMoves(std::vector<Move>& moves, Board& b,
     }
 }
 
-void Movegen::generateBlackQueenMoves(std::vector<Move>& moves, Board& b,
+void Movegen::generateBlackQueenMoves(Array<Move, 256>& moves, Board& b,
                                       int32_t numAttackers, Bitboard attackingRays,
                                       Bitboard pinnedPiecesBitboard, int32_t* pinDirections) {
     // Wenn der eigene König von mehr als einer Figur angegriffen wird, muss er sich bewegen
@@ -1579,10 +1489,7 @@ void Movegen::generateBlackQueenMoves(std::vector<Move>& moves, Board& b,
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann die Dame den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int sq : b.pieceList[BLACK_QUEEN]) {
-            ASSERT(b.pieces[sq] == BLACK_QUEEN);
-            ASSERT(b.mailbox[sq] != NO_SQ);
-
+        for(int& sq : b.pieceList[BLACK_QUEEN]) {
             // Wenn die Dame gefesselt ist, kann sie sich nicht bewegen
             if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]))
                 continue;
@@ -1630,10 +1537,7 @@ void Movegen::generateBlackQueenMoves(std::vector<Move>& moves, Board& b,
             }
         }
     } else {
-        for(int sq : b.pieceList[BLACK_QUEEN]) {
-            ASSERT(b.pieces[sq] == BLACK_QUEEN);
-            ASSERT(b.mailbox[sq] != NO_SQ);
-
+        for(int& sq : b.pieceList[BLACK_QUEEN]) {
             // Wenn die Dame gefesselt ist, muss sie sich in oder gegen die Richtung bewegen, in die sie gefesselt ist
             if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq])) {
                 int32_t pinDirection = pinDirections[b.mailbox[sq]];
@@ -1784,7 +1688,7 @@ void Movegen::generateBlackQueenMoves(std::vector<Move>& moves, Board& b,
     }
 }
 
-void Movegen::generateWhiteKingMoves(std::vector<Move>& moves, Board& b,
+void Movegen::generateWhiteKingMoves(Array<Move, 256>& moves, Board& b,
                                      Bitboard attackedSquares) {
     int32_t KING_ATTACKS[8] = {
         DIAGONAL_ATTACKS[0], DIAGONAL_ATTACKS[1], DIAGONAL_ATTACKS[2], DIAGONAL_ATTACKS[3],
@@ -1792,9 +1696,6 @@ void Movegen::generateWhiteKingMoves(std::vector<Move>& moves, Board& b,
     };
 
     int sq = b.pieceList[WHITE_KING].front();
-    ASSERT(b.pieces[sq] == WHITE_KING);
-    ASSERT(b.mailbox[sq] != NO_SQ);
-
     for(int i = 0; i < 8; i++) {
         int n_sq = sq + KING_ATTACKS[i];
         if(b.mailbox[n_sq] != NO_SQ) {
@@ -1822,7 +1723,7 @@ void Movegen::generateWhiteKingMoves(std::vector<Move>& moves, Board& b,
     }
 }
 
-void Movegen::generateBlackKingMoves(std::vector<Move>& moves, Board& b,
+void Movegen::generateBlackKingMoves(Array<Move, 256>& moves, Board& b,
                                      Bitboard attackedSquares) {
     int32_t KING_ATTACKS[8] = {
         DIAGONAL_ATTACKS[0], DIAGONAL_ATTACKS[1], DIAGONAL_ATTACKS[2], DIAGONAL_ATTACKS[3],
@@ -1830,9 +1731,6 @@ void Movegen::generateBlackKingMoves(std::vector<Move>& moves, Board& b,
     };
 
     int sq = b.pieceList[BLACK_KING].front();
-    ASSERT(b.pieces[sq] == BLACK_KING);
-    ASSERT(b.mailbox[sq] != NO_SQ);
-
     for(int i = 0; i < 8; i++) {
         int n_sq = sq + KING_ATTACKS[i];
         if(b.mailbox[n_sq] != NO_SQ) {

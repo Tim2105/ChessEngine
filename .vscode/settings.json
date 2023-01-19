@@ -43,6 +43,12 @@
         "ratio": "cpp",
         "fstream": "cpp",
         "map": "cpp",
-        "xtree": "cpp"
+        "xtree": "cpp",
+        "array": "cpp",
+        "iterator": "cpp",
+        "ctime": "cpp",
+        "iomanip": "cpp",
+        "xlocmon": "cpp",
+        "xloctime": "cpp"
     }
 }

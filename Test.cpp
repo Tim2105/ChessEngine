@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <fstream>
+#include "Array.h"
 
 MovegenTestCase::MovegenTestCase(Board b, std::string d, std::vector<std::string> e) : board(b), description(d), expectedOutcomes(e) {
     std::cout << "Created test case: " << description << std::endl << std::endl;
@@ -14,7 +15,7 @@ MovegenTestCase::~MovegenTestCase() {
 bool MovegenTestCase::run() {
     std::cout << "Running test case: " << description << std::endl;
     std::string fen = board.fenString();
-    std::vector<Move> moves = board.generateLegalMoves();
+    Array<Move, 256> moves = board.generateLegalMoves();
     std::cout << "Generated " << moves.size() << " moves." << std::endl;
     std::cout << "Expected " << expectedOutcomes.size() << " moves." << std::endl;
     if(moves.size() != expectedOutcomes.size()) {

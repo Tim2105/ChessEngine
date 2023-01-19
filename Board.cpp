@@ -1,7 +1,5 @@
 #include "Board.h"
-#include <iostream>
 #include <stdio.h>
-#include "OrderedMoveList.h"
 
 Board::Board() {
     initMailbox();
@@ -273,22 +271,12 @@ void Board::makeMove(Move m) {
 
     moveHistory.push_back(entry);
 
-    if(m.toString() == "E8->D7 CAPTURE")
-        int i = 0;
-
     // Zug ausführen
-    ASSERT(pieceType != EMPTY);
-    ASSERT((pieceType & COLOR_MASK) == side);
-    if(capturedPieceType != EMPTY)
-        ASSERT((capturedPieceType & COLOR_MASK) != side);
 
     // Spezialfall: En Passant
     if(m.isEnPassant()) {
-        ASSERT(enPassantSquare != NO_SQ);
-
         // Entferne den geschlagenen Bauern
         int32_t other = side ^ COLOR_MASK;
-        ASSERT(capturedPieceType == (other | PAWN));
 
         int32_t enPassantSquare64 = mailbox[enPassantCaptureSq];
         pieces[enPassantCaptureSq] = EMPTY;
@@ -305,7 +293,6 @@ void Board::makeMove(Move m) {
     if(m.isCastle()) {
         if(m.isKingsideCastle()) {
             // Turm auf Königsseite bewegen
-            ASSERT(TYPEOF(pieces[origin + 3]) == ROOK);
             pieces[origin + 3] = EMPTY;
             pieces[origin + 1] = side | ROOK;
             pieceList[side | ROOK].remove(origin + 3);
@@ -324,7 +311,6 @@ void Board::makeMove(Move m) {
             }
         } else {
             // Turm auf Damenseite bewegen
-            ASSERT(TYPEOF(pieces[origin - 4]) == ROOK);
             pieces[origin - 4] = EMPTY;
             pieces[origin - 1] = side | ROOK;
             pieceList[side | ROOK].remove(origin - 4);
@@ -390,8 +376,6 @@ void Board::makeMove(Move m) {
             promotedPieceType = BISHOP;
         else if(m.isPromotionKnight())
             promotedPieceType = KNIGHT;
-        else
-            ASSERT(false);
 
         // Entferne den Bauern, die allgemeinen Bitboards müssen nicht angepasst werden
         pieceList[side | PAWN].remove(destination);
@@ -481,8 +465,6 @@ void Board::undoMove() {
             promotedPieceType = BISHOP;
         else if(move.isPromotionKnight())
             promotedPieceType = KNIGHT;
-        else
-            ASSERT(false);
         
         pieceType = side | PAWN;
 
@@ -533,8 +515,6 @@ void Board::undoMove() {
     if(move.isCastle()) {
         if(move.isKingsideCastle()) {
             // Rochade auf Königsseite
-            ASSERT(TYPEOF(pieces[origin + 1]) == ROOK);
-            ASSERT(pieces[origin + 3] == EMPTY);
             pieces[origin + 3] = side | ROOK;
             pieces[origin + 1] = EMPTY;
             pieceList[side | ROOK].remove(origin + 1);
@@ -552,8 +532,6 @@ void Board::undoMove() {
             }
         } else {
             // Rochade auf Damenseite
-            ASSERT(TYPEOF(pieces[origin - 1]) == ROOK);
-            ASSERT(pieces[origin - 4] == EMPTY);
             pieces[origin - 4] = side | ROOK;
             pieces[origin - 1] = EMPTY;
             pieceList[side | ROOK].remove(origin - 1);
@@ -574,10 +552,6 @@ void Board::undoMove() {
 
     // Spezialfall: En Passant
     if(move.isEnPassant()) {
-        ASSERT(enPassantSquare != NO_SQ);
-        ASSERT(pieces[enPassantCaptureSq] == EMPTY);
-        ASSERT(TYPEOF(capturedPieceType) == PAWN);
-
         int32_t enPassantSquare64 = mailbox[enPassantCaptureSq];
         pieces[enPassantCaptureSq] = capturedPieceType;
         pieceList[capturedPieceType].push_back(enPassantCaptureSq);
@@ -777,9 +751,8 @@ void Board::generatePinnedPiecesBitboards(int32_t side, Bitboard& pinnedPiecesBi
     }
 }
 
-std::vector<Move> Board::generatePseudoLegalMoves() {
-    std::vector<Move> moves;
-    moves.reserve(256);
+Array<Move, 256> Board::generatePseudoLegalMoves() {
+    Array<Move, 256> moves;
 
     if(side == WHITE) {
         Movegen::generatePseudoLegalWhitePawnMoves(moves, *this);
@@ -800,9 +773,8 @@ std::vector<Move> Board::generatePseudoLegalMoves() {
     return moves;
 }
 
-std::vector<Move> Board::generateLegalMoves() {
-    std::vector<Move> legalMoves;
-    legalMoves.reserve(256);
+Array<Move, 256> Board::generateLegalMoves() {
+    Array<Move, 256> legalMoves;
 
     if(side == WHITE) {
         Bitboard attackedSquares = generateAttackBitboard(BLACK);

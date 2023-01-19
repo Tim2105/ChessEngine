@@ -1,15 +1,15 @@
 #ifndef BOARD_H
 #define BOARD_H
 
-#include <stdint.h>
 #include <vector>
-#include <list>
+#include <stdint.h>
 #include "Move.h"
 #include "Definitions.h"
 #include <stdio.h>
 #include <string>
 #include "Bitboard.h"
 #include "Movegen.h"
+#include "Array.h"
 
 /**
  * @brief Enthält alle notwendigen Informationen um einen Zug rückgängig zu machen.
@@ -115,7 +115,7 @@ class Board {
          * @brief Enthält eine Liste aller Figuren für jeden Figurentyp auf dem Schachbrett.
          * Speichert den Index der Position.
          */
-        std::list<int32_t> pieceList[15] = {
+        Array<int32_t, 8> pieceList[15] = {
             {},
             {A2, B2, C2, D2, E2, F2, G2, H2},
             {B1, G1},
@@ -252,13 +252,13 @@ class Board {
          * @brief Generiert alle Pseudo-Legalen Züge.
          * Pseudo-Legale Züge sind Züge, die auf dem Schachbrett möglich sind, aber eventuell den eigenen König im Schach lassen.
          */
-        std::vector<Move> generatePseudoLegalMoves();
+        Array<Move, 256> generatePseudoLegalMoves();
 
         /**
          * @brief Generiert alle Legalen Züge und gibt sie nach ihrer Stärke bewertet zurück.
          * Legale Züge sind Züge, die auf dem Schachbrett möglich sind und den eigenen König nicht im Schach lassen.
          */
-        std::vector<Move> generateLegalMoves();
+        Array<Move, 256> generateLegalMoves();
 
         /**
          * @brief Führt einen Zug aus.
