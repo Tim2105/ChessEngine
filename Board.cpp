@@ -247,6 +247,10 @@ void Board::generateBitboards() {
     
     // alle Figuren
     allPiecesBitboard = whitePiecesBitboard | blackPiecesBitboard;
+
+    // Angriffsbitboards
+    whiteAttackBitboard = generateAttackBitboard(WHITE);
+    blackAttackBitboard = generateAttackBitboard(BLACK);
 }
 
 void Board::makeMove(Move m) {
@@ -268,6 +272,7 @@ void Board::makeMove(Move m) {
     entry.enPassantSquare = enPassantSquare;
     entry.fiftyMoveRule = fiftyMoveRule;
     entry.hashValue = hashValue;
+    entry.replacedAttackBitboard = side == WHITE ? whiteAttackBitboard : blackAttackBitboard;
 
     moveHistory.push_back(entry);
 
@@ -387,6 +392,12 @@ void Board::makeMove(Move m) {
         pieceBitboard[side | promotedPieceType].setBit(destination64);
     }
 
+    // Aktualisiere Angriffsbitboards
+    if(side == WHITE)
+        whiteAttackBitboard = generateAttackBitboard(WHITE);
+    else
+        blackAttackBitboard = generateAttackBitboard(BLACK);
+
     // Aktualisiere Rochandenrechte und En Passant
     enPassantSquare = NO_SQ;
 
@@ -451,6 +462,11 @@ void Board::undoMove() {
     fiftyMoveRule = moveEntry.fiftyMoveRule;
     enPassantSquare = moveEntry.enPassantSquare;
     castlingPermission = moveEntry.castlingPermission;
+
+    if(side == WHITE)
+        whiteAttackBitboard = moveEntry.replacedAttackBitboard;
+    else
+        blackAttackBitboard = moveEntry.replacedAttackBitboard;
 
     int32_t enPassantCaptureSq = enPassantSquare + (side == WHITE ? SOUTH : NORTH);
 
@@ -777,7 +793,7 @@ Array<Move, 256> Board::generateLegalMoves() {
     Array<Move, 256> legalMoves;
 
     if(side == WHITE) {
-        Bitboard attackedSquares = generateAttackBitboard(BLACK);
+        Bitboard attackedSquares = blackAttackBitboard;
 
         Bitboard attackingRays;
         int32_t numAttackers = numSquareAttackers(pieceList[WHITE_KING].front(), BLACK, allPiecesBitboard | pieceBitboard[BLACK_KING], attackingRays);
@@ -794,7 +810,7 @@ Array<Move, 256> Board::generateLegalMoves() {
         Movegen::generateWhiteQueenMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
         Movegen::generateWhiteKingMoves(legalMoves, *this, attackedSquares);
     } else {
-        Bitboard attackedSquares = generateAttackBitboard(WHITE);
+        Bitboard attackedSquares = whiteAttackBitboard;
 
         Bitboard attackingRays;
         int32_t numAttackers = numSquareAttackers(pieceList[BLACK_KING].front(), WHITE, allPiecesBitboard | pieceBitboard[WHITE_KING], attackingRays);

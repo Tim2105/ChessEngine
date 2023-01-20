@@ -4,7 +4,7 @@
 #include <vector>
 #include <stdint.h>
 #include "Move.h"
-#include "Definitions.h"
+#include "BoardDefinitions.h"
 #include <stdio.h>
 #include <string>
 #include "Bitboard.h"
@@ -18,7 +18,6 @@ class MoveHistoryEntry {
     friend class Board;
 
     private:
-    public:
         /**
          * @brief Der Zug der rückgängig gemacht werden soll.
          */
@@ -48,6 +47,11 @@ class MoveHistoryEntry {
          * @brief Speichert den Hashwert vor diesem Zug.
          */
         uint64_t hashValue;
+
+        /**
+         * @brief Speichert das, in diesem Zug überschriebene Bitboard.
+         */
+        Bitboard replacedAttackBitboard;
     
     public:
         /**
@@ -58,14 +62,16 @@ class MoveHistoryEntry {
          * @param enPassantSquare Speichert die Position eines möglichen En Passant Zuges vor diesem Zug(wenn möglich).
          * @param fiftyMoveRule Der 50-Zug Counter vor diesem Zug.
          * @param hashValue Speichert den Hashwert vor diesem Zug.
+         * @param replacedAttackBitboard Speichert das, in diesem Zug überschriebene Bitboard.
          */
-        MoveHistoryEntry(Move move, int32_t capturedPiece, int32_t castlePermission, int32_t enPassantSquare, int32_t fiftyMoveRule, uint64_t hashValue) {
+        MoveHistoryEntry(Move move, int32_t capturedPiece, int32_t castlePermission, int32_t enPassantSquare, int32_t fiftyMoveRule, uint64_t hashValue, Bitboard replacedAttackBitboard) {
             this->move = move;
             this->capturedPiece = capturedPiece;
             this->castlingPermission = castlePermission;
             this->enPassantSquare = enPassantSquare;
             this->fiftyMoveRule = fiftyMoveRule;
             this->hashValue = hashValue;
+            this->replacedAttackBitboard = replacedAttackBitboard;
         }
 
         /**
@@ -89,6 +95,7 @@ class MoveHistoryEntry {
  */
 class Board {
     friend class Movegen;
+    friend class BoardEvaluator;
     
     private:
     public:
@@ -183,6 +190,16 @@ class Board {
          * @brief Speichert alle Felder, auf denen sich Figuren befinden.
          */
         Bitboard pieceBitboard[15];
+
+        /**
+         * @brief Speichert alle Felder, die Weiß angreift(In Pseudo-Legalen Zügen).
+         */
+        Bitboard whiteAttackBitboard;
+
+        /**
+         * @brief Speichert alle Felder, die Schwarz angreift(In Pseudo-Legalen Zügen).
+         */
+        Bitboard blackAttackBitboard;
 
         /**
          * @brief Speichert alle gespielten Züge und notwendige Informationen um diesen effizient rückgängig zu machen.

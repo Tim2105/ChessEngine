@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <iostream>
-#include "Definitions.h"
+#include "BoardDefinitions.h"
 
 /**
  * @brief Kapselt einen Zug.

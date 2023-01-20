@@ -2,7 +2,7 @@
 #define MOVEGEN_H
 
 #include "Board.h"
-#include "Definitions.h"
+#include "BoardDefinitions.h"
 #include "Move.h"
 #include "Bitboard.h"
 #include "Array.h"

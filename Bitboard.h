@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <iostream>
+#include <functional>
 
 class Bitboard {
     private:
@@ -47,6 +48,11 @@ class Bitboard {
          * @brief Gibt die Anzahl der gesetzten Bits zurück.
          */
         int32_t getNumberOfSetBits() const;
+
+        /**
+         * @brief Gibt ein Bitboard zurück, das die Bits des Bitboards in umgekehrter Reihenfolge enthält.
+         */
+        Bitboard reversed() const;
 
         /**
          * @brief Erlaubt explizite und implizite Konvertierung in bool.
@@ -107,6 +113,24 @@ class Bitboard {
          * @brief Zuweisungsoperator.
          */
         Bitboard operator=(const Bitboard& bitboard);
+};
+
+/**
+ * @brief Hashfunktion für Bitboards.
+ */
+template <>
+struct std::hash<Bitboard> {
+    size_t operator()(const Bitboard& bitboard) const {
+        uint64_t res = bitboard;
+
+        res ^= res >> 33;
+        res *= 0xff51afd7ed558ccdULL;
+        res ^= res >> 33;
+        res *= 0xc4ceb9fe1a85ec53ULL;
+        res ^= res >> 33;
+
+        return res;
+    }
 };
 
 /**

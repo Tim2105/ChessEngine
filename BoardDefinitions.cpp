@@ -1,4 +1,4 @@
-#include "Definitions.h"
+#include "BoardDefinitions.h"
 
 int32_t KNIGHT_ATTACKS[8] = {
     -21, -19, -12, -8, 8, 12, 19, 21

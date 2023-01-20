@@ -1,18 +1,9 @@
 #ifndef DEFINITIONS_H
 #define DEFINITIONS_H
 
-#define DEBUG
-
-#ifndef DEBUG
-#define ASSERT(x)
-#else
-#define ASSERT(x) \
-if(!(x)) { \
-printf("ASSERTION FAILED: In %s on line %d\n", \
-        __FILE__, __LINE__); \
-        __debugbreak(); \
-}
-#endif
+/**
+ * @brief Definitionen für das Spielfeld und die Zuggeneration
+ */
 
 #define FR2SQ(f,r) (( 21 + (f) ) + ( (r) * 10 ))
 #define SQ2F(sq) (( (sq) % 10 ) - 1 )

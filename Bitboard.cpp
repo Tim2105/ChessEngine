@@ -1,5 +1,5 @@
 #include "Bitboard.h"
-#include "Definitions.h"
+#include "BoardDefinitions.h"
 
 Bitboard::Bitboard() {
     bitboard = 0ULL;
@@ -57,6 +57,17 @@ int32_t Bitboard::getLastSetBit() const {
 
 int32_t Bitboard::getNumberOfSetBits() const {
     return __builtin_popcountll(bitboard);
+}
+
+Bitboard Bitboard::reversed() const {
+    uint64_t reversedBitboard = 0ULL;
+
+    for(int r = RANK_1; r <= RANK_8; r++)
+        for(int f = FILE_A; f <= FILE_H; f++)
+            if(getBit(r * 8 + f))
+                reversedBitboard |= (1ULL << (RANK_8 - r) * 8 + f);
+
+    return Bitboard(reversedBitboard);
 }
 
 Bitboard::operator bool() const {
