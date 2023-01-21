@@ -33,14 +33,15 @@ class HashTable {
         void put(K key, V value);
 
         /**
-         * @brief Gibt den Wert des Elements mit dem Schlüssel key zurück.
+         * @brief Überprüft, ob ein Schlüssel existiert.
+         * Wenn ja, wird der Wert in value geschrieben.
          * 
          * @param key Der Schlüssel des Elements.
          * @param value Der Wert wird hierhin geschrieben.
          * @return true Wenn das Element gefunden wurde.
          * @return false Wenn das Element nicht gefunden wurde.
          */
-        bool get(K key, V& value);
+        bool probe(K key, V& value);
 };
 
 template <typename K, typename V, size_t bucketCount, size_t bucketSize>
@@ -60,7 +61,7 @@ void HashTable<K, V, bucketCount, bucketSize>::put(K key, V value) {
 }
 
 template <typename K, typename V, size_t bucketCount, size_t bucketSize>
-bool HashTable<K, V, bucketCount, bucketSize>::get(K key, V& value) {
+bool HashTable<K, V, bucketCount, bucketSize>::probe(K key, V& value) {
     size_t hash = std::hash<K>{}(key);
     size_t index = hash % bucketCount;
 

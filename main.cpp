@@ -21,37 +21,38 @@ void perft(Board& board, int depth, int& count) {
 }
 
 int main() {
-    Board board("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8");
+    
 
-    for(int i = 1; i < 6; i++) {
-        int count = 0;
-        auto start = std::chrono::high_resolution_clock::now();
-        perft(board, i, count);
-        auto end = std::chrono::high_resolution_clock::now();
+    // for(int i = 1; i < 6; i++) {
+    //     int count = 0;
+    //     auto start = std::chrono::high_resolution_clock::now();
+    //     perft(board, i, count);
+    //     auto end = std::chrono::high_resolution_clock::now();
 
-        double time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    //     double time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-        std::cout << "Perft(Depth: " << i << "): " << std::endl;
-        std::cout << "Nodes: " << count << std::endl;
-        std::cout << "Time: " << std::setprecision(0) << std::fixed << time << "ms" << std::endl;
-        std::cout << "Nodes/s: " << std::setprecision(0) << std::fixed << count / (time / 1000) << std::endl << std::endl;
+    //     std::cout << "Perft(Depth: " << i << "): " << std::endl;
+    //     std::cout << "Nodes: " << count << std::endl;
+    //     std::cout << "Time: " << std::setprecision(0) << std::fixed << time << "ms" << std::endl;
+    //     std::cout << "Nodes/s: " << std::setprecision(0) << std::fixed << count / (time / 1000) << std::endl << std::endl;
+    // }
+
+    Board board;
+
+    GameTreeSearch search(board);
+
+    auto start = std::chrono::high_resolution_clock::now();
+    Array pv = search.search(4);
+    auto end = std::chrono::high_resolution_clock::now();
+
+    std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
+
+    std::cout << "PV:" << std::endl;
+
+    for(Move m : pv) {
+        std::cout << m.toString() << std::endl;
     }
 
-
-
-    // GameTreeSearch search(board);
-
-    // auto start = std::chrono::high_resolution_clock::now();
-    // Array pv = search.search(6);
-    // auto end = std::chrono::high_resolution_clock::now();
-
-    // std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
-
-    // std::cout << "PV:" << std::endl;
-
-    // for(Move m : pv) {
-    //     std::cout << m.toString() << std::endl;
-    // }
 
     // Board boardOtherSide = board;
     // boardOtherSide.side ^= COLOR_MASK;
@@ -60,5 +61,7 @@ int main() {
 
     // std::cout << "Evaluation for moving color: " << evaluator.evaluate(board) << std::endl;
     // std::cout << "Evaluation for other color: " << evaluator.evaluate(boardOtherSide) << std::endl;
+    
+
     return 0;
 }
