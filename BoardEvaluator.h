@@ -190,8 +190,10 @@ class BoardEvaluator {
          * @brief Überprüft, ob das Spiel zwangsläufig ein Unentschieden ist.
          * Ein Spiel ist zwangsläufig ein Unentschieden, wenn kein Spieler Schachmatt gesetzt werden kann,
          * auch wenn beide Spieler kooperieren würden.
+         * Andere Möglichkeiten für ein Unentschieden sind z.B. 50 Züge ohne Bauern- oder Schlagzug
+         * oder dreimal dieselbe Stellung.
          */
-        bool isDraw(const Board& b);
+        bool isDraw(Board& b);
 
     public:
         /**

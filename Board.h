@@ -10,6 +10,7 @@
 #include "Bitboard.h"
 #include "Movegen.h"
 #include "Array.h"
+#include "HashTable.h"
 
 /**
  * @brief Enthält alle notwendigen Informationen um einen Zug rückgängig zu machen.
@@ -98,7 +99,6 @@ class Board {
     friend class BoardEvaluator;
     
     private:
-    public:
          /**
           * @brief Stellt das Schachbrett in 10x12 Notation dar.
           * https://www.chessprogramming.org/10x12_Board
@@ -218,9 +218,39 @@ class Board {
         int32_t mailbox64[64];
 
         /**
+         * @brief Array mit allen Zobrist-Hashes für alle Figuren und Felder
+         */ 
+        uint64_t zobristPieceKeys[15][64];
+
+        /**
+         * @brief Zobrist-Hash für die Seite, die am Zug ist.
+         */
+        uint64_t zobristBlackToMove;
+
+        /**
+         * @brief Zobrist-Hash für alle noch offenen Rochaden.
+         */
+        uint64_t zobristCastlingKeys[16];
+
+        /**
+         * @brief Zobrist-Hash für alle Linien, auf denen ein Bauer En Passant geschlagen werden kann.
+         */
+        uint64_t zobristEnPassantKeys[8];
+
+        /**
          * @brief Initialisiert die Mailbox-Arrays
          */
         void initMailbox();
+
+        /**
+         * @brief Initialisiert die Zobrist-Hashes für alle Figuren, Felder und Sonderinformationen.
+         */
+        void initZobrist();
+
+        /**
+         * @brief Generiert einen Zobrist-Hash für das aktuelle Schachbrett.
+         */
+        uint64_t generateHashValue();
 
         /**
          * @brief Generiert ein Bitboard, das alle besetzten Felder enthält(König ausgeschlossen).
@@ -264,6 +294,8 @@ class Board {
         Board(std::string fen);
 
         virtual ~Board();
+
+        uint64_t getHashValue() const { return hashValue; };
 
         /**
          * @brief Generiert alle Pseudo-Legalen Züge.

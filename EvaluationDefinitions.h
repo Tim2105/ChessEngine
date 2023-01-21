@@ -85,10 +85,14 @@ extern Bitboard neighboringFiles[];
  */
 extern int32_t MG_PSQT[][64];
 
+#define MG_PSQT_MULTIPLIER 1
+
 /**
  * @brief Die PSQT-Tabellen aus der Sicht der weißen Figuren für das Endgame.
  */
 extern int32_t EG_PSQT[][64];
+
+#define EG_PSQT_MULTIPLIER 1
 
 /**
  * @brief Konstanten zur Berechnung der Spielphase.

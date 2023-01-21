@@ -22,8 +22,9 @@ void perft(Board& board, int depth, int& count) {
 
 int main() {
     
+    Board board;
 
-    // for(int i = 1; i < 6; i++) {
+    // for(int i = 1; i < 7; i++) {
     //     int count = 0;
     //     auto start = std::chrono::high_resolution_clock::now();
     //     perft(board, i, count);
@@ -37,12 +38,10 @@ int main() {
     //     std::cout << "Nodes/s: " << std::setprecision(0) << std::fixed << count / (time / 1000) << std::endl << std::endl;
     // }
 
-    Board board;
-
     GameTreeSearch search(board);
 
     auto start = std::chrono::high_resolution_clock::now();
-    Array pv = search.search(4);
+    Array pv = search.search(5);
     auto end = std::chrono::high_resolution_clock::now();
 
     std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;

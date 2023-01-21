@@ -1,5 +1,6 @@
 #include "Board.h"
 #include <stdio.h>
+#include <random>
 
 Board::Board() {
     initMailbox();
@@ -14,6 +15,7 @@ Board::Board() {
     ply = 0;
 
     generateBitboards();
+    initZobrist();
 }
 
 Board::Board(const Board& b) {
@@ -31,7 +33,10 @@ Board::Board(const Board& b) {
     castlingPermission = b.castlingPermission;
     ply = b.ply;
 
+    moveHistory = b.moveHistory;
+
     generateBitboards();
+    initZobrist();
 }
 
 Board::Board(std::string fen) {
@@ -125,6 +130,7 @@ Board::Board(std::string fen) {
     ply = (std::stoi(fen) - 1) * 2 + plyAdd;
 
     generateBitboards();
+    initZobrist();
 }
 
 Board::~Board() {
@@ -145,6 +151,56 @@ void Board::initMailbox() {
         }
     }    
 }
+
+void Board::initZobrist() {
+    // PRNG initialisieren
+    std::random_device rd;
+    std::mt19937_64 gen(rd());
+    std::uniform_int_distribution<uint64_t> dis(0, UINT64_MAX);
+
+    hashValue = 0ULL;
+
+    for(int i = 0; i < 15; i++)
+        for(int j = 0; j < 64; j++)
+            zobristPieceKeys[i][j] = dis(gen);
+    
+    zobristBlackToMove = dis(gen);
+
+    for(int i = 0; i < 16; i++)
+        zobristCastlingKeys[i] = dis(gen);
+
+    for(int i = 0; i < 8; i++)
+        zobristEnPassantKeys[i] = dis(gen);
+
+    hashValue = generateHashValue();
+}
+
+uint64_t Board::generateHashValue() {
+    uint64_t hash = 0ULL;
+
+    // Figuren
+    for(int i = 0; i < 120; i++) {
+        int piece = pieces[i];
+        if(piece != EMPTY)
+            hash ^= zobristPieceKeys[piece][mailbox[i]];
+    }
+
+    // Zugfarbe
+    if(side == BLACK)
+        hash ^= zobristBlackToMove;
+    
+    // Rochadenrechte
+    hash ^= zobristCastlingKeys[castlingPermission];
+
+    // En Passant
+    if(enPassantSquare != NO_SQ) {
+        int file = SQ2F(enPassantSquare);
+        hash ^= zobristEnPassantKeys[file];
+    }
+
+    return hash;
+}
+
 
 void Board::generateBitboards() {
     // weißer Bauer
@@ -292,6 +348,8 @@ void Board::makeMove(Move m) {
             blackPiecesBitboard.clearBit(enPassantSquare64);
         else
             whitePiecesBitboard.clearBit(enPassantSquare64);
+        
+        hashValue ^= zobristPieceKeys[capturedPieceType][enPassantSquare64];
     }
 
     // Spezialfall: Rochade
@@ -314,6 +372,9 @@ void Board::makeMove(Move m) {
                 blackPiecesBitboard.clearBit(origin64 + 3);
                 blackPiecesBitboard.setBit(origin64 + 1);
             }
+
+            hashValue ^= zobristPieceKeys[side | ROOK][origin64 + 3];
+            hashValue ^= zobristPieceKeys[side | ROOK][origin64 + 1];
         } else {
             // Turm auf Damenseite bewegen
             pieces[origin - 4] = EMPTY;
@@ -332,6 +393,9 @@ void Board::makeMove(Move m) {
                 blackPiecesBitboard.clearBit(origin64 - 4);
                 blackPiecesBitboard.setBit(origin64 - 1);
             }
+
+            hashValue ^= zobristPieceKeys[side | ROOK][origin64 - 4];
+            hashValue ^= zobristPieceKeys[side | ROOK][origin64 - 1];
         }
     }
 
@@ -342,6 +406,9 @@ void Board::makeMove(Move m) {
     pieceList[pieceType].push_back(destination);
     pieceBitboard[pieceType].clearBit(origin64);
     pieceBitboard[pieceType].setBit(destination64);
+
+    hashValue ^= zobristPieceKeys[pieceType][origin64];
+    hashValue ^= zobristPieceKeys[pieceType][destination64];
 
     // Könige sind in den allgemeinen Bitboards nicht enthalten
     if(TYPEOF(pieceType) != KING) {
@@ -365,6 +432,8 @@ void Board::makeMove(Move m) {
         else
             whitePiecesBitboard.clearBit(destination64);
         
+        hashValue ^= zobristPieceKeys[capturedPieceType][destination64];
+        
         // Wenn die schlagende Figur ein König ist, muss das Feld aus dem allgemeinen Bitboard entfernt werden
         if(TYPEOF(pieceType) == KING)
             allPiecesBitboard.clearBit(destination64);
@@ -386,10 +455,14 @@ void Board::makeMove(Move m) {
         pieceList[side | PAWN].remove(destination);
         pieceBitboard[side | PAWN].clearBit(destination64);
 
+        hashValue ^= zobristPieceKeys[side | PAWN][destination64];
+
         // Füge die neue Figur hinzu
         pieces[destination] = side | promotedPieceType;
         pieceList[side | promotedPieceType].push_back(destination);
         pieceBitboard[side | promotedPieceType].setBit(destination64);
+
+        hashValue ^= zobristPieceKeys[side | promotedPieceType][destination64];
     }
 
     // Aktualisiere Angriffsbitboards
@@ -427,11 +500,24 @@ void Board::makeMove(Move m) {
             castlingPermission &= ~BLACK_KINGSIDE_CASTLE;
     }
 
+    if(castlingPermission != entry.castlingPermission) {
+        hashValue ^= zobristCastlingKeys[entry.castlingPermission];
+        hashValue ^= zobristCastlingKeys[castlingPermission];
+    }
+
     if(m.isDoublePawn()) {
         if(side == WHITE)
             enPassantSquare = destination + SOUTH;
         else
             enPassantSquare = destination + NORTH;
+    }
+
+    if(enPassantSquare != entry.enPassantSquare) {
+        if(entry.enPassantSquare != NO_SQ)
+            hashValue ^= zobristEnPassantKeys[SQ2F(entry.enPassantSquare)];
+        
+        if(enPassantSquare != NO_SQ)
+            hashValue ^= zobristEnPassantKeys[SQ2F(enPassantSquare)];
     }
 
     // Aktualisiere den Spielzustand
@@ -441,6 +527,7 @@ void Board::makeMove(Move m) {
         fiftyMoveRule++;
 
     side = side ^ COLOR_MASK;
+    hashValue ^= zobristBlackToMove;
     ply++;
 }
 
@@ -462,6 +549,7 @@ void Board::undoMove() {
     fiftyMoveRule = moveEntry.fiftyMoveRule;
     enPassantSquare = moveEntry.enPassantSquare;
     castlingPermission = moveEntry.castlingPermission;
+    hashValue = moveEntry.hashValue;
 
     if(side == WHITE)
         whiteAttackBitboard = moveEntry.replacedAttackBitboard;

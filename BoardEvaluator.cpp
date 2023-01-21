@@ -60,7 +60,7 @@ int32_t BoardEvaluator::middlegameEvaluation(Board& b) {
     int32_t score = 0;
 
     score += evalMaterial(b);
-    score += evalMG_PSQT(b);
+    score += evalMG_PSQT(b) * MG_PSQT_MULTIPLIER;
     score += evalMobility(b) * MG_MOBILITY_VALUE;
     score += evalMGKingSafety(b);
 
@@ -91,20 +91,17 @@ int32_t BoardEvaluator::endgameEvaluation(Board& b) {
         score -= (7 - distBetweenKings) * EG_KING_DISTANCE_VALUE;
 
     score += materialScore;
-    score += evalEG_PSQT(b);
+    score += evalEG_PSQT(b) * EG_PSQT_MULTIPLIER;
     score += evalMobility(b) * EG_MOBILITY_VALUE;
     score += evalEGKingSafety(b);
 
     return score;
 }
 
-bool BoardEvaluator::isDraw(const Board& b) {
+bool BoardEvaluator::isDraw(Board& b) {
     // Fifty-move rule
     if(b.fiftyMoveRule >= 100)
         return true;
-    
-    // Wiederholung
-    // TODO
 
     // Unzureichendes Material
     int32_t whitePawns = b.pieceList[WHITE_PAWN].size();
