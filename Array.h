@@ -21,7 +21,7 @@ class Array {
     public:
         Array();
         Array(const Array<T, s>& other);
-        Array(std::initializer_list<int32_t> squares);
+        Array(std::initializer_list<int32_t> list);
         ~Array();
 
         Array& operator=(const Array& other);
@@ -39,6 +39,11 @@ class Array {
          */
         template <size_t s2>
         void push_back(Array<T, s2>& other);
+
+        /**
+         * @brief Fügt ein Element an der angegebenen Position ein.
+         */
+        void insert(size_t index, T elem);
 
         /**
          * @brief Entfernt das erste Vorkommen des Elements aus dem Array.
@@ -116,6 +121,13 @@ template <size_t s2>
 void Array<T,s>::push_back(Array<T, s2>& other) {
     memcpy(array + count, other.array, other.count * sizeof(T));
     count += other.count;
+}
+
+template <typename T, size_t s>
+void Array<T, s>::insert(size_t index, T elem) {
+    memmove(array + index + 1, array + index, (count - index) * sizeof(T));
+    array[index] = elem;
+    count++;
 }
 
 template <typename T, size_t s>

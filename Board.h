@@ -11,6 +11,7 @@
 #include "Movegen.h"
 #include "Array.h"
 #include "HashTable.h"
+#include <functional>
 
 /**
  * @brief Enthält alle notwendigen Informationen um einen Zug rückgängig zu machen.

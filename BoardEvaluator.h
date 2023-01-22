@@ -195,6 +195,19 @@ class BoardEvaluator {
          */
         bool isDraw(Board& b);
 
+        /**
+         * @brief Versucht, den Angreifer mit dem geringsten Wert zu finden, der das Feld to angreift.
+         * 
+         * @return Das Feld des Angreifers mit dem geringsten Wert.
+         */
+        int32_t getSmallestAttacker(Board& b, int32_t to, int32_t side);
+
+        /**
+         * @brief Static Exchange Evaluation.
+         * https://www.chessprogramming.org/Static_Exchange_Evaluation
+         */
+        int32_t see(Board& b, Move& m);
+
     public:
         /**
          * @brief Führt eine statische Bewertung für das Midgame der
@@ -232,6 +245,11 @@ class BoardEvaluator {
          * Eine Bewertung von 0 bedeutet ein ausgeglichenes Spiel.
          */
         int32_t evaluate(Board& b);
+
+        /**
+         * @brief Führt eine statische Bewertung eines Zugs durch.
+         */
+        int32_t evaluateMove(Board& b, Move& m);
 };
 
 #endif

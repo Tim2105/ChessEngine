@@ -6,6 +6,19 @@
 #include "EvaluationDefinitions.h"
 #include "BoardEvaluator.h"
 #include <stdint.h>
+#include <functional>
+#include "HashTable.h"
+
+#define PV_NODE 1
+#define ALL_NODE 2
+#define CUT_NODE 3
+
+struct TranspositionTableEntry {
+    int32_t score;
+    uint8_t depth;
+    uint8_t flags;
+    Move hashMove;
+};
 
 /**
  * @brief Die Klasse implementiert die PV-Suche im Spielbaum.
@@ -17,6 +30,8 @@ class GameTreeSearch {
         Board* board;
         BoardEvaluator evaluator;
 
+        HashTable<uint64_t, TranspositionTableEntry, 2048, 8> transpositionTable;
+
         /**
          * @brief Die Methode führt die PV-Suche im Spielbaum aus.
          * 
@@ -26,7 +41,7 @@ class GameTreeSearch {
          * @param pv Die bisherige Hauptvariante.
          * @return int32_t Die Bewertung des Knotens.
          */
-        int32_t pvSearch(int depth, int32_t alpha, int32_t beta, Array<Move, 32>& pv);
+        int32_t pvSearch(uint8_t depth, int32_t alpha, int32_t beta, Array<Move, MAX_DEPTH>& pv);
 
         /**
          * @brief Die Methode führt die Nullfenster-Suche im Spielbaum aus.
@@ -37,7 +52,14 @@ class GameTreeSearch {
          * @param pv Die bisherige Hauptvariante.
          * @return int32_t Die Bewertung des Knotens.
          */
-        int32_t nwSearch(int depth, int32_t alpha, int32_t beta);
+        int32_t nwSearch(uint8_t depth, int32_t alpha, int32_t beta);
+
+        /**
+         * @brief Die Methode sortiert die Züge nach ihrer Bewertung.
+         * 
+         * @param moves Die Züge.
+         */
+        void sortMoves(Array<Move, 256>& moves);
 
     public:
         /**
@@ -56,7 +78,7 @@ class GameTreeSearch {
          * @param depth Die Suchtiefe.
          * @return Die beste Zugfolge.
          */
-        Array<Move, MAX_DEPTH> search(int32_t depth);
+        int32_t search(uint8_t depth, Array<Move, MAX_DEPTH>& pv);
 };
 
 #endif

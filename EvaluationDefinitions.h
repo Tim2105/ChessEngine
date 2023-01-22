@@ -74,11 +74,11 @@ extern Bitboard neighboringFiles[];
 
 /**
  * @brief Bewertung für die Distanz zwischen den Königen.
- * Wird addiert, wenn die eigene Farbe mehr Material besitzt und subtrahiert,
+ * Wird addiert, wenn die eigene Farbe mehr Material(wie in EG_WINNING_MATERIAL_ADVANTAGE angegeben) besitzt und subtrahiert,
  * wenn die gegnerische Farbe mehr Material besitzt.
  */
 #define EG_KING_DISTANCE_VALUE 20
-
+#define EG_WINNING_MATERIAL_ADVANTAGE 200
 
 /**
  * @brief Die PSQT-Tabellen aus der Sicht der weißen Figuren für das Midgame.
@@ -113,5 +113,12 @@ extern int32_t EG_PSQT[][64];
 
 #define MIN_PHASE -0.25
 #define MAX_PHASE 1.25
+
+/**
+ * @brief Konstanten für die Zugvorsortierung
+ */
+
+#define HASH_MOVE_SCORE 2000
+#define PROMOTION_SCORE 1000
 
 #endif

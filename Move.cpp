@@ -2,7 +2,7 @@
 #include <string>
 
 Move::Move() {
-    
+    move = 0ULL;
 }
 
 Move::Move(int32_t origin, int32_t destination, int32_t flags) {

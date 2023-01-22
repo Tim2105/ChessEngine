@@ -3,7 +3,6 @@
 #include "EvaluationDefinitions.h"
 #include <algorithm>
 
-
 int32_t BoardEvaluator::evaluate(Board& b) {
     if(isDraw(b)) // Unentschieden
         return 0;
@@ -85,9 +84,9 @@ int32_t BoardEvaluator::endgameEvaluation(Board& b) {
 
     int32_t materialScore = evalMaterial(b);
 
-    if(materialScore > 0) // Wenn der weiße König gewinnt
+    if(materialScore > 0) // Wenn der eigene König gewinnt
         score += (7 - distBetweenKings) * EG_KING_DISTANCE_VALUE;
-    else if(materialScore < 0) // Wenn der schwarze König gewinnt
+    else if(materialScore < 0) // Wenn der gegnerische König gewinnt
         score -= (7 - distBetweenKings) * EG_KING_DISTANCE_VALUE;
 
     score += materialScore;
@@ -665,4 +664,83 @@ inline Bitboard BoardEvaluator::findConnectedPawns(const Bitboard& ownPawns) {
     }
 
     return connectedPawns;
+}
+
+int32_t BoardEvaluator::getSmallestAttacker(Board& b, int32_t to, int32_t side) {
+    int32_t smallestAttacker = EMPTY;
+    int32_t otherSide = side ^ COLOR_MASK;
+    int32_t to64 = b.mailbox[to];
+
+    if(side == WHITE && !b.whiteAttackBitboard.getBit(to64))
+        return NO_SQ;
+    else if (side == BLACK && !b.blackAttackBitboard.getBit(to64))
+        return NO_SQ;
+    
+    Bitboard pawnAttackers = pawnAttackBitboard(to64, otherSide) & b.pieceBitboard[side | PAWN];
+    if(pawnAttackers)
+        return b.mailbox64[pawnAttackers.getFirstSetBit()];
+
+    Bitboard knightAttackers = knightAttackBitboard(to64) & b.pieceBitboard[side | KNIGHT];
+    if(knightAttackers)
+        return b.mailbox64[knightAttackers.getFirstSetBit()];
+
+    Bitboard bishopAttackers = diagonalAttackBitboard(to64, b.allPiecesBitboard | b.pieceBitboard[side | KING])
+                                                        & b.pieceBitboard[side | BISHOP];
+    if(bishopAttackers)
+        return b.mailbox64[bishopAttackers.getFirstSetBit()];
+
+    Bitboard rookAttackers = straightAttackBitboard(to64, b.allPiecesBitboard | b.pieceBitboard[side | KING])
+                                                        & b.pieceBitboard[side | ROOK];
+    if(rookAttackers)
+        return b.mailbox64[rookAttackers.getFirstSetBit()];
+
+    Bitboard queenAttackers = (diagonalAttackBitboard(to64, b.allPiecesBitboard | b.pieceBitboard[side | KING])
+                                | straightAttackBitboard(to64, b.allPiecesBitboard | b.pieceBitboard[side | KING]))
+                                & b.pieceBitboard[side | QUEEN];
+    if(queenAttackers)
+        return b.mailbox64[queenAttackers.getFirstSetBit()];
+    
+    Bitboard kingAttackers = kingAttackBitboard(to64) & b.pieceBitboard[side | KING];
+    if(kingAttackers) {
+        // Der König darf nur schlagen, wenn die Figur nicht verteidigt wird
+        if(side == WHITE && b.blackAttackBitboard.getBit(to64))
+            return NO_SQ;
+        else if(side == BLACK && b.whiteAttackBitboard.getBit(to64))
+            return NO_SQ;
+
+        return b.mailbox64[kingAttackers.getFirstSetBit()];
+    }
+
+    return NO_SQ;
+}
+
+int32_t BoardEvaluator::see(Board& b, Move& m) {
+    int32_t score = 0;
+    int32_t side = b.side ^ COLOR_MASK;
+    int32_t otherSide = b.side;
+
+    int32_t attackerSq = getSmallestAttacker(b, m.getDestination(), side);
+    if(attackerSq != NO_SQ) {
+        Move newMove(attackerSq, m.getDestination(), MOVE_CAPTURE);
+
+        b.makeMove(m);
+        int32_t capturedPieceValue = PIECE_VALUE[TYPEOF(b.pieces[m.getDestination()])];
+        score = std::max(score, capturedPieceValue - see(b, newMove));
+        b.undoMove();
+    }
+
+    return score;
+}
+
+int32_t BoardEvaluator::evaluateMove(Board& b, Move& m) {
+    if(m.isCapture()) {
+        int32_t capturedPieceValue = PIECE_VALUE[TYPEOF(b.pieces[m.getDestination()])];
+
+        return capturedPieceValue - see(b, m);
+    }
+    
+    if(m.isPromotion())
+        return PROMOTION_SCORE;
+    
+    return 0;
 }

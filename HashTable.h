@@ -54,6 +54,13 @@ void HashTable<K, V, bucketCount, bucketSize>::put(K key, V value) {
     size_t hash = std::hash<K>{}(key);
     size_t index = hash % bucketCount;
 
+    for(size_t i = 0; i < table[index].size(); i++) {
+        if(table[index][i].key == key) {
+            table[index][i].value = value;
+            return;
+        }
+    }
+
     if(table[index].size() == bucketSize)
         table[index].remove(0);
 

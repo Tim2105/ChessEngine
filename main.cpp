@@ -20,9 +20,10 @@ void perft(Board& board, int depth, int& count) {
     }
 }
 
+// TODO: Distanz zum generischen König gibt nur Pluspunkte, wenn der Materialvorteil > n(beliebige Zahl) ist
 int main() {
     
-    Board board;
+    Board board("5k2/pp3b2/6p1/2P5/1P4P1/2K1N3/8/8 w - - 0 1");
 
     // for(int i = 1; i < 7; i++) {
     //     int count = 0;
@@ -40,11 +41,15 @@ int main() {
 
     GameTreeSearch search(board);
 
+    Array<Move, MAX_DEPTH> pv;
+
     auto start = std::chrono::high_resolution_clock::now();
-    Array pv = search.search(5);
+    int32_t score = search.search(8, pv);
     auto end = std::chrono::high_resolution_clock::now();
 
     std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
+
+    std::cout << "Score: " << score << std::endl;
 
     std::cout << "PV:" << std::endl;
 
@@ -52,15 +57,11 @@ int main() {
         std::cout << m.toString() << std::endl;
     }
 
-
-    // Board boardOtherSide = board;
-    // boardOtherSide.side ^= COLOR_MASK;
-
     // BoardEvaluator evaluator;
 
-    // std::cout << "Evaluation for moving color: " << evaluator.evaluate(board) << std::endl;
-    // std::cout << "Evaluation for other color: " << evaluator.evaluate(boardOtherSide) << std::endl;
-    
+    // for(Move m : board.generateLegalMoves()) {
+    //     std::cout << m << ": " << evaluator.evaluateMove(board, m) << std::endl;
+    // }
 
     return 0;
 }
