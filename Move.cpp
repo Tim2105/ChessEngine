@@ -2,7 +2,7 @@
 #include <string>
 
 Move::Move() {
-    move = 0ULL;
+    move = 0;
 }
 
 Move::Move(int32_t origin, int32_t destination, int32_t flags) {
@@ -11,6 +11,10 @@ Move::Move(int32_t origin, int32_t destination, int32_t flags) {
 
 Move::~Move() {
     
+}
+
+bool Move::exists() const {
+    return move != 0;
 }
 
 std::ostream& operator<<(std::ostream &os, const Move &m) {
@@ -103,6 +107,10 @@ bool Move::isPromotionQueen() const {
 
 bool Move::operator==(const Move& other) const {
     return move == other.move;
+}
+
+bool Move::operator!=(const Move& other) const {
+    return move != other.move;
 }
 
 bool Move::operator<(const Move& other) const {

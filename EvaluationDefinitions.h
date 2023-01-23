@@ -111,14 +111,15 @@ extern int32_t EG_PSQT[][64];
 // Phasengrenzen, können unter 0 oder über 1 sein,
 // die berechnete Phase wird aber zwischen 0 und 1 eingeschränkt
 
-#define MIN_PHASE -0.25
+#define MIN_PHASE -0.5
 #define MAX_PHASE 1.25
 
 /**
  * @brief Konstanten für die Zugvorsortierung
  */
-
 #define HASH_MOVE_SCORE 2000
-#define PROMOTION_SCORE 1000
+#define PROMOTION_SCORE 900
+#define KILLER_MOVE_SCORE 80
+#define EN_PASSANT_SCORE 50
 
 #endif

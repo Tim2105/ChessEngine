@@ -26,7 +26,7 @@ class Array {
 
         Array& operator=(const Array& other);
 
-        T operator[](size_t index) { return array[index]; };
+        T& operator[](size_t index) { return array[index]; };
         operator T*() { return array; };
 
         /**
@@ -59,6 +59,18 @@ class Array {
          * @brief Ersetzt das Element an der angegebenen Position durch das angegebene Element.
          */
         void replace(size_t index, T elem);
+
+        /**
+         * @brief Verschiebt alle Elemente ab der angegebenen Position eins nach links.
+         * Das erste Element wird überschrieben.
+         */
+        void shiftLeft(size_t index);
+
+        /**
+         * @brief Verschiebt alle Elemente ab der angegebenen Position eins nach rechts.
+         * Wenn das Array voll ist, wird das letzte Element überschrieben.
+         */
+        void shiftRight(size_t index);
 
         /**
          * @brief Gibt die Anzahl der Elemente im Array zurück.
@@ -151,6 +163,22 @@ void Array<T, s>::remove(size_t index) {
 template <typename T, size_t s>
 void Array<T, s>::replace(size_t index, T elem) {
     array[index] = elem;
+}
+
+template <typename T, size_t s>
+void Array<T, s>::shiftLeft(size_t index) {
+    memmove(array + index, array + index + 1, (count - index - 1) * sizeof(T));
+    count--;
+}
+
+template <typename T, size_t s>
+void Array<T, s>::shiftRight(size_t index) {
+    if(count == s)
+        memmove(array + index + 1, array + index, (s - index - 1) * sizeof(T));
+    else {
+        memmove(array + index + 1, array + index, (count - index) * sizeof(T));
+        count++;
+    }
 }
 
 template <typename T, size_t s>

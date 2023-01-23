@@ -51,7 +51,7 @@ class MoveHistoryEntry {
         uint64_t hashValue;
 
         /**
-         * @brief Speichert das, in diesem Zug überschriebene Bitboard.
+         * @brief Speichert das überschriebende Angriffsbitboard vor diesem Zug.
          */
         Bitboard replacedAttackBitboard;
     
@@ -64,9 +64,12 @@ class MoveHistoryEntry {
          * @param enPassantSquare Speichert die Position eines möglichen En Passant Zuges vor diesem Zug(wenn möglich).
          * @param fiftyMoveRule Der 50-Zug Counter vor diesem Zug.
          * @param hashValue Speichert den Hashwert vor diesem Zug.
-         * @param replacedAttackBitboard Speichert das, in diesem Zug überschriebene Bitboard.
+         * @param whiteAttackBitboard Speichert das weiße Angriffsbitboard vor diesem Zug.
+         * @param blackAttackBitboard Speichert das schwarze Angriffsbitboard vor diesem Zug.
          */
-        MoveHistoryEntry(Move move, int32_t capturedPiece, int32_t castlePermission, int32_t enPassantSquare, int32_t fiftyMoveRule, uint64_t hashValue, Bitboard replacedAttackBitboard) {
+        MoveHistoryEntry(Move move, int32_t capturedPiece, int32_t castlePermission,
+                        int32_t enPassantSquare, int32_t fiftyMoveRule, uint64_t hashValue,
+                        Bitboard replacedAttackBitboard) {
             this->move = move;
             this->capturedPiece = capturedPiece;
             this->castlingPermission = castlePermission;
@@ -122,8 +125,10 @@ class Board {
         /**
          * @brief Enthält eine Liste aller Figuren für jeden Figurentyp auf dem Schachbrett.
          * Speichert den Index der Position.
+         * Figurenlisten haben die Größe 9,
+         * weil die ein(e) Springer/Läufer/Dame mit 8 Bauernaufwertungen 9-mal auf dem Schachbrett sein können.
          */
-        Array<int32_t, 8> pieceList[15] = {
+        Array<int32_t, 9> pieceList[15] = {
             {},
             {A2, B2, C2, D2, E2, F2, G2, H2},
             {B1, G1},
@@ -299,6 +304,16 @@ class Board {
         uint64_t getHashValue() const { return hashValue; };
 
         /**
+         * @brief Überprüft, ob ein Zug legal ist.
+         * Diese Variante der Legalitätsüberprüfung ist ineffizient,
+         * weil zunächst überprüft wird, ob der Zug ein Pseudo-Legaler Zug ist und anschließend,
+         * ob der Zug den eigenen König im Schach lässt.
+         * 
+         * @param move Der Zug.
+         */
+        bool isMoveLegal(Move move);
+
+        /**
          * @brief Generiert alle Pseudo-Legalen Züge.
          * Pseudo-Legale Züge sind Züge, die auf dem Schachbrett möglich sind, aber eventuell den eigenen König im Schach lassen.
          */
@@ -329,13 +344,25 @@ class Board {
          * @brief Überprüft bei einem anzugebenden Belegbitboard, ob ein Feld von einer bestimmten Seite angegriffen wird.
          * 
          * @param square Das Feld, das überprüft werden soll(in 120er Notation).
+         * @param side Die Seite, die das Feld angreifen soll.
          */
-        bool squareAttacked(int32_t square, int32_t side, Bitboard occupied);
+        bool squareAttacked(int32_t square, int32_t side);
+
+        /**
+         * @brief Überprüft bei einem anzugebenden Belegbitboard, ob ein Feld von einer bestimmten Seite angegriffen wird.
+         * 
+         * @param sq120 Das Feld, das überprüft werden soll(in 120er Notation).
+         * @param ownSide Die Seite, die das Feld angreifen soll.
+         * @param occupied Das Bitboard mit den besetzten Feldern.
+         */
+        bool squareAttacked(int32_t sq120, int32_t ownSide, Bitboard occupied);
 
         /**
          * @brief Überprüft bei einem anzugebenden Belegbitboard, ob ein Feld von einer bestimmten Seite angegriffen wird.
          * 
          * @param square Das Feld, das überprüft werden soll(in 120er Notation).
+         * @param side Die Seite, die das Feld angreifen soll.
+         * @param occupied Das Bitboard mit den besetzten Feldern.
          * @param attackingRays Gibt dein Bitboard mit allen Angreifern zurück. Bei laufenden Figuren sind außerdem sind außerdem die Verbindungsfelder mit enthalten.
          */
         bool squareAttacked(int32_t square, int32_t side, Bitboard occupied, Bitboard& attackingRays);
@@ -344,6 +371,8 @@ class Board {
          * @brief Gibt die Anzahl der angreifenden Figuren eines Feldes zurück.
          * 
          * @param square Das Feld, das überprüft werden soll(in 120er Notation).
+         * @param side Die Seite, die das Feld angreifen soll.
+         * @param occupied Das Bitboard mit den besetzten Feldern.
          */
         int32_t numSquareAttackers(int32_t square, int32_t side, Bitboard occupied);
 
@@ -351,6 +380,8 @@ class Board {
          * @brief Gibt die Anzahl der angreifenden Figuren eines Feldes zurück.
          * 
          * @param square Das Feld, das überprüft werden soll(in 120er Notation).
+         * @param side Die Seite, die das Feld angreifen soll.
+         * @param occupied Das Bitboard mit den besetzten Feldern.
          * @param attackingRays Gibt dein Bitboard mit allen Angreifern zurück. Bei laufenden Figuren sind außerdem sind außerdem die Verbindungsfelder mit enthalten.
          */
         int32_t numSquareAttackers(int32_t square, int32_t side, Bitboard occupied, Bitboard& attackingRays);

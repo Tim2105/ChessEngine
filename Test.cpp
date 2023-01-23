@@ -16,11 +16,13 @@ bool MovegenTestCase::run() {
     std::cout << "Running test case: " << description << std::endl;
     std::string fen = board.fenString();
     Array<Move, 256> moves = board.generateLegalMoves();
+
     std::cout << "Generated " << moves.size() << " moves." << std::endl;
     std::cout << "Expected " << expectedOutcomes.size() << " moves." << std::endl;
     if(moves.size() != expectedOutcomes.size()) {
         std::cout << "Test case failed!" << std::endl 
             << "FEN: " << fen << std::endl << std::endl;
+
         return false;
     }
     

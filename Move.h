@@ -24,6 +24,11 @@ class Move {
         friend std::ostream& operator<< (std::ostream& os, const Move& m);
 
         /**
+         * @brief Überprüft, ob der Zug Inhalt hat.
+         */
+        bool exists() const;
+
+        /**
          * @brief Gibt den Zug als String zurück.
          */
         std::string toString() const;
@@ -102,6 +107,11 @@ class Move {
          * @brief Vergleicht zwei Züge.
          */
         bool operator==(const Move& other) const;
+
+        /**
+         * @brief Vergleicht zwei Züge.
+         */
+        bool operator!=(const Move& other) const;
 
         /**
          * @brief Vergleicht zwei Züge.

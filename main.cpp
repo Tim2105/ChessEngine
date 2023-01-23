@@ -4,6 +4,7 @@
 #include "GameTreeSearch.h"
 #include <chrono>
 #include "EvaluationDefinitions.h"
+#include "Test.h"
 
 
 // perft(4) dauert knapp 0.37s
@@ -20,7 +21,6 @@ void perft(Board& board, int depth, int& count) {
     }
 }
 
-// TODO: Distanz zum generischen König gibt nur Pluspunkte, wenn der Materialvorteil > n(beliebige Zahl) ist
 int main() {
     
     Board board("5k2/pp3b2/6p1/2P5/1P4P1/2K1N3/8/8 w - - 0 1");
@@ -44,7 +44,7 @@ int main() {
     Array<Move, MAX_DEPTH> pv;
 
     auto start = std::chrono::high_resolution_clock::now();
-    int32_t score = search.search(8, pv);
+    int32_t score = search.search(6, pv);
     auto end = std::chrono::high_resolution_clock::now();
 
     std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
@@ -56,12 +56,6 @@ int main() {
     for(Move m : pv) {
         std::cout << m.toString() << std::endl;
     }
-
-    // BoardEvaluator evaluator;
-
-    // for(Move m : board.generateLegalMoves()) {
-    //     std::cout << m << ": " << evaluator.evaluateMove(board, m) << std::endl;
-    // }
 
     return 0;
 }

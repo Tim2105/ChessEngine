@@ -85,6 +85,9 @@ struct std::hash<PawnBitboards> {
 class BoardEvaluator {
 
     private:
+        // Das Spielfeld
+        Board* b;
+
         // Die Bewertung von Bauernstrukturen ist sehr aufwendig,
         // weshalb berechnete Bewertungen von Bauernstrukturen in einer Hash-Tabelle gespeichert werden,
         // um sie bei der nächsten Bewertung(bei gleicher Bauernstruktur) wieder zu verwenden.
@@ -122,25 +125,25 @@ class BoardEvaluator {
         /**
          * @brief Die Methode evalMaterial bewertet die Materialstärke der beiden Spieler.
          */
-        int32_t evalMaterial(const Board& b);
+        int32_t evalMaterial();
 
         /**
          * @brief Die Methode evalMobility bewertet die Mobilität der beiden Spieler.
          * Mobilität ist die Anzahl der Felder, die ein Spieler angreift und/oder verteidigt.
          */
-        int32_t evalMobility(const Board& b);
+        int32_t evalMobility();
 
         /**
          * @brief Die Methode evalMG_PSQT bewertet die Figurenpositionen der beiden Spieler
          * mit dem Midgame-PSQT-Array.
          */
-        inline int32_t evalMG_PSQT(Board& b);
+        inline int32_t evalMG_PSQT();
 
         /**
          * @brief Die Methode evalEG_PSQT bewertet die Figurenpositionen der beiden Spieler
          * mit dem Endgame-PSQT-Array.
          */
-        inline int32_t evalEG_PSQT(Board& b);
+        inline int32_t evalEG_PSQT();
 
         /**
          * @brief Versucht die Bewertung einer Bauernstruktur aus der Hash-Tabelle zu laden.
@@ -150,7 +153,7 @@ class BoardEvaluator {
          * @return true, wenn die Bewertung gefunden wurde.
          * @return false, wenn die Bewertung nicht gefunden wurde.
          */
-        bool probePawnStructure(const Board& b, Score& score);
+        bool probePawnStructure(Score& score);
 
         /**
          * @brief Speichert die Bewertung einer Bauernstruktur in der Hash-Tabelle.
@@ -158,12 +161,12 @@ class BoardEvaluator {
          * @param b Das aktuelle Spielfeld.
          * @param score Die Bewertung der Bauernstruktur.
          */
-        void storePawnStructure(const Board& b, const Score& score);
+        void storePawnStructure(const Score& score);
 
         /**
          * @brief Die Methode evalPawnStructure bewertet die Bauernstruktur der beiden Spieler.
          */
-        Score evalPawnStructure(const Board& b, int32_t side);
+        Score evalPawnStructure(int32_t side);
 
         Score evalPawnStructure(Bitboard doublePawns, Bitboard isolatedPawns, Bitboard passedPawns, Bitboard pawnChains, Bitboard connectedPawns, int32_t side);
         inline Score evalDoublePawns(Bitboard doublePawns, int32_t side);
@@ -175,16 +178,16 @@ class BoardEvaluator {
         /**
          * @brief Die Methode evalMGKingSafety bewertet die Sicherheit des Königs der beiden Spieler im Midgame.
          */
-        int32_t evalMGKingSafety(const Board& b);
+        int32_t evalMGKingSafety();
         inline int32_t evalMGPawnShield(int32_t kingSquare, const Bitboard& ownPawns, const Bitboard& otherPawns, int32_t side);
         inline int32_t evalMGPawnStorm(int32_t otherKingSquare, const Bitboard& ownPawns, const Bitboard& otherPawns, int32_t side);
-        inline int32_t evalMGKingMobility(const Board& b, int32_t side);
+        inline int32_t evalMGKingMobility(int32_t side);
 
         /**
          * @brief Die Methode evalEGKingSafety bewertet die Sicherheit des Königs der beiden Spieler im Endgame.
          */
-        int32_t evalEGKingSafety(const Board& b);
-        inline int32_t evalEGKingMobility(const Board& b, int32_t side);
+        int32_t evalEGKingSafety();
+        inline int32_t evalEGKingMobility(int32_t side);
 
         /**
          * @brief Überprüft, ob das Spiel zwangsläufig ein Unentschieden ist.
@@ -193,22 +196,26 @@ class BoardEvaluator {
          * Andere Möglichkeiten für ein Unentschieden sind z.B. 50 Züge ohne Bauern- oder Schlagzug
          * oder dreimal dieselbe Stellung.
          */
-        bool isDraw(Board& b);
+        bool isDraw();
 
         /**
          * @brief Versucht, den Angreifer mit dem geringsten Wert zu finden, der das Feld to angreift.
          * 
          * @return Das Feld des Angreifers mit dem geringsten Wert.
          */
-        int32_t getSmallestAttacker(Board& b, int32_t to, int32_t side);
+        int32_t getSmallestAttacker(int32_t to, int32_t side);
 
         /**
          * @brief Static Exchange Evaluation.
          * https://www.chessprogramming.org/Static_Exchange_Evaluation
          */
-        int32_t see(Board& b, Move& m);
+        int32_t see(Move& m);
 
     public:
+        BoardEvaluator() {};
+
+        BoardEvaluator(Board& b);
+
         /**
          * @brief Führt eine statische Bewertung für das Midgame der
          * Spielpositon aus der Sicht des Spielers der am Zug ist durch.
@@ -219,7 +226,7 @@ class BoardEvaluator {
          * Je kleiner der Wert, desto besser ist die Spielposition für den Gegner des Spielers der am Zug ist.
          * Eine Bewertung von 0 bedeutet ein ausgeglichenes Spiel.
          */
-        int32_t middlegameEvaluation(Board& b);
+        int32_t middlegameEvaluation();
 
         /**
          * @brief Führt eine statische Bewertung für das Endgame der
@@ -231,7 +238,7 @@ class BoardEvaluator {
          * Je kleiner der Wert, desto besser ist die Spielposition für den Gegner des Spielers der am Zug ist.
          * Eine Bewertung von 0 bedeutet ein ausgeglichenes Spiel.
          */
-        int32_t endgameEvaluation(Board& b);
+        int32_t endgameEvaluation();
 
         /**
          * @brief Führt eine statische Bewertung der
@@ -244,12 +251,12 @@ class BoardEvaluator {
          * Je kleiner der Wert, desto besser ist die Spielposition für den Gegner des Spielers der am Zug ist.
          * Eine Bewertung von 0 bedeutet ein ausgeglichenes Spiel.
          */
-        int32_t evaluate(Board& b);
+        int32_t evaluate();
 
         /**
          * @brief Führt eine statische Bewertung eines Zugs durch.
          */
-        int32_t evaluateMove(Board& b, Move& m);
+        int32_t evaluateMove(Move& m);
 };
 
 #endif

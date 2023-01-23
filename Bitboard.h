@@ -22,37 +22,58 @@ class Bitboard {
         /**
          * @brief Setze das Bit an der Stelle index.
          */
-        void setBit(int32_t index);
+        inline void setBit(int32_t index) {
+            bitboard |= (1ULL << index);
+        }
 
         /**
          * @brief Lösche das Bit an der Stelle index.
          */
-        void clearBit(int32_t index);
+        inline void clearBit(int32_t index) {
+            bitboard &= ~(1ULL << index);
+        }
 
         /**
          * @brief Liefere den Wert des Bits an der Stelle index zurück.
          */
-        bool getBit(int32_t index) const;
+        inline bool getBit(int32_t index) const {
+            return (bitboard & (1ULL << index));
+        }
 
         /**
          * @brief Gibt den Index des ersten gesetzten Bits zurück.
          */
-        int32_t getFirstSetBit() const;
+        inline int32_t getFirstSetBit() const {
+            return __builtin_ctzll(bitboard);
+        }
 
         /**
          * @brief Gibt den Index des letzten gesetzten Bits zurück.
          */
-        int32_t getLastSetBit() const;
+        inline int32_t getLastSetBit() const {
+            return 63 - __builtin_clzll(bitboard);
+        }
 
         /**
          * @brief Gibt die Anzahl der gesetzten Bits zurück.
          */
-        int32_t getNumberOfSetBits() const;
+        inline int32_t getNumberOfSetBits() const {
+            return __builtin_popcountll(bitboard);
+        }
 
         /**
          * @brief Gibt ein Bitboard zurück, das die Bits des Bitboards in umgekehrter Reihenfolge enthält.
          */
-        Bitboard reversed() const;
+        inline Bitboard reversed() const {
+            uint64_t res = bitboard;
+            res = ((res >> 1) & 0x5555555555555555ULL) | ((res & 0x5555555555555555ULL) << 1);
+            res = ((res >> 2) & 0x3333333333333333ULL) | ((res & 0x3333333333333333ULL) << 2);
+            res = ((res >> 4) & 0x0F0F0F0F0F0F0F0FULL) | ((res & 0x0F0F0F0F0F0F0F0FULL) << 4);
+            res = ((res >> 8) & 0x00FF00FF00FF00FFULL) | ((res & 0x00FF00FF00FF00FFULL) << 8);
+            res = ((res >> 16) & 0x0000FFFF0000FFFFULL) | ((res & 0x0000FFFF0000FFFFULL) << 16);
+            res = (res >> 32) | (res << 32);
+            return Bitboard(res);
+        }
 
         /**
          * @brief Erlaubt explizite und implizite Konvertierung in bool.
@@ -67,52 +88,74 @@ class Bitboard {
         /**
          * @brief Bitweises AND.
          */
-        Bitboard operator&(const Bitboard& bitboard) const;
+        inline Bitboard operator&(const Bitboard& bitboard) const {
+            return Bitboard(bitboard.bitboard & this->bitboard);
+        }
 
         /**
          * @brief Bitweises OR.
          */
-        Bitboard operator|(const Bitboard& bitboard) const;
+        inline Bitboard operator|(const Bitboard& bitboard) const {
+            return Bitboard(bitboard.bitboard | this->bitboard);
+        }
 
         /**
          * @brief Bitweises OR mit Zuweisung.
          */
-        Bitboard operator|= (const Bitboard& bitboard);
+        inline Bitboard operator|= (const Bitboard& bitboard) {
+            this->bitboard |= bitboard.bitboard;
+            return *this;
+        }
 
         /**
          * @brief Bitweises XOR.
          */
-        Bitboard operator^(const Bitboard& bitboard) const;
+        inline Bitboard operator^(const Bitboard& bitboard) const {
+            return Bitboard(bitboard.bitboard ^ this->bitboard);
+        }
 
         /**
          * @brief Bitweises NOT.
          */
-        Bitboard operator~() const;
+        inline Bitboard operator~() const {
+            return Bitboard(~bitboard);
+        }
 
         /**
          * @brief Bitweises Verschieben nach links.
          */
-        Bitboard operator<<(int32_t shift) const;
+        inline Bitboard operator<<(int32_t shift) const {
+            return Bitboard(bitboard << shift);
+        }
 
         /**
          * @brief Bitweises Verschieben nach rechts.
          */
-        Bitboard operator>>(int32_t shift) const;
+        inline Bitboard operator>>(int32_t shift) const {
+            return Bitboard(bitboard >> shift);
+        }
 
         /**
          * @brief Überprüft zwei Bitboards auf Gleichheit..
          */
-        bool operator==(const Bitboard& bitboard) const;
+        inline bool operator==(const Bitboard& bitboard) const {
+            return this->bitboard == bitboard.bitboard;
+        }
 
         /**
          * @brief Überprüft zwei Bitboards auf Ungleichheit.
          */
-        bool operator!=(const Bitboard& bitboard) const;
+        inline bool operator!=(const Bitboard& bitboard) const {
+            return this->bitboard != bitboard.bitboard;
+        }
 
         /**
          * @brief Zuweisungsoperator.
          */
-        Bitboard operator=(const Bitboard& bitboard);
+        inline Bitboard operator=(const Bitboard& bitboard) {
+            this->bitboard = bitboard.bitboard;
+            return *this;
+        }
 };
 
 /**

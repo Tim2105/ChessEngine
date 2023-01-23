@@ -35,89 +35,12 @@ void Bitboard::setBitboard(uint64_t bitboard) {
     this->bitboard = bitboard;
 }
 
-void Bitboard::setBit(int32_t index) {
-    bitboard |= (1ULL << index);
-}
-
-void Bitboard::clearBit(int32_t index) {
-    bitboard &= ~(1ULL << index);
-}
-
-bool Bitboard::getBit(int32_t index) const {
-    return (bitboard & (1ULL << index)) != 0;
-}
-
-int32_t Bitboard::getFirstSetBit() const {
-    return __builtin_ctzll(bitboard);
-}
-
-int32_t Bitboard::getLastSetBit() const {
-    return 63 - __builtin_clzll(bitboard);
-}
-
-int32_t Bitboard::getNumberOfSetBits() const {
-    return __builtin_popcountll(bitboard);
-}
-
-Bitboard Bitboard::reversed() const {
-    uint64_t reversedBitboard = 0ULL;
-
-    for(int r = RANK_1; r <= RANK_8; r++)
-        for(int f = FILE_A; f <= FILE_H; f++)
-            if(getBit(r * 8 + f))
-                reversedBitboard |= (1ULL << (RANK_8 - r) * 8 + f);
-
-    return Bitboard(reversedBitboard);
-}
-
 Bitboard::operator bool() const {
     return bitboard != 0ULL;
 }
 
 Bitboard::operator uint64_t() const {
     return bitboard;
-}
-
-Bitboard Bitboard::operator&(const Bitboard& bitboard) const {
-    return Bitboard(this->bitboard & bitboard.bitboard);
-}
-
-Bitboard Bitboard::operator|(const Bitboard& bitboard) const {
-    return Bitboard(this->bitboard | bitboard.bitboard);
-}
-
-Bitboard Bitboard::operator|=(const Bitboard& bitboard) {
-    this->bitboard |= bitboard.bitboard;
-    return *this;
-}
-
-Bitboard Bitboard::operator^(const Bitboard& bitboard) const {
-    return Bitboard(this->bitboard ^ bitboard.bitboard);
-}
-
-Bitboard Bitboard::operator~() const {
-    return Bitboard(~bitboard);
-}
-
-Bitboard Bitboard::operator<<(int32_t shift) const {
-    return Bitboard(bitboard << shift);
-}
-
-Bitboard Bitboard::operator>>(int32_t shift) const {
-    return Bitboard(bitboard >> shift);
-}
-
-bool Bitboard::operator==(const Bitboard& bitboard) const {
-    return this->bitboard == bitboard.bitboard;
-}
-
-bool Bitboard::operator!=(const Bitboard& bitboard) const {
-    return this->bitboard != bitboard.bitboard;
-}
-
-Bitboard Bitboard::operator=(const Bitboard& bitboard) {
-    this->bitboard = bitboard.bitboard;
-    return *this;
 }
 
 Bitboard diagonalAttackBitboard(int32_t sq, const Bitboard occupied) {

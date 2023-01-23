@@ -427,6 +427,7 @@ void Movegen::generateWhitePawnMoves(Array<Move, 256>& moves, Board& b,
                     Bitboard allPiecesAfterMove = b.allPiecesBitboard | b.pieceBitboard[BLACK_KING];
                     allPiecesAfterMove.clearBit(b.mailbox[sq]);
                     allPiecesAfterMove.clearBit(b.mailbox[captureSquare]);
+                    allPiecesAfterMove.setBit(b.mailbox[destLeft]);
 
                     if(!b.squareAttacked(kingSquare, BLACK, allPiecesAfterMove))
                         moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
@@ -435,6 +436,7 @@ void Movegen::generateWhitePawnMoves(Array<Move, 256>& moves, Board& b,
                     Bitboard allPiecesAfterMove = b.allPiecesBitboard | b.pieceBitboard[BLACK_KING];
                     allPiecesAfterMove.clearBit(b.mailbox[sq]);
                     allPiecesAfterMove.clearBit(b.mailbox[captureSquare]);
+                    allPiecesAfterMove.setBit(b.mailbox[destRight]);
 
                     if(!b.squareAttacked(kingSquare, BLACK, allPiecesAfterMove))
                         moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
@@ -615,6 +617,7 @@ void Movegen::generateBlackPawnMoves(Array<Move, 256>& moves, Board& b,
                     Bitboard allPiecesAfterMove = b.allPiecesBitboard | b.pieceBitboard[WHITE_KING];
                     allPiecesAfterMove.clearBit(b.mailbox[sq]);
                     allPiecesAfterMove.clearBit(b.mailbox[captureSquare]);
+                    allPiecesAfterMove.setBit(b.mailbox[destLeft]);
 
                     if(!b.squareAttacked(kingSquare, WHITE, allPiecesAfterMove))
                         moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
@@ -623,6 +626,7 @@ void Movegen::generateBlackPawnMoves(Array<Move, 256>& moves, Board& b,
                     Bitboard allPiecesAfterMove = b.allPiecesBitboard | b.pieceBitboard[WHITE_KING];
                     allPiecesAfterMove.clearBit(b.mailbox[sq]);
                     allPiecesAfterMove.clearBit(b.mailbox[captureSquare]);
+                    allPiecesAfterMove.setBit(b.mailbox[destRight]);
 
                     if(!b.squareAttacked(kingSquare, WHITE, allPiecesAfterMove))
                         moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));

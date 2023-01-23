@@ -309,6 +309,192 @@ void Board::generateBitboards() {
     blackAttackBitboard = generateAttackBitboard(BLACK);
 }
 
+bool Board::isMoveLegal(Move move) {
+    int32_t side = this->side;
+    int32_t otherSide = side ^ COLOR_MASK;
+
+    int32_t origin = move.getOrigin();
+    int32_t destination = move.getDestination();
+
+    // Überprüfe, ob der Zug eine eigene Figur ist
+    if(pieces[origin] == EMPTY || (pieces[origin] & COLOR_MASK) != side)
+        return false; // Zug ist keine eigene Figur
+    
+    // Überprüfe, ob der Zug eine eigene Figur schlägt
+    if(pieces[destination] != EMPTY && (pieces[destination] & COLOR_MASK) == side)
+        return false; // Zug schlägt eine eigene Figur
+    
+    // Wenn der Zug eine Rochade ist, überprüfe, ob die Rochade erlaubt ist
+    if(move.isCastle()) {
+        if(side == WHITE) {
+            if(move.isKingsideCastle()) {
+                if(!(castlingPermission & WHITE_KINGSIDE_CASTLE))
+                    return false;
+                
+                if(pieces[E1] != WHITE_KING || pieces[H1] != WHITE_ROOK)
+                    return false;
+                
+                if(pieces[F1] != EMPTY || pieces[G1] != EMPTY)
+                    return false;
+                
+                if(squareAttacked(E1, otherSide) || squareAttacked(F1, otherSide) || squareAttacked(G1, otherSide))
+                    return false;
+            } else {
+                if(!(castlingPermission & WHITE_QUEENSIDE_CASTLE))
+                    return false;
+                
+                if(pieces[E1] != WHITE_KING || pieces[A1] != WHITE_ROOK)
+                    return false;
+                
+                if(pieces[D1] != EMPTY || pieces[C1] != EMPTY || pieces[B1] != EMPTY)
+                    return false;
+                
+                if(squareAttacked(E1, otherSide) || squareAttacked(D1, otherSide) || squareAttacked(C1, otherSide))
+                    return false;
+            }
+        } else {
+            if(move.isKingsideCastle()) {
+                if(!(castlingPermission & BLACK_KINGSIDE_CASTLE))
+                    return false;
+                
+                if(pieces[E8] != BLACK_KING || pieces[H8] != BLACK_ROOK)
+                    return false;
+                
+                if(pieces[F8] != EMPTY || pieces[G8] != EMPTY)
+                    return false;
+                
+                if(squareAttacked(E8, otherSide) || squareAttacked(F8, otherSide) || squareAttacked(G8, otherSide))
+                    return false;
+            } else {
+                if(!(castlingPermission & BLACK_QUEENSIDE_CASTLE))
+                    return false;
+                
+                if(pieces[E8] != BLACK_KING || pieces[A8] != BLACK_ROOK)
+                    return false;
+                
+                if(pieces[D8] != EMPTY || pieces[C8] != EMPTY || pieces[B8] != EMPTY)
+                    return false;
+                
+                if(squareAttacked(E8, otherSide) || squareAttacked(D8, otherSide) || squareAttacked(C8, otherSide))
+                    return false;
+            }
+        }
+    }
+
+    // Überprüfe En Passant
+    if(move.isEnPassant()) {
+        if(enPassantSquare == NO_SQ)
+            return false;
+
+        if(pieces[origin] != (side | PAWN))
+            return false;
+        
+        if(destination != enPassantSquare)
+            return false;
+    }
+
+    // Überprüfe Bauernaufwertungen
+    if(move.isPromotion()) {
+        if(pieces[origin] != (side | PAWN))
+            return false;
+        
+        if(side == WHITE) {
+            if(SQ2R(origin) != RANK_7)
+                return false;
+        } else {
+            if(SQ2R(origin) != RANK_2)
+                return false;
+        }
+    }
+
+    // Überprüfe, ob die Figur sich korrekt bewegt
+    switch(pieces[origin]) {
+        case WHITE_PAWN:
+        case BLACK_PAWN: {
+            int32_t destForw = side == WHITE ? NORTH : SOUTH;
+            int32_t destLeft = destForw + WEST;
+            int32_t destRight = destForw + EAST;
+
+            if(destination == origin + destForw) {
+                if(pieces[destination] != EMPTY)
+                    return false;
+            } else if(move.isDoublePawn() && destination == origin + destForw + destForw) {
+                if(pieces[destination] != EMPTY || pieces[origin + destForw] != EMPTY)
+                    return false;
+            }
+
+            if(!move.isEnPassant()) {
+                if(destination == origin + destLeft)
+                    if(pieces[destination] == EMPTY)
+                        return false;
+                else if(destination == origin + destRight)
+                    if(pieces[destination] == EMPTY)
+                        return false;
+            }
+            break;
+        }
+        case WHITE_KNIGHT:
+        case BLACK_KNIGHT: {
+            int32_t sqDiff = destination - origin;
+            bool valid = false;
+
+            for(int32_t i = 0; i < 8; i++) {
+                if(sqDiff == KNIGHT_ATTACKS[i]) {
+                    valid = true;
+                    break;
+                }
+            }
+
+            if(!valid)
+                return false;
+            break;
+        }
+        case WHITE_BISHOP: {
+        case BLACK_BISHOP:
+            if(!(diagonalAttackBitboard(mailbox[origin], allPiecesBitboard | pieceBitboard[side | KING]).getBit(mailbox[destination])))
+                return false;
+            break;
+        }
+        case WHITE_ROOK: {
+        case BLACK_ROOK:
+            if(!(straightAttackBitboard(mailbox[origin], allPiecesBitboard | pieceBitboard[side | KING]).getBit(mailbox[destination])))
+                return false;
+            break;
+        }
+        case WHITE_QUEEN: {
+        case BLACK_QUEEN:
+            if(!(diagonalAttackBitboard(mailbox[origin], allPiecesBitboard | pieceBitboard[side | KING]).getBit(mailbox[destination])
+                || straightAttackBitboard(mailbox[origin], allPiecesBitboard | pieceBitboard[side | KING]).getBit(mailbox[destination])))
+                return false;
+            break;
+        }
+        case WHITE_KING: {
+        case BLACK_KING:
+            if(!move.isCastle() &&
+               !(kingAttackBitboard(mailbox[origin]).getBit(mailbox[destination])))
+                return false;
+            break;
+        }
+    }
+
+    if(move.toString() == "e8d8")
+        int i = 0;
+
+    // Überprüfe, ob der Zug den eigenen König in Schach setzt/lässt
+    makeMove(move);
+
+    Bitboard otherSideAttackBitboard = generateAttackBitboard(otherSide);
+
+    if(otherSideAttackBitboard.getBit(mailbox[pieceList[side | KING].front()])) {
+        undoMove();
+        return false;
+    }
+
+    undoMove();
+
+    return true;
+}
+
 void Board::makeMove(Move m) {
     int32_t origin = m.getOrigin();
     int32_t destination = m.getDestination();
@@ -328,7 +514,11 @@ void Board::makeMove(Move m) {
     entry.enPassantSquare = enPassantSquare;
     entry.fiftyMoveRule = fiftyMoveRule;
     entry.hashValue = hashValue;
-    entry.replacedAttackBitboard = side == WHITE ? whiteAttackBitboard : blackAttackBitboard;
+    
+    if(side == WHITE)
+        entry.replacedAttackBitboard = whiteAttackBitboard;
+    else
+        entry.replacedAttackBitboard = blackAttackBitboard;
 
     moveHistory.push_back(entry);
 
@@ -666,6 +856,15 @@ void Board::undoMove() {
         else
             whitePiecesBitboard.setBit(enPassantSquare64);
     }
+}
+
+bool Board::squareAttacked(int32_t sq120, int32_t ownSide) {
+    int32_t sq64 = mailbox[sq120];
+    
+    if(ownSide == WHITE)
+        return whiteAttackBitboard.getBit(sq64);
+    else
+        return blackAttackBitboard.getBit(sq64);
 }
 
 bool Board::squareAttacked(int32_t sq120, int32_t ownSide, Bitboard occupied) {

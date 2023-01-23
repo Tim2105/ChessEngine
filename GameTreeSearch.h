@@ -13,6 +13,8 @@
 #define ALL_NODE 2
 #define CUT_NODE 3
 
+#define NUM_KILLER_MOVES 2
+
 struct TranspositionTableEntry {
     int32_t score;
     uint8_t depth;
@@ -31,6 +33,10 @@ class GameTreeSearch {
         BoardEvaluator evaluator;
 
         HashTable<uint64_t, TranspositionTableEntry, 2048, 8> transpositionTable;
+
+        Array<Move, NUM_KILLER_MOVES> killerMoves[MAX_DEPTH];
+
+        uint8_t currentDepth = 0;
 
         /**
          * @brief Die Methode führt die PV-Suche im Spielbaum aus.

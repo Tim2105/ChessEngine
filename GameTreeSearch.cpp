@@ -3,7 +3,7 @@
 
 GameTreeSearch::GameTreeSearch(Board& board) {
     this->board = &board;
-    this->evaluator = BoardEvaluator();
+    this->evaluator = BoardEvaluator(board);
 }
 
 GameTreeSearch::~GameTreeSearch() {
@@ -28,7 +28,6 @@ struct MoveScorePair {
 };
 
 void GameTreeSearch::sortMoves(Array<Move, 256>& moves) {
-
     TranspositionTableEntry ttResult;
     bool ttHit = transpositionTable.probe(board->getHashValue(), ttResult);
 
@@ -43,7 +42,7 @@ void GameTreeSearch::sortMoves(Array<Move, 256>& moves) {
         if(m == hashMove)
             moveScorePairs.push_back({m, HASH_MOVE_SCORE});
         else
-            moveScorePairs.push_back({m, evaluator.evaluateMove(*board, m)});
+            moveScorePairs.push_back({m, evaluator.evaluateMove(m)});
     }
 
     std::sort(moveScorePairs.begin(), moveScorePairs.end(), std::greater<MoveScorePair>());
@@ -86,7 +85,7 @@ int32_t GameTreeSearch::pvSearch(uint8_t depth, int32_t alpha, int32_t beta, Arr
     }
 
     if(depth == 0) {
-        return evaluator.evaluate(*board);
+        return evaluator.evaluate();
     }
 
     Array<Move, 256> moves = board->generateLegalMoves();
@@ -112,8 +111,6 @@ int32_t GameTreeSearch::pvSearch(uint8_t depth, int32_t alpha, int32_t beta, Arr
             }
         }
 
-
-        
         board->undoMove();
 
         if(score >= beta) {
@@ -146,7 +143,9 @@ int32_t GameTreeSearch::pvSearch(uint8_t depth, int32_t alpha, int32_t beta, Arr
         ttEntry.score = alpha;
         ttEntry.depth = depth;
         ttEntry.flags = ttFlags;
-        ttEntry.hashMove = pv.front();
+
+        if(ttFlags == PV_NODE)
+            ttEntry.hashMove = pv.front();
 
         transpositionTable.put(board->getHashValue(), ttEntry);
     }
@@ -154,9 +153,9 @@ int32_t GameTreeSearch::pvSearch(uint8_t depth, int32_t alpha, int32_t beta, Arr
     return alpha;
 }
 
-int32_t GameTreeSearch::nwSearch(uint8_t depth, int32_t alpha, int32_t beta) {
+int32_t GameTreeSearch::nwSearch(uint8_t depth, int32_t alpha, int32_t beta) {   
     if(depth == 0) {
-        return evaluator.evaluate(*board);
+        return evaluator.evaluate();
     }
 
     Array<Move, 256> moves = board->generateLegalMoves();
@@ -187,6 +186,8 @@ int32_t GameTreeSearch::search(uint8_t depth, Array<Move, MAX_DEPTH>& pv) {
     Array<Move, MAX_DEPTH> currentPV;
 
     for(uint8_t i = 1; i <= depth; i++) {
+        currentDepth = i;
+
         currentPV.clear();
         score = pvSearch(i, MIN_SCORE, MAX_SCORE, currentPV);
         pv = currentPV;

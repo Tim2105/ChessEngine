@@ -3,27 +3,31 @@
 #include "EvaluationDefinitions.h"
 #include <algorithm>
 
-int32_t BoardEvaluator::evaluate(Board& b) {
-    if(isDraw(b)) // Unentschieden
+BoardEvaluator::BoardEvaluator(Board& b) {
+    this->b = &b;
+}
+
+int32_t BoardEvaluator::evaluate() {
+    if(isDraw()) // Unentschieden
         return 0;
 
     int32_t score = 0;
-    int32_t side = b.side;
+    int32_t side = b->side;
     int32_t otherSide = side ^ COLOR_MASK;
 
     double totalWeight = PAWN_WEIGHT * 16 + KNIGHT_WEIGHT * 4 + BISHOP_WEIGHT * 4 + ROOK_WEIGHT * 4 + QUEEN_WEIGHT * 2;
     double phase = totalWeight;
 
-    phase -= b.pieceList[WHITE_PAWN].size() * PAWN_WEIGHT;
-    phase -= b.pieceList[BLACK_PAWN].size() * PAWN_WEIGHT;
-    phase -= b.pieceList[WHITE_KNIGHT].size() * KNIGHT_WEIGHT;
-    phase -= b.pieceList[BLACK_KNIGHT].size() * KNIGHT_WEIGHT;
-    phase -= b.pieceList[WHITE_BISHOP].size() * BISHOP_WEIGHT;
-    phase -= b.pieceList[BLACK_BISHOP].size() * BISHOP_WEIGHT;
-    phase -= b.pieceList[WHITE_ROOK].size() * ROOK_WEIGHT;
-    phase -= b.pieceList[BLACK_ROOK].size() * ROOK_WEIGHT;
-    phase -= b.pieceList[WHITE_QUEEN].size() * QUEEN_WEIGHT;
-    phase -= b.pieceList[BLACK_QUEEN].size() * QUEEN_WEIGHT;
+    phase -= b->pieceList[WHITE_PAWN].size() * PAWN_WEIGHT;
+    phase -= b->pieceList[BLACK_PAWN].size() * PAWN_WEIGHT;
+    phase -= b->pieceList[WHITE_KNIGHT].size() * KNIGHT_WEIGHT;
+    phase -= b->pieceList[BLACK_KNIGHT].size() * KNIGHT_WEIGHT;
+    phase -= b->pieceList[WHITE_BISHOP].size() * BISHOP_WEIGHT;
+    phase -= b->pieceList[BLACK_BISHOP].size() * BISHOP_WEIGHT;
+    phase -= b->pieceList[WHITE_ROOK].size() * ROOK_WEIGHT;
+    phase -= b->pieceList[BLACK_ROOK].size() * ROOK_WEIGHT;
+    phase -= b->pieceList[WHITE_QUEEN].size() * QUEEN_WEIGHT;
+    phase -= b->pieceList[BLACK_QUEEN].size() * QUEEN_WEIGHT;
 
     phase = phase / totalWeight;
     phase = phase * (MAX_PHASE - MIN_PHASE) + MIN_PHASE; // phase in [MIN_PHASE, MAX_PHASE]
@@ -32,18 +36,18 @@ int32_t BoardEvaluator::evaluate(Board& b) {
     double midgameWeight = 1 - phase;
     double endgameWeight = phase;
     
-    score += middlegameEvaluation(b) * midgameWeight;
-    score += endgameEvaluation(b) * endgameWeight;
+    score += middlegameEvaluation() * midgameWeight;
+    score += endgameEvaluation() * endgameWeight;
 
     Score pawnStructureScore = {0, 0};
-    bool pawnStructureFound = probePawnStructure(b, pawnStructureScore);
+    bool pawnStructureFound = probePawnStructure(pawnStructureScore);
 
     if(!pawnStructureFound) {
-        Score whitePawnStructureScore = evalPawnStructure(b, WHITE);
-        Score blackPawnStructureScore = evalPawnStructure(b, BLACK);
+        Score whitePawnStructureScore = evalPawnStructure(WHITE);
+        Score blackPawnStructureScore = evalPawnStructure(BLACK);
 
         pawnStructureScore = whitePawnStructureScore - blackPawnStructureScore;
-        storePawnStructure(b, pawnStructureScore);
+        storePawnStructure(pawnStructureScore);
     }
 
     if(side == BLACK)
@@ -55,25 +59,25 @@ int32_t BoardEvaluator::evaluate(Board& b) {
     return score;
 }
 
-int32_t BoardEvaluator::middlegameEvaluation(Board& b) {
+int32_t BoardEvaluator::middlegameEvaluation() {
     int32_t score = 0;
 
-    score += evalMaterial(b);
-    score += evalMG_PSQT(b) * MG_PSQT_MULTIPLIER;
-    score += evalMobility(b) * MG_MOBILITY_VALUE;
-    score += evalMGKingSafety(b);
+    score += evalMaterial();
+    score += evalMG_PSQT() * MG_PSQT_MULTIPLIER;
+    score += evalMobility() * MG_MOBILITY_VALUE;
+    score += evalMGKingSafety();
 
     return score;
 }
 
-int32_t BoardEvaluator::endgameEvaluation(Board& b) {
+int32_t BoardEvaluator::endgameEvaluation() {
     int32_t score = 0;
 
-    int32_t side = b.side;
+    int32_t side = b->side;
     int32_t otherSide = side ^ COLOR_MASK;
 
-    int32_t ownKingPos = b.pieceList[side | KING].front();
-    int32_t otherKingPos = b.pieceList[otherSide | KING].front();
+    int32_t ownKingPos = b->pieceList[side | KING].front();
+    int32_t otherKingPos = b->pieceList[otherSide | KING].front();
 
     int32_t ownKingFile = SQ2F(ownKingPos);
     int32_t ownKingRank = SQ2R(ownKingPos);
@@ -82,38 +86,38 @@ int32_t BoardEvaluator::endgameEvaluation(Board& b) {
 
     int32_t distBetweenKings = std::max(abs(ownKingFile - otherKingFile), abs(ownKingRank - otherKingRank));
 
-    int32_t materialScore = evalMaterial(b);
+    int32_t materialScore = evalMaterial();
 
-    if(materialScore > 0) // Wenn der eigene König gewinnt
+    if(materialScore > EG_WINNING_MATERIAL_ADVANTAGE) // Wenn man einen gewinnenden Materialvorteil hat
         score += (7 - distBetweenKings) * EG_KING_DISTANCE_VALUE;
-    else if(materialScore < 0) // Wenn der gegnerische König gewinnt
+    else if(materialScore < EG_WINNING_MATERIAL_ADVANTAGE) // Wenn der Gegner einen gewinnenden Materialvorteil hat
         score -= (7 - distBetweenKings) * EG_KING_DISTANCE_VALUE;
 
     score += materialScore;
-    score += evalEG_PSQT(b) * EG_PSQT_MULTIPLIER;
-    score += evalMobility(b) * EG_MOBILITY_VALUE;
-    score += evalEGKingSafety(b);
+    score += evalEG_PSQT() * EG_PSQT_MULTIPLIER;
+    score += evalMobility() * EG_MOBILITY_VALUE;
+    score += evalEGKingSafety();
 
     return score;
 }
 
-bool BoardEvaluator::isDraw(Board& b) {
+bool BoardEvaluator::isDraw() {
     // Fifty-move rule
-    if(b.fiftyMoveRule >= 100)
+    if(b->fiftyMoveRule >= 100)
         return true;
 
     // Unzureichendes Material
-    int32_t whitePawns = b.pieceList[WHITE_PAWN].size();
-    int32_t whiteKnights = b.pieceList[WHITE_KNIGHT].size();
-    int32_t whiteBishops = b.pieceList[WHITE_BISHOP].size();
-    int32_t whiteRooks = b.pieceList[WHITE_ROOK].size();
-    int32_t whiteQueens = b.pieceList[WHITE_QUEEN].size();
+    int32_t whitePawns = b->pieceList[WHITE_PAWN].size();
+    int32_t whiteKnights = b->pieceList[WHITE_KNIGHT].size();
+    int32_t whiteBishops = b->pieceList[WHITE_BISHOP].size();
+    int32_t whiteRooks = b->pieceList[WHITE_ROOK].size();
+    int32_t whiteQueens = b->pieceList[WHITE_QUEEN].size();
 
-    int32_t blackPawns = b.pieceList[BLACK_PAWN].size();
-    int32_t blackKnights = b.pieceList[BLACK_KNIGHT].size();
-    int32_t blackBishops = b.pieceList[BLACK_BISHOP].size();
-    int32_t blackRooks = b.pieceList[BLACK_ROOK].size();
-    int32_t blackQueens = b.pieceList[BLACK_QUEEN].size();
+    int32_t blackPawns = b->pieceList[BLACK_PAWN].size();
+    int32_t blackKnights = b->pieceList[BLACK_KNIGHT].size();
+    int32_t blackBishops = b->pieceList[BLACK_BISHOP].size();
+    int32_t blackRooks = b->pieceList[BLACK_ROOK].size();
+    int32_t blackQueens = b->pieceList[BLACK_QUEEN].size();
 
     // Wenn Bauern, Türme oder Damen auf dem Spielfeld sind, ist noch genug Material vorhanden
     if(!(whitePawns > 0 || blackPawns > 0 || whiteRooks > 0 ||
@@ -138,8 +142,8 @@ bool BoardEvaluator::isDraw(Board& b) {
         if(whiteKnights == 0 && blackKnights == 0 &&
         whiteBishops == 1 && blackBishops == 1) {
             
-            int whiteBishopSq = b.pieceList[WHITE_BISHOP].front();
-            int blackBishopSq = b.pieceList[BLACK_BISHOP].front();
+            int whiteBishopSq = b->pieceList[WHITE_BISHOP].front();
+            int blackBishopSq = b->pieceList[BLACK_BISHOP].front();
 
             int whiteBishopColor = whiteBishopSq % 20 < 10 ? whiteBishopSq % 2 : 1 - whiteBishopSq % 2;
             int blackBishopColor = blackBishopSq % 20 < 10 ? blackBishopSq % 2 : 1 - blackBishopSq % 2;
@@ -152,57 +156,57 @@ bool BoardEvaluator::isDraw(Board& b) {
     return false;
 }
 
-int32_t BoardEvaluator::evalMaterial(const Board& b) {
+int32_t BoardEvaluator::evalMaterial() {
     int32_t score = 0;
-    int32_t side = b.side;
+    int32_t side = b->side;
     int32_t otherSide = side ^ COLOR_MASK;
 
-    score += b.pieceList[side | PAWN].size() * PIECE_VALUE[PAWN];
-    score += b.pieceList[side | KNIGHT].size() * PIECE_VALUE[KNIGHT];
-    score += b.pieceList[side | BISHOP].size() * PIECE_VALUE[BISHOP];
-    score += b.pieceList[side | ROOK].size() * PIECE_VALUE[ROOK];
-    score += b.pieceList[side | QUEEN].size() * PIECE_VALUE[QUEEN];
+    score += b->pieceList[side | PAWN].size() * PIECE_VALUE[PAWN];
+    score += b->pieceList[side | KNIGHT].size() * PIECE_VALUE[KNIGHT];
+    score += b->pieceList[side | BISHOP].size() * PIECE_VALUE[BISHOP];
+    score += b->pieceList[side | ROOK].size() * PIECE_VALUE[ROOK];
+    score += b->pieceList[side | QUEEN].size() * PIECE_VALUE[QUEEN];
 
-    score -= b.pieceList[otherSide | PAWN].size() * PIECE_VALUE[PAWN];
-    score -= b.pieceList[otherSide | KNIGHT].size() * PIECE_VALUE[KNIGHT];
-    score -= b.pieceList[otherSide | BISHOP].size() * PIECE_VALUE[BISHOP];
-    score -= b.pieceList[otherSide | ROOK].size() * PIECE_VALUE[ROOK];
-    score -= b.pieceList[otherSide | QUEEN].size() * PIECE_VALUE[QUEEN];
+    score -= b->pieceList[otherSide | PAWN].size() * PIECE_VALUE[PAWN];
+    score -= b->pieceList[otherSide | KNIGHT].size() * PIECE_VALUE[KNIGHT];
+    score -= b->pieceList[otherSide | BISHOP].size() * PIECE_VALUE[BISHOP];
+    score -= b->pieceList[otherSide | ROOK].size() * PIECE_VALUE[ROOK];
+    score -= b->pieceList[otherSide | QUEEN].size() * PIECE_VALUE[QUEEN];
 
     return score;
 }
 
-int32_t BoardEvaluator::evalMobility(const Board& b) {
+int32_t BoardEvaluator::evalMobility() {
     int32_t score = 0;
-    int32_t side = b.side;
+    int32_t side = b->side;
 
     if(side == WHITE) {
-        score += b.whiteAttackBitboard.getNumberOfSetBits();
-        score -= b.blackAttackBitboard.getNumberOfSetBits();
+        score += b->whiteAttackBitboard.getNumberOfSetBits();
+        score -= b->blackAttackBitboard.getNumberOfSetBits();
     } else {
-        score += b.blackAttackBitboard.getNumberOfSetBits();
-        score -= b.whiteAttackBitboard.getNumberOfSetBits();
+        score += b->blackAttackBitboard.getNumberOfSetBits();
+        score -= b->whiteAttackBitboard.getNumberOfSetBits();
     }
 
     return score;
 }
 
-inline int32_t BoardEvaluator::evalMG_PSQT(Board& b) {
+inline int32_t BoardEvaluator::evalMG_PSQT() {
     int32_t score = 0;
     int32_t whiteScore = 0;
     int32_t blackScore = 0;
 
     for(int p = PAWN; p <= KING; p++) {
-        for(int sq : b.pieceList[WHITE | p]) {
-            whiteScore += MG_PSQT[p][b.mailbox[sq]];
+        for(int sq : b->pieceList[WHITE | p]) {
+            whiteScore += MG_PSQT[p][b->mailbox[sq]];
         }
         
-        for(int sq : b.pieceList[BLACK | p]) {
-            blackScore += MG_PSQT[p][63 - b.mailbox[sq]];
+        for(int sq : b->pieceList[BLACK | p]) {
+            blackScore += MG_PSQT[p][63 - b->mailbox[sq]];
         }
     }
 
-    if(b.side == WHITE) {
+    if(b->side == WHITE) {
         score += whiteScore;
         score -= blackScore;
     } else {
@@ -213,22 +217,22 @@ inline int32_t BoardEvaluator::evalMG_PSQT(Board& b) {
     return score;
 }
 
-inline int32_t BoardEvaluator::evalEG_PSQT(Board& b) {
+inline int32_t BoardEvaluator::evalEG_PSQT() {
     int32_t score = 0;
     int32_t whiteScore = 0;
     int32_t blackScore = 0;
 
     for(int p = PAWN; p <= KING; p++) {
-        for(int sq : b.pieceList[WHITE | p]) {
-            whiteScore += EG_PSQT[p][b.mailbox[sq]];
+        for(int sq : b->pieceList[WHITE | p]) {
+            whiteScore += EG_PSQT[p][b->mailbox[sq]];
         }
         
-        for(int sq : b.pieceList[BLACK | p]) {
-            blackScore += EG_PSQT[p][63 - b.mailbox[sq]];
+        for(int sq : b->pieceList[BLACK | p]) {
+            blackScore += EG_PSQT[p][63 - b->mailbox[sq]];
         }
     }
 
-    if(b.side == WHITE) {
+    if(b->side == WHITE) {
         score += whiteScore;
         score -= blackScore;
     } else {
@@ -239,29 +243,29 @@ inline int32_t BoardEvaluator::evalEG_PSQT(Board& b) {
     return score;
 }
 
-bool BoardEvaluator::probePawnStructure(const Board& b, Score& score) {  
+bool BoardEvaluator::probePawnStructure(Score& score) {  
     PawnBitboards pawnsBitboards = PawnBitboards {
-        b.pieceBitboard[WHITE | PAWN],
-        b.pieceBitboard[BLACK | PAWN]
+        b->pieceBitboard[WHITE | PAWN],
+        b->pieceBitboard[BLACK | PAWN]
     };
 
     return pawnStructureTable.probe(pawnsBitboards, score);
 }
 
-void BoardEvaluator::storePawnStructure(const Board& b, const Score& score) {
+void BoardEvaluator::storePawnStructure(const Score& score) {
     PawnBitboards pawnsBitboards = PawnBitboards {
-        b.pieceBitboard[WHITE | PAWN],
-        b.pieceBitboard[BLACK | PAWN]
+        b->pieceBitboard[WHITE | PAWN],
+        b->pieceBitboard[BLACK | PAWN]
     };
 
     pawnStructureTable.put(pawnsBitboards, score);
 }
 
-Score BoardEvaluator::evalPawnStructure(const Board& b, int32_t side) {
+Score BoardEvaluator::evalPawnStructure(int32_t side) {
     Score score = Score{0, 0};
 
-    Bitboard ownPawns = b.pieceBitboard[side | PAWN];
-    Bitboard otherPawns = b.pieceBitboard[side ^ COLOR_MASK | PAWN];
+    Bitboard ownPawns = b->pieceBitboard[side | PAWN];
+    Bitboard otherPawns = b->pieceBitboard[side ^ COLOR_MASK | PAWN];
 
     Bitboard doublePawns = findDoublePawns(ownPawns, side);
     Bitboard isolatedPawns = findIsolatedPawns(ownPawns, side);
@@ -446,30 +450,30 @@ inline int32_t BoardEvaluator::evalMGPawnStorm(int32_t otherKingSquare, const Bi
     return score;
 }
 
-inline int32_t BoardEvaluator::evalMGKingMobility(const Board& b, int32_t side) {
+inline int32_t BoardEvaluator::evalMGKingMobility(int32_t side) {
     Bitboard enemyAttackedSquares;
 
     if(side == WHITE)
-        enemyAttackedSquares = b.blackAttackBitboard;
+        enemyAttackedSquares = b->blackAttackBitboard;
     else
-        enemyAttackedSquares = b.whiteAttackBitboard;
+        enemyAttackedSquares = b->whiteAttackBitboard;
 
-    int32_t ownKingSquare = b.mailbox[b.pieceList[side | KING].front()];
+    int32_t ownKingSquare = b->mailbox[b->pieceList[side | KING].front()];
 
     Bitboard kingMoves = kingAttackBitboard(ownKingSquare) & ~enemyAttackedSquares;
 
     return (8 - kingMoves.getNumberOfSetBits()) * MG_KING_SAFETY_VALUE;
 }
 
-inline int32_t BoardEvaluator::evalEGKingMobility(const Board& b, int32_t side) {
+inline int32_t BoardEvaluator::evalEGKingMobility(int32_t side) {
     Bitboard enemyAttackedSquares;
 
     if(side == WHITE)
-        enemyAttackedSquares = b.blackAttackBitboard;
+        enemyAttackedSquares = b->blackAttackBitboard;
     else
-        enemyAttackedSquares = b.whiteAttackBitboard;
+        enemyAttackedSquares = b->whiteAttackBitboard;
 
-    int32_t ownKingSquare = b.mailbox[b.pieceList[side | KING].front()];
+    int32_t ownKingSquare = b->mailbox[b->pieceList[side | KING].front()];
 
     Bitboard kingMoves = kingAttackBitboard(ownKingSquare) & ~enemyAttackedSquares;
 
@@ -497,40 +501,40 @@ Score BoardEvaluator::evalPawnStructure(Bitboard doublePawns, Bitboard isolatedP
     return score;
 }
 
-int32_t BoardEvaluator::evalMGKingSafety(const Board& b) {
+int32_t BoardEvaluator::evalMGKingSafety() {
     int32_t score = 0;
-    int32_t side = b.side;
+    int32_t side = b->side;
     int32_t otherSide = side ^ COLOR_MASK;
 
-    Bitboard ownPawns = b.pieceBitboard[side | PAWN];
-    Bitboard otherPawns = b.pieceBitboard[otherSide | PAWN];
+    Bitboard ownPawns = b->pieceBitboard[side | PAWN];
+    Bitboard otherPawns = b->pieceBitboard[otherSide | PAWN];
 
     int32_t ownKingSafetyScore = 0;
     int32_t otherKingSafetyScore = 0;
 
-    int32_t ownKingSquare = b.mailbox[b.pieceList[side | KING].front()];
-    int32_t otherKingSquare = b.mailbox[b.pieceList[otherSide | KING].front()];
+    int32_t ownKingSquare = b->mailbox[b->pieceList[side | KING].front()];
+    int32_t otherKingSquare = b->mailbox[b->pieceList[otherSide | KING].front()];
 
     ownKingSafetyScore += evalMGPawnShield(ownKingSquare, ownPawns, otherPawns, side);
     ownKingSafetyScore -= evalMGPawnStorm(ownKingSquare, otherPawns, ownPawns, otherSide);
-    ownKingSafetyScore += evalMGKingMobility(b, side);
+    ownKingSafetyScore += evalMGKingMobility(side);
 
     otherKingSafetyScore += evalMGPawnShield(otherKingSquare, otherPawns, ownPawns, otherSide);
     otherKingSafetyScore -= evalMGPawnStorm(otherKingSquare, ownPawns, otherPawns, side);
-    otherKingSafetyScore += evalMGKingMobility(b, otherSide);
+    otherKingSafetyScore += evalMGKingMobility(otherSide);
 
     score += ownKingSafetyScore - otherKingSafetyScore;
 
     return score;
 }
 
-int32_t BoardEvaluator::evalEGKingSafety(const Board& b) {
+int32_t BoardEvaluator::evalEGKingSafety() {
     int32_t score = 0;
-    int32_t side = b.side;
+    int32_t side = b->side;
     int32_t otherSide = side ^ COLOR_MASK;
 
-    int32_t ownKingSafetyScore = evalEGKingMobility(b, side);
-    int32_t otherKingSafetyScore = evalEGKingMobility(b, otherSide);
+    int32_t ownKingSafetyScore = evalEGKingMobility(side);
+    int32_t otherKingSafetyScore = evalEGKingMobility(otherSide);
 
     score += ownKingSafetyScore - otherKingSafetyScore;
 
@@ -666,77 +670,85 @@ inline Bitboard BoardEvaluator::findConnectedPawns(const Bitboard& ownPawns) {
     return connectedPawns;
 }
 
-int32_t BoardEvaluator::getSmallestAttacker(Board& b, int32_t to, int32_t side) {
+int32_t BoardEvaluator::getSmallestAttacker(int32_t to, int32_t side) {
     int32_t smallestAttacker = EMPTY;
     int32_t otherSide = side ^ COLOR_MASK;
-    int32_t to64 = b.mailbox[to];
+    int32_t to64 = b->mailbox[to];
 
-    if(side == WHITE && !b.whiteAttackBitboard.getBit(to64))
+    if(side == WHITE && !b->whiteAttackBitboard.getBit(to64))
         return NO_SQ;
-    else if (side == BLACK && !b.blackAttackBitboard.getBit(to64))
+    else if (side == BLACK && !b->blackAttackBitboard.getBit(to64))
         return NO_SQ;
     
-    Bitboard pawnAttackers = pawnAttackBitboard(to64, otherSide) & b.pieceBitboard[side | PAWN];
+    Bitboard pawnAttackers = pawnAttackBitboard(to64, otherSide) & b->pieceBitboard[side | PAWN];
     if(pawnAttackers)
-        return b.mailbox64[pawnAttackers.getFirstSetBit()];
+        return b->mailbox64[pawnAttackers.getFirstSetBit()];
 
-    Bitboard knightAttackers = knightAttackBitboard(to64) & b.pieceBitboard[side | KNIGHT];
+    Bitboard knightAttackers = knightAttackBitboard(to64) & b->pieceBitboard[side | KNIGHT];
     if(knightAttackers)
-        return b.mailbox64[knightAttackers.getFirstSetBit()];
+        return b->mailbox64[knightAttackers.getFirstSetBit()];
 
-    Bitboard bishopAttackers = diagonalAttackBitboard(to64, b.allPiecesBitboard | b.pieceBitboard[side | KING])
-                                                        & b.pieceBitboard[side | BISHOP];
+    Bitboard bishopAttackers = diagonalAttackBitboard(to64, b->allPiecesBitboard | b->pieceBitboard[side | KING])
+                                                        & b->pieceBitboard[side | BISHOP];
     if(bishopAttackers)
-        return b.mailbox64[bishopAttackers.getFirstSetBit()];
+        return b->mailbox64[bishopAttackers.getFirstSetBit()];
 
-    Bitboard rookAttackers = straightAttackBitboard(to64, b.allPiecesBitboard | b.pieceBitboard[side | KING])
-                                                        & b.pieceBitboard[side | ROOK];
+    Bitboard rookAttackers = straightAttackBitboard(to64, b->allPiecesBitboard | b->pieceBitboard[side | KING])
+                                                        & b->pieceBitboard[side | ROOK];
     if(rookAttackers)
-        return b.mailbox64[rookAttackers.getFirstSetBit()];
+        return b->mailbox64[rookAttackers.getFirstSetBit()];
 
-    Bitboard queenAttackers = (diagonalAttackBitboard(to64, b.allPiecesBitboard | b.pieceBitboard[side | KING])
-                                | straightAttackBitboard(to64, b.allPiecesBitboard | b.pieceBitboard[side | KING]))
-                                & b.pieceBitboard[side | QUEEN];
+    Bitboard queenAttackers = (diagonalAttackBitboard(to64, b->allPiecesBitboard | b->pieceBitboard[side | KING])
+                                | straightAttackBitboard(to64, b->allPiecesBitboard | b->pieceBitboard[side | KING]))
+                                & b->pieceBitboard[side | QUEEN];
     if(queenAttackers)
-        return b.mailbox64[queenAttackers.getFirstSetBit()];
+        return b->mailbox64[queenAttackers.getFirstSetBit()];
     
-    Bitboard kingAttackers = kingAttackBitboard(to64) & b.pieceBitboard[side | KING];
+    Bitboard kingAttackers = kingAttackBitboard(to64) & b->pieceBitboard[side | KING];
     if(kingAttackers) {
         // Der König darf nur schlagen, wenn die Figur nicht verteidigt wird
-        if(side == WHITE && b.blackAttackBitboard.getBit(to64))
+        if(side == WHITE && b->blackAttackBitboard.getBit(to64))
             return NO_SQ;
-        else if(side == BLACK && b.whiteAttackBitboard.getBit(to64))
+        else if(side == BLACK && b->whiteAttackBitboard.getBit(to64))
             return NO_SQ;
 
-        return b.mailbox64[kingAttackers.getFirstSetBit()];
+        return b->mailbox64[kingAttackers.getFirstSetBit()];
     }
 
     return NO_SQ;
 }
 
-int32_t BoardEvaluator::see(Board& b, Move& m) {
+int32_t BoardEvaluator::see(Move& m) {
     int32_t score = 0;
-    int32_t side = b.side ^ COLOR_MASK;
-    int32_t otherSide = b.side;
+    int32_t side = b->side ^ COLOR_MASK;
+    int32_t otherSide = b->side;
 
-    int32_t attackerSq = getSmallestAttacker(b, m.getDestination(), side);
+    b->makeMove(m);
+
+    int32_t attackerSq = getSmallestAttacker(m.getDestination(), side);
     if(attackerSq != NO_SQ) {
         Move newMove(attackerSq, m.getDestination(), MOVE_CAPTURE);
-
-        b.makeMove(m);
-        int32_t capturedPieceValue = PIECE_VALUE[TYPEOF(b.pieces[m.getDestination()])];
-        score = std::max(score, capturedPieceValue - see(b, newMove));
-        b.undoMove();
+        int32_t capturedPieceValue = PIECE_VALUE[TYPEOF(b->pieces[m.getDestination()])];
+        score = std::max(score, capturedPieceValue - see(newMove));
     }
+
+    b->undoMove();
 
     return score;
 }
 
-int32_t BoardEvaluator::evaluateMove(Board& b, Move& m) {
-    if(m.isCapture()) {
-        int32_t capturedPieceValue = PIECE_VALUE[TYPEOF(b.pieces[m.getDestination()])];
+int32_t BoardEvaluator::evaluateMove(Move& m) {
+    if(m.isEnPassant())
+        return EN_PASSANT_SCORE;
 
-        return capturedPieceValue - see(b, m);
+    if(m.isCapture()) {
+        int32_t capturedPieceValue = PIECE_VALUE[TYPEOF(b->pieces[m.getDestination()])];
+
+        // Bauernaufwertungen sollen die Bewertung nicht verzerren
+        // Aufgewertete Bauern werden wie normale Bauern behandelt
+        Move mCopy(m.getOrigin(), m.getDestination(), MOVE_CAPTURE);
+
+        return capturedPieceValue - see(m);
     }
     
     if(m.isPromotion())
