@@ -104,6 +104,7 @@ int32_t GameTreeSearch::pvSearchInit(uint8_t depth) {
             bestMove = m;
             alpha = score;
             ttFlags = PV_NODE;
+            principalVariation[0] = m;
         }
 
         searchPV = false;
@@ -123,6 +124,8 @@ int32_t GameTreeSearch::pvSearchInit(uint8_t depth) {
 }
 
 int32_t GameTreeSearch::pvSearch(uint8_t depth, int32_t alpha, int32_t beta) {
+    int32_t plyFromRoot = currentDepth - depth;
+
     TranspositionTableEntry ttResult;
 
     bool ttHit = transpositionTable.probe(board->getHashValue(), ttResult);
@@ -130,6 +133,7 @@ int32_t GameTreeSearch::pvSearch(uint8_t depth, int32_t alpha, int32_t beta) {
     if(ttHit && ttResult.depth >= depth && IS_REGULAR_NODE(ttResult.flags)) {
         switch(ttResult.flags) {
             case PV_NODE:
+                principalVariation[plyFromRoot] = ttResult.hashMove;
                 return ttResult.score;
             case ALL_NODE:
                 if(ttResult.score <= alpha) {
@@ -198,6 +202,7 @@ int32_t GameTreeSearch::pvSearch(uint8_t depth, int32_t alpha, int32_t beta) {
             bestMove = m;
             alpha = score;
             ttFlags = PV_NODE;
+            principalVariation[plyFromRoot] = m;
         }
 
         searchPV = false;
@@ -280,13 +285,8 @@ int32_t GameTreeSearch::search(uint8_t depth, std::vector<Move>& pv) {
 
     pv.clear();
 
-    TranspositionTableEntry ttResult;
-    bool ttHit = transpositionTable.probe(board->getHashValue(), ttResult);
-
-    while(ttHit) {
-        pv.push_back(ttResult.hashMove);
-        board->makeMove(ttResult.hashMove);
-        ttHit = transpositionTable.probe(board->getHashValue(), ttResult);
+    for(uint8_t i = 0; i < currentDepth; i++) {
+        pv.push_back(principalVariation[i]);
     }
 
     return score;
