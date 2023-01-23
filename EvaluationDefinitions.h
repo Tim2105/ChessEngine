@@ -6,7 +6,7 @@
 #define MIN_SCORE -2000000000
 #define MAX_SCORE 2000000000
 
-#define MATE_SCORE 1000032
+#define MATE_SCORE (1000000 + MAX_DEPTH)
 
 #include <stdint.h>
 #include "Bitboard.h"

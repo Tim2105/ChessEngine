@@ -40,7 +40,8 @@ class GameTreeSearch {
         BoardEvaluator evaluator;
 
         HeapHashTable<uint64_t, TranspositionTableEntry, 65536, 4> transpositionTable;
-        Move principalVariation[MAX_DEPTH];
+
+        Array<Move, MAX_DEPTH> pvTable[MAX_DEPTH];
 
         uint8_t currentDepth = 0;
 

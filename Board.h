@@ -314,6 +314,11 @@ class Board {
         bool isMoveLegal(Move move);
 
         /**
+         * @brief Überprüft, ob der Spieler, der am Zug ist, im Schach steht.
+         */
+        bool isCheck();
+
+        /**
          * @brief Generiert alle Pseudo-Legalen Züge.
          * Pseudo-Legale Züge sind Züge, die auf dem Schachbrett möglich sind, aber eventuell den eigenen König im Schach lassen.
          */

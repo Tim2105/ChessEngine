@@ -63,6 +63,14 @@ int32_t GameTreeSearch::pvSearchInit(uint8_t depth) {
     int32_t beta = MAX_SCORE;
 
     Array<Move, 256> moves = board->generateLegalMoves();
+
+    if(moves.size() == 0) {
+        if(board->isCheck())
+            return -MATE_SCORE;
+        else
+            return 0;
+    }
+
     sortMoves(moves);
 
     uint8_t ttFlags = ALL_NODE;
@@ -104,7 +112,12 @@ int32_t GameTreeSearch::pvSearchInit(uint8_t depth) {
             bestMove = m;
             alpha = score;
             ttFlags = PV_NODE;
-            principalVariation[0] = m;
+
+            int32_t plyFromRoot = currentDepth - depth;
+
+            pvTable[plyFromRoot].clear();
+            pvTable[plyFromRoot].push_back(m);
+            pvTable[plyFromRoot].push_back(pvTable[plyFromRoot + 1]);
         }
 
         searchPV = false;
@@ -133,7 +146,6 @@ int32_t GameTreeSearch::pvSearch(uint8_t depth, int32_t alpha, int32_t beta) {
     if(ttHit && ttResult.depth >= depth && IS_REGULAR_NODE(ttResult.flags)) {
         switch(ttResult.flags) {
             case PV_NODE:
-                principalVariation[plyFromRoot] = ttResult.hashMove;
                 return ttResult.score;
             case ALL_NODE:
                 if(ttResult.score <= alpha) {
@@ -157,6 +169,14 @@ int32_t GameTreeSearch::pvSearch(uint8_t depth, int32_t alpha, int32_t beta) {
     }
 
     Array<Move, 256> moves = board->generateLegalMoves();
+
+    if(moves.size() == 0) {
+        if(board->isCheck())
+            return -MATE_SCORE;
+        else
+            return 0;
+    }
+
     sortMoves(moves);
 
     uint8_t ttFlags = ALL_NODE;
@@ -166,10 +186,7 @@ int32_t GameTreeSearch::pvSearch(uint8_t depth, int32_t alpha, int32_t beta) {
     bool searchPV = true;
     Move bestMove;
 
-    Array<Move, MAX_DEPTH> newPV;
-
     for(Move m : moves) {
-        newPV.clear();
         board->makeMove(m);
 
         if(searchPV) {
@@ -202,7 +219,10 @@ int32_t GameTreeSearch::pvSearch(uint8_t depth, int32_t alpha, int32_t beta) {
             bestMove = m;
             alpha = score;
             ttFlags = PV_NODE;
-            principalVariation[plyFromRoot] = m;
+
+            pvTable[plyFromRoot].clear();
+            pvTable[plyFromRoot].push_back(m);
+            pvTable[plyFromRoot].push_back(pvTable[plyFromRoot + 1]);
         }
 
         searchPV = false;
@@ -223,7 +243,8 @@ int32_t GameTreeSearch::pvSearch(uint8_t depth, int32_t alpha, int32_t beta) {
     return alpha;
 }
 
-int32_t GameTreeSearch::nwSearch(uint8_t depth, int32_t beta) {  
+int32_t GameTreeSearch::nwSearch(uint8_t depth, int32_t beta) {
+    int32_t plyFromRoot = currentDepth - depth;
 
     TranspositionTableEntry ttResult;
 
@@ -248,6 +269,14 @@ int32_t GameTreeSearch::nwSearch(uint8_t depth, int32_t beta) {
         return evaluator.evaluate();
     }
     Array<Move, 256> moves = board->generateLegalMoves();
+
+    if(moves.size() == 0) {
+        if(board->isCheck())
+            return -MATE_SCORE;
+        else
+            return 0;
+    }
+
     sortMoves(moves);
 
     int32_t score = MIN_SCORE;
@@ -278,15 +307,15 @@ int32_t GameTreeSearch::nwSearch(uint8_t depth, int32_t beta) {
 int32_t GameTreeSearch::search(uint8_t depth, std::vector<Move>& pv) {
     int32_t score = 0;
 
-    for(uint8_t i = 1; i <= depth; i++) {
+    for(uint8_t i = (depth % 2 == 0 ? 2 : 1); i <= depth; i += 2) {
         currentDepth = i;
         score = pvSearchInit(i);
     }
 
     pv.clear();
 
-    for(uint8_t i = 0; i < currentDepth; i++) {
-        pv.push_back(principalVariation[i]);
+    for(Move m : pvTable[0]) {
+        pv.push_back(m);
     }
 
     return score;

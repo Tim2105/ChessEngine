@@ -22,7 +22,7 @@ void perft(Board& board, int depth, int& count) {
 }
 
 int main() {
-    Board board("5k2/pp3b2/6p1/2P5/1P4P1/2K1N3/8/8 w - - 0 1");
+    Board board;
 
     // for(int i = 1; i < 7; i++) {
     //     int count = 0;
@@ -43,8 +43,10 @@ int main() {
     std::vector<Move> pv;
 
     auto start = std::chrono::high_resolution_clock::now();
-    int32_t score = search.search(8, pv);
+    int32_t score = search.search(4, pv);
     auto end = std::chrono::high_resolution_clock::now();
+
+    std::cout << "Depth: 4" << std::endl;
 
     std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
 

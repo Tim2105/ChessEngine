@@ -495,6 +495,10 @@ bool Board::isMoveLegal(Move move) {
     return true;
 }
 
+bool Board::isCheck() {
+    return squareAttacked(pieceList[side | KING].front(), side ^ COLOR_MASK);
+}
+
 void Board::makeMove(Move m) {
     int32_t origin = m.getOrigin();
     int32_t destination = m.getDestination();

@@ -90,7 +90,7 @@ int32_t BoardEvaluator::endgameEvaluation() {
 
     if(materialScore > EG_WINNING_MATERIAL_ADVANTAGE) // Wenn man einen gewinnenden Materialvorteil hat
         score += (7 - distBetweenKings) * EG_KING_DISTANCE_VALUE;
-    else if(materialScore < EG_WINNING_MATERIAL_ADVANTAGE) // Wenn der Gegner einen gewinnenden Materialvorteil hat
+    else if(-materialScore > EG_WINNING_MATERIAL_ADVANTAGE) // Wenn der Gegner einen gewinnenden Materialvorteil hat
         score -= (7 - distBetweenKings) * EG_KING_DISTANCE_VALUE;
 
     score += materialScore;

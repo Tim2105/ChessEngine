@@ -9,6 +9,7 @@
  * @brief Kapselt einen Zug.
  * Die Klasse Move stellt alle Informationen über einen Zug in einem 32-bit Integer dar.
  * Die Bits 11-17 repräsentieren den Ausgangspunkt des Zuges, die Bits 4-10 das Zielfeld und die Bits 0-3 Flags für Spezialzüge.
+ * Das Bit 18 wird gesetzt sobald erkannt wird, dass der Zug das Spiel beendet(Schachmatt oder -Patt).
  * Im Gegensatz zur Klasse Board ist diese Klasse weniger auf Performance sondern mehr auf Speichereffizienz ausgelegt.
  */
 class Move {
