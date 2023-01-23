@@ -42,6 +42,11 @@ class HashTable {
          * @return false Wenn das Element nicht gefunden wurde.
          */
         bool probe(K key, V& value);
+
+        /**
+         * @brief Löscht alle Elemente aus der Hash-Tabelle.
+         */
+        void clear();
 };
 
 template <typename K, typename V, size_t bucketCount, size_t bucketSize>
@@ -80,6 +85,13 @@ bool HashTable<K, V, bucketCount, bucketSize>::probe(K key, V& value) {
     }
 
     return false;
+}
+
+template <typename K, typename V, size_t bucketCount, size_t bucketSize>
+void HashTable<K, V, bucketCount, bucketSize>::clear() {
+    for(size_t i = 0; i < bucketCount; i++) {
+        table[i].clear();
+    }
 }
 
 #endif

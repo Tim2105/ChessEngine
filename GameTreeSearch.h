@@ -8,10 +8,17 @@
 #include <stdint.h>
 #include <functional>
 #include "HashTable.h"
+#include "HeapHashTable.h"
 
 #define PV_NODE 1
 #define ALL_NODE 2
 #define CUT_NODE 3
+#define NULL_WINDOW_NODE 4
+#define QUIESCENCE_NODE 8
+
+#define IS_REGULAR_NODE(flags) (!((flags) & (NULL_WINDOW_NODE | QUIESCENCE_NODE)))
+#define IS_NULL_WINDOW_NODE(flags) ((flags) & NULL_WINDOW_NODE)
+#define IS_QUIESCENCE_NODE(flags) ((flags) & QUIESCENCE_NODE)
 
 #define NUM_KILLER_MOVES 2
 
@@ -32,11 +39,17 @@ class GameTreeSearch {
         Board* board;
         BoardEvaluator evaluator;
 
-        HashTable<uint64_t, TranspositionTableEntry, 2048, 8> transpositionTable;
-
-        Array<Move, NUM_KILLER_MOVES> killerMoves[MAX_DEPTH];
+        HeapHashTable<uint64_t, TranspositionTableEntry, 65536, 4> transpositionTable;
 
         uint8_t currentDepth = 0;
+
+        /**
+         * @brief Die Methode initialisiert die PV-Suche im Spielbaum.
+         * 
+         * @param depth Die Suchtiefe.
+         * @return int32_t Die Bewertung des Knotens.
+         */
+        int32_t pvSearchInit(uint8_t depth);
 
         /**
          * @brief Die Methode führt die PV-Suche im Spielbaum aus.
@@ -44,21 +57,18 @@ class GameTreeSearch {
          * @param depth Die verbleibende Suchtiefe.
          * @param alpha Max-Score.
          * @param beta Min-Score.
-         * @param pv Die bisherige Hauptvariante.
          * @return int32_t Die Bewertung des Knotens.
          */
-        int32_t pvSearch(uint8_t depth, int32_t alpha, int32_t beta, Array<Move, MAX_DEPTH>& pv);
+        int32_t pvSearch(uint8_t depth, int32_t alpha, int32_t beta);
 
         /**
          * @brief Die Methode führt die Nullfenster-Suche im Spielbaum aus.
          * 
          * @param depth Die verbleibende Suchtiefe.
-         * @param alpha Max-Score.
          * @param beta Min-Score.
-         * @param pv Die bisherige Hauptvariante.
          * @return int32_t Die Bewertung des Knotens.
          */
-        int32_t nwSearch(uint8_t depth, int32_t alpha, int32_t beta);
+        int32_t nwSearch(uint8_t depth, int32_t beta);
 
         /**
          * @brief Die Methode sortiert die Züge nach ihrer Bewertung.
@@ -82,9 +92,10 @@ class GameTreeSearch {
         /**
          * @brief Die Methode such mit einer PV-Suche nach der besten Zugfolge.
          * @param depth Die Suchtiefe.
-         * @return Die beste Zugfolge.
+         * @param pv Die Hauptvarianten.
+         * @return Die Bewertung der besten Zugfolge.
          */
-        int32_t search(uint8_t depth, Array<Move, MAX_DEPTH>& pv);
+        int32_t search(uint8_t depth, std::vector<Move>& pv);
 };
 
 #endif
