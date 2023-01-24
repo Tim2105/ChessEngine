@@ -738,11 +738,22 @@ int32_t BoardEvaluator::see(Move& m) {
 }
 
 int32_t BoardEvaluator::evaluateMove(Move& m) {
+    if(m.isPromotion())
+        return PROMOTION_SCORE;
+
     if(m.isEnPassant())
         return EN_PASSANT_SCORE;
 
     if(m.isCapture()) {
+        int32_t movedPieceValue = PIECE_VALUE[TYPEOF(b->pieces[m.getOrigin()])];
         int32_t capturedPieceValue = PIECE_VALUE[TYPEOF(b->pieces[m.getDestination()])];
+
+        // // Wenn eine eigene Figur eine gegnerische Figur mit höherem Wert schlägt,
+        // // wird die MVV-LVA Heuristik angewendet
+        // if(capturedPieceValue > movedPieceValue)
+        //     return capturedPieceValue - movedPieceValue;
+
+        // // Ansonsten wird die SEE Heuristik angewendet
 
         // Bauernaufwertungen sollen die Bewertung nicht verzerren
         // Aufgewertete Bauern werden wie normale Bauern behandelt
@@ -750,9 +761,6 @@ int32_t BoardEvaluator::evaluateMove(Move& m) {
 
         return capturedPieceValue - see(m);
     }
-    
-    if(m.isPromotion())
-        return PROMOTION_SCORE;
     
     return 0;
 }

@@ -14,6 +14,8 @@ Board::Board() {
                        BLACK_QUEENSIDE_CASTLE;
     ply = 0;
 
+    moveHistory.reserve(256);
+
     generateBitboards();
     initZobrist();
 }

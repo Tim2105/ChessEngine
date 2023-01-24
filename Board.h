@@ -209,8 +209,9 @@ class Board {
 
         /**
          * @brief Speichert alle gespielten Züge und notwendige Informationen um diesen effizient rückgängig zu machen.
+         * Enthält zu Beginn einen leeren Eintrag, damit getLastMove() nicht die Größe püberprüfen muss.
          */
-        std::vector<MoveHistoryEntry> moveHistory;
+        std::vector<MoveHistoryEntry> moveHistory = {{Move(), 0, 0, 0, 0, 0, 0}};
 
         /**
          * @brief Array zur Konvertierung der 10x12 Notation in 8x8 Notation.
@@ -390,6 +391,21 @@ class Board {
          * @param attackingRays Gibt dein Bitboard mit allen Angreifern zurück. Bei laufenden Figuren sind außerdem sind außerdem die Verbindungsfelder mit enthalten.
          */
         int32_t numSquareAttackers(int32_t square, int32_t side, Bitboard occupied, Bitboard& attackingRays);
+
+        /**
+         * @brief Gibt die Figur auf einem Feld zurück.
+         */
+        inline int32_t pieceAt(int32_t square) const { return pieces[square]; };
+
+        /**
+         * @brief Gibt die Seite zurück, die am Zug ist.
+         */
+        inline int32_t getSideToMove() const { return side; };
+
+        /**
+         * @brief Gibt en letzten gespielten Zug zurück.
+         */
+        inline Move getLastMove() const { return moveHistory.back().move; };
 };
 
 #endif

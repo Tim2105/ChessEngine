@@ -43,7 +43,21 @@ class GameTreeSearch {
 
         Array<Move, MAX_DEPTH> pvTable[MAX_DEPTH];
 
+        Move killerTable[MAX_DEPTH][NUM_KILLER_MOVES];
+
+        uint16_t historyTable[15][120];
+
         uint8_t currentDepth = 0;
+
+        /**
+         * @brief Leert die Tabelle mit den Killerzügen.
+         */
+        void clearKillerTable();
+
+        /**
+         * @brief Leert die Tabelle für die History-Heuristik.
+         */
+        void clearHistoryTable();
 
         /**
          * @brief Die Methode initialisiert die PV-Suche im Spielbaum.
@@ -70,14 +84,15 @@ class GameTreeSearch {
          * @param beta Min-Score.
          * @return int32_t Die Bewertung des Knotens.
          */
-        int32_t nwSearch(uint8_t depth, int32_t beta);
+        int32_t nwSearch(uint8_t depth, int32_t alpha, int32_t beta);
 
         /**
          * @brief Die Methode sortiert die Züge nach ihrer Bewertung.
          * 
          * @param moves Die Züge.
+         * @param plyFromRoot Die Tiefe im Spielbaum(Relevant für Killer- und Historyheuristik).
          */
-        void sortMoves(Array<Move, 256>& moves);
+        void sortMoves(Array<Move, 256>& moves, int32_t plyFromRoot);
 
     public:
         /**

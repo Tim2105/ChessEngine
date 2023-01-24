@@ -4,6 +4,9 @@
 GameTreeSearch::GameTreeSearch(Board& board) {
     this->board = &board;
     this->evaluator = BoardEvaluator(board);
+
+    clearKillerTable();
+    clearHistoryTable();
 }
 
 GameTreeSearch::~GameTreeSearch() {
@@ -27,7 +30,23 @@ struct MoveScorePair {
     }
 };
 
-void GameTreeSearch::sortMoves(Array<Move, 256>& moves) {
+void GameTreeSearch::clearKillerTable() {
+    for(int i = 0; i < MAX_DEPTH; i++) {
+        for(int j = 0; j < NUM_KILLER_MOVES; j++) {
+            killerTable[i][j] = Move();
+        }
+    }
+}
+
+void GameTreeSearch::clearHistoryTable() {
+    for(int i = 0; i < 15; i++) {
+        for(int j = 0; j < 120; j++) {
+            historyTable[i][j] = 0;
+        }
+    }
+}
+
+void GameTreeSearch::sortMoves(Array<Move, 256>& moves, int32_t plyFromRoot) {
     TranspositionTableEntry ttResult;
     bool ttHit = transpositionTable.probe(board->getHashValue(), ttResult);
 
@@ -41,8 +60,30 @@ void GameTreeSearch::sortMoves(Array<Move, 256>& moves) {
     for(Move m : moves) {
         if(m == hashMove)
             moveScorePairs.push_back({m, HASH_MOVE_SCORE});
-        else
-            moveScorePairs.push_back({m, evaluator.evaluateMove(m)});
+        else {
+            int32_t moveScore = 0;
+
+            // Killer-Heuristik
+            if(std::find(killerTable[plyFromRoot], killerTable[plyFromRoot] + NUM_KILLER_MOVES, m) != killerTable[plyFromRoot] + NUM_KILLER_MOVES)
+                moveScore += KILLER_MOVE_SCORE;
+            else if(m.isCapture()) {
+                // MVV-LVA-Heuristik
+                int32_t movedPieceValue = PIECE_VALUE[board->pieceAt(m.getOrigin())];
+                int32_t capturedPieceValue = PIECE_VALUE[board->pieceAt(m.getDestination())];
+
+                // Die Züge bekommen eine Bewertung von der Differenz des Wertes der geschlagenen Figur und der bewegten Figur
+                // Wenn das Ergebnis negativ ist, wird es auf 0 gesetzt
+                // Züge, in denen die geschlagene Figur weniger Wert ist als die bewegte Figur
+                // sind nicht unbedingt schlecht, werden aber nicht bevorzugt
+                moveScore += std::max((capturedPieceValue - movedPieceValue), 0);
+            }
+            
+            // History-Heuristik
+            int32_t pieceMoved = board->pieceAt(m.getOrigin());
+            moveScore += historyTable[pieceMoved][m.getDestination()];
+
+            moveScorePairs.push_back({m, moveScore});
+        }
     }
 
     std::sort(moveScorePairs.begin(), moveScorePairs.end(), std::greater<MoveScorePair>());
@@ -55,6 +96,22 @@ void GameTreeSearch::sortMoves(Array<Move, 256>& moves) {
 }
 
 int32_t GameTreeSearch::pvSearchInit(uint8_t depth) {
+
+    // Wenn diese Position mit gleicher oder höherer Tiefe schon einmal
+    // durchsucht wurde, können die Ergebnisse aus der letzten Suche
+    // wiederverwendet werden
+
+    TranspositionTableEntry ttResult;
+
+    bool ttHit = transpositionTable.probe(board->getHashValue(), ttResult);
+
+    if(ttHit && ttResult.depth >= depth && IS_REGULAR_NODE(ttResult.flags)) {
+        switch(ttResult.flags) {
+            case PV_NODE:
+                return ttResult.score;
+        }
+    }
+
     // Wenn die maximale Suchtiefe erreicht wurde, wird die Stellung bewertet
     // TODO: Stattdessen eine Quiezenzsuche durchführen
     if(depth == 0) {
@@ -74,7 +131,7 @@ int32_t GameTreeSearch::pvSearchInit(uint8_t depth) {
             return 0;
     }
 
-    sortMoves(moves);
+    sortMoves(moves, 0);
 
     uint8_t ttFlags = ALL_NODE;
 
@@ -92,7 +149,7 @@ int32_t GameTreeSearch::pvSearchInit(uint8_t depth) {
 
         } else {
             // Die restlichen Variationen werden mit einer Nullfenstersuche durchsucht
-            score = -nwSearch(depth - 1, -alpha);
+            score = -nwSearch(depth - 1, -alpha - 1, -alpha);
 
             if(score > alpha) {
                 // Wenn die Nullfenstersuche den Zug nicht wiederlegen konnte, wird die
@@ -155,14 +212,14 @@ int32_t GameTreeSearch::pvSearch(uint8_t depth, int32_t alpha, int32_t beta) {
                 return ttResult.score;
             case ALL_NODE:
                 if(ttResult.score <= alpha) {
-                    return alpha;
+                    return ttResult.score;
                 } else {
                     alpha = ttResult.score;
                 }
                 break;
             case CUT_NODE:
                 if(ttResult.score >= beta) {
-                    return beta;
+                    return ttResult.score;
                 } else {
                     beta = ttResult.score;
                 }
@@ -186,7 +243,7 @@ int32_t GameTreeSearch::pvSearch(uint8_t depth, int32_t alpha, int32_t beta) {
             return 0;
     }
 
-    sortMoves(moves);
+    sortMoves(moves, plyFromRoot);
 
     uint8_t ttFlags = ALL_NODE;
 
@@ -203,7 +260,7 @@ int32_t GameTreeSearch::pvSearch(uint8_t depth, int32_t alpha, int32_t beta) {
             score = -pvSearch(depth - 1, -beta, -alpha);
         } else {
             // Die restlichen Variationen werden mit einer Nullfenstersuche durchsucht
-            score = -nwSearch(depth - 1, -alpha);
+            score = -nwSearch(depth - 1, -alpha - 1, -alpha);
 
             if(score > alpha) {
                 // Wenn die Nullfenstersuche den Zug nicht wiederlegen konnte, wird die
@@ -221,7 +278,7 @@ int32_t GameTreeSearch::pvSearch(uint8_t depth, int32_t alpha, int32_t beta) {
             // Die Ergebnisse der Suche werden in die Transpositionstabelle eingetragen
             if((ttHit && ttResult.depth < depth && ttResult.flags != PV_NODE) || !ttHit) {
                 TranspositionTableEntry ttEntry;
-                ttEntry.score = beta;
+                ttEntry.score = score;
                 ttEntry.depth = depth;
                 ttEntry.flags = CUT_NODE;
                 ttEntry.hashMove = m;
@@ -229,7 +286,17 @@ int32_t GameTreeSearch::pvSearch(uint8_t depth, int32_t alpha, int32_t beta) {
                 transpositionTable.put(board->getHashValue(), ttEntry);
             }
 
-            return beta;
+            if(m.isQuiet()) {
+                // Der Zug ist ein Killerzug
+                memmove(&killerTable[plyFromRoot][1], &killerTable[plyFromRoot][0], sizeof(Move) * (NUM_KILLER_MOVES - 1));
+                killerTable[plyFromRoot][0] = m;
+
+                // Aktualisiere den Zug für die History-Heuristik
+                int32_t movedPiece = board->pieceAt(m.getOrigin());
+                historyTable[movedPiece][m.getDestination()] += depth * depth;
+            }
+
+            return score;
         }
 
         // Wenn der Zug besser ist als der bisher beste Zug, wird er zur Hauptvariante
@@ -264,7 +331,7 @@ int32_t GameTreeSearch::pvSearch(uint8_t depth, int32_t alpha, int32_t beta) {
     return alpha;
 }
 
-int32_t GameTreeSearch::nwSearch(uint8_t depth, int32_t beta) {
+int32_t GameTreeSearch::nwSearch(uint8_t depth, int32_t alpha, int32_t beta) {
     int32_t plyFromRoot = currentDepth - depth;
     
     // Wenn diese Position mit gleicher oder höherer Tiefe schon einmal
@@ -278,19 +345,17 @@ int32_t GameTreeSearch::nwSearch(uint8_t depth, int32_t beta) {
     if(ttHit && ttResult.depth >= depth) {
         switch(ttResult.flags) {
             case PV_NODE:
-                if(ttResult.score >= beta) {
-                    return beta;
-                } else {
-                    return beta - 1;
-                }
+                return ttResult.score;
             case ALL_NODE:
-                if(ttResult.score <= beta - 1) {
-                    return beta - 1;
+                if(ttResult.score <= alpha) {
+                    return ttResult.score;
+                } else {
+                    alpha = ttResult.score;
                 }
                 break;
             case CUT_NODE:
                 if(ttResult.score >= beta) {
-                    return beta;
+                    return ttResult.score;
                 } else {
                     beta = ttResult.score;
                 }
@@ -303,6 +368,31 @@ int32_t GameTreeSearch::nwSearch(uint8_t depth, int32_t beta) {
     if(depth == 0) {
         return evaluator.evaluate();
     }
+
+    int32_t score = MIN_SCORE;
+
+    Move hashMove = ttHit ? ttResult.hashMove : Move();
+
+    if(hashMove.exists()) {
+        // Wenn der Hashzug gültig ist, wird er als erstes ausprobiert
+        // Wenn der Hashzug einen Beta-Schnitt verursacht,
+        // wird sowohl die Zuggeneration als auch die Vorsortierung übersprungen
+        board->makeMove(hashMove);
+        score = -nwSearch(depth - 1, -beta, -alpha);
+        board->undoMove();
+
+        if(score >= beta) {
+            if(hashMove.isQuiet()) {
+                // Der Zug ist ein Killerzug
+                memmove(&killerTable[plyFromRoot][1], &killerTable[plyFromRoot][0], sizeof(Move) * (NUM_KILLER_MOVES - 1));
+                killerTable[plyFromRoot][0] = hashMove;
+            }
+
+            return score;
+        }
+    }
+
+
     Array<Move, 256> moves = board->generateLegalMoves();
 
     // Wenn keine legalen Züge möglich sind, ist das Spiel vorbei
@@ -313,15 +403,17 @@ int32_t GameTreeSearch::nwSearch(uint8_t depth, int32_t beta) {
             return 0;
     }
 
-    sortMoves(moves);
-
-    int32_t score = MIN_SCORE;
+    sortMoves(moves, plyFromRoot);
 
     for(Move m : moves) {
+        // Wenn der Zug der Hashzug ist, wurde er bereits ausprobiert
+        if(m == hashMove)
+            continue;
+
         board->makeMove(m);
         // In der Nullfenstersuche werden auch alle weiteren Knoten
         // mit einem Nullfenster durchsucht
-        score = -nwSearch(depth - 1, -beta + 1);
+        score = -nwSearch(depth - 1, -beta, -alpha);
         board->undoMove();
 
         // Wenn der Zug den Gegner in eine schlechtere Stellung bringt,
@@ -332,23 +424,38 @@ int32_t GameTreeSearch::nwSearch(uint8_t depth, int32_t beta) {
             // weil die Bewertung nicht genau ist
             if((ttHit && ttResult.depth < depth && !IS_REGULAR_NODE(ttResult.flags)) || !ttHit) {
                 TranspositionTableEntry ttEntry;
-                ttEntry.score = beta;
+                ttEntry.score = score;
                 ttEntry.depth = depth;
                 ttEntry.flags = NULL_WINDOW_NODE | CUT_NODE;
                 ttEntry.hashMove = m;
 
                 transpositionTable.put(board->getHashValue(), ttEntry);
             }
+
+            if(m.isQuiet()) {
+                // Der Zug ist ein Killerzug
+                memmove(&killerTable[plyFromRoot][1], &killerTable[plyFromRoot][0], sizeof(Move) * (NUM_KILLER_MOVES - 1));
+                killerTable[plyFromRoot][0] = m;
+
+                // In der Nullfenstersuche werden keine Züge für die History-Heuristik
+                // gespeichert, weil Beta-Schnitte passieren und die History-Tabelle verfälscht wird
+            }
             
-            return beta;
+            return score;
+        }
+
+        if(score > alpha) {
+            alpha = score;
         }
     }
 
-    return beta - 1;
+    return alpha;
 }
 
 int32_t GameTreeSearch::search(uint8_t depth, std::vector<Move>& pv) {
     int32_t score = 0;
+
+    clearHistoryTable();
 
     for(uint8_t i = (depth % 2 == 0 ? 2 : 1); i <= depth; i += 2) {
         currentDepth = i;
