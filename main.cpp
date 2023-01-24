@@ -43,10 +43,10 @@ int main() {
     std::vector<Move> pv;
 
     auto start = std::chrono::high_resolution_clock::now();
-    int32_t score = search.search(4, pv);
+    int32_t score = search.search(6, pv);
     auto end = std::chrono::high_resolution_clock::now();
 
-    std::cout << "Depth: 4" << std::endl;
+    std::cout << "Depth: 6" << std::endl;
 
     std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
 
