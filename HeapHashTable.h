@@ -33,6 +33,7 @@ class HeapHashTable {
         HeapHashTable& operator=(const HeapHashTable& other) = delete;
 
         HeapHashTable(HeapHashTable&& other);
+        HeapHashTable& operator=(HeapHashTable&& other);
 
         /**
          * @brief Fügt ein Element in die Hash-Tabelle ein.
@@ -81,6 +82,18 @@ HeapHashTable<K, V, bucketCount, bucketSize>::HeapHashTable(HeapHashTable&& othe
 }
 
 template <typename K, typename V, size_t bucketCount, size_t bucketSize>
+HeapHashTable<K, V, bucketCount, bucketSize>& HeapHashTable<K, V, bucketCount, bucketSize>::operator=(HeapHashTable&& other) {
+    table = other.table;
+    other.table = nullptr;
+
+    for (size_t i = 0; i < bucketCount; i++) {
+        bucketSizes[i] = other.bucketSizes[i];
+    }
+
+    return *this;
+}
+
+template <typename K, typename V, size_t bucketCount, size_t bucketSize>
 void HeapHashTable<K, V, bucketCount, bucketSize>::put(K key, V value) {
     size_t index = std::hash<K>{}(key) % bucketCount;
     Entry* bucket = table + index * bucketSize;
@@ -120,6 +133,13 @@ bool HeapHashTable<K, V, bucketCount, bucketSize>::probe(K key, V& value) {
     }
 
     return false;
+}
+
+template <typename K, typename V, size_t bucketCount, size_t bucketSize>
+void HeapHashTable<K, V, bucketCount, bucketSize>::clear() {
+    for (size_t i = 0; i < bucketCount; i++) {
+        bucketSizes[i] = 0;
+    }
 }
 
 #endif

@@ -256,6 +256,87 @@ class Movegen {
          * @param attackedSquares Bitboard, das alle Felder enthält, die die gegnerischen Figuren angreifen.
          */
         static void generateBlackKingMoves(Array<Move, 256>& moves, Board& board, Bitboard attackedSquares);
+
+        /**
+         * @brief Generiert alle legalen Schlagzüge für die weißen Bauern.
+         */
+        static void generateWhitePawnCaptures(Array<Move, 256>& moves, Board& board,
+                                            int32_t numAttackers, Bitboard attackingRays,
+                                            Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
+
+        /**
+         * @brief Generiert alle legalen Schlagzüge für die schwarzen Bauern.
+         */
+        static void generateBlackPawnCaptures(Array<Move, 256>& moves, Board& board,
+                                            int32_t numAttackers, Bitboard attackingRays,
+                                            Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
+
+        /**
+         * @brief Generiert alle legalen Züge für die weißen Springer.
+         */
+        static void generateWhiteKnightCaptures(Array<Move, 256>& moves, Board& board,
+                                                int32_t numAttackers, Bitboard attackingRays,
+                                                Bitboard pinnedPiecesBitboard);
+
+        /**
+         * @brief Generiert alle legalen Züge für die schwarzen Springer.
+         */
+        static void generateBlackKnightCaptures(Array<Move, 256>& moves, Board& board,
+                                                int32_t numAttackers, Bitboard attackingRays,
+                                                Bitboard pinnedPiecesBitboard);
+
+        /**
+         * @brief Generiert alle legalen Züge für die weißen Läufer.
+         */
+        static void generateWhiteBishopCaptures(Array<Move, 256>& moves, Board& board,
+                                                int32_t numAttackers, Bitboard attackingRays,
+                                                Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
+
+        /**
+         * @brief Generiert alle legalen Züge für die schwarzen Läufer.
+         */
+        static void generateBlackBishopCaptures(Array<Move, 256>& moves, Board& board,
+                                                int32_t numAttackers, Bitboard attackingRays,
+                                                Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
+
+        /**
+         * @brief Generiert alle legalen Züge für die weißen Türme.
+         */
+        static void generateWhiteRookCaptures(Array<Move, 256>& moves, Board& board,
+                                                int32_t numAttackers, Bitboard attackingRays,
+                                                Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
+
+        /**
+         * @brief Generiert alle legalen Züge für die schwarzen Türme.
+         */
+        static void generateBlackRookCaptures(Array<Move, 256>& moves, Board& board,
+                                                int32_t numAttackers, Bitboard attackingRays,
+                                                Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
+
+        /**
+         * @brief Generiert alle legalen Züge für die weißen Damen.
+         */
+        static void generateWhiteQueenCaptures(Array<Move, 256>& moves, Board& board,
+                                                int32_t numAttackers, Bitboard attackingRays,
+                                                Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
+
+        /**
+         * @brief Generiert alle legalen Züge für die schwarzen Damen.
+         */
+        static void generateBlackQueenCaptures(Array<Move, 256>& moves, Board& board, 
+                                                int32_t numAttackers, Bitboard attackingRays,
+                                                Bitboard pinnedPiecesBitboard, int32_t* pinnedDirections);
+
+        /**
+         * @brief Generiert alle legalen Züge für den weißen König.
+         */
+        static void generateWhiteKingCaptures(Array<Move, 256>& moves, Board& board, Bitboard attackedSquares);
+
+        /**
+         * @brief Generiert alle legalen Züge für den schwarzen König.
+         */
+        static void generateBlackKingCaptures(Array<Move, 256>& moves, Board& board, Bitboard attackedSquares);
+
 };
 
 #endif

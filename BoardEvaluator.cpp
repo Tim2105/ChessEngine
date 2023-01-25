@@ -7,6 +7,21 @@ BoardEvaluator::BoardEvaluator(Board& b) {
     this->b = &b;
 }
 
+BoardEvaluator::~BoardEvaluator() {
+}
+
+BoardEvaluator::BoardEvaluator(BoardEvaluator&& other) {
+    this->b = other.b;
+    this->pawnStructureTable = std::move(other.pawnStructureTable);
+}
+
+BoardEvaluator& BoardEvaluator::operator=(BoardEvaluator&& other) {
+    this->b = other.b;
+    this->pawnStructureTable = std::move(other.pawnStructureTable);
+
+    return *this;
+}
+
 int32_t BoardEvaluator::evaluate() {
     if(isDraw()) // Unentschieden
         return 0;
@@ -738,29 +753,60 @@ int32_t BoardEvaluator::see(Move& m) {
 }
 
 int32_t BoardEvaluator::evaluateMove(Move& m) {
-    if(m.isPromotion())
-        return PROMOTION_SCORE;
+    int32_t moveScore = 0;
 
-    if(m.isEnPassant())
-        return EN_PASSANT_SCORE;
+    if(m.isPromotion())
+        moveScore += PROMOTION_SCORE;
 
     if(m.isCapture()) {
-        int32_t movedPieceValue = PIECE_VALUE[TYPEOF(b->pieces[m.getOrigin()])];
         int32_t capturedPieceValue = PIECE_VALUE[TYPEOF(b->pieces[m.getDestination()])];
 
-        // // Wenn eine eigene Figur eine gegnerische Figur mit höherem Wert schlägt,
-        // // wird die MVV-LVA Heuristik angewendet
-        // if(capturedPieceValue > movedPieceValue)
-        //     return capturedPieceValue - movedPieceValue;
-
-        // // Ansonsten wird die SEE Heuristik angewendet
-
-        // Bauernaufwertungen sollen die Bewertung nicht verzerren
-        // Aufgewertete Bauern werden wie normale Bauern behandelt
-        Move mCopy(m.getOrigin(), m.getDestination(), MOVE_CAPTURE);
-
-        return capturedPieceValue - see(m);
+        // SEE-Heuristik
+        moveScore += capturedPieceValue - see(m);
+    } else if(m.isCastle()) {
+        moveScore += CASTLING_MOVE_SCORE;
     }
+
+    int32_t origin64 = b->mailbox[m.getOrigin()];
+
+    // Züge, die den gegnerischen König in Schach setzen,
+    // werden positiv bewertet
+    int32_t pieceType = TYPEOF(b->pieces[m.getOrigin()]);
+
+    int32_t side = b->side;
+    int32_t otherSide = b->side ^ COLOR_MASK;
+
+    int32_t otherKing64 = b->pieceBitboard[otherSide | KING].getFirstSetBit();
+
+    switch(pieceType) {
+        case PAWN:
+            if(pawnAttackBitboard(otherKing64, otherSide).getBit(b->mailbox[m.getDestination()]))
+                moveScore += CHECK_MOVE_SCORE;
+            break;
+        case KNIGHT:
+            if(knightAttackBitboard(otherKing64).getBit(b->mailbox[m.getDestination()]))
+                moveScore += CHECK_MOVE_SCORE;
+            break;
+        case BISHOP:
+            if(diagonalAttackBitboard(otherKing64, b->allPiecesBitboard | b->pieceBitboard[side | KING]).getBit(b->mailbox[m.getDestination()]))
+                moveScore += CHECK_MOVE_SCORE;
+            break;
+        case ROOK:
+            if(straightAttackBitboard(otherKing64, b->allPiecesBitboard | b->pieceBitboard[side | KING]).getBit(b->mailbox[m.getDestination()]))
+                moveScore += CHECK_MOVE_SCORE;
+            break;
+        case QUEEN:
+            if((diagonalAttackBitboard(otherKing64, b->allPiecesBitboard | b->pieceBitboard[side | KING])
+                | straightAttackBitboard(otherKing64, b->allPiecesBitboard | b->pieceBitboard[side | KING])).getBit(b->mailbox[m.getDestination()]))
+                moveScore += CHECK_MOVE_SCORE;
+            break;
+    }
+
+    Bitboard passedPawns = findPassedPawns(b->pieceBitboard[side | PAWN],
+                            b->pieceBitboard[otherSide | PAWN], side);
     
-    return 0;
+    if(passedPawns.getBit(origin64))
+        moveScore += PASSED_PAWN_MOVE_SCORE;
+    
+    return moveScore;
 }

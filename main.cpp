@@ -22,28 +22,14 @@ void perft(Board& board, int depth, int& count) {
 }
 
 int main() {
-    Board board("5k2/pp3b2/6p1/2P5/1P4P1/2K1N3/8/8 w - - 0 1");
-
-    // for(int i = 1; i < 7; i++) {
-    //     int count = 0;
-    //     auto start = std::chrono::high_resolution_clock::now();
-    //     perft(board, i, count);
-    //     auto end = std::chrono::high_resolution_clock::now();
-
-    //     double time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-
-    //     std::cout << "Perft(Depth: " << i << "): " << std::endl;
-    //     std::cout << "Nodes: " << count << std::endl;
-    //     std::cout << "Time: " << std::setprecision(0) << std::fixed << time << "ms" << std::endl;
-    //     std::cout << "Nodes/s: " << std::setprecision(0) << std::fixed << count / (time / 1000) << std::endl << std::endl;
-    // }
+    Board board("8/P3k3/1R4n1/2p5/5BK1/2P5/2P5/8 w - - 0 1");
 
     GameTreeSearch search(board);
 
     std::vector<Move> pv;
 
     auto start = std::chrono::high_resolution_clock::now();
-    int32_t score = search.search(7, pv);
+    int32_t score = search.search(12, pv);
     auto end = std::chrono::high_resolution_clock::now();
 
     std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
@@ -53,8 +39,10 @@ int main() {
     std::cout << "PV:" << std::endl;
 
     for(Move m : pv) {
-        std::cout << m.toString() << std::endl;
+        std::cout << m.toString() << " ";
     }
+
+    std::cout << std::endl;
 
     return 0;
 }

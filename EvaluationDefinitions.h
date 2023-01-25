@@ -24,26 +24,26 @@ extern int32_t PIECE_VALUE[];
 extern Bitboard neighboringFiles[];
 
 // Bonus für jedes Feld, dass eine Farbe angreift
-#define MG_MOBILITY_VALUE 2
-#define EG_MOBILITY_VALUE 1
+#define MG_MOBILITY_VALUE 3
+#define EG_MOBILITY_VALUE 2
 
 // Bonus für jeden Bauern, der neben mindestens einem anderen Bauern steht
 #define MG_PAWN_CONNECTED_BASE_VALUE 4
 #define EG_PAWN_CONNECTED_BASE_VALUE 2
 // Wird mit der Anzahl der fortgeschrittenen Felder multipliziert
-#define MG_PAWN_CONNECTED_RANK_ADVANCED_MULTIPLIER 2
+#define MG_PAWN_CONNECTED_RANK_ADVANCED_MULTIPLIER 3
 #define EG_PAWN_CONNECTED_RANK_ADVANCED_MULTIPLIER 5
 
 // Bonus für jeden Bauern, der mindestens einen anderen Bauern deckt
 #define MG_PAWN_CHAIN_VALUE 10
-#define EG_PAWN_CHAIN_VALUE 10
+#define EG_PAWN_CHAIN_VALUE 20
 
 // Bestrafung für zwei oder mehrere Bauern in einer Spalte (doppelte Bauern)
-#define MG_PAWN_DOUBLED_VALUE -15
-#define EG_PAWN_DOUBLED_VALUE -20
+#define MG_PAWN_DOUBLED_VALUE -25
+#define EG_PAWN_DOUBLED_VALUE -40
 
 // Bestrafung für einen Bauern, der keine Nachbarn hat(keine Bauern in einer Nachbarspalte)
-#define MG_PAWN_ISOLATED_BASE_VALUE -10
+#define MG_PAWN_ISOLATED_BASE_VALUE -15
 #define EG_PAWN_ISOLATED_BASE_VALUE -30
 // Wird mit der Entfernung zu den äußeren Spalten multipliziert
 #define MG_PAWN_ISOLATED_INNER_FILE_MULTIPLIER -3
@@ -57,8 +57,8 @@ extern Bitboard neighboringFiles[];
 #define EG_PAWN_PASSED_RANK_ADVANCED_MULTIPLIER 25
 
 // Bestrafung für jedes Feld um den König herum, dass von einem Gegner angegriffen wird
-#define MG_KING_SAFETY_VALUE -5
-#define EG_KING_SAFETY_VALUE -8
+#define MG_KING_SAFETY_VALUE -10
+#define EG_KING_SAFETY_VALUE -12
 
 /**
  * @brief Bauernschilder und -stürme werden nur für das Midgame bewertet.
@@ -68,9 +68,9 @@ extern Bitboard neighboringFiles[];
 #define MG_PAWN_SHIELD_VALUE 15
 
 // Bonus für jeden Bauern, der den König angreift(oder einen Angriff droht)
-#define MG_PAWN_STORM_BASE_VALUE 2
+#define MG_PAWN_STORM_BASE_VALUE 10
 // Wird mit der Anzahl der fortgeschrittenen Felder multipliziert
-#define MG_PAWN_STORM_DISTANCE_MULTIPLIER 2
+#define MG_PAWN_STORM_DISTANCE_MULTIPLIER 10
 
 /**
  * @brief Bewertung für die Distanz zwischen den Königen.
@@ -120,6 +120,8 @@ extern int32_t EG_PSQT[][64];
 #define HASH_MOVE_SCORE 2000
 #define PROMOTION_SCORE 900
 #define KILLER_MOVE_SCORE 80
-#define EN_PASSANT_SCORE 50
+#define CHECK_MOVE_SCORE 90
+#define PASSED_PAWN_MOVE_SCORE 80
+#define CASTLING_MOVE_SCORE 50
 
 #endif

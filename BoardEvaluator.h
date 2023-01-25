@@ -3,6 +3,7 @@
 
 #include "Board.h"
 #include "HashTable.h"
+#include "HeapHashTable.h"
 #include <functional>
 
 struct Score {
@@ -92,7 +93,7 @@ class BoardEvaluator {
         // weshalb berechnete Bewertungen von Bauernstrukturen in einer Hash-Tabelle gespeichert werden,
         // um sie bei der nächsten Bewertung(bei gleicher Bauernstruktur) wieder zu verwenden.
         // Weil Bauernstrukturen sich nicht zu häufig ändern, bekommt man hier eine hohe Trefferquote(Durchschnitt ca. 75%).
-        HashTable<PawnBitboards, Score, 512, 4> pawnStructureTable;
+        HeapHashTable<PawnBitboards, Score, 1024, 4> pawnStructureTable;
 
         /**
          * @brief Die Methode findDoublePawns findet alle Bauern, die sich auf derselben Linie befinden.
@@ -215,6 +216,14 @@ class BoardEvaluator {
         BoardEvaluator() {};
 
         BoardEvaluator(Board& b);
+
+        ~BoardEvaluator();
+
+        BoardEvaluator(const BoardEvaluator& other) = delete;
+        BoardEvaluator& operator=(const BoardEvaluator& other) = delete;
+
+        BoardEvaluator(BoardEvaluator&& other);
+        BoardEvaluator& operator=(BoardEvaluator&& other);
 
         /**
          * @brief Führt eine statische Bewertung für das Midgame der

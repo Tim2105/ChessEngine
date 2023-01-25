@@ -1,5 +1,6 @@
 #include "GameTreeSearch.h"
 #include <algorithm>
+#include <cmath>
 
 GameTreeSearch::GameTreeSearch(Board& board) {
     this->board = &board;
@@ -46,6 +47,12 @@ void GameTreeSearch::clearHistoryTable() {
     }
 }
 
+void GameTreeSearch::clearPVTable() {
+    for(int i = 0; i < MAX_DEPTH; i++) {
+        pvTable[i].clear();
+    }
+}
+
 void GameTreeSearch::sortMoves(Array<Move, 256>& moves, int32_t plyFromRoot) {
     TranspositionTableEntry ttResult;
     bool ttHit = transpositionTable.probe(board->getHashValue(), ttResult);
@@ -58,32 +65,20 @@ void GameTreeSearch::sortMoves(Array<Move, 256>& moves, int32_t plyFromRoot) {
     Array<MoveScorePair, 256> moveScorePairs;
 
     for(Move m : moves) {
+        int32_t moveScore = 0;
+
         if(m == hashMove)
-            moveScorePairs.push_back({m, HASH_MOVE_SCORE});
-        else {
-            int32_t moveScore = 0;
+            moveScore += HASH_MOVE_SCORE;
 
-            // Killer-Heuristik
-            if(std::find(killerTable[plyFromRoot], killerTable[plyFromRoot] + NUM_KILLER_MOVES, m) != killerTable[plyFromRoot] + NUM_KILLER_MOVES)
-                moveScore += KILLER_MOVE_SCORE;
-            else if(m.isCapture()) {
-                // MVV-LVA-Heuristik
-                int32_t movedPieceValue = PIECE_VALUE[board->pieceAt(m.getOrigin())];
-                int32_t capturedPieceValue = PIECE_VALUE[board->pieceAt(m.getDestination())];
+        if(std::find(killerTable[plyFromRoot], killerTable[plyFromRoot] + NUM_KILLER_MOVES, m) != killerTable[plyFromRoot] + NUM_KILLER_MOVES)
+            moveScore += KILLER_MOVE_SCORE;
+        
+        int32_t pieceMoved = board->pieceAt(m.getOrigin());
+        moveScore += historyTable[pieceMoved][m.getDestination()];
 
-                // Die Züge bekommen eine Bewertung von der Differenz des Wertes der geschlagenen Figur und der bewegten Figur
-                // Wenn das Ergebnis negativ ist, wird es auf 0 gesetzt
-                // Züge, in denen die geschlagene Figur weniger Wert ist als die bewegte Figur
-                // sind nicht unbedingt schlecht, werden aber nicht bevorzugt
-                moveScore += std::max((capturedPieceValue - movedPieceValue), 0);
-            }
+        moveScore += evaluator.evaluateMove(m);
             
-            // History-Heuristik
-            int32_t pieceMoved = board->pieceAt(m.getOrigin());
-            moveScore += historyTable[pieceMoved][m.getDestination()];
-
-            moveScorePairs.push_back({m, moveScore});
-        }
+        moveScorePairs.push_back({m, moveScore});
     }
 
     std::sort(moveScorePairs.begin(), moveScorePairs.end(), std::greater<MoveScorePair>());
@@ -95,31 +90,66 @@ void GameTreeSearch::sortMoves(Array<Move, 256>& moves, int32_t plyFromRoot) {
     }
 }
 
-int32_t GameTreeSearch::pvSearchInit(uint8_t depth) {
+void GameTreeSearch::sortMovesQuiescence(Array<Move, 256>& moves) {
 
-    // Wenn diese Position mit gleicher oder höherer Tiefe schon einmal
-    // durchsucht wurde, können die Ergebnisse aus der letzten Suche
-    // wiederverwendet werden
+    Array<MoveScorePair, 256> moveScorePairs;
 
-    TranspositionTableEntry ttResult;
+    for(Move m : moves) {
+        int32_t moveScore = evaluator.evaluateMove(m);
 
-    bool ttHit = transpositionTable.probe(board->getHashValue(), ttResult);
-
-    if(ttHit && ttResult.depth >= depth && IS_REGULAR_NODE(ttResult.flags)) {
-        switch(ttResult.flags) {
-            case PV_NODE:
-                return ttResult.score;
-        }
+        if(moveScore >= 0)
+            moveScorePairs.push_back({m, moveScore});
     }
 
+    std::sort(moveScorePairs.begin(), moveScorePairs.end(), std::greater<MoveScorePair>());
+
+    moves.clear();
+
+    for(MoveScorePair msp : moveScorePairs) {
+        moves.push_back(msp.move);
+    }
+}
+
+int32_t GameTreeSearch::pvSearchInit(uint8_t depth, bool enableAspirationWindow, int32_t expectedScore) {
+    if(!enableAspirationWindow) {
+        return pvSearchRoot(depth, MIN_SCORE, MAX_SCORE);
+    } else {
+        int32_t alpha = expectedScore - ASPIRATION_WINDOW_SIZE;
+        int32_t beta = expectedScore + ASPIRATION_WINDOW_SIZE;
+
+        int32_t score = pvSearchRoot(depth, alpha, beta);
+
+        int32_t failHigh = 0;
+        int32_t failLow = 0;
+
+        while(score <= alpha || score >= beta) {
+            if(score <= alpha) {
+                failHigh++;
+                if(failHigh > MAX_ASPIRATION_WINDOW_STEPS)
+                    alpha = MIN_SCORE;
+                else
+                    alpha = expectedScore - ASPIRATION_WINDOW_SIZE * pow(ASPIRATION_WINDOW_STEP_BASE, failHigh);
+            } else {
+                failLow++;
+                if(failLow > MAX_ASPIRATION_WINDOW_STEPS)
+                    beta = MAX_SCORE;
+                else
+                    beta = expectedScore + ASPIRATION_WINDOW_SIZE * pow(ASPIRATION_WINDOW_STEP_BASE, failLow);
+            }
+
+            score = pvSearchRoot(depth, alpha, beta);
+        }
+
+        return score;
+    }
+}
+
+int32_t GameTreeSearch::pvSearchRoot(uint8_t depth, int32_t alpha, int32_t beta) {
     // Wenn die maximale Suchtiefe erreicht wurde, wird die Stellung bewertet
     // TODO: Stattdessen eine Quiezenzsuche durchführen
     if(depth == 0) {
-        return evaluator.evaluate();
+        return quiescence(alpha, beta);
     }
-
-    int32_t alpha = MIN_SCORE;
-    int32_t beta = MAX_SCORE;
 
     Array<Move, 256> moves = board->generateLegalMoves();
 
@@ -160,6 +190,10 @@ int32_t GameTreeSearch::pvSearchInit(uint8_t depth) {
         }
 
         board->undoMove();
+
+        if(score >= beta) {
+            return beta;
+        }
 
         if(score > alpha) {
             // Der Zug ist der beste Zug, der bisher gefunden wurde
@@ -207,21 +241,17 @@ int32_t GameTreeSearch::pvSearch(uint8_t depth, int32_t alpha, int32_t beta) {
     bool ttHit = transpositionTable.probe(board->getHashValue(), ttResult);
 
     if(ttHit && ttResult.depth >= depth && IS_REGULAR_NODE(ttResult.flags)) {
-        switch(ttResult.flags) {
+        switch(TYPEOF_NODE(ttResult.flags)) {
             case PV_NODE:
                 return ttResult.score;
             case ALL_NODE:
                 if(ttResult.score <= alpha) {
                     return ttResult.score;
-                } else {
-                    alpha = ttResult.score;
                 }
                 break;
             case CUT_NODE:
                 if(ttResult.score >= beta) {
                     return ttResult.score;
-                } else {
-                    beta = ttResult.score;
                 }
                 break;
         }
@@ -230,7 +260,7 @@ int32_t GameTreeSearch::pvSearch(uint8_t depth, int32_t alpha, int32_t beta) {
     // Wenn die maximale Suchtiefe erreicht wurde, wird die Stellung bewertet
     // TODO: Stattdessen eine Quiezenzsuche durchführen
     if(depth == 0) {
-        return evaluator.evaluate();
+        return quiescence(alpha, beta);
     }
 
     Array<Move, 256> moves = board->generateLegalMoves();
@@ -245,11 +275,12 @@ int32_t GameTreeSearch::pvSearch(uint8_t depth, int32_t alpha, int32_t beta) {
 
     sortMoves(moves, plyFromRoot);
 
-    uint8_t ttFlags = ALL_NODE;
+    bool searchPV = false;
 
     int32_t score = MIN_SCORE;
 
-    bool searchPV = true;
+    uint8_t ttFlags = ALL_NODE;
+
     Move bestMove;
 
     for(Move m : moves) {
@@ -343,21 +374,17 @@ int32_t GameTreeSearch::nwSearch(uint8_t depth, int32_t alpha, int32_t beta) {
     bool ttHit = transpositionTable.probe(board->getHashValue(), ttResult);
 
     if(ttHit && ttResult.depth >= depth) {
-        switch(ttResult.flags) {
+        switch(TYPEOF_NODE(ttResult.flags)) {
             case PV_NODE:
                 return ttResult.score;
             case ALL_NODE:
                 if(ttResult.score <= alpha) {
                     return ttResult.score;
-                } else {
-                    alpha = ttResult.score;
                 }
                 break;
             case CUT_NODE:
                 if(ttResult.score >= beta) {
                     return ttResult.score;
-                } else {
-                    beta = ttResult.score;
                 }
                 break;
         }
@@ -366,12 +393,16 @@ int32_t GameTreeSearch::nwSearch(uint8_t depth, int32_t alpha, int32_t beta) {
     // Wenn die maximale Suchtiefe erreicht wurde, wird die Stellung bewertet
     // TODO: Stattdessen eine Quiezenzsuche durchführen
     if(depth == 0) {
-        return evaluator.evaluate();
+        return quiescence(alpha, beta);
     }
 
     int32_t score = MIN_SCORE;
 
+    uint8_t ttFlags = NULL_WINDOW_NODE | ALL_NODE;
+
     Move hashMove = ttHit ? ttResult.hashMove : Move();
+
+    Move bestMove;
 
     if(hashMove.exists()) {
         // Wenn der Hashzug gültig ist, wird er als erstes ausprobiert
@@ -382,16 +413,33 @@ int32_t GameTreeSearch::nwSearch(uint8_t depth, int32_t alpha, int32_t beta) {
         board->undoMove();
 
         if(score >= beta) {
+            // Die Ergebnisse der Suche werden in die Transpositionstabelle eingetragen
+            // Ergebnisse auf der Nullfenstersuche werden als Nullfensterknoten markiert,
+            // weil die Bewertung nicht genau ist
+            if((ttHit && ttResult.depth < depth && !IS_REGULAR_NODE(ttResult.flags)) || !ttHit) {
+                TranspositionTableEntry ttEntry;
+                ttEntry.score = score;
+                ttEntry.depth = depth;
+                ttEntry.flags = NULL_WINDOW_NODE | CUT_NODE;
+                ttEntry.hashMove = hashMove;
+
+                transpositionTable.put(board->getHashValue(), ttEntry);
+            }
+            
             if(hashMove.isQuiet()) {
                 // Der Zug ist ein Killerzug
                 memmove(&killerTable[plyFromRoot][1], &killerTable[plyFromRoot][0], sizeof(Move) * (NUM_KILLER_MOVES - 1));
                 killerTable[plyFromRoot][0] = hashMove;
             }
-
             return score;
         }
-    }
 
+        if(score > alpha) {
+            alpha = score;
+            bestMove = hashMove;
+            ttFlags = NULL_WINDOW_NODE | PV_NODE;
+        }
+    }
 
     Array<Move, 256> moves = board->generateLegalMoves();
 
@@ -405,7 +453,19 @@ int32_t GameTreeSearch::nwSearch(uint8_t depth, int32_t alpha, int32_t beta) {
 
     sortMoves(moves, plyFromRoot);
 
+    int32_t searchNumMoves = moves.size();
+
+    if(!board->isCheck() && plyFromRoot >= FULL_MOVE_SEARCH_DEPTH_FUNCTION(currentDepth)) {
+        searchNumMoves = LMR_MOVE_COUNT_FUNCTION(depth, searchNumMoves);
+    }
+    
+    if(hashMove.exists())
+        searchNumMoves--;
+
     for(Move m : moves) {
+        if(searchNumMoves <= 0)
+            break;
+
         // Wenn der Zug der Hashzug ist, wurde er bereits ausprobiert
         if(m == hashMove)
             continue;
@@ -446,6 +506,65 @@ int32_t GameTreeSearch::nwSearch(uint8_t depth, int32_t alpha, int32_t beta) {
 
         if(score > alpha) {
             alpha = score;
+            ttFlags = NULL_WINDOW_NODE | PV_NODE;
+            bestMove = m;
+        }
+
+        searchNumMoves--;
+    }
+
+    // Die Ergebnisse der Suche werden in die Transpositionstabelle eingetragen
+    // Ergebnisse auf der Nullfenstersuche werden als Nullfensterknoten markiert,
+    // weil die Bewertung nicht genau ist
+
+    if(ttHit && ttResult.depth < depth && !IS_REGULAR_NODE(ttResult.flags)) {
+        TranspositionTableEntry ttEntry;
+        ttEntry.score = alpha;
+        ttEntry.depth = depth;
+        ttEntry.flags = ttFlags;
+        ttEntry.hashMove = bestMove;
+
+        transpositionTable.put(board->getHashValue(), ttEntry);
+    }
+
+    return alpha;
+}
+
+int32_t GameTreeSearch::quiescence(int32_t alpha, int32_t beta) {
+    int32_t score = evaluator.evaluate();
+
+    if(score >= beta) {
+        return score;
+    }
+    
+    if(score > alpha) {
+        alpha = score;
+    }
+    
+    Array<Move, 256> moves;
+    if(board->isCheck()) { 
+        moves = board->generateLegalMoves();
+
+        // Wenn keine legalen Züge möglich sind, ist das Spiel vorbei
+        if(moves.size() == 0)
+            return -MATE_SCORE;
+    }
+    else
+        moves = board->generateLegalCaptures();
+    
+    sortMovesQuiescence(moves);
+
+    for(Move m : moves) {
+        board->makeMove(m);
+        score = -quiescence(-beta, -alpha);
+        board->undoMove();
+
+        if(score >= beta) {
+            return score;
+        }
+        
+        if(score > alpha) {
+            alpha = score;
         }
     }
 
@@ -457,9 +576,27 @@ int32_t GameTreeSearch::search(uint8_t depth, std::vector<Move>& pv) {
 
     clearHistoryTable();
 
-    for(uint8_t i = (depth % 2 == 0 ? 2 : 1); i <= depth; i += 2) {
+    bool firstSearch = true;
+
+    for(uint8_t i = 1; i <= depth; i++) {
+        clearPVTable();
+
         currentDepth = i;
-        score = pvSearchInit(i);
+
+        score = pvSearchInit(i, !firstSearch, score);
+
+        std::cout << "Depth: " << (int) i << " Score: " << score << std::endl;
+
+        for(Move m : pvTable[0]) {
+            std::cout << m.toString() << " ";
+        }
+
+        std::cout << std::endl;
+
+        if(abs(score) >= MATE_SCORE - MAX_DEPTH)
+            break;
+
+        firstSearch = false;
     }
 
     pv.clear();

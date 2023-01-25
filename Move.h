@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <iostream>
 #include "BoardDefinitions.h"
+#include <functional>
 
 /**
  * @brief Kapselt einen Zug.
@@ -23,6 +24,8 @@ class Move {
         virtual ~Move();
 
         friend std::ostream& operator<< (std::ostream& os, const Move& m);
+
+        inline uint32_t getMove() const { return move; }
 
         /**
          * @brief Überprüft, ob der Zug Inhalt hat.
@@ -123,6 +126,13 @@ class Move {
          * @brief Vergleicht zwei Züge.
          */
         bool operator>(const Move& other) const;
+};
+
+template <>
+struct std::hash<Move> {
+    std::size_t operator()(const Move& m) const {
+        return m.getMove();
+    }
 };
 
 #endif
