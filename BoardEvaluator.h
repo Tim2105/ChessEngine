@@ -75,7 +75,7 @@ struct PawnBitboards {
 template <>
 struct std::hash<PawnBitboards> {
     std::size_t operator()(const PawnBitboards& pwns) const {
-        return std::hash<Bitboard>()(pwns.whitePawns) ^ std::hash<Bitboard>()(pwns.blackPawns);
+        return std::hash<Bitboard>()(pwns.whitePawns) | std::hash<Bitboard>()(pwns.blackPawns);
     }
 };
 
@@ -86,7 +86,6 @@ struct std::hash<PawnBitboards> {
 class BoardEvaluator {
 
     private:
-    public:
         // Das Spielfeld
         Board* b;
 
@@ -177,7 +176,7 @@ class BoardEvaluator {
         int32_t evalMGKingSafety();
         inline int32_t evalMGPawnShield(int32_t kingSquare, const Bitboard& ownPawns, const Bitboard& otherPawns, int32_t side);
         inline int32_t evalMGPawnStorm(int32_t otherKingSquare, const Bitboard& ownPawns, const Bitboard& otherPawns, int32_t side);
-        inline int32_t evalMGKingMobility(int32_t side);
+        inline int32_t evalMGKingMobility(int32_t side, const Bitboard& ownPieces);
         
         /**
          * @brief Die Methode evalMGCenterControl bewertet die Kontrolle des Zentrums der beiden Spieler im Midgame.
@@ -188,7 +187,7 @@ class BoardEvaluator {
          * @brief Die Methode evalEGKingSafety bewertet die Sicherheit des Königs der beiden Spieler im Endgame.
          */
         int32_t evalEGKingSafety();
-        inline int32_t evalEGKingMobility(int32_t side);
+        inline int32_t evalEGKingMobility(int32_t side, const Bitboard& ownPieces);
 
         /**
          * @brief Versucht, den Angreifer mit dem geringsten Wert zu finden, der das Feld to angreift.
@@ -263,9 +262,14 @@ class BoardEvaluator {
         int32_t evaluate();
 
         /**
-         * @brief Führt eine statische Bewertung eines Zugs durch.
+         * @brief Führt eine statische Bewertung eines Zugs mit SEE durch.
          */
-        int32_t evaluateMove(Move& m);
+        int32_t evaluateMoveSEE(Move& m);
+
+        /**
+         * @brief Führt eine statische Bewertung eines Zugs mit MVVLVA durch.
+         */
+        int32_t evaluateMoveMVVLVA(Move& m);
 };
 
 #endif

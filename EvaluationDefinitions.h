@@ -52,8 +52,9 @@ extern Bitboard sentryMasks[][64];
 #define MG_PAWN_PASSED_RANK_ADVANCED_MULTIPLIER 15
 #define EG_PAWN_PASSED_RANK_ADVANCED_MULTIPLIER 25
 
-// Bestrafung für jedes Feld um den König herum, dass von einem Gegner angegriffen wird
-#define MG_KING_SAFETY_VALUE -20
+// Bestrafung für jedes Feld um den König herum, dass von einem Gegner angegriffen wird.
+// Felder auf denen eigene Figuren stehen werden ausgenommen.
+#define MG_KING_SAFETY_VALUE -40
 #define EG_KING_SAFETY_VALUE -24
 
 /**
@@ -61,9 +62,11 @@ extern Bitboard sentryMasks[][64];
  */
 
 // Bonus für jeden Bauern, der den König schützt.
+extern Bitboard pawnShieldMask[][64];
 #define MG_PAWN_SHIELD_VALUE 15
 
 // Bonus für jeden Bauern, der den König angreift(oder einen Angriff droht)
+extern Bitboard pawnStormMask[][64];
 #define MG_PAWN_STORM_BASE_VALUE 10
 // Wird mit der Anzahl der fortgeschrittenen Felder multipliziert
 #define MG_PAWN_STORM_DISTANCE_MULTIPLIER 10

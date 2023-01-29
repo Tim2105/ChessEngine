@@ -94,47 +94,92 @@ int16_t SearchTree::search(uint32_t searchTime) {
     return score;
 }
 
-void SearchTree::sortMoves(Array<Move, 256>& moves, int8_t depth) {
-    Array<MoveScorePair, 256> msp;
+void SearchTree::sortMoves(Array<Move, 256>& moves, int8_t depth, int32_t moveEvalFunc) {
+    Array<Move, 1> hashMove;
+    Array<MoveScorePair, 256> winningCaptures;
+    Array<Move, 256> equalCaptures;
+    Array<Move, 4> killers;
+    Array<Move, 256> otherQuietMoves;
+    Array<MoveScorePair, 256> losingCaptures;
 
     TranspositionTableEntry ttEntry;
     transpositionTable.probe(board->getHashValue(), ttEntry);
 
     for(Move move : moves) {
         if(move == ttEntry.hashMove)
-            msp.push_back({move, 20000});
-        else {
-            int32_t moveScore = evaluator.evaluateMove(move);
+            hashMove.push_back(move);
+        else if(move.isCapture() || move.isPromotion()) {
+            int32_t moveScore = 0;
 
-            if(move.isQuiet()) {
-                int8_t ply = currentMaxDepth - depth;
-
-                if(killerMoves[ply][0] == move || killerMoves[ply][1] == move)
-                    moveScore += 80;
-                else if(ply >= 2) {
-                    if(killerMoves[ply - 2][0] == move || killerMoves[ply - 2][1] == move)
-                        moveScore += 80;
-                }
+            switch(moveEvalFunc) {
+                case MVVLVA:
+                    moveScore += evaluator.evaluateMoveMVVLVA(move);
+                    break;
+                case SEE:
+                    moveScore += evaluator.evaluateMoveSEE(move);
+                    break;
             }
 
-            msp.push_back({move, moveScore});
+            if(moveScore > 0)
+                winningCaptures.push_back({move, moveScore});
+            else if(moveScore == 0)
+                equalCaptures.push_back(move);
+            else
+                losingCaptures.push_back({move, moveScore});
+        } else if(move.isQuiet()) {
+            int8_t ply = currentMaxDepth - depth;
+
+            bool isKiller = false;
+
+            if(killerMoves[ply][0] == move || killerMoves[ply][1] == move)
+                isKiller = true;
+            else if(ply >= 2) {
+                if(killerMoves[ply - 2][0] == move || killerMoves[ply - 2][1] == move)
+                    isKiller = true;
+            }
+
+            if(isKiller)
+                killers.push_back(move);
+            else
+                otherQuietMoves.push_back(move);
         }
     }
 
-    std::sort(msp.begin(), msp.end(), std::greater<MoveScorePair>());
+    std::sort(winningCaptures.begin(), winningCaptures.end(), std::greater<MoveScorePair>());
+    std::sort(losingCaptures.begin(), losingCaptures.end(), std::greater<MoveScorePair>());
 
     moves.clear();
 
-    for(MoveScorePair msPair : msp) {
-        moves.push_back(msPair.move);
-    }
+    moves.push_back(hashMove);
+    
+    for(MoveScorePair msp : winningCaptures)
+        moves.push_back(msp.move);
+    
+    moves.push_back(killers);
+
+    moves.push_back(equalCaptures);
+
+    moves.push_back(otherQuietMoves);
+    
+    for(MoveScorePair msp : losingCaptures)
+        moves.push_back(msp.move);
 }
 
-void SearchTree::sortAndCutMoves(Array<Move, 256>& moves, int16_t minScore) {
+void SearchTree::sortAndCutMoves(Array<Move, 256>& moves, int32_t minScore, int32_t moveEvalFunc) {
     Array<MoveScorePair, 256> msp;
 
     for(Move move : moves) {
-        int32_t moveScore = evaluator.evaluateMove(move);
+        int32_t moveScore = 0;
+
+        switch(moveEvalFunc) {
+            case MVVLVA:
+                moveScore += evaluator.evaluateMoveMVVLVA(move);
+                break;
+            case SEE:
+                moveScore += evaluator.evaluateMoveSEE(move);
+                break;
+        }
+
         if(moveScore >= minScore)
             msp.push_back({move, moveScore});
     }
@@ -193,7 +238,7 @@ int16_t SearchTree::pvSearch(int8_t depth, int16_t alpha, int16_t beta) {
             return 0;
     }
 
-    sortMoves(moves, depth);
+    sortMoves(moves, depth, SEE);
 
     for(Move move : moves) {
         if(!searching)
@@ -288,7 +333,7 @@ int16_t SearchTree::nwSearch(int8_t depth, int16_t alpha, int16_t beta) {
             return 0;
     }
 
-    sortMoves(moves, depth);
+    sortMoves(moves, depth, SEE);
 
     for(Move move : moves) {
         if(!searching)
@@ -353,12 +398,17 @@ int16_t SearchTree::quiescence(int16_t alpha, int16_t beta) {
     
     Array<Move, 256> moves;
 
-    if(board->isCheck())
+    if(board->isCheck()) {
         moves = board->generateLegalMoves();
-    else
+        if(moves.size() == 0)
+            return MIN_SCORE;
+
+        sortAndCutMoves(moves, MIN_SCORE, MVVLVA);
+    }
+    else {
         moves = board->generateLegalCaptures();
-    
-    sortAndCutMoves(moves, 0);
+        sortAndCutMoves(moves, 0, SEE);
+    }
     
     for(Move move : moves) {
         if(!searching)

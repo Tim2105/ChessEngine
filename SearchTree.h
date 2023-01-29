@@ -23,6 +23,9 @@
 #define MIN_SCORE -32000
 #define MAX_SCORE 32000
 
+#define MVVLVA 0
+#define SEE 1
+
 struct TranspositionTableEntry {
     int8_t depth;
     int16_t score;
@@ -47,9 +50,9 @@ class SearchTree {
 
         void searchTimer(uint32_t searchTime);
 
-        void sortMoves(Array<Move, 256>& moves, int8_t depth);
+        void sortMoves(Array<Move, 256>& moves, int8_t depth, int32_t moveEvalFunc);
 
-        void sortAndCutMoves(Array<Move, 256>& moves, int16_t minScore);
+        void sortAndCutMoves(Array<Move, 256>& moves, int32_t minScore, int32_t moveEvalFunc);
 
         int16_t rootSearch(int8_t depth, int16_t expectedScore);
 

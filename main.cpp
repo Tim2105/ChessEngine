@@ -35,7 +35,7 @@ Move getUserMove(Board& board) {
 
 int main() {
 
-    Board board("5k2/pp3b2/6p1/2P5/1P4P1/2K1N3/8/8 w - - 0 1"); 
+    Board board("r1bqkb1r/p1p2ppp/1pn1pn2/3p4/3P1B2/4PQ2/PPPN1PPP/2KR1BNR b kq - 0 1");
     SearchTree st(board);
 
     // while(board.generateLegalMoves().size() != 0) {

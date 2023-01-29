@@ -340,106 +340,37 @@ inline Score BoardEvaluator::evalConnectedPawns(Bitboard connectedPawns, int32_t
 }
 
 inline int32_t BoardEvaluator::evalMGPawnShield(int32_t kingSquare, const Bitboard& ownPawns, const Bitboard& otherPawns, int32_t side) {
-    Bitboard pawnShieldSquares;
-
-    int rank = kingSquare / 8;
-    int file = kingSquare % 8;
-
-    if(file == FILE_D || file == FILE_E)
-        return 0;
-
-    if(side == WHITE) {
-        if(rank < RANK_5) {
-            pawnShieldSquares.setBit(kingSquare + 8);
-            pawnShieldSquares.setBit(kingSquare + 16);
-
-            if(file != FILE_A) {
-                pawnShieldSquares.setBit(kingSquare - 1);
-                pawnShieldSquares.setBit(kingSquare + 7);
-                pawnShieldSquares.setBit(kingSquare + 15);
-            }
-
-            if(file != FILE_H) {
-                pawnShieldSquares.setBit(kingSquare + 1);
-                pawnShieldSquares.setBit(kingSquare + 9);
-                pawnShieldSquares.setBit(kingSquare + 17);
-            }
-        }
-    } else {
-        if(rank > RANK_4) {
-            pawnShieldSquares.setBit(kingSquare - 8);
-            pawnShieldSquares.setBit(kingSquare - 16);
-
-            if(file != FILE_A) {
-                pawnShieldSquares.setBit(kingSquare - 17);
-                pawnShieldSquares.setBit(kingSquare - 9);
-                pawnShieldSquares.setBit(kingSquare - 1);
-            }
-
-            if(file != FILE_H) {
-                pawnShieldSquares.setBit(kingSquare - 15);
-                pawnShieldSquares.setBit(kingSquare - 7);
-                pawnShieldSquares.setBit(kingSquare + 1);
-            }
-        }
-    }
-
-    return (pawnShieldSquares & ownPawns).getNumberOfSetBits() * MG_PAWN_SHIELD_VALUE;
+    return (pawnShieldMask[side / 8][kingSquare] & ownPawns).getNumberOfSetBits() * MG_PAWN_SHIELD_VALUE;
 }
 
 inline int32_t BoardEvaluator::evalMGPawnStorm(int32_t otherKingSquare, const Bitboard& ownPawns, const Bitboard& otherPawns, int32_t side) {
     int score = 0;
 
-    int destBackw = side == WHITE ? -8 : 8;
-
     int rank = otherKingSquare / 8;
     int file = otherKingSquare % 8;
 
-    for(int i = otherKingSquare + destBackw; i < 64 && i >= 0; i += destBackw) {
-        if(ownPawns.getBit(i)) {
-            int advancedRanks = i / 8;
-            if(side == BLACK)
-                advancedRanks = 7 - advancedRanks;
+    Bitboard stormingPawns = pawnStormMask[side / 8][otherKingSquare] & ownPawns;
 
-            advancedRanks--;
-            score += MG_PAWN_STORM_BASE_VALUE + advancedRanks * MG_PAWN_STORM_DISTANCE_MULTIPLIER;
-            break;
-        }
-    }
+    score += stormingPawns.getNumberOfSetBits() * MG_PAWN_STORM_BASE_VALUE;
+
+    while(stormingPawns) {
+        int i = stormingPawns.getFirstSetBit();
+        stormingPawns.clearBit(i);
+
+        int pawnRank = i / 8;
+        int ranksAdvanced;
+        if(side == WHITE)
+            ranksAdvanced = pawnRank - RANK_2;
+        else
+            ranksAdvanced = RANK_7 - pawnRank;
         
-    
-    if(file != FILE_A) {
-        for(int i = otherKingSquare + destBackw - 1; i < 64 && i >= 0; i += destBackw) {
-            if(ownPawns.getBit(i)) {
-                int advancedRanks = i / 8;
-                if(side == BLACK)
-                    advancedRanks = 7 - advancedRanks;
-
-                advancedRanks--;
-                score += MG_PAWN_STORM_BASE_VALUE + advancedRanks * MG_PAWN_STORM_DISTANCE_MULTIPLIER;
-                break;
-            }
-        }
-    }
-
-    if(file != FILE_H) {
-        for(int i = otherKingSquare + destBackw + 1; i < 64 && i >= 0; i += destBackw) {
-            if(ownPawns.getBit(i)) {
-                int advancedRanks = i / 8;
-                if(side == BLACK)
-                    advancedRanks = 7 - advancedRanks;
-
-                advancedRanks--;
-                score += MG_PAWN_STORM_BASE_VALUE + advancedRanks * MG_PAWN_STORM_DISTANCE_MULTIPLIER;
-                break;
-            }
-        }
+        score += ranksAdvanced * MG_PAWN_STORM_DISTANCE_MULTIPLIER;
     }
 
     return score;
 }
 
-inline int32_t BoardEvaluator::evalMGKingMobility(int32_t side) {
+inline int32_t BoardEvaluator::evalMGKingMobility(int32_t side, const Bitboard& ownPieces) {
     Bitboard enemyAttackedSquares;
 
     if(side == WHITE)
@@ -449,12 +380,12 @@ inline int32_t BoardEvaluator::evalMGKingMobility(int32_t side) {
 
     int32_t ownKingSquare = b->mailbox[b->pieceList[side | KING].front()];
 
-    Bitboard kingMoves = kingAttackBitboard(ownKingSquare) & ~enemyAttackedSquares;
+    Bitboard attackedKingSquares = kingAttackBitboard(ownKingSquare) & ~ownPieces & enemyAttackedSquares;
 
-    return (8 - kingMoves.getNumberOfSetBits()) * MG_KING_SAFETY_VALUE;
+    return attackedKingSquares.getNumberOfSetBits() * MG_KING_SAFETY_VALUE;
 }
 
-inline int32_t BoardEvaluator::evalEGKingMobility(int32_t side) {
+inline int32_t BoardEvaluator::evalEGKingMobility(int32_t side, const Bitboard& ownPieces) {
     Bitboard enemyAttackedSquares;
 
     if(side == WHITE)
@@ -464,9 +395,9 @@ inline int32_t BoardEvaluator::evalEGKingMobility(int32_t side) {
 
     int32_t ownKingSquare = b->mailbox[b->pieceList[side | KING].front()];
 
-    Bitboard kingMoves = kingAttackBitboard(ownKingSquare) & ~enemyAttackedSquares;
+    Bitboard attackedKingSquares = kingAttackBitboard(ownKingSquare) & ~ownPieces & enemyAttackedSquares;
 
-    return (8 - kingMoves.getNumberOfSetBits()) * EG_KING_SAFETY_VALUE;
+    return attackedKingSquares.getNumberOfSetBits() * EG_KING_SAFETY_VALUE;
 }
 
 Score BoardEvaluator::evalPawnStructure(Bitboard doublePawns, Bitboard isolatedPawns, Bitboard passedPawns, Bitboard pawnChains, Bitboard connectedPawns, int32_t side) {
@@ -497,6 +428,15 @@ int32_t BoardEvaluator::evalMGKingSafety() {
 
     Bitboard ownPawns = b->pieceBitboard[side | PAWN];
     Bitboard otherPawns = b->pieceBitboard[otherSide | PAWN];
+    Bitboard ownPieces, otherPieces;
+
+    if(side == WHITE) {
+        ownPieces = b->whitePiecesBitboard;
+        otherPieces = b->blackPiecesBitboard;
+    } else {
+        ownPieces = b->blackPiecesBitboard;
+        otherPieces = b->whitePiecesBitboard;
+    }
 
     int32_t ownKingSafetyScore = 0;
     int32_t otherKingSafetyScore = 0;
@@ -505,12 +445,12 @@ int32_t BoardEvaluator::evalMGKingSafety() {
     int32_t otherKingSquare = b->mailbox[b->pieceList[otherSide | KING].front()];
 
     ownKingSafetyScore += evalMGPawnShield(ownKingSquare, ownPawns, otherPawns, side);
-    ownKingSafetyScore -= evalMGPawnStorm(ownKingSquare, otherPawns, ownPawns, otherSide);
-    ownKingSafetyScore += evalMGKingMobility(side);
+    ownKingSafetyScore += evalMGPawnStorm(otherKingSquare, ownPawns, otherPawns, side);
+    ownKingSafetyScore += evalMGKingMobility(side, ownPieces);
 
     otherKingSafetyScore += evalMGPawnShield(otherKingSquare, otherPawns, ownPawns, otherSide);
-    otherKingSafetyScore -= evalMGPawnStorm(otherKingSquare, ownPawns, otherPawns, side);
-    otherKingSafetyScore += evalMGKingMobility(otherSide);
+    otherKingSafetyScore += evalMGPawnStorm(ownKingSquare, otherPawns, ownPawns, otherSide);
+    otherKingSafetyScore += evalMGKingMobility(otherSide, otherPieces);
 
     score += ownKingSafetyScore - otherKingSafetyScore;
 
@@ -522,8 +462,18 @@ int32_t BoardEvaluator::evalEGKingSafety() {
     int32_t side = b->side;
     int32_t otherSide = side ^ COLOR_MASK;
 
-    int32_t ownKingSafetyScore = evalEGKingMobility(side);
-    int32_t otherKingSafetyScore = evalEGKingMobility(otherSide);
+    Bitboard ownPieces, otherPieces;
+
+    if(side == WHITE) {
+        ownPieces = b->whitePiecesBitboard;
+        otherPieces = b->blackPiecesBitboard;
+    } else {
+        ownPieces = b->blackPiecesBitboard;
+        otherPieces = b->whitePiecesBitboard;
+    }
+
+    int32_t ownKingSafetyScore = evalEGKingMobility(side, ownPieces);
+    int32_t otherKingSafetyScore = evalEGKingMobility(otherSide, otherPieces);
 
     score += ownKingSafetyScore - otherKingSafetyScore;
 
@@ -691,7 +641,7 @@ int32_t BoardEvaluator::see(Move& m) {
     return score;
 }
 
-int32_t BoardEvaluator::evaluateMove(Move& m) {
+int32_t BoardEvaluator::evaluateMoveSEE(Move& m) {
     int32_t moveScore = 0;
 
     if(m.isPromotion()) {
@@ -709,6 +659,31 @@ int32_t BoardEvaluator::evaluateMove(Move& m) {
         // SEE-Heuristik
         int32_t capturedPieceValue = PIECE_VALUE[TYPEOF(b->pieces[m.getDestination()])];
         moveScore += capturedPieceValue - see(m);
+    }
+    
+    return moveScore;
+}
+
+int32_t BoardEvaluator::evaluateMoveMVVLVA(Move& m) {
+    int32_t moveScore = 0;
+
+    if(m.isPromotion()) {
+        if(m.isPromotionQueen())
+            moveScore += PROMOTION_QUEEN_SCORE;
+        else if(m.isPromotionRook())
+            moveScore += PROMOTION_ROOK_SCORE;
+        else if(m.isPromotionBishop())
+            moveScore += PROMOTION_BISHOP_SCORE;
+        else if(m.isPromotionKnight())
+            moveScore += PROMOTION_KNIGHT_SCORE;
+    }
+
+    if(m.isCapture()) {
+        // MVVLVA-Heuristik
+        int32_t movedPieceValue = PIECE_VALUE[TYPEOF(b->pieces[m.getOrigin()])];
+        int32_t capturedPieceValue = PIECE_VALUE[TYPEOF(b->pieces[m.getDestination()])];
+
+        moveScore += capturedPieceValue - movedPieceValue;
     }
     
     return moveScore;

@@ -15,6 +15,10 @@
  */
 template <typename T, size_t s>
 class Array {
+    
+    template <typename K, size_t s2>
+    friend class Array;
+
     private:
         T array[s];
         size_t count;
