@@ -55,6 +55,12 @@
         "xhash": "cpp",
         "random": "cpp",
         "set": "cpp",
-        "bitset": "cpp"
+        "bitset": "cpp",
+        "deque": "cpp",
+        "mutex": "cpp",
+        "queue": "cpp",
+        "xthread": "cpp",
+        "thread": "cpp",
+        "atomic": "cpp"
     }
 }

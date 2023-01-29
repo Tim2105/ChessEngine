@@ -10,8 +10,8 @@
 #include "Bitboard.h"
 #include "Movegen.h"
 #include "Array.h"
-#include "HashTable.h"
 #include <functional>
+#include <list>
 
 /**
  * @brief Enthält alle notwendigen Informationen um einen Zug rückgängig zu machen.
@@ -93,6 +93,51 @@ class MoveHistoryEntry {
         }
 };
 
+class RepetitionTable {
+    private:
+        struct Entry {
+            uint64_t key;
+            uint8_t count;
+        };
+
+        std::list<Entry> entries;
+    
+    public:
+        void increment(uint64_t key) {
+            for(auto it = entries.rbegin(); it != entries.rend(); it++) {
+                if (it->key == key) {
+                    it->count++;
+                    return;
+                }
+            }
+
+            entries.push_back({key, 1});
+        }
+
+        void decrement(uint64_t key) {
+            for(auto it = entries.rbegin(); it != entries.rend(); it++) {
+                if (it->key == key) {
+                    it->count--;
+                    if (it->count == 0) {
+                        entries.erase(std::next(it).base());
+                    }
+                    
+                    return;
+                }
+            }
+        }
+
+        uint8_t get(uint64_t key) {
+            for(auto it = entries.rbegin(); it != entries.rend(); it++) {
+                if (it->key == key) {
+                    return it->count;
+                }
+            }
+
+            return 0;
+        }
+};
+
 /**
  * @brief Stellt ein Schachbrett dar.
  * Die Klasse Board stellt ein Schachbrett dar und enthält Methoden zur Zuggeneration.
@@ -103,6 +148,8 @@ class Board {
     friend class BoardEvaluator;
     
     private:
+        inline static bool initialized = false;
+
          /**
           * @brief Stellt das Schachbrett in 10x12 Notation dar.
           * https://www.chessprogramming.org/10x12_Board
@@ -209,50 +256,54 @@ class Board {
 
         /**
          * @brief Speichert alle gespielten Züge und notwendige Informationen um diesen effizient rückgängig zu machen.
-         * Enthält zu Beginn einen leeren Eintrag, damit getLastMove() nicht die Größe püberprüfen muss.
          */
-        std::vector<MoveHistoryEntry> moveHistory = {{Move(), 0, 0, 0, 0, 0, 0}};
+        std::vector<MoveHistoryEntry> moveHistory = {};
+
+        /**
+         * @brief Enthält alle, bereits gesehenen, Positionen und ihre Häufigkeit
+         */
+        RepetitionTable repetitionTable;
 
         /**
          * @brief Array zur Konvertierung der 10x12 Notation in 8x8 Notation.
          * Invalide Felder werden als NO_SQ markiert.
          */
-        int32_t mailbox[120];
+        inline static int32_t mailbox[120];
 
         /**
          * @brief Array zur Konvertierung der 8x8 Notation in 10x12 Notation.
          */
-        int32_t mailbox64[64];
+        inline static int32_t mailbox64[64];
 
         /**
          * @brief Array mit allen Zobrist-Hashes für alle Figuren und Felder
          */ 
-        uint64_t zobristPieceKeys[15][64];
+        inline static uint64_t zobristPieceKeys[15][64];
 
         /**
          * @brief Zobrist-Hash für die Seite, die am Zug ist.
          */
-        uint64_t zobristBlackToMove;
+        inline static uint64_t zobristBlackToMove;
 
         /**
          * @brief Zobrist-Hash für alle noch offenen Rochaden.
          */
-        uint64_t zobristCastlingKeys[16];
+        inline static uint64_t zobristCastlingKeys[16];
 
         /**
          * @brief Zobrist-Hash für alle Linien, auf denen ein Bauer En Passant geschlagen werden kann.
          */
-        uint64_t zobristEnPassantKeys[8];
+        inline static uint64_t zobristEnPassantKeys[8];
 
         /**
          * @brief Initialisiert die Mailbox-Arrays
          */
-        void initMailbox();
+        static void initMailbox();
 
         /**
          * @brief Initialisiert die Zobrist-Hashes für alle Figuren, Felder und Sonderinformationen.
          */
-        void initZobrist();
+        static void initZobrist();
 
         /**
          * @brief Generiert einen Zobrist-Hash für das aktuelle Schachbrett.
@@ -283,6 +334,14 @@ class Board {
                                            int32_t* pinnedPiecesDirection);
 
     public:
+        static void init() {
+            if(!initialized) {
+                initMailbox();
+                initZobrist();
+                initialized = true;
+            }
+        };
+
         /**
          * @brief Erstellt ein neues Schachbrett.
          */
@@ -412,7 +471,25 @@ class Board {
         /**
          * @brief Gibt en letzten gespielten Zug zurück.
          */
-        inline Move getLastMove() const { return moveHistory.back().move; };
+        inline Move getLastMove() const { 
+            if(moveHistory.size() > 0)
+                return moveHistory.back().move; 
+            else
+                return Move();
+        };
+
+        /**
+         * @brief Gibt alle Positionen eines bestimmten Figurentyps zurück
+         */
+        inline Array<int32_t, 9> getPieceList(int32_t piece) const { return pieceList[piece]; };
+
+        /**
+         * @brief Überprüft, wie häufig die momentane Position schon aufgetreten ist. 
+         */
+        uint8_t repetitionCount();
+
+        inline int32_t sq120To64(int32_t sq120) const { return mailbox[sq120]; };
+        inline int32_t sq64To120(int32_t sq64) const { return mailbox64[sq64]; };
 };
 
 #endif

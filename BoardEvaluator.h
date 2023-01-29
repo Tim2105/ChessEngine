@@ -86,6 +86,7 @@ struct std::hash<PawnBitboards> {
 class BoardEvaluator {
 
     private:
+    public:
         // Das Spielfeld
         Board* b;
 
@@ -93,46 +94,40 @@ class BoardEvaluator {
         // weshalb berechnete Bewertungen von Bauernstrukturen in einer Hash-Tabelle gespeichert werden,
         // um sie bei der nächsten Bewertung(bei gleicher Bauernstruktur) wieder zu verwenden.
         // Weil Bauernstrukturen sich nicht zu häufig ändern, bekommt man hier eine hohe Trefferquote(Durchschnitt ca. 75%).
-        HeapHashTable<PawnBitboards, Score, 1024, 4> pawnStructureTable;
+        HeapHashTable<uint64_t, Score, 1024, 4> pawnStructureTable;
 
         /**
          * @brief Die Methode findDoublePawns findet alle Bauern, die sich auf derselben Linie befinden.
          */
-        inline Bitboard findDoublePawns(const Bitboard& ownPawns, int32_t side);
+        Bitboard findDoublePawns(const Bitboard& ownPawns, int32_t side);
 
         /**
          * @brief Die Methode findIsolatedPawns findet alle isolierten Bauern.
          * Isolierte Bauern sind Bauern, die keine befreundeten Bauern auf der Linie links oder rechts von ihnen haben.
          */
-        inline Bitboard findIsolatedPawns(const Bitboard& ownPawns, int32_t side);
+        Bitboard findIsolatedPawns(const Bitboard& ownPawns, int32_t side);
 
         /**
          * @brief Die Methode findPassedPawns findet alle Bauern, die nicht von gegnerischen Bauern abgefangen werden können.
          */
-        inline Bitboard findPassedPawns(const Bitboard& ownPawns, const Bitboard& otherPawns, int32_t side);
+        Bitboard findPassedPawns(const Bitboard& ownPawns, const Bitboard& otherPawns, int32_t side);
 
         /**
          * @brief Die Methode findPawnChains findet alle Bauernketten.
          * Bauernketten sind Bauern, die andere Bauern schützen.
          */
-        inline Bitboard findPawnChains(const Bitboard& ownPawns, int32_t side);
+        Bitboard findPawnChains(const Bitboard& ownPawns, int32_t side);
 
         /**
          * @brief Die Methode findConnectedPawns findet alle verbundenen Bauern.
          * Verbundene Bauern sind Bauern, die sich nebeneinander auf demselben Rang befinden.
          */
-        inline Bitboard findConnectedPawns(const Bitboard& ownPawns);
+        Bitboard findConnectedPawns(const Bitboard& ownPawns);
 
         /**
          * @brief Die Methode evalMaterial bewertet die Materialstärke der beiden Spieler.
          */
         int32_t evalMaterial();
-
-        /**
-         * @brief Die Methode evalMobility bewertet die Mobilität der beiden Spieler.
-         * Mobilität ist die Anzahl der Felder, die ein Spieler angreift und/oder verteidigt.
-         */
-        int32_t evalMobility();
 
         /**
          * @brief Die Methode evalMG_PSQT bewertet die Figurenpositionen der beiden Spieler
@@ -183,21 +178,17 @@ class BoardEvaluator {
         inline int32_t evalMGPawnShield(int32_t kingSquare, const Bitboard& ownPawns, const Bitboard& otherPawns, int32_t side);
         inline int32_t evalMGPawnStorm(int32_t otherKingSquare, const Bitboard& ownPawns, const Bitboard& otherPawns, int32_t side);
         inline int32_t evalMGKingMobility(int32_t side);
+        
+        /**
+         * @brief Die Methode evalMGCenterControl bewertet die Kontrolle des Zentrums der beiden Spieler im Midgame.
+         */
+        inline int32_t evalMGCenterControl();
 
         /**
          * @brief Die Methode evalEGKingSafety bewertet die Sicherheit des Königs der beiden Spieler im Endgame.
          */
         int32_t evalEGKingSafety();
         inline int32_t evalEGKingMobility(int32_t side);
-
-        /**
-         * @brief Überprüft, ob das Spiel zwangsläufig ein Unentschieden ist.
-         * Ein Spiel ist zwangsläufig ein Unentschieden, wenn kein Spieler Schachmatt gesetzt werden kann,
-         * auch wenn beide Spieler kooperieren würden.
-         * Andere Möglichkeiten für ein Unentschieden sind z.B. 50 Züge ohne Bauern- oder Schlagzug
-         * oder dreimal dieselbe Stellung.
-         */
-        bool isDraw();
 
         /**
          * @brief Versucht, den Angreifer mit dem geringsten Wert zu finden, der das Feld to angreift.
@@ -224,6 +215,15 @@ class BoardEvaluator {
 
         BoardEvaluator(BoardEvaluator&& other);
         BoardEvaluator& operator=(BoardEvaluator&& other);
+
+        /**
+         * @brief Überprüft, ob das Spiel zwangsläufig ein Unentschieden ist.
+         * Ein Spiel ist zwangsläufig ein Unentschieden, wenn kein Spieler Schachmatt gesetzt werden kann,
+         * auch wenn beide Spieler kooperieren würden.
+         * Andere Möglichkeiten für ein Unentschieden sind z.B. 50 Züge ohne Bauern- oder Schlagzug
+         * oder dreimal dieselbe Stellung.
+         */
+        bool isDraw();
 
         /**
          * @brief Führt eine statische Bewertung für das Midgame der

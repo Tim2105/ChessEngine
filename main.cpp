@@ -1,13 +1,9 @@
 #include <iostream>
-#include <iomanip>
 #include "Board.h"
-#include "GameTreeSearch.h"
 #include <chrono>
-#include "EvaluationDefinitions.h"
-#include "Test.h"
+#include "SearchTree.h"
 
 
-// perft(4) dauert knapp 0.37s
 void perft(Board& board, int depth, int& count) {
     if(depth == 1) {
         count += board.generateLegalMoves().size();
@@ -21,28 +17,39 @@ void perft(Board& board, int depth, int& count) {
     }
 }
 
-int main() {
-    Board board("8/P3k3/1R4n1/2p5/5BK1/2P5/2P5/8 w - - 0 1");
+Move getUserMove(Board& board) {
+    while(true) {
+        std::string move;
+        std::cout << "Enter move: ";
+        std::cin >> move;
 
-    GameTreeSearch search(board);
+        for(Move m : board.generateLegalMoves()) {
+            if(move == m.toString()) {
+                return m;
+            }
+        }
 
-    std::vector<Move> pv;
-
-    auto start = std::chrono::high_resolution_clock::now();
-    int32_t score = search.search(12, pv);
-    auto end = std::chrono::high_resolution_clock::now();
-
-    std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << "ms" << std::endl;
-
-    std::cout << "Score: " << score << std::endl;
-
-    std::cout << "PV:" << std::endl;
-
-    for(Move m : pv) {
-        std::cout << m.toString() << " ";
+        std::cout << "Invalid move" << std::endl;
     }
+}
 
-    std::cout << std::endl;
+int main() {
+
+    Board board("5k2/pp3b2/6p1/2P5/1P4P1/2K1N3/8/8 w - - 0 1"); 
+    SearchTree st(board);
+
+    // while(board.generateLegalMoves().size() != 0) {
+    //     int16_t score = st.search(300);
+    //     Move m = st.getPrincipalVariation()[0];
+    //     std::cout << "Playing " << m << " Eval " << score << std::endl;
+    //     board.makeMove(m);
+    //     if(board.generateLegalMoves().size() == 0)
+    //         break;
+        
+    //     board.makeMove(getUserMove(board));
+    // }
+
+    st.search(2000);
 
     return 0;
 }

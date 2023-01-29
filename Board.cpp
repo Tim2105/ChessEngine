@@ -3,7 +3,7 @@
 #include <random>
 
 Board::Board() {
-    initMailbox();
+    init();
 
     side = WHITE;
     enPassantSquare = NO_SQ;
@@ -17,11 +17,14 @@ Board::Board() {
     moveHistory.reserve(256);
 
     generateBitboards();
-    initZobrist();
+
+    hashValue = generateHashValue();
+
+    repetitionTable.increment(hashValue);
 }
 
 Board::Board(const Board& b) {
-    initMailbox();
+    init();
 
     for(int i = 0; i < 15; i++)
         pieceList[i] = b.pieceList[i];
@@ -36,13 +39,15 @@ Board::Board(const Board& b) {
     ply = b.ply;
 
     moveHistory = b.moveHistory;
+    repetitionTable = b.repetitionTable;
+
+    hashValue = generateHashValue();
 
     generateBitboards();
-    initZobrist();
 }
 
 Board::Board(std::string fen) {
-    initMailbox();
+    init();
 
     // Spielfeld-Array und Figurlisten leeren
     for(int i = 0; i < 15; i++)
@@ -132,7 +137,10 @@ Board::Board(std::string fen) {
     ply = (std::stoi(fen) - 1) * 2 + plyAdd;
 
     generateBitboards();
-    initZobrist();
+
+    hashValue = generateHashValue();
+
+    repetitionTable.increment(hashValue);
 }
 
 Board::~Board() {
@@ -160,8 +168,6 @@ void Board::initZobrist() {
     std::mt19937_64 gen(rd());
     std::uniform_int_distribution<uint64_t> dis(0, UINT64_MAX);
 
-    hashValue = 0ULL;
-
     for(int i = 0; i < 15; i++)
         for(int j = 0; j < 64; j++)
             zobristPieceKeys[i][j] = dis(gen);
@@ -173,8 +179,6 @@ void Board::initZobrist() {
 
     for(int i = 0; i < 8; i++)
         zobristEnPassantKeys[i] = dis(gen);
-
-    hashValue = generateHashValue();
 }
 
 uint64_t Board::generateHashValue() {
@@ -725,6 +729,9 @@ void Board::makeMove(Move m) {
     side = side ^ COLOR_MASK;
     hashValue ^= zobristBlackToMove;
     ply++;
+
+    // Aktualisiere die Wiederholungstabelle
+    repetitionTable.increment(hashValue);
 }
 
 void Board::undoMove() {
@@ -738,6 +745,9 @@ void Board::undoMove() {
     int32_t destination64 = mailbox[destination];
     int32_t pieceType = pieces[destination];
     int32_t capturedPieceType = moveEntry.capturedPiece;
+
+    // Aktualisiere die Wiederholungstabelle
+    repetitionTable.decrement(hashValue);
 
     // Mache den Spielzustand rückgängig
     ply--;
@@ -1282,4 +1292,8 @@ std::string Board::fenString() const {
     fen += std::to_string(fullMoves);
 
     return fen;
+}
+
+uint8_t Board::repetitionCount() {
+    return repetitionTable.get(hashValue);
 }

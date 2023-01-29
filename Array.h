@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <initializer_list>
 #include <cstring> // memcpy & memmove
+#include <vector>
 
 /**
  * @brief Array Klasse mit statischer Größe. Für Geschwindigkeit optimiert.
@@ -131,7 +132,7 @@ void Array<T, s>::push_back(T elem) {
 template <typename T, size_t s>
 template <size_t s2>
 void Array<T,s>::push_back(Array<T, s2>& other) {
-    memcpy(array + count, other.array, other.count * sizeof(T));
+    memmove(array + count, other.array, other.count * sizeof(T));
     count += other.count;
 }
 

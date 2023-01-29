@@ -79,8 +79,8 @@ int32_t BoardEvaluator::middlegameEvaluation() {
 
     score += evalMaterial();
     score += evalMG_PSQT() * MG_PSQT_MULTIPLIER;
-    score += evalMobility() * MG_MOBILITY_VALUE;
     score += evalMGKingSafety();
+    score += evalMGCenterControl();
 
     return score;
 }
@@ -110,7 +110,6 @@ int32_t BoardEvaluator::endgameEvaluation() {
 
     score += materialScore;
     score += evalEG_PSQT() * EG_PSQT_MULTIPLIER;
-    score += evalMobility() * EG_MOBILITY_VALUE;
     score += evalEGKingSafety();
 
     return score;
@@ -119,6 +118,9 @@ int32_t BoardEvaluator::endgameEvaluation() {
 bool BoardEvaluator::isDraw() {
     // Fifty-move rule
     if(b->fiftyMoveRule >= 100)
+        return true;
+    
+    if(b->repetitionCount() >= 3)
         return true;
 
     // Unzureichendes Material
@@ -191,21 +193,6 @@ int32_t BoardEvaluator::evalMaterial() {
     return score;
 }
 
-int32_t BoardEvaluator::evalMobility() {
-    int32_t score = 0;
-    int32_t side = b->side;
-
-    if(side == WHITE) {
-        score += b->whiteAttackBitboard.getNumberOfSetBits();
-        score -= b->blackAttackBitboard.getNumberOfSetBits();
-    } else {
-        score += b->blackAttackBitboard.getNumberOfSetBits();
-        score -= b->whiteAttackBitboard.getNumberOfSetBits();
-    }
-
-    return score;
-}
-
 inline int32_t BoardEvaluator::evalMG_PSQT() {
     int32_t score = 0;
     int32_t whiteScore = 0;
@@ -217,7 +204,9 @@ inline int32_t BoardEvaluator::evalMG_PSQT() {
         }
         
         for(int sq : b->pieceList[BLACK | p]) {
-            blackScore += MG_PSQT[p][63 - b->mailbox[sq]];
+            int rank = SQ2R(sq);
+            int file = SQ2F(sq);
+            blackScore += MG_PSQT[p][(RANK_8 - rank) * 8 + file];
         }
     }
 
@@ -243,7 +232,9 @@ inline int32_t BoardEvaluator::evalEG_PSQT() {
         }
         
         for(int sq : b->pieceList[BLACK | p]) {
-            blackScore += EG_PSQT[p][63 - b->mailbox[sq]];
+            int rank = SQ2R(sq);
+            int file = SQ2F(sq);
+            blackScore += EG_PSQT[p][(RANK_8 - rank) * 8 + file];
         }
     }
 
@@ -264,7 +255,9 @@ bool BoardEvaluator::probePawnStructure(Score& score) {
         b->pieceBitboard[BLACK | PAWN]
     };
 
-    return pawnStructureTable.probe(pawnsBitboards, score);
+    uint64_t hash = std::hash<PawnBitboards>{}(pawnsBitboards);
+
+    return pawnStructureTable.probe(hash, score);
 }
 
 void BoardEvaluator::storePawnStructure(const Score& score) {
@@ -273,7 +266,9 @@ void BoardEvaluator::storePawnStructure(const Score& score) {
         b->pieceBitboard[BLACK | PAWN]
     };
 
-    pawnStructureTable.put(pawnsBitboards, score);
+    uint64_t hash = std::hash<PawnBitboards>{}(pawnsBitboards);
+
+    pawnStructureTable.put(hash, score);
 }
 
 Score BoardEvaluator::evalPawnStructure(int32_t side) {
@@ -305,22 +300,10 @@ inline Score BoardEvaluator::evalDoublePawns(Bitboard doublePawns, int32_t side)
 }
 
 inline Score BoardEvaluator::evalIsolatedPawns(Bitboard isolatedPawns, int32_t side) {
-    Score score{0, 0};
-
-    while(isolatedPawns) {
-        int sq = isolatedPawns.getFirstSetBit();
-        isolatedPawns.clearBit(sq);
-        int file = sq % 8;
-
-        int distToOuterFile = std::min(file, 7 - file);
-
-        score.mg += MG_PAWN_ISOLATED_BASE_VALUE;
-        score.mg += distToOuterFile * MG_PAWN_ISOLATED_INNER_FILE_MULTIPLIER;
-        score.eg += EG_PAWN_ISOLATED_BASE_VALUE;
-        score.eg += distToOuterFile * EG_PAWN_ISOLATED_INNER_FILE_MULTIPLIER;
-    }
-
-    return score;
+    return {
+        isolatedPawns.getNumberOfSetBits() * MG_PAWN_ISOLATED_VALUE,
+        isolatedPawns.getNumberOfSetBits() * EG_PAWN_ISOLATED_VALUE
+    };
 }
 
 inline Score BoardEvaluator::evalPassedPawns(Bitboard passedPawns, int32_t side) {
@@ -350,22 +333,10 @@ inline Score BoardEvaluator::evalPawnChains(Bitboard pawnChains, int32_t side) {
 }
 
 inline Score BoardEvaluator::evalConnectedPawns(Bitboard connectedPawns, int32_t side) {
-    Score score{0, 0};
-
-    while(connectedPawns) {
-        int sq = connectedPawns.getFirstSetBit();
-        connectedPawns.clearBit(sq);
-
-        int rank = sq / 8;
-        int ranksAdvanced = (side == WHITE) ? (rank - RANK_2) : (RANK_7 - rank);
-
-        score.mg += MG_PAWN_CONNECTED_BASE_VALUE;
-        score.mg += ranksAdvanced * MG_PAWN_CONNECTED_RANK_ADVANCED_MULTIPLIER;
-        score.eg += EG_PAWN_CONNECTED_BASE_VALUE;
-        score.eg += ranksAdvanced * EG_PAWN_CONNECTED_RANK_ADVANCED_MULTIPLIER;
-    }
-
-    return score;
+    return {
+        connectedPawns.getNumberOfSetBits() * MG_PAWN_CONNECTED_VALUE,
+        connectedPawns.getNumberOfSetBits() * EG_PAWN_CONNECTED_VALUE
+    };
 }
 
 inline int32_t BoardEvaluator::evalMGPawnShield(int32_t kingSquare, const Bitboard& ownPawns, const Bitboard& otherPawns, int32_t side) {
@@ -373,6 +344,9 @@ inline int32_t BoardEvaluator::evalMGPawnShield(int32_t kingSquare, const Bitboa
 
     int rank = kingSquare / 8;
     int file = kingSquare % 8;
+
+    if(file == FILE_D || file == FILE_E)
+        return 0;
 
     if(side == WHITE) {
         if(rank < RANK_5) {
@@ -556,32 +530,39 @@ int32_t BoardEvaluator::evalEGKingSafety() {
     return score;
 }
 
-inline Bitboard BoardEvaluator::findDoublePawns(const Bitboard& ownPawns, int32_t side) {
+inline int32_t BoardEvaluator::evalMGCenterControl() {
+    int32_t score = 0;
+    int32_t side = b->side;
+    int32_t otherSide = side ^ COLOR_MASK;
+
+    Bitboard ownPawns = b->pieceBitboard[side | PAWN];
+    Bitboard otherPawns = b->pieceBitboard[otherSide | PAWN];
+
+    Bitboard ownCenter = ownPawns & centerSquares;
+    Bitboard otherCenter = otherPawns & centerSquares;
+
+    score += ownCenter.getNumberOfSetBits() * MG_CENTER_CONTROL_VALUE;
+    score -= otherCenter.getNumberOfSetBits() * MG_CENTER_CONTROL_VALUE;
+
+    return score;
+}
+
+Bitboard BoardEvaluator::findDoublePawns(const Bitboard& ownPawns, int32_t side) {
     Bitboard doublePawns;
-    int32_t pawnForw = side == WHITE ? 8 : -8;
     Bitboard pawnCopy = ownPawns;
 
     while(pawnCopy) {
-        int i;
-        if(side == WHITE)
-            i = pawnCopy.getFirstSetBit();
-        else
-            i = pawnCopy.getLastSetBit();
+        int i = pawnCopy.getFirstSetBit();
 
         pawnCopy.clearBit(i);
 
-        for(int j = i + pawnForw; j < 64 && j >= 0; j += pawnForw) {
-            if(pawnCopy.getBit(j)) {
-                doublePawns.setBit(j);
-                pawnCopy.clearBit(j);
-            }
-        }
+        doublePawns |= doubledPawnMasks[side / 8][i] & ownPawns;
     }
 
     return doublePawns;
 }
 
-inline Bitboard BoardEvaluator::findIsolatedPawns(const Bitboard& ownPawns, int32_t side) {
+Bitboard BoardEvaluator::findIsolatedPawns(const Bitboard& ownPawns, int32_t side) {
     Bitboard isolatedPawns; 
     int32_t pawnForw = side == WHITE ? 8 : -8;
     Bitboard pawnCopy = ownPawns;
@@ -599,71 +580,37 @@ inline Bitboard BoardEvaluator::findIsolatedPawns(const Bitboard& ownPawns, int3
     return isolatedPawns;
 }
 
-inline Bitboard BoardEvaluator::findPassedPawns(const Bitboard& ownPawns, const Bitboard& otherPawns, int32_t side) {
+Bitboard BoardEvaluator::findPassedPawns(const Bitboard& ownPawns, const Bitboard& otherPawns, int32_t side) {
     Bitboard passedPawns;
-    int32_t pawnForw = side == WHITE ? 8 : -8;
     Bitboard pawnCopy = ownPawns;
 
     while(pawnCopy) {
         int i = pawnCopy.getFirstSetBit();
         pawnCopy.clearBit(i);
 
-        int file = i % 8;
-
-        passedPawns.setBit(i);
-
-        Array<int, 8> fileOffsets = {0};
-
-        if(file != FILE_A)
-            fileOffsets.push_back(-1);
-        
-        if(file != FILE_H)
-            fileOffsets.push_back(1);
-        
-        for(int j = i + pawnForw; j < 64 && j >= 0; j += pawnForw) {
-            if(ownPawns.getBit(j)) {
-                // Bauer ist kein Freibauer, da er von einem eigenen Bauer blockiert wird
-                passedPawns.clearBit(i);
-                break;
-            }
-
-            for(int offset : fileOffsets) {
-                if(otherPawns.getBit(j + offset)) {
-                    // Bauer ist kein Freibauer, da er von einem gegnerischen Bauer blockiert wird
-                    passedPawns.clearBit(i);
-                    break;
-                }
-            }
-        }
+        if(!(sentryMasks[side / 8][i] & otherPawns) &&
+            !(doubledPawnMasks[side / 8][i] & ownPawns))
+            passedPawns.setBit(i);
     }
 
     return passedPawns;
 }
 
-inline Bitboard BoardEvaluator::findPawnChains(const Bitboard& ownPawns, int32_t side) {
+Bitboard BoardEvaluator::findPawnChains(const Bitboard& ownPawns, int32_t side) {
     Bitboard pawnChain;
-    int32_t pawnForw = side == WHITE ? 8 : -8;
-
     Bitboard pawnCopy = ownPawns;
-    
+
     while(pawnCopy) {
         int i = pawnCopy.getFirstSetBit();
         pawnCopy.clearBit(i);
-        int file = i % 8;
 
-        if(file != FILE_A && ownPawns.getBit(i + pawnForw - 1)) {
-            pawnChain.setBit(i);
-            continue;
-        } else if(file != FILE_H && ownPawns.getBit(i + pawnForw + 1)) {
-            pawnChain.setBit(i);
-            continue;
-        }
+        pawnChain |= pawnChainMasks[side / 8][i] & ownPawns;
     }
 
     return pawnChain;
 }
 
-inline Bitboard BoardEvaluator::findConnectedPawns(const Bitboard& ownPawns) {
+Bitboard BoardEvaluator::findConnectedPawns(const Bitboard& ownPawns) {
     Bitboard connectedPawns;
     Bitboard pawnCopy = ownPawns;
 
@@ -671,15 +618,7 @@ inline Bitboard BoardEvaluator::findConnectedPawns(const Bitboard& ownPawns) {
         int i = pawnCopy.getFirstSetBit();
         pawnCopy.clearBit(i);
 
-        int file = i % 8;
-
-        if(file != FILE_A && ownPawns.getBit(i - 1)) {
-            connectedPawns.setBit(i);
-            continue;
-        } else if(file != FILE_H && ownPawns.getBit(i + 1)) {
-            connectedPawns.setBit(i);
-            continue;
-        }
+        connectedPawns |= connectedPawnMasks[i] & ownPawns;
     }
 
     return connectedPawns;
@@ -755,58 +694,22 @@ int32_t BoardEvaluator::see(Move& m) {
 int32_t BoardEvaluator::evaluateMove(Move& m) {
     int32_t moveScore = 0;
 
-    if(m.isPromotion())
-        moveScore += PROMOTION_SCORE;
+    if(m.isPromotion()) {
+        if(m.isPromotionQueen())
+            moveScore += PROMOTION_QUEEN_SCORE;
+        else if(m.isPromotionRook())
+            moveScore += PROMOTION_ROOK_SCORE;
+        else if(m.isPromotionBishop())
+            moveScore += PROMOTION_BISHOP_SCORE;
+        else if(m.isPromotionKnight())
+            moveScore += PROMOTION_KNIGHT_SCORE;
+    }
 
     if(m.isCapture()) {
-        int32_t capturedPieceValue = PIECE_VALUE[TYPEOF(b->pieces[m.getDestination()])];
-
         // SEE-Heuristik
+        int32_t capturedPieceValue = PIECE_VALUE[TYPEOF(b->pieces[m.getDestination()])];
         moveScore += capturedPieceValue - see(m);
-    } else if(m.isCastle()) {
-        moveScore += CASTLING_MOVE_SCORE;
     }
-
-    int32_t origin64 = b->mailbox[m.getOrigin()];
-
-    // Züge, die den gegnerischen König in Schach setzen,
-    // werden positiv bewertet
-    int32_t pieceType = TYPEOF(b->pieces[m.getOrigin()]);
-
-    int32_t side = b->side;
-    int32_t otherSide = b->side ^ COLOR_MASK;
-
-    int32_t otherKing64 = b->pieceBitboard[otherSide | KING].getFirstSetBit();
-
-    switch(pieceType) {
-        case PAWN:
-            if(pawnAttackBitboard(otherKing64, otherSide).getBit(b->mailbox[m.getDestination()]))
-                moveScore += CHECK_MOVE_SCORE;
-            break;
-        case KNIGHT:
-            if(knightAttackBitboard(otherKing64).getBit(b->mailbox[m.getDestination()]))
-                moveScore += CHECK_MOVE_SCORE;
-            break;
-        case BISHOP:
-            if(diagonalAttackBitboard(otherKing64, b->allPiecesBitboard | b->pieceBitboard[side | KING]).getBit(b->mailbox[m.getDestination()]))
-                moveScore += CHECK_MOVE_SCORE;
-            break;
-        case ROOK:
-            if(straightAttackBitboard(otherKing64, b->allPiecesBitboard | b->pieceBitboard[side | KING]).getBit(b->mailbox[m.getDestination()]))
-                moveScore += CHECK_MOVE_SCORE;
-            break;
-        case QUEEN:
-            if((diagonalAttackBitboard(otherKing64, b->allPiecesBitboard | b->pieceBitboard[side | KING])
-                | straightAttackBitboard(otherKing64, b->allPiecesBitboard | b->pieceBitboard[side | KING])).getBit(b->mailbox[m.getDestination()]))
-                moveScore += CHECK_MOVE_SCORE;
-            break;
-    }
-
-    Bitboard passedPawns = findPassedPawns(b->pieceBitboard[side | PAWN],
-                            b->pieceBitboard[otherSide | PAWN], side);
-    
-    if(passedPawns.getBit(origin64))
-        moveScore += PASSED_PAWN_MOVE_SCORE;
     
     return moveScore;
 }

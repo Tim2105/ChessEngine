@@ -5,6 +5,10 @@ Move::Move() {
     move = 0;
 }
 
+Move::Move(uint32_t from) {
+    move = from;
+}
+
 Move::Move(int32_t origin, int32_t destination, int32_t flags) {
     move = (origin << 11) | (destination << 4) | flags;
 }
@@ -58,7 +62,7 @@ int32_t Move::getDestination() const {
 }
 
 bool Move::isQuiet() const {
-    return (move & 0xF) == MOVE_QUIET;
+    return (move & 0xC) == MOVE_QUIET;
 }
 
 bool Move::isDoublePawn() const {

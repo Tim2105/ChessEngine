@@ -20,6 +20,7 @@ class Move {
 
     public:
         Move();
+        Move(uint32_t from);
         Move(int32_t origin, int32_t destination, int32_t flags);
         virtual ~Move();
 

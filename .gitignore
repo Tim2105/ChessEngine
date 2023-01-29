@@ -1,3 +1,4 @@
 *.exe
 MovegenTestCases/*
 BenchmarkData/*
+Alt/*

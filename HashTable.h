@@ -56,8 +56,7 @@ HashTable<K, V, bucketCount, bucketSize>::HashTable() {
 
 template <typename K, typename V, size_t bucketCount, size_t bucketSize>
 void HashTable<K, V, bucketCount, bucketSize>::put(K key, V value) {
-    size_t hash = std::hash<K>{}(key);
-    size_t index = hash % bucketCount;
+    size_t index = key % bucketCount;
 
     for(size_t i = 0; i < table[index].size(); i++) {
         if(table[index][i].key == key) {
@@ -74,8 +73,7 @@ void HashTable<K, V, bucketCount, bucketSize>::put(K key, V value) {
 
 template <typename K, typename V, size_t bucketCount, size_t bucketSize>
 bool HashTable<K, V, bucketCount, bucketSize>::probe(K key, V& value) {
-    size_t hash = std::hash<K>{}(key);
-    size_t index = hash % bucketCount;
+    size_t index = key % bucketCount;
 
     for(size_t i = 0; i < table[index].size(); i++) {
         if(table[index][i].key == key) {

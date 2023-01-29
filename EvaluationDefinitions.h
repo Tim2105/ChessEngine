@@ -6,7 +6,7 @@
 #define MIN_SCORE -2000000000
 #define MAX_SCORE 2000000000
 
-#define MATE_SCORE (1000000 + MAX_DEPTH)
+#define MATE_SCORE 1000000
 
 #include <stdint.h>
 #include "Bitboard.h"
@@ -19,37 +19,33 @@
  * während Konstanten mit dem Präfix EG für das Endgame sind.
  */
 
-extern int32_t PIECE_VALUE[];
+extern int16_t PIECE_VALUE[];
 
 extern Bitboard neighboringFiles[];
 
-// Bonus für jedes Feld, dass eine Farbe angreift
-#define MG_MOBILITY_VALUE 3
-#define EG_MOBILITY_VALUE 2
+extern Bitboard centerSquares;
 
 // Bonus für jeden Bauern, der neben mindestens einem anderen Bauern steht
-#define MG_PAWN_CONNECTED_BASE_VALUE 4
-#define EG_PAWN_CONNECTED_BASE_VALUE 2
-// Wird mit der Anzahl der fortgeschrittenen Felder multipliziert
-#define MG_PAWN_CONNECTED_RANK_ADVANCED_MULTIPLIER 3
-#define EG_PAWN_CONNECTED_RANK_ADVANCED_MULTIPLIER 5
+extern Bitboard connectedPawnMasks[];
+#define MG_PAWN_CONNECTED_VALUE 10
+#define EG_PAWN_CONNECTED_VALUE 8
 
 // Bonus für jeden Bauern, der mindestens einen anderen Bauern deckt
-#define MG_PAWN_CHAIN_VALUE 10
-#define EG_PAWN_CHAIN_VALUE 20
+extern Bitboard pawnChainMasks[][64];
+#define MG_PAWN_CHAIN_VALUE 25
+#define EG_PAWN_CHAIN_VALUE 30
 
 // Bestrafung für zwei oder mehrere Bauern in einer Spalte (doppelte Bauern)
+extern Bitboard doubledPawnMasks[][64];
 #define MG_PAWN_DOUBLED_VALUE -25
-#define EG_PAWN_DOUBLED_VALUE -40
+#define EG_PAWN_DOUBLED_VALUE -35
 
 // Bestrafung für einen Bauern, der keine Nachbarn hat(keine Bauern in einer Nachbarspalte)
-#define MG_PAWN_ISOLATED_BASE_VALUE -15
-#define EG_PAWN_ISOLATED_BASE_VALUE -30
-// Wird mit der Entfernung zu den äußeren Spalten multipliziert
-#define MG_PAWN_ISOLATED_INNER_FILE_MULTIPLIER -3
-#define EG_PAWN_ISOLATED_INNER_FILE_MULTIPLIER -2
+#define MG_PAWN_ISOLATED_VALUE -20
+#define EG_PAWN_ISOLATED_VALUE -40
 
 // Bonus für jeden Freibauern(passed pawn)
+extern Bitboard sentryMasks[][64];
 #define MG_PAWN_PASSED_BASE_VALUE 20
 #define EG_PAWN_PASSED_BASE_VALUE 30
 // Wird mit der Anzahl der fortgeschrittenen Felder multipliziert
@@ -57,20 +53,23 @@ extern Bitboard neighboringFiles[];
 #define EG_PAWN_PASSED_RANK_ADVANCED_MULTIPLIER 25
 
 // Bestrafung für jedes Feld um den König herum, dass von einem Gegner angegriffen wird
-#define MG_KING_SAFETY_VALUE -10
-#define EG_KING_SAFETY_VALUE -12
+#define MG_KING_SAFETY_VALUE -20
+#define EG_KING_SAFETY_VALUE -24
 
 /**
  * @brief Bauernschilder und -stürme werden nur für das Midgame bewertet.
  */
 
-// Bonus für jeden Bauern, der den König schützt
+// Bonus für jeden Bauern, der den König schützt.
 #define MG_PAWN_SHIELD_VALUE 15
 
 // Bonus für jeden Bauern, der den König angreift(oder einen Angriff droht)
 #define MG_PAWN_STORM_BASE_VALUE 10
 // Wird mit der Anzahl der fortgeschrittenen Felder multipliziert
 #define MG_PAWN_STORM_DISTANCE_MULTIPLIER 10
+
+// Bonus für jedes Feld in der Mitte, das von einem eigenen Bauern besetzt ist
+#define MG_CENTER_CONTROL_VALUE 5
 
 /**
  * @brief Bewertung für die Distanz zwischen den Königen.
@@ -83,14 +82,14 @@ extern Bitboard neighboringFiles[];
 /**
  * @brief Die PSQT-Tabellen aus der Sicht der weißen Figuren für das Midgame.
  */
-extern int32_t MG_PSQT[][64];
+extern int16_t MG_PSQT[][64];
 
 #define MG_PSQT_MULTIPLIER 1
 
 /**
  * @brief Die PSQT-Tabellen aus der Sicht der weißen Figuren für das Endgame.
  */
-extern int32_t EG_PSQT[][64];
+extern int16_t EG_PSQT[][64];
 
 #define EG_PSQT_MULTIPLIER 1
 
@@ -117,11 +116,11 @@ extern int32_t EG_PSQT[][64];
 /**
  * @brief Konstanten für die Zugvorsortierung
  */
+
 #define HASH_MOVE_SCORE 2000
-#define PROMOTION_SCORE 900
-#define KILLER_MOVE_SCORE 80
-#define CHECK_MOVE_SCORE 90
-#define PASSED_PAWN_MOVE_SCORE 80
-#define CASTLING_MOVE_SCORE 50
+#define PROMOTION_QUEEN_SCORE 800
+#define PROMOTION_ROOK_SCORE 400
+#define PROMOTION_BISHOP_SCORE 200
+#define PROMOTION_KNIGHT_SCORE 200
 
 #endif
