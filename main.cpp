@@ -38,18 +38,18 @@ int main() {
     Board board("r1bqkb1r/p1p2ppp/1pn1pn2/3p4/3P1B2/4PQ2/PPPN1PPP/2KR1BNR b kq - 0 1");
     SearchTree st(board);
 
-    // while(board.generateLegalMoves().size() != 0) {
-    //     int16_t score = st.search(300);
-    //     Move m = st.getPrincipalVariation()[0];
-    //     std::cout << "Playing " << m << " Eval " << score << std::endl;
-    //     board.makeMove(m);
-    //     if(board.generateLegalMoves().size() == 0)
-    //         break;
+    while(board.generateLegalMoves().size() != 0) {
+        int16_t score = st.search(5000);
+        Move m = st.getPrincipalVariation()[0];
+        std::cout << "Playing " << m << " Eval " << score << std::endl;
+        board.makeMove(m);
+        if(board.generateLegalMoves().size() == 0)
+            break;
         
-    //     board.makeMove(getUserMove(board));
-    // }
+        board.makeMove(getUserMove(board));
+    }
 
-    st.search(2000);
+    //st.search(5000);
 
     return 0;
 }

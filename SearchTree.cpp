@@ -31,7 +31,7 @@ SearchTree::SearchTree(Board& b) {
     searching = false;
 }
 
-std::vector<Move> SearchTree::getPrincipalVariation() {
+std::vector<Move> SearchTree::findPrincipalVariation() {
     std::vector<Move> pv;
 
     uint64_t hash = board->getHashValue();
@@ -41,6 +41,9 @@ std::vector<Move> SearchTree::getPrincipalVariation() {
     Move hashMove = ttEntry.hashMove;
 
     while(moveFound) {
+        if(!board->isMoveLegal(hashMove))
+            break;
+        
         pv.push_back(hashMove);
 
         board->makeMove(hashMove);
@@ -82,9 +85,11 @@ int16_t SearchTree::search(uint32_t searchTime) {
         std::cout << "(" << (now - start).count() / 1000000 << "ms)" << "Depth: " << (int)depth << " Score: " << score
             << " Nodes: " << nodesSearched << " PV:";
         
-        std::vector<Move> pv = getPrincipalVariation();
-        for(Move move : pv)
-            std::cout << " " << move;
+        if(searching) {
+            principalVariation = findPrincipalVariation();
+            for(Move move : principalVariation)
+                std::cout << " " << move;
+        }
         
         std::cout << std::endl;
     }
@@ -95,19 +100,14 @@ int16_t SearchTree::search(uint32_t searchTime) {
 }
 
 void SearchTree::sortMoves(Array<Move, 256>& moves, int8_t depth, int32_t moveEvalFunc) {
-    Array<Move, 1> hashMove;
-    Array<MoveScorePair, 256> winningCaptures;
-    Array<Move, 256> equalCaptures;
-    Array<Move, 4> killers;
-    Array<Move, 256> otherQuietMoves;
-    Array<MoveScorePair, 256> losingCaptures;
+    Array<MoveScorePair, 256> msp;
 
     TranspositionTableEntry ttEntry;
-    transpositionTable.probe(board->getHashValue(), ttEntry);
+    bool hashHit = transpositionTable.probe(board->getHashValue(), ttEntry);
 
     for(Move move : moves) {
         if(move == ttEntry.hashMove)
-            hashMove.push_back(move);
+            msp.push_back({move, 30000});
         else if(move.isCapture() || move.isPromotion()) {
             int32_t moveScore = 0;
 
@@ -120,49 +120,32 @@ void SearchTree::sortMoves(Array<Move, 256>& moves, int8_t depth, int32_t moveEv
                     break;
             }
 
-            if(moveScore > 0)
-                winningCaptures.push_back({move, moveScore});
-            else if(moveScore == 0)
-                equalCaptures.push_back(move);
-            else
-                losingCaptures.push_back({move, moveScore});
+            msp.push_back({move, moveScore});
         } else if(move.isQuiet()) {
             int8_t ply = currentMaxDepth - depth;
+            int32_t moveScore = 0;
 
-            bool isKiller = false;
-
-            if(killerMoves[ply][0] == move || killerMoves[ply][1] == move)
-                isKiller = true;
+            if(killerMoves[ply][0] == move)
+                moveScore += 80;
+            else if(killerMoves[ply][1] == move)
+                moveScore += 70;  
             else if(ply >= 2) {
-                if(killerMoves[ply - 2][0] == move || killerMoves[ply - 2][1] == move)
-                    isKiller = true;
+                if(killerMoves[ply - 2][0] == move)
+                    moveScore += 60;
+                else if(killerMoves[ply - 2][1] == move)
+                    moveScore += 50;
             }
 
-            if(isKiller)
-                killers.push_back(move);
-            else
-                otherQuietMoves.push_back(move);
+            msp.push_back({move, moveScore});
         }
     }
 
-    std::sort(winningCaptures.begin(), winningCaptures.end(), std::greater<MoveScorePair>());
-    std::sort(losingCaptures.begin(), losingCaptures.end(), std::greater<MoveScorePair>());
+    std::sort(msp.begin(), msp.end(), std::greater<MoveScorePair>());
 
     moves.clear();
 
-    moves.push_back(hashMove);
-    
-    for(MoveScorePair msp : winningCaptures)
-        moves.push_back(msp.move);
-    
-    moves.push_back(killers);
-
-    moves.push_back(equalCaptures);
-
-    moves.push_back(otherQuietMoves);
-    
-    for(MoveScorePair msp : losingCaptures)
-        moves.push_back(msp.move);
+    for(MoveScorePair pair : msp)
+        moves.push_back(pair.move);
 }
 
 void SearchTree::sortAndCutMoves(Array<Move, 256>& moves, int32_t minScore, int32_t moveEvalFunc) {
@@ -188,9 +171,58 @@ void SearchTree::sortAndCutMoves(Array<Move, 256>& moves, int32_t minScore, int3
 
     moves.clear();
 
-    for(MoveScorePair msPair : msp) {
+    for(MoveScorePair msPair : msp)
         moves.push_back(msPair.move);
+}
+
+void SearchTree::sortAndCutMoves(Array<Move, 256>& moves, int8_t depth, int32_t minScore, int32_t moveEvalFunc) {
+    Array<MoveScorePair, 256> msp;
+
+    TranspositionTableEntry ttEntry;
+    bool hashHit = transpositionTable.probe(board->getHashValue(), ttEntry);
+
+    for(Move move : moves) {
+        if(move == ttEntry.hashMove)
+            msp.push_back({move, 30000});
+        else if(move.isCapture() || move.isPromotion()) {
+            int32_t moveScore = 0;
+
+            switch(moveEvalFunc) {
+                case MVVLVA:
+                    moveScore += evaluator.evaluateMoveMVVLVA(move);
+                    break;
+                case SEE:
+                    moveScore += evaluator.evaluateMoveSEE(move);
+                    break;
+            }
+            if(moveScore >= minScore)
+                msp.push_back({move, moveScore});
+        } else if(move.isQuiet()) {
+            int8_t ply = currentMaxDepth - depth;
+            int32_t moveScore = 0;
+
+            if(killerMoves[ply][0] == move)
+                moveScore += 80;
+            else if(killerMoves[ply][1] == move)
+                moveScore += 70;  
+            else if(ply >= 2) {
+                if(killerMoves[ply - 2][0] == move)
+                    moveScore += 60;
+                else if(killerMoves[ply - 2][1] == move)
+                    moveScore += 50;
+            }
+
+            if(moveScore >= minScore)
+                msp.push_back({move, moveScore});
+        }
     }
+
+    std::sort(msp.begin(), msp.end(), std::greater<MoveScorePair>());
+
+    moves.clear();
+
+    for(MoveScorePair pair : msp)
+        moves.push_back(pair.move);
 }
 
 int16_t SearchTree::rootSearch(int8_t depth, int16_t expectedScore) {
@@ -207,6 +239,11 @@ int16_t SearchTree::rootSearch(int8_t depth, int16_t expectedScore) {
 }
 
 int16_t SearchTree::pvSearch(int8_t depth, int16_t alpha, int16_t beta) {
+    if(depth <= 0) {
+        int16_t score = quiescence(alpha, beta);
+        return score;
+    }
+
     TranspositionTableEntry ttEntry;
     bool tableHit = transpositionTable.probe(board->getHashValue(), ttEntry);
 
@@ -221,9 +258,6 @@ int16_t SearchTree::pvSearch(int8_t depth, int16_t alpha, int16_t beta) {
             }
         }
     }
-
-    if(depth <= 0)
-        return quiescence(alpha, beta);
     
     bool searchPv = true;
     int16_t score, bestScore = MIN_SCORE;
@@ -303,6 +337,11 @@ int16_t SearchTree::pvSearch(int8_t depth, int16_t alpha, int16_t beta) {
 }
 
 int16_t SearchTree::nwSearch(int8_t depth, int16_t alpha, int16_t beta) {
+    if(depth <= 0) {
+        int16_t score = quiescence(alpha, beta);
+        return score;
+    }
+
     TranspositionTableEntry ttEntry;
     bool tableHit = transpositionTable.probe(board->getHashValue(), ttEntry);
 
@@ -317,9 +356,6 @@ int16_t SearchTree::nwSearch(int8_t depth, int16_t alpha, int16_t beta) {
             }
         }
     }
-
-    if(depth <= 0)
-        return quiescence(alpha, beta);
     
     int16_t bestScore = MIN_SCORE;
     Move bestMove;
@@ -332,6 +368,8 @@ int16_t SearchTree::nwSearch(int8_t depth, int16_t alpha, int16_t beta) {
         else
             return 0;
     }
+
+    int8_t ply = currentMaxDepth - depth;
 
     sortMoves(moves, depth, SEE);
 
