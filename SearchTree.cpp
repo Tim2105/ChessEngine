@@ -226,19 +226,44 @@ void SearchTree::sortAndCutMoves(Array<Move, 256>& moves, int8_t depth, int32_t 
 }
 
 int16_t SearchTree::rootSearch(int8_t depth, int16_t expectedScore) {
-
-    int16_t alpha = expectedScore - 50;
-    int16_t beta = expectedScore + 50;
+    int16_t alpha = expectedScore - ASP_WINDOW;
+    int16_t beta = expectedScore + ASP_WINDOW;
 
     int16_t score = pvSearch(depth, alpha, beta);
+    int32_t aspAlphaReduction = ASP_WINDOW, numAlphaReduction = 1;
+    int32_t aspBetaReduction = ASP_WINDOW, numBetaReduction = 1;
 
-    if(score <= alpha || score >= beta)
-        score = pvSearch(depth, MIN_SCORE, MAX_SCORE);
+    while((score <= alpha || score >= beta)) {
+        if(score <= alpha) {
+            if(numAlphaReduction >= ASP_MAX_DEPTH)
+                alpha = MIN_SCORE;
+            else {
+                aspAlphaReduction *= ASP_STEP_FACTOR;
+                alpha = expectedScore - aspAlphaReduction;
+            }
+
+            numAlphaReduction++;
+        } else if(score >= beta) {
+            if(numBetaReduction >= ASP_MAX_DEPTH)
+                beta = MAX_SCORE;
+            else {
+                aspBetaReduction *= ASP_STEP_FACTOR;
+                beta = expectedScore + aspBetaReduction;
+            }
+
+            numBetaReduction++;
+        }
+
+        score = pvSearch(depth, alpha, beta);
+    }
     
     return score;
 }
 
 int16_t SearchTree::pvSearch(int8_t depth, int16_t alpha, int16_t beta) {
+    if(!searching)
+        return 0;
+
     if(depth <= 0) {
         int16_t score = quiescence(alpha, beta);
         return score;
@@ -267,7 +292,7 @@ int16_t SearchTree::pvSearch(int8_t depth, int16_t alpha, int16_t beta) {
 
     if(moves.size() == 0) {
         if(board->isCheck())
-            return MIN_SCORE;
+            return -MATE_SCORE;
         else
             return 0;
     }
@@ -337,6 +362,9 @@ int16_t SearchTree::pvSearch(int8_t depth, int16_t alpha, int16_t beta) {
 }
 
 int16_t SearchTree::nwSearch(int8_t depth, int16_t alpha, int16_t beta) {
+    if(!searching)
+        return 0;
+
     if(depth <= 0) {
         int16_t score = quiescence(alpha, beta);
         return score;
@@ -364,7 +392,7 @@ int16_t SearchTree::nwSearch(int8_t depth, int16_t alpha, int16_t beta) {
 
     if(moves.size() == 0) {
         if(board->isCheck())
-            return MIN_SCORE;
+            return -MATE_SCORE;
         else
             return 0;
     }
@@ -424,6 +452,9 @@ int16_t SearchTree::nwSearch(int8_t depth, int16_t alpha, int16_t beta) {
 }
 
 int16_t SearchTree::quiescence(int16_t alpha, int16_t beta) {
+    if(!searching)
+        return 0;
+
     int16_t score = (int16_t)evaluator.evaluate();
 
     if(score >= beta)
@@ -439,7 +470,7 @@ int16_t SearchTree::quiescence(int16_t alpha, int16_t beta) {
     if(board->isCheck()) {
         moves = board->generateLegalMoves();
         if(moves.size() == 0)
-            return MIN_SCORE;
+            return -MATE_SCORE;
 
         sortAndCutMoves(moves, MIN_SCORE, MVVLVA);
     }

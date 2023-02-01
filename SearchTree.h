@@ -23,8 +23,14 @@
 #define MIN_SCORE -32000
 #define MAX_SCORE 32000
 
+#define MATE_SCORE 20000
+
 #define MVVLVA 0
 #define SEE 1
+
+#define ASP_WINDOW 25
+#define ASP_STEP_FACTOR 4
+#define ASP_MAX_DEPTH 2
 
 struct TranspositionTableEntry {
     int8_t depth;

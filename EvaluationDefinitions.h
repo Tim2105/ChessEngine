@@ -32,17 +32,17 @@ extern Bitboard connectedPawnMasks[];
 
 // Bonus für jeden Bauern, der mindestens einen anderen Bauern deckt
 extern Bitboard pawnChainMasks[][64];
-#define MG_PAWN_CHAIN_VALUE 25
-#define EG_PAWN_CHAIN_VALUE 30
+#define MG_PAWN_CHAIN_VALUE 18
+#define EG_PAWN_CHAIN_VALUE 12
 
 // Bestrafung für zwei oder mehrere Bauern in einer Spalte (doppelte Bauern)
 extern Bitboard doubledPawnMasks[][64];
-#define MG_PAWN_DOUBLED_VALUE -25
-#define EG_PAWN_DOUBLED_VALUE -35
+#define MG_PAWN_DOUBLED_VALUE -22
+#define EG_PAWN_DOUBLED_VALUE -26
 
 // Bestrafung für einen Bauern, der keine Nachbarn hat(keine Bauern in einer Nachbarspalte)
-#define MG_PAWN_ISOLATED_VALUE -20
-#define EG_PAWN_ISOLATED_VALUE -40
+#define MG_PAWN_ISOLATED_VALUE -14
+#define EG_PAWN_ISOLATED_VALUE -8
 
 // Bonus für jeden Freibauern(passed pawn)
 extern Bitboard sentryMasks[][64];
@@ -72,7 +72,7 @@ extern Bitboard pawnStormMask[][64];
 #define MG_PAWN_STORM_DISTANCE_MULTIPLIER 10
 
 // Bonus für jedes Feld in der Mitte, das von einem eigenen Bauern besetzt ist
-#define MG_CENTER_CONTROL_VALUE 5
+#define MG_CENTER_CONTROL_VALUE 12
 
 /**
  * @brief Bewertung für die Distanz zwischen den Königen.
