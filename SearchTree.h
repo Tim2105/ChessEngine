@@ -81,7 +81,7 @@ class SearchTree {
 
         int16_t quiescence(int16_t alpha, int16_t beta, int32_t captureSquare);
 
-        int8_t determineExtension(int8_t depth, Move& m);
+        int8_t determineExtension(int8_t depth, Move& m, bool isCheckEvasion = false);
 
         int8_t determineReduction(int8_t depth, Move& m, int32_t moveNumber);
 

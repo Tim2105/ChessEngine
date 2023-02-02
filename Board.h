@@ -49,14 +49,19 @@ class MoveHistoryEntry {
         uint64_t hashValue;
 
         /**
-         * @brief Speichert das überschriebende Angriffsbitboard vor diesem Zug.
+         * @brief Speichert das weiße Angriffsbitboard vor diesem Zug.
          */
-        Bitboard replacedAttackBitboard;
+        Bitboard whiteAttackBitboard;
+
+        /**
+         * @brief Speichert das schwarze Angriffsbitboard vor diesem Zug.
+         */
+        Bitboard blackAttackBitboard;
 
         /**
          * @brief Speichert die Angriffsbitboards der Figuren vor diesem Zug.
          */
-        Bitboard pieceAttackBitboards[15];
+        Bitboard pieceAttackBitboard[15];
 
         /**
          * @brief Erstellt einen neuen MoveHistoryEntry.
@@ -71,16 +76,18 @@ class MoveHistoryEntry {
          */
         constexpr MoveHistoryEntry(Move move, int32_t capturedPiece, int32_t castlePermission,
                         int32_t enPassantSquare, int32_t fiftyMoveRule, uint64_t hashValue,
-                        Bitboard replacedAttackBitboard, Bitboard pieceAttackBitboards[15]) {
+                        Bitboard whiteAttackBitboard, Bitboard blackAttackBitboard, Bitboard pieceAttackBitboards[15]) {
             this->move = move;
             this->capturedPiece = capturedPiece;
             this->castlingPermission = castlePermission;
             this->enPassantSquare = enPassantSquare;
             this->fiftyMoveRule = fiftyMoveRule;
             this->hashValue = hashValue;
-            this->replacedAttackBitboard = replacedAttackBitboard;
+            this->whiteAttackBitboard = whiteAttackBitboard;
+            this->blackAttackBitboard = blackAttackBitboard;
+            
             for (int i = 0; i < 15; i++) {
-                this->pieceAttackBitboards[i] = pieceAttackBitboards[i];
+                this->pieceAttackBitboard[i] = pieceAttackBitboards[i];
             }
         }
 
@@ -95,9 +102,11 @@ class MoveHistoryEntry {
             this->enPassantSquare = 0;
             this->fiftyMoveRule = 0;
             this->hashValue = 0;
-            this->replacedAttackBitboard = 0;
+            this->whiteAttackBitboard = 0;
+            this->blackAttackBitboard = 0;
+
             for (int i = 0; i < 15; i++) {
-                this->pieceAttackBitboards[i] = 0;
+                this->pieceAttackBitboard[i] = 0;
             }
         }
 };
@@ -331,6 +340,7 @@ class Board {
 
         /**
          * @brief Generiert ein Bitboard mit allen Feldern, die von einer Seite angegriffen werden.
+         * Die Angriffsbitboard der einzelnen Figurentypen werden aktualisiert.
          * 
          * @param side Die Seite.
          */

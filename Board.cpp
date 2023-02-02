@@ -524,11 +524,11 @@ void Board::makeMove(Move m) {
     entry.enPassantSquare = enPassantSquare;
     entry.fiftyMoveRule = fiftyMoveRule;
     entry.hashValue = hashValue;
+    entry.whiteAttackBitboard = whiteAttackBitboard;
+    entry.blackAttackBitboard = blackAttackBitboard;
     
-    if(side == WHITE)
-        entry.replacedAttackBitboard = whiteAttackBitboard;
-    else
-        entry.replacedAttackBitboard = blackAttackBitboard;
+    for(int i = 0; i < 15; i++)
+        entry.pieceAttackBitboard[i] = pieceAttackBitboard[i];
 
     moveHistory.push_back(entry);
 
@@ -666,10 +666,8 @@ void Board::makeMove(Move m) {
     }
 
     // Aktualisiere Angriffsbitboards
-    if(side == WHITE)
-        whiteAttackBitboard = generateAttackBitboard(WHITE);
-    else
-        blackAttackBitboard = generateAttackBitboard(BLACK);
+    whiteAttackBitboard = generateAttackBitboard(WHITE);
+    blackAttackBitboard = generateAttackBitboard(BLACK);
 
     // Aktualisiere Rochandenrechte und En Passant
     enPassantSquare = NO_SQ;
@@ -756,11 +754,10 @@ void Board::undoMove() {
     enPassantSquare = moveEntry.enPassantSquare;
     castlingPermission = moveEntry.castlingPermission;
     hashValue = moveEntry.hashValue;
-
-    if(side == WHITE)
-        whiteAttackBitboard = moveEntry.replacedAttackBitboard;
-    else
-        blackAttackBitboard = moveEntry.replacedAttackBitboard;
+    whiteAttackBitboard = moveEntry.whiteAttackBitboard;
+    blackAttackBitboard = moveEntry.blackAttackBitboard;
+    for(int i = 0; i < 15; i++)
+        pieceAttackBitboard[i] = moveEntry.pieceAttackBitboard[i];
 
     int32_t enPassantCaptureSq = enPassantSquare + (side == WHITE ? SOUTH : NORTH);
 
@@ -978,45 +975,55 @@ int32_t Board::numSquareAttackers(int32_t sq120, int32_t ownSide, Bitboard occup
 Bitboard Board::generateAttackBitboard(int32_t side) {
     Bitboard attackBitboard;
     Bitboard piecesPlusOwnKing = allPiecesBitboard | pieceBitboard[side | KING];
+
+    for(int i = (side | PAWN); i <= (side | KING); i++)
+        pieceAttackBitboard[i] = 0;
     
     // Diagonale Angriffe
     for(int sq : pieceList[side | BISHOP]) {
         int sq64 = mailbox[sq];
-        attackBitboard |= diagonalAttackBitboard(sq64, piecesPlusOwnKing);
+        pieceAttackBitboard[side | BISHOP] |= diagonalAttackBitboard(sq64, piecesPlusOwnKing);
+        attackBitboard |= pieceAttackBitboard[side | BISHOP];
     }
 
     for(int sq : pieceList[side | QUEEN]) {
         int sq64 = mailbox[sq];
-        attackBitboard |= diagonalAttackBitboard(sq64, piecesPlusOwnKing);
+        pieceAttackBitboard[side | QUEEN] |= diagonalAttackBitboard(sq64, piecesPlusOwnKing);
+        attackBitboard |= pieceAttackBitboard[side | QUEEN];
     }
 
     // Waagerechte Angriffe
     for(int sq : pieceList[side | ROOK]) {
         int sq64 = mailbox[sq];
-        attackBitboard |= straightAttackBitboard(sq64, piecesPlusOwnKing);
+        pieceAttackBitboard[side | ROOK] |= straightAttackBitboard(sq64, piecesPlusOwnKing);
+        attackBitboard |= pieceAttackBitboard[side | ROOK];
     }
 
     for(int sq : pieceList[side | QUEEN]) {
         int sq64 = mailbox[sq];
-        attackBitboard |= straightAttackBitboard(sq64, piecesPlusOwnKing);
+        pieceAttackBitboard[side | QUEEN] |= straightAttackBitboard(sq64, piecesPlusOwnKing);
+        attackBitboard |= pieceAttackBitboard[side | QUEEN];
     }
 
     // Springer Angriffe
     for(int sq : pieceList[side | KNIGHT]) {
         int sq64 = mailbox[sq];
-        attackBitboard |= knightAttackBitboard(sq64);
+        pieceAttackBitboard[side | KNIGHT] |= knightAttackBitboard(sq64);
+        attackBitboard |= pieceAttackBitboard[side | KNIGHT];
     }
 
     // Bauer Angriffe
     for(int sq : pieceList[side | PAWN]) {
         int sq64 = mailbox[sq];
-        attackBitboard |= pawnAttackBitboard(sq64, side);
+        pieceAttackBitboard[side | PAWN] |= pawnAttackBitboard(sq64, side);
+        attackBitboard |= pieceAttackBitboard[side | PAWN];
     }
 
     // König Angriffe
     for(int sq : pieceList[side | KING]) {
         int sq64 = mailbox[sq];
-        attackBitboard |= kingAttackBitboard(sq64);
+        pieceAttackBitboard[side | KING] |= kingAttackBitboard(sq64);
+        attackBitboard |= pieceAttackBitboard[side | KING];
     }
 
     return attackBitboard;

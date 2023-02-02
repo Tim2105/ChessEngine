@@ -184,6 +184,10 @@ struct std::hash<Bitboard> {
     }
 };
 
+extern Bitboard pawnAttacks[][64];
+extern Bitboard knightAttacks[];
+extern Bitboard kingAttacks[];
+
 /**
  * @brief Liefert ein Bitboard, dass, ausgehend von einem Feld, alle Felder enthält die von einer diagonal laufenden Figur angegriffen werden.
  * 

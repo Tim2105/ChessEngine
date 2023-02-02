@@ -52,9 +52,18 @@ extern Bitboard sentryMasks[][64];
 #define MG_KING_SAFETY_VALUE -40
 #define EG_KING_SAFETY_VALUE -24
 
-// Bonus für jedes Feld, dass von einer Farbe angegriffen wird.
-#define MG_MOBILITY_VALUE 3
-#define EG_MOBILITY_VALUE 1
+// Bonus für jedes Feld, dass von einer Figur angegriffen wird.
+// Felder auf denen eigene Figuren stehen werden ausgenommen.
+#define MG_PAWN_MOBILITY_VALUE 0
+#define EG_PAWN_MOBILITY_VALUE 0
+#define MG_KNIGHT_MOBILITY_VALUE 2
+#define EG_KNIGHT_MOBILITY_VALUE 2
+#define MG_BISHOP_MOBILITY_VALUE 5
+#define EG_BISHOP_MOBILITY_VALUE 3
+#define MG_ROOK_MOBILITY_VALUE 3
+#define EG_ROOK_MOBILITY_VALUE 2
+#define MG_QUEEN_MOBILITY_VALUE 2
+#define EG_QUEEN_MOBILITY_VALUE 2
 
 /**
  * @brief Bauernschilder und -stürme werden nur für das Midgame bewertet.

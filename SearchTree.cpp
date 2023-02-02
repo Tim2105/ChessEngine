@@ -294,6 +294,7 @@ int16_t SearchTree::pvSearch(int8_t depth, int16_t alpha, int16_t beta) {
     }
 
     int32_t moveNumber = 1;
+    bool isCheckEvasion = board->isCheck();
 
     sortMoves(moves, depth, SEE);
 
@@ -305,7 +306,7 @@ int16_t SearchTree::pvSearch(int8_t depth, int16_t alpha, int16_t beta) {
 
         board->makeMove(move);
 
-        int8_t extension = determineExtension(depth, move);
+        int8_t extension = determineExtension(depth, move, isCheckEvasion);
 
         if(searchPv) {
             score = -pvSearch(depth - ONE_PLY + extension, -beta, -alpha);
@@ -406,6 +407,7 @@ int16_t SearchTree::nwSearch(int8_t depth, int16_t alpha, int16_t beta) {
 
     int8_t ply = currentMaxDepth - depth;
     int32_t moveNumber = 1;
+    bool isCheckEvasion = board->isCheck();
 
     sortMoves(moves, depth, SEE);
 
@@ -417,7 +419,7 @@ int16_t SearchTree::nwSearch(int8_t depth, int16_t alpha, int16_t beta) {
 
         board->makeMove(move);
 
-        int8_t extension = determineExtension(depth, move);
+        int8_t extension = determineExtension(depth, move, isCheckEvasion);
 
         int16_t score = -nwSearch(depth - ONE_PLY + extension, -beta, -alpha);
 
@@ -463,7 +465,7 @@ int16_t SearchTree::nwSearch(int8_t depth, int16_t alpha, int16_t beta) {
     return bestScore;
 }
 
-int8_t SearchTree::determineExtension(int8_t depth, Move& m) {
+int8_t SearchTree::determineExtension(int8_t depth, Move& m, bool isCheckEvasion) {
     int8_t ply = currentMaxDepth - depth;
 
     int8_t extension = 0;
@@ -472,11 +474,6 @@ int8_t SearchTree::determineExtension(int8_t depth, Move& m) {
     int32_t capturedPieceType = TYPEOF(board->getLastMoveHistoryEntry().capturedPiece);
 
     bool isCheck = board->isCheck();
-    bool isCheckEvasion = false;
-    int32_t kingPos = board->getPieceList((board->getSideToMove() ^ COLOR_MASK) | KING).front();
-    if(board->squareAttacked(kingPos, board->getSideToMove()) ||
-       (movedPieceType == KING && board->squareAttacked(m.getOrigin(), board->getSideToMove())))
-        isCheckEvasion = true;
 
     // Extensions
     if(isCheck || isCheckEvasion)
