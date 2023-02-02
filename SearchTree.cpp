@@ -260,7 +260,8 @@ int16_t SearchTree::pvSearch(int8_t depth, int16_t alpha, int16_t beta) {
         return 0;
 
     if(depth <= 0) {
-        int16_t score = quiescence(alpha, beta);
+        int32_t lastMovedSquare = board->getLastMove().getDestination();
+        int16_t score = quiescence(alpha, beta, lastMovedSquare);
         //int16_t score = evaluator.evaluate();
         return score;
     }
@@ -372,7 +373,8 @@ int16_t SearchTree::nwSearch(int8_t depth, int16_t alpha, int16_t beta) {
         return 0;
 
     if(depth <= 0) {
-        int16_t score = quiescence(alpha, beta);
+        int32_t lastMovedSquare = board->getLastMove().getDestination();
+        int16_t score = quiescence(alpha, beta, lastMovedSquare);
         //int16_t score = evaluator.evaluate();
         return score;
     }
@@ -481,18 +483,13 @@ int8_t SearchTree::determineExtension(int8_t depth, Move& m) {
 
     // Extensions
     if(isCheck || isCheckEvasion)
-        extension += THREE_FOURTH_PLY;
+        extension += FIVE_SIXTHS_PLY;
+    else if(m.isCapture())
+        extension += TWO_THIRDS_PLY;
     else if(m.isPromotion())
-        extension += ONE_FOURTH_PLY;
+        extension += ONE_HALF_PLY;
     else if(movedPieceType == PAWN) {
-        int32_t advancedRanks = 0;
-        if(board->getSideToMove() == WHITE)
-            advancedRanks = SQ2R(m.getDestination()) - RANK_2;
-        else
-            advancedRanks = RANK_7 - SQ2R(m.getDestination());
-        
-        if(advancedRanks >= 3)
-            extension += ONE_FOURTH_PLY;
+        extension += ONE_SIXTH_PLY;
     }
     
     return extension;
@@ -514,14 +511,14 @@ int8_t SearchTree::determineReduction(int8_t depth, Move& m, int32_t moveNumber)
         isCheckEvasion = true;
 
     // Reductions
-    if(ply >= FULL_MOVE_DEPTH && !isCheck && !isCheckEvasion) {
-        reduction += (int8_t)floor(log(moveNumber) * ONE_PLY * 0.75);
+    if(ply >= FULL_MOVE_DEPTH && moveNumber > UNREDUCED_MOVES && m.isQuiet() && !isCheck && !isCheckEvasion) {
+        reduction += (int8_t)floor((moveNumber - UNREDUCED_MOVES) * 0.3 * ONE_PLY);
     }
     
     return reduction;
 }
 
-int16_t SearchTree::quiescence(int16_t alpha, int16_t beta) {
+int16_t SearchTree::quiescence(int16_t alpha, int16_t beta, int32_t captureSquare) {
     if(!searching)
         return 0;
 
@@ -546,7 +543,12 @@ int16_t SearchTree::quiescence(int16_t alpha, int16_t beta) {
     }
     else {
         moves = board->generateLegalCaptures();
-        sortAndCutMoves(moves, SEE_SCORE_CUTOFF, SEE);
+
+        std::remove_if(moves.begin(), moves.end(), [captureSquare](Move m) {
+            return m.getDestination() != captureSquare;
+        });
+
+        sortAndCutMoves(moves, QUIESCENCE_SCORE_CUTOFF, MVVLVA);
     }
     
     for(Move move : moves) {
@@ -557,7 +559,7 @@ int16_t SearchTree::quiescence(int16_t alpha, int16_t beta) {
 
         board->makeMove(move);
 
-        score = -quiescence(-beta, -alpha);
+        score = -quiescence(-beta, -alpha, captureSquare);
 
         board->undoMove();
 

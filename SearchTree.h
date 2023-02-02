@@ -28,18 +28,21 @@
 #define MVVLVA 0
 #define SEE 1
 
-#define SEE_SCORE_CUTOFF -10
+#define QUIESCENCE_SCORE_CUTOFF -10
 
 #define ASP_WINDOW 25
 #define ASP_STEP_FACTOR 4
 #define ASP_MAX_DEPTH 2
 
-#define ONE_PLY 4
-#define ONE_FOURTH_PLY 1
-#define ONE_HALF_PLY 2
-#define THREE_FOURTH_PLY 3
+#define ONE_PLY 6
+#define ONE_SIXTH_PLY 1
+#define ONE_THIRD_PLY 2
+#define ONE_HALF_PLY 3
+#define TWO_THIRDS_PLY 4
+#define FIVE_SIXTHS_PLY 5
 
 #define FULL_MOVE_DEPTH 4
+#define UNREDUCED_MOVES 1
 
 struct TranspositionTableEntry {
     int8_t depth;
@@ -79,7 +82,7 @@ class SearchTree {
 
         int16_t nwSearch(int8_t depth, int16_t alpha, int16_t beta);
 
-        int16_t quiescence(int16_t alpha, int16_t beta);
+        int16_t quiescence(int16_t alpha, int16_t beta, int32_t captureSquare);
 
         int8_t determineExtension(int8_t depth, Move& m);
 
