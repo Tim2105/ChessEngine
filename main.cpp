@@ -2,6 +2,7 @@
 #include "Board.h"
 #include <chrono>
 #include "SearchTree.h"
+#include <iomanip>
 
 
 void perft(Board& board, int depth, int& count) {
@@ -36,21 +37,31 @@ Move getUserMove(Board& board) {
 int main() {
 
     Board board;
-    SearchTree st(board);
+    // SearchTree st(board);
 
     // while(board.generateLegalMoves().size() != 0) {
-    //     int16_t score = st.search(500);
-    //     Move m = st.getPrincipalVariation()[0];
-    //     std::cout << "Playing " << m << " Eval " << score << std::endl;
-    //     board.makeMove(m);
+    //     board.makeMove(getUserMove(board));
 
     //     if(board.generateLegalMoves().size() == 0)
     //         break;
 
-    //     board.makeMove(getUserMove(board));
+    //     int16_t score = st.search(100);
+    //     Move m = st.getPrincipalVariation()[0];
+    //     std::cout << "Playing " << m << " Eval " << score << std::endl;
+    //     board.makeMove(m);
     // }
 
-    st.search(3000);
+    // //st.search(3000);
+
+    for(int i = 1; i <= 6; i++) {
+        int count = 0;
+        auto start = std::chrono::high_resolution_clock::now();
+        perft(board, i, count);
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        std::cout << "Depth " << i << " Nodes " << count << " Time " << duration.count() << "ms "
+                << "N/s " << std::fixed << std::setprecision(0) << count / (duration.count() / 1000.0) << std::endl;
+    }
 
     return 0;
 }

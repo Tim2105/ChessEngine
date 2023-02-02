@@ -67,7 +67,7 @@ int16_t SearchTree::search(uint32_t searchTime) {
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    for(int8_t depth = ONE_PLY / 2; searching; depth += ONE_PLY) {
+    for(int8_t depth = ONE_HALF_PLY; searching; depth += ONE_PLY) {
         currentMaxDepth = depth;
         score = rootSearch(depth, score);
 
@@ -262,7 +262,6 @@ int16_t SearchTree::pvSearch(int8_t depth, int16_t alpha, int16_t beta) {
     if(depth <= 0) {
         int32_t lastMovedSquare = board->getLastMove().getDestination();
         int16_t score = quiescence(alpha, beta, lastMovedSquare);
-        //int16_t score = evaluator.evaluate();
         return score;
     }
 
@@ -314,7 +313,7 @@ int16_t SearchTree::pvSearch(int8_t depth, int16_t alpha, int16_t beta) {
             int8_t reduction = determineReduction(depth, move, moveNumber);
 
             score = -nwSearch(depth - ONE_PLY + extension - reduction, -alpha - 1, -alpha);
-            if(score > alpha && score < beta)
+            if(score >= alpha && score <= beta)
                 score = -pvSearch(depth - ONE_PLY, + extension -beta, -alpha);
         }
 
@@ -375,7 +374,6 @@ int16_t SearchTree::nwSearch(int8_t depth, int16_t alpha, int16_t beta) {
     if(depth <= 0) {
         int32_t lastMovedSquare = board->getLastMove().getDestination();
         int16_t score = quiescence(alpha, beta, lastMovedSquare);
-        //int16_t score = evaluator.evaluate();
         return score;
     }
 
@@ -420,9 +418,8 @@ int16_t SearchTree::nwSearch(int8_t depth, int16_t alpha, int16_t beta) {
         board->makeMove(move);
 
         int8_t extension = determineExtension(depth, move);
-        int8_t reduction = determineReduction(depth, move, moveNumber++);
 
-        int16_t score = -nwSearch(depth - ONE_PLY + extension - reduction, -beta, -alpha);
+        int16_t score = -nwSearch(depth - ONE_PLY + extension, -beta, -alpha);
 
         board->undoMove();
 
@@ -496,24 +493,9 @@ int8_t SearchTree::determineExtension(int8_t depth, Move& m) {
 }
 
 int8_t SearchTree::determineReduction(int8_t depth, Move& m, int32_t moveNumber) {
-    int8_t ply = currentMaxDepth - depth;
-
     int8_t reduction = 0;
 
-    int32_t movedPieceType = TYPEOF(board->pieceAt(m.getDestination()));
-    int32_t capturedPieceType = TYPEOF(board->getLastMoveHistoryEntry().capturedPiece);
-
-    bool isCheck = board->isCheck();
-    bool isCheckEvasion = false;
-    int32_t kingPos = board->getPieceList((board->getSideToMove() ^ COLOR_MASK) | KING).front();
-    if(board->squareAttacked(kingPos, board->getSideToMove()) ||
-       (movedPieceType == KING && board->squareAttacked(m.getOrigin(), board->getSideToMove())))
-        isCheckEvasion = true;
-
-    // Reductions
-    if(ply >= FULL_MOVE_DEPTH && moveNumber > UNREDUCED_MOVES && m.isQuiet() && !isCheck && !isCheckEvasion) {
-        reduction += (int8_t)floor((moveNumber - UNREDUCED_MOVES) * 0.3 * ONE_PLY);
-    }
+    reduction += (int8_t)round(depth / 5.0 * log(moveNumber));
     
     return reduction;
 }

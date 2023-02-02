@@ -73,6 +73,7 @@ HeapHashTable<K, V, bucketCount, bucketSize>::~HeapHashTable() {
 
 template <typename K, typename V, size_t bucketCount, size_t bucketSize>
 HeapHashTable<K, V, bucketCount, bucketSize>::HeapHashTable(HeapHashTable&& other) {
+    delete[] table;
     table = other.table;
     other.table = nullptr;
 
@@ -83,6 +84,7 @@ HeapHashTable<K, V, bucketCount, bucketSize>::HeapHashTable(HeapHashTable&& othe
 
 template <typename K, typename V, size_t bucketCount, size_t bucketSize>
 HeapHashTable<K, V, bucketCount, bucketSize>& HeapHashTable<K, V, bucketCount, bucketSize>::operator=(HeapHashTable&& other) {
+    delete[] table;
     table = other.table;
     other.table = nullptr;
 

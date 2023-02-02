@@ -28,7 +28,7 @@
 #define MVVLVA 0
 #define SEE 1
 
-#define QUIESCENCE_SCORE_CUTOFF -10
+#define QUIESCENCE_SCORE_CUTOFF (MIN_SCORE)
 
 #define ASP_WINDOW 25
 #define ASP_STEP_FACTOR 4
@@ -40,9 +40,6 @@
 #define ONE_HALF_PLY 3
 #define TWO_THIRDS_PLY 4
 #define FIVE_SIXTHS_PLY 5
-
-#define FULL_MOVE_DEPTH 4
-#define UNREDUCED_MOVES 1
 
 struct TranspositionTableEntry {
     int8_t depth;
@@ -93,11 +90,13 @@ class SearchTree {
     public:
         SearchTree(Board& b);
 
+        ~SearchTree() = default;
+
         int16_t search(uint32_t searchTime);
 
-        inline int8_t getLastSearchDepth() { return currentMaxDepth; }
+        constexpr int8_t getLastSearchDepth() { return currentMaxDepth; }
 
-        inline uint32_t getNodesSearched() { return nodesSearched; }
+        constexpr uint32_t getNodesSearched() { return nodesSearched; }
 
         inline std::vector<Move> getPrincipalVariation() { return principalVariation; }
 };

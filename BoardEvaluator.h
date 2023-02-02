@@ -213,7 +213,7 @@ class BoardEvaluator {
 
         BoardEvaluator(Board& b);
 
-        ~BoardEvaluator();
+        ~BoardEvaluator() = default;
 
         BoardEvaluator(const BoardEvaluator& other) = delete;
         BoardEvaluator& operator=(const BoardEvaluator& other) = delete;

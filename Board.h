@@ -54,6 +54,11 @@ class MoveHistoryEntry {
         Bitboard replacedAttackBitboard;
 
         /**
+         * @brief Speichert die Angriffsbitboards der Figuren vor diesem Zug.
+         */
+        Bitboard pieceAttackBitboards[15];
+
+        /**
          * @brief Erstellt einen neuen MoveHistoryEntry.
          * @param move Der Zug der rückgängig gemacht werden soll.
          * @param capturedPiece Speichert den Typ der geschlagenen Figur.
@@ -64,9 +69,9 @@ class MoveHistoryEntry {
          * @param whiteAttackBitboard Speichert das weiße Angriffsbitboard vor diesem Zug.
          * @param blackAttackBitboard Speichert das schwarze Angriffsbitboard vor diesem Zug.
          */
-        MoveHistoryEntry(Move move, int32_t capturedPiece, int32_t castlePermission,
+        constexpr MoveHistoryEntry(Move move, int32_t capturedPiece, int32_t castlePermission,
                         int32_t enPassantSquare, int32_t fiftyMoveRule, uint64_t hashValue,
-                        Bitboard replacedAttackBitboard) {
+                        Bitboard replacedAttackBitboard, Bitboard pieceAttackBitboards[15]) {
             this->move = move;
             this->capturedPiece = capturedPiece;
             this->castlingPermission = castlePermission;
@@ -74,19 +79,26 @@ class MoveHistoryEntry {
             this->fiftyMoveRule = fiftyMoveRule;
             this->hashValue = hashValue;
             this->replacedAttackBitboard = replacedAttackBitboard;
+            for (int i = 0; i < 15; i++) {
+                this->pieceAttackBitboards[i] = pieceAttackBitboards[i];
+            }
         }
 
         /**
          * @brief Erstellt einen neuen MoveHistoryEntry.
          * @param move Der Zug der rückgängig gemacht werden soll.
          */
-        MoveHistoryEntry(Move move) {
+        constexpr MoveHistoryEntry(Move move) {
             this->move = move;
             this->capturedPiece = EMPTY;
             this->castlingPermission = 0;
             this->enPassantSquare = 0;
             this->fiftyMoveRule = 0;
             this->hashValue = 0;
+            this->replacedAttackBitboard = 0;
+            for (int i = 0; i < 15; i++) {
+                this->pieceAttackBitboards[i] = 0;
+            }
         }
 };
 
@@ -250,6 +262,11 @@ class Board {
          * @brief Speichert alle Felder, die Schwarz angreift(In Pseudo-Legalen Zügen).
          */
         Bitboard blackAttackBitboard;
+
+        /**
+         * @brief Speichert alle Felder, die ein Figurentyp angreift(In Pseudo-Legalen Zügen).
+         */
+        Bitboard pieceAttackBitboard[15];
 
         /**
          * @brief Speichert alle gespielten Züge und notwendige Informationen um diesen effizient rückgängig zu machen.

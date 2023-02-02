@@ -7,9 +7,6 @@ BoardEvaluator::BoardEvaluator(Board& b) {
     this->b = &b;
 }
 
-BoardEvaluator::~BoardEvaluator() {
-}
-
 BoardEvaluator::BoardEvaluator(BoardEvaluator&& other) {
     this->b = other.b;
     this->pawnStructureTable = std::move(other.pawnStructureTable);

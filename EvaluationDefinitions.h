@@ -41,11 +41,11 @@ extern Bitboard doubledPawnMasks[][64];
 
 // Bonus für jeden Freibauern(passed pawn)
 extern Bitboard sentryMasks[][64];
-#define MG_PAWN_PASSED_BASE_VALUE 20
+#define MG_PAWN_PASSED_BASE_VALUE 10
 #define EG_PAWN_PASSED_BASE_VALUE 30
 // Wird mit der Anzahl der fortgeschrittenen Felder multipliziert
-#define MG_PAWN_PASSED_RANK_ADVANCED_MULTIPLIER 15
-#define EG_PAWN_PASSED_RANK_ADVANCED_MULTIPLIER 25
+#define MG_PAWN_PASSED_RANK_ADVANCED_MULTIPLIER 30
+#define EG_PAWN_PASSED_RANK_ADVANCED_MULTIPLIER 45
 
 // Bestrafung für jedes Feld um den König herum, dass von einem Gegner angegriffen wird.
 // Felder auf denen eigene Figuren stehen werden ausgenommen.
@@ -62,13 +62,13 @@ extern Bitboard sentryMasks[][64];
 
 // Bonus für jeden Bauern, der den König schützt.
 extern Bitboard pawnShieldMask[][64];
-#define MG_PAWN_SHIELD_VALUE 15
+#define MG_PAWN_SHIELD_VALUE 40
 
 // Bonus für jeden Bauern, der den König angreift(oder einen Angriff droht)
 extern Bitboard pawnStormMask[][64];
-#define MG_PAWN_STORM_BASE_VALUE 10
+#define MG_PAWN_STORM_BASE_VALUE 5
 // Wird mit der Anzahl der fortgeschrittenen Felder multipliziert
-#define MG_PAWN_STORM_DISTANCE_MULTIPLIER 10
+#define MG_PAWN_STORM_DISTANCE_MULTIPLIER 15
 
 // Bonus für jedes Feld in der Mitte, das von einem eigenen Bauern besetzt ist
 #define MG_CENTER_CONTROL_VALUE 12
@@ -120,9 +120,9 @@ extern int16_t EG_PSQT[][64];
  */
 
 #define HASH_MOVE_SCORE 2000
-#define PROMOTION_QUEEN_SCORE 800
-#define PROMOTION_ROOK_SCORE 400
-#define PROMOTION_BISHOP_SCORE 200
-#define PROMOTION_KNIGHT_SCORE 200
+#define PROMOTION_QUEEN_SCORE 1100
+#define PROMOTION_ROOK_SCORE 500
+#define PROMOTION_BISHOP_SCORE 300
+#define PROMOTION_KNIGHT_SCORE 300
 
 #endif
