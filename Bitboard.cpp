@@ -1,18 +1,6 @@
 #include "Bitboard.h"
 #include "BoardDefinitions.h"
 
-Bitboard::Bitboard() {
-    bitboard = 0ULL;
-}
-
-Bitboard::Bitboard(uint64_t bitboard) {
-    this->bitboard = bitboard;
-}
-
-Bitboard::Bitboard(const Bitboard& bitboard) {
-    this->bitboard = bitboard.bitboard;
-}
-
 std::ostream& operator<<(std::ostream& os, const Bitboard& bitboard) {
     for(int r = RANK_8; r >= RANK_1; r--) {
         for(int f = FILE_A; f <= FILE_H; f++) {
@@ -25,22 +13,6 @@ std::ostream& operator<<(std::ostream& os, const Bitboard& bitboard) {
     }
 
     return os;
-}
-
-uint64_t Bitboard::getBitboard() const {
-    return bitboard;
-}
-
-void Bitboard::setBitboard(uint64_t bitboard) {
-    this->bitboard = bitboard;
-}
-
-Bitboard::operator bool() const {
-    return bitboard != 0ULL;
-}
-
-Bitboard::operator uint64_t() const {
-    return bitboard;
 }
 
 Bitboard diagonalAttackBitboard(int32_t sq, const Bitboard occupied) {

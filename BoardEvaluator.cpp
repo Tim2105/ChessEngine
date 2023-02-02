@@ -81,6 +81,7 @@ int32_t BoardEvaluator::middlegameEvaluation() {
     score += evalMG_PSQT() * MG_PSQT_MULTIPLIER;
     score += evalMGKingSafety();
     score += evalMGCenterControl();
+    score += evalMGMobility();
 
     return score;
 }
@@ -111,6 +112,7 @@ int32_t BoardEvaluator::endgameEvaluation() {
     score += materialScore;
     score += evalEG_PSQT() * EG_PSQT_MULTIPLIER;
     score += evalEGKingSafety();
+    score += evalEGMobility();
 
     return score;
 }
@@ -493,6 +495,60 @@ inline int32_t BoardEvaluator::evalMGCenterControl() {
 
     score += ownCenter.getNumberOfSetBits() * MG_CENTER_CONTROL_VALUE;
     score -= otherCenter.getNumberOfSetBits() * MG_CENTER_CONTROL_VALUE;
+
+    return score;
+}
+
+int32_t BoardEvaluator::evalMGMobility() {
+    int32_t score = 0;
+    int32_t side = b->side;
+    int32_t otherSide = side ^ COLOR_MASK;
+
+    Bitboard ownPieces = b->whitePiecesBitboard;
+    Bitboard otherPieces = b->blackPiecesBitboard;
+
+    Bitboard ownAttacks = b->whiteAttackBitboard;
+    Bitboard otherAttacks = b->blackAttackBitboard;
+
+    if(side == BLACK) {
+        ownPieces = b->blackPiecesBitboard;
+        otherPieces = b->whitePiecesBitboard;
+        ownAttacks = b->blackAttackBitboard;
+        otherAttacks = b->whiteAttackBitboard;
+    }
+
+    Bitboard ownMobility = ownAttacks & ~ownPieces;
+    Bitboard otherMobility = otherAttacks & ~otherPieces;
+
+    score += ownMobility.getNumberOfSetBits() * MG_MOBILITY_VALUE;
+    score -= otherMobility.getNumberOfSetBits() * MG_MOBILITY_VALUE;
+
+    return score;
+}
+
+int32_t BoardEvaluator::evalEGMobility() {
+    int32_t score = 0;
+    int32_t side = b->side;
+    int32_t otherSide = side ^ COLOR_MASK;
+
+    Bitboard ownPieces = b->whitePiecesBitboard;
+    Bitboard otherPieces = b->blackPiecesBitboard;
+
+    Bitboard ownAttacks = b->whiteAttackBitboard;
+    Bitboard otherAttacks = b->blackAttackBitboard;
+
+    if(side == BLACK) {
+        ownPieces = b->blackPiecesBitboard;
+        otherPieces = b->whitePiecesBitboard;
+        ownAttacks = b->blackAttackBitboard;
+        otherAttacks = b->whiteAttackBitboard;
+    }
+
+    Bitboard ownMobility = ownAttacks & ~ownPieces;
+    Bitboard otherMobility = otherAttacks & ~otherPieces;
+
+    score += ownMobility.getNumberOfSetBits() * EG_MOBILITY_VALUE;
+    score -= otherMobility.getNumberOfSetBits() * EG_MOBILITY_VALUE;
 
     return score;
 }

@@ -19,19 +19,19 @@ class Move {
         uint32_t move;
 
     public:
-        Move();
-        Move(uint32_t from);
-        Move(int32_t origin, int32_t destination, int32_t flags);
-        virtual ~Move();
+        constexpr Move() : move(0) {};
+        constexpr Move(uint32_t from) : move(from) {};
+        constexpr Move(int32_t origin, int32_t destination, int32_t flags) : move(origin << 11 | destination << 4 | flags) {};
+        constexpr ~Move() = default;
 
         friend std::ostream& operator<< (std::ostream& os, const Move& m);
 
-        inline uint32_t getMove() const { return move; }
+        constexpr uint32_t getMove() const { return move; }
 
         /**
          * @brief Überprüft, ob der Zug Inhalt hat.
          */
-        bool exists() const;
+        constexpr bool exists() const { return move != 0; }
 
         /**
          * @brief Gibt den Zug als String zurück.
@@ -41,92 +41,92 @@ class Move {
         /**
          * @brief Gibt den Ausgangspunkt des Zuges zurück.
          */
-        int32_t getOrigin() const;
+        constexpr int32_t getOrigin() const { return (move >> 11) & 0x7F; }
 
         /**
          * @brief Gibt das Zielfeld des Zuges zurück.
          */
-        int32_t getDestination() const;
+        constexpr int32_t getDestination() const { return (move >> 4) & 0x7F; }
 
         /**
          * @brief Überprüft ob ein Zug 'leise' ist, also keine Figur geschlagen wird und es kein Spezialzug ist.
          */
-        bool isQuiet() const;
+        constexpr bool isQuiet() const { return (move & 0xC) == MOVE_QUIET; }
 
         /**
          * @brief Überprüft ob es sich um einen Doppelschritt handelt.
          */
-        bool isDoublePawn() const;
+        constexpr bool isDoublePawn() const { return (move & 0xF) == MOVE_DOUBLE_PAWN; }
 
         /**
          * @brief Überprüft ob es sich um einen Rochadezug handelt.
          */
-        bool isCastle() const;
+        constexpr bool isCastle() const { return (move & 0xF) == MOVE_KINGSIDE_CASTLE || (move & 0xF) == MOVE_QUEENSIDE_CASTLE; }
 
         /**
          * @brief Überprüft ob es sich um eine Rochade auf Königsseite handelt.
          */
-        bool isKingsideCastle() const;
+        constexpr bool isKingsideCastle() const { return (move & 0xF) == MOVE_KINGSIDE_CASTLE; }
 
         /**
          * @brief Überprüft ob es sich um eine Rochade auf Damenseite handelt.
          */
-        bool isQueensideCastle() const;
+        constexpr bool isQueensideCastle() const { return (move & 0xF) == MOVE_QUEENSIDE_CASTLE; }
 
         /**
          * @brief Überprüft ob der Zug eine Figur schlägt.
          */
-        bool isCapture() const;
+        constexpr bool isCapture() const { return (move & MOVE_CAPTURE); }
 
         /**
          * @brief Überprüft ob es sich um einen En Passant Zug handelt.
          */
-        bool isEnPassant() const;
+        constexpr bool isEnPassant() const { return (move & 0xF) == MOVE_EN_PASSANT; }
 
         /**
          * @brief Überprüft ob es sich um einen Promotionzug handelt.
          */
-        bool isPromotion() const;
+        constexpr bool isPromotion() const { return (move & MOVE_PROMOTION); }
 
         /**
          * @brief Überprüft ob es sich um einen Promotionzug auf Springer handelt.
          */
-        bool isPromotionKnight() const;
+        constexpr bool isPromotionKnight() const { return (move & 0b1011) == MOVE_PROMOTION_KNIGHT; }
 
         /**
          * @brief Überprüft ob es sich um einen Promotionzug auf Läufer handelt.
          */
-        bool isPromotionBishop() const;
+        constexpr bool isPromotionBishop() const { return (move & 0b1011) == MOVE_PROMOTION_BISHOP; }
 
         /**
          * @brief Überprüft ob es sich um einen Promotionzug auf Turm handelt.
          */
-        bool isPromotionRook() const;
+        constexpr bool isPromotionRook() const { return (move & 0b1011) == MOVE_PROMOTION_ROOK; }
 
         /**
          * @brief Überprüft ob es sich um einen Promotionzug auf Dame handelt.
          */
-        bool isPromotionQueen() const;
+        constexpr bool isPromotionQueen() const { return (move & 0b1011) == MOVE_PROMOTION_QUEEN; }
 
         /**
          * @brief Vergleicht zwei Züge.
          */
-        bool operator==(const Move& other) const;
+        constexpr bool operator==(const Move& other) const { return move == other.move; }
 
         /**
          * @brief Vergleicht zwei Züge.
          */
-        bool operator!=(const Move& other) const;
+        constexpr bool operator!=(const Move& other) const { return move != other.move; }
 
         /**
          * @brief Vergleicht zwei Züge.
          */
-        bool operator<(const Move& other) const;
+        constexpr bool operator<(const Move& other) const { return move < other.move; }
 
         /**
          * @brief Vergleicht zwei Züge.
          */
-        bool operator>(const Move& other) const;
+        constexpr bool operator>(const Move& other) const { return move > other.move; }
 };
 
 template <>

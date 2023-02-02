@@ -3,11 +3,6 @@
 
 #define MAX_DEPTH 32
 
-#define MIN_SCORE -2000000000
-#define MAX_SCORE 2000000000
-
-#define MATE_SCORE 1000000
-
 #include <stdint.h>
 #include "Bitboard.h"
 
@@ -56,6 +51,10 @@ extern Bitboard sentryMasks[][64];
 // Felder auf denen eigene Figuren stehen werden ausgenommen.
 #define MG_KING_SAFETY_VALUE -40
 #define EG_KING_SAFETY_VALUE -24
+
+// Bonus für jedes Feld, dass von einer Farbe angegriffen wird.
+#define MG_MOBILITY_VALUE 3
+#define EG_MOBILITY_VALUE 1
 
 /**
  * @brief Bauernschilder und -stürme werden nur für das Midgame bewertet.

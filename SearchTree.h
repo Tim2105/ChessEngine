@@ -28,9 +28,18 @@
 #define MVVLVA 0
 #define SEE 1
 
+#define SEE_SCORE_CUTOFF -10
+
 #define ASP_WINDOW 25
 #define ASP_STEP_FACTOR 4
 #define ASP_MAX_DEPTH 2
+
+#define ONE_PLY 4
+#define ONE_FOURTH_PLY 1
+#define ONE_HALF_PLY 2
+#define THREE_FOURTH_PLY 3
+
+#define FULL_MOVE_DEPTH 4
 
 struct TranspositionTableEntry {
     int8_t depth;
@@ -71,6 +80,10 @@ class SearchTree {
         int16_t nwSearch(int8_t depth, int16_t alpha, int16_t beta);
 
         int16_t quiescence(int16_t alpha, int16_t beta);
+
+        int8_t determineExtension(int8_t depth, Move& m);
+
+        int8_t determineReduction(int8_t depth, Move& m, int32_t moveNumber);
 
         std::vector<Move> findPrincipalVariation();
 

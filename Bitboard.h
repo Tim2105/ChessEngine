@@ -10,61 +10,65 @@ class Bitboard {
         uint64_t bitboard;
 
     public:
-        Bitboard();
-        Bitboard(uint64_t bitboard);
-        Bitboard(const Bitboard& bitboard);
+        constexpr Bitboard() : bitboard(0) {};
+        constexpr Bitboard(uint64_t bitboard) : bitboard(bitboard) {};
+        constexpr Bitboard(const Bitboard& bitboard) : bitboard(bitboard.bitboard) {};
 
         friend std::ostream& operator<<(std::ostream& os, const Bitboard& bitboard);
 
-        uint64_t getBitboard() const;
-        void setBitboard(uint64_t bitboard);
+        constexpr uint64_t getBitboard() const {
+            return bitboard;
+        }
+        constexpr void setBitboard(uint64_t bitboard) {
+            this->bitboard = bitboard;
+        }
 
         /**
          * @brief Setze das Bit an der Stelle index.
          */
-        inline void setBit(int32_t index) {
+        constexpr void setBit(int32_t index) {
             bitboard |= (1ULL << index);
         }
 
         /**
          * @brief Lösche das Bit an der Stelle index.
          */
-        inline void clearBit(int32_t index) {
+        constexpr void clearBit(int32_t index) {
             bitboard &= ~(1ULL << index);
         }
 
         /**
          * @brief Liefere den Wert des Bits an der Stelle index zurück.
          */
-        inline bool getBit(int32_t index) const {
+        constexpr bool getBit(int32_t index) const {
             return (bitboard & (1ULL << index));
         }
 
         /**
          * @brief Gibt den Index des ersten gesetzten Bits zurück.
          */
-        inline int32_t getFirstSetBit() const {
+        constexpr int32_t getFirstSetBit() const {
             return __builtin_ctzll(bitboard);
         }
 
         /**
          * @brief Gibt den Index des letzten gesetzten Bits zurück.
          */
-        inline int32_t getLastSetBit() const {
+        constexpr int32_t getLastSetBit() const {
             return 63 - __builtin_clzll(bitboard);
         }
 
         /**
          * @brief Gibt die Anzahl der gesetzten Bits zurück.
          */
-        inline int32_t getNumberOfSetBits() const {
+        constexpr int32_t getNumberOfSetBits() const {
             return __builtin_popcountll(bitboard);
         }
 
         /**
          * @brief Gibt ein Bitboard zurück, das die Bits des Bitboards in umgekehrter Reihenfolge enthält.
          */
-        inline Bitboard reversed() const {
+        constexpr Bitboard reversed() const {
             uint64_t res = bitboard;
             res = ((res >> 1) & 0x5555555555555555ULL) | ((res & 0x5555555555555555ULL) << 1);
             res = ((res >> 2) & 0x3333333333333333ULL) | ((res & 0x3333333333333333ULL) << 2);
@@ -78,31 +82,35 @@ class Bitboard {
         /**
          * @brief Erlaubt explizite und implizite Konvertierung in bool.
          */
-        operator bool() const;
+        constexpr operator bool() const {
+            return bitboard != 0;
+        }
 
         /**
          * @brief Erlaubt explizite und implizite Konvertierung in uint64_t.
          */
-        operator uint64_t() const;
+        constexpr operator uint64_t() const {
+            return bitboard;
+        }
 
         /**
          * @brief Bitweises AND.
          */
-        inline Bitboard operator&(const Bitboard& bitboard) const {
+        constexpr Bitboard operator&(const Bitboard& bitboard) const {
             return Bitboard(bitboard.bitboard & this->bitboard);
         }
 
         /**
          * @brief Bitweises OR.
          */
-        inline Bitboard operator|(const Bitboard& bitboard) const {
+        constexpr Bitboard operator|(const Bitboard& bitboard) const {
             return Bitboard(bitboard.bitboard | this->bitboard);
         }
 
         /**
          * @brief Bitweises OR mit Zuweisung.
          */
-        inline Bitboard operator|= (const Bitboard& bitboard) {
+        constexpr Bitboard operator|= (const Bitboard& bitboard) {
             this->bitboard |= bitboard.bitboard;
             return *this;
         }
@@ -110,49 +118,49 @@ class Bitboard {
         /**
          * @brief Bitweises XOR.
          */
-        inline Bitboard operator^(const Bitboard& bitboard) const {
+        constexpr Bitboard operator^(const Bitboard& bitboard) const {
             return Bitboard(bitboard.bitboard ^ this->bitboard);
         }
 
         /**
          * @brief Bitweises NOT.
          */
-        inline Bitboard operator~() const {
+        constexpr Bitboard operator~() const {
             return Bitboard(~bitboard);
         }
 
         /**
          * @brief Bitweises Verschieben nach links.
          */
-        inline Bitboard operator<<(int32_t shift) const {
+        constexpr Bitboard operator<<(int32_t shift) const {
             return Bitboard(bitboard << shift);
         }
 
         /**
          * @brief Bitweises Verschieben nach rechts.
          */
-        inline Bitboard operator>>(int32_t shift) const {
+        constexpr Bitboard operator>>(int32_t shift) const {
             return Bitboard(bitboard >> shift);
         }
 
         /**
          * @brief Überprüft zwei Bitboards auf Gleichheit..
          */
-        inline bool operator==(const Bitboard& bitboard) const {
+        constexpr bool operator==(const Bitboard& bitboard) const {
             return this->bitboard == bitboard.bitboard;
         }
 
         /**
          * @brief Überprüft zwei Bitboards auf Ungleichheit.
          */
-        inline bool operator!=(const Bitboard& bitboard) const {
+        constexpr bool operator!=(const Bitboard& bitboard) const {
             return this->bitboard != bitboard.bitboard;
         }
 
         /**
          * @brief Zuweisungsoperator.
          */
-        inline Bitboard operator=(const Bitboard& bitboard) {
+        constexpr Bitboard operator=(const Bitboard& bitboard) {
             this->bitboard = bitboard.bitboard;
             return *this;
         }

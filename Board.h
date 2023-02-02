@@ -17,9 +17,7 @@
  * @brief Enthält alle notwendigen Informationen um einen Zug rückgängig zu machen.
  */
 class MoveHistoryEntry {
-    friend class Board;
-
-    private:
+    public:
         /**
          * @brief Der Zug der rückgängig gemacht werden soll.
          */
@@ -54,8 +52,7 @@ class MoveHistoryEntry {
          * @brief Speichert das überschriebende Angriffsbitboard vor diesem Zug.
          */
         Bitboard replacedAttackBitboard;
-    
-    public:
+
         /**
          * @brief Erstellt einen neuen MoveHistoryEntry.
          * @param move Der Zug der rückgängig gemacht werden soll.
@@ -103,7 +100,7 @@ class RepetitionTable {
         std::list<Entry> entries;
     
     public:
-        void increment(uint64_t key) {
+        inline void increment(uint64_t key) {
             for(auto it = entries.rbegin(); it != entries.rend(); it++) {
                 if (it->key == key) {
                     it->count++;
@@ -114,7 +111,7 @@ class RepetitionTable {
             entries.push_back({key, 1});
         }
 
-        void decrement(uint64_t key) {
+        inline void decrement(uint64_t key) {
             for(auto it = entries.rbegin(); it != entries.rend(); it++) {
                 if (it->key == key) {
                     it->count--;
@@ -127,7 +124,7 @@ class RepetitionTable {
             }
         }
 
-        uint8_t get(uint64_t key) {
+        inline uint8_t get(uint64_t key) {
             for(auto it = entries.rbegin(); it != entries.rend(); it++) {
                 if (it->key == key) {
                     return it->count;
@@ -361,7 +358,7 @@ class Board {
 
         virtual ~Board();
 
-        uint64_t getHashValue() const { return hashValue; };
+        constexpr uint64_t getHashValue() const { return hashValue; };
 
         /**
          * @brief Überprüft, ob ein Zug legal ist.
@@ -476,6 +473,13 @@ class Board {
                 return moveHistory.back().move; 
             else
                 return Move();
+        };
+
+        /**
+         * @brief Gibt den neuesten Eintrag der Zughistorie zurück.
+         */
+        inline MoveHistoryEntry getLastMoveHistoryEntry() const { 
+            return moveHistory.back();
         };
 
         /**

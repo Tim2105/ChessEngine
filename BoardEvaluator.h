@@ -190,6 +190,12 @@ class BoardEvaluator {
         inline int32_t evalEGKingMobility(int32_t side, const Bitboard& ownPieces);
 
         /**
+         * @brief Die Methode evalMobility bewertet die Mobilität der beiden Spieler.
+         */
+        int32_t evalMGMobility();
+        int32_t evalEGMobility();
+
+        /**
          * @brief Versucht, den Angreifer mit dem geringsten Wert zu finden, der das Feld to angreift.
          * 
          * @return Das Feld des Angreifers mit dem geringsten Wert.

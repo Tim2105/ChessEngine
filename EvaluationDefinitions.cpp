@@ -3,10 +3,10 @@
 int16_t PIECE_VALUE[7] = {
         0, // Empty
         100, // Pawn
-        300, // Knight
-        300, // Bishop
-        500, // Rook
-        900, // Queen
+        400, // Knight
+        410, // Bishop
+        600, // Rook
+        1200, // Queen
         0 // King
 };
 

@@ -39,14 +39,16 @@ int main() {
     SearchTree st(board);
 
     // while(board.generateLegalMoves().size() != 0) {
-    //     int16_t score = st.search(5000);
+    //     board.makeMove(getUserMove(board));
+
+    //     if(board.generateLegalMoves().size() == 0)
+    //         break;
+
+    //     int16_t score = st.search(300);
     //     Move m = st.getPrincipalVariation()[0];
     //     std::cout << "Playing " << m << " Eval " << score << std::endl;
     //     board.makeMove(m);
-    //     if(board.generateLegalMoves().size() == 0)
-    //         break;
         
-    //     board.makeMove(getUserMove(board));
     // }
 
     st.search(2500);
