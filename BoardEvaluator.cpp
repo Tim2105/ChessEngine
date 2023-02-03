@@ -22,6 +22,12 @@ BoardEvaluator& BoardEvaluator::operator=(BoardEvaluator&& other) {
 int32_t BoardEvaluator::evaluate() {
     if(isDraw()) // Unentschieden
         return 0;
+    
+    int32_t storedScore;
+    bool evaluationFound = probeEvaluationTable(storedScore);
+
+    if(evaluationFound)
+        return storedScore;
 
     int32_t score = 0;
     int32_t side = b->side;
@@ -67,6 +73,8 @@ int32_t BoardEvaluator::evaluate() {
 
     score += pawnStructureScore.mg * midgameWeight;
     score += pawnStructureScore.eg * endgameWeight;
+
+    storeEvaluationTable(score);
 
     return score;
 }
@@ -246,6 +254,18 @@ inline int32_t BoardEvaluator::evalEG_PSQT() {
     }
 
     return score;
+}
+
+bool BoardEvaluator::probeEvaluationTable(int32_t& score) {
+    uint64_t hash = b->getHashValue();
+
+    return evaluationTable.probe(hash, score);
+}
+
+void BoardEvaluator::storeEvaluationTable(int32_t score) {
+    uint64_t hash = b->getHashValue();
+
+    evaluationTable.put(hash, score);
 }
 
 bool BoardEvaluator::probePawnStructure(Score& score) {  

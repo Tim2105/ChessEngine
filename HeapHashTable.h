@@ -126,7 +126,7 @@ template <typename K, typename V, size_t bucketCount, size_t bucketSize>
 bool HeapHashTable<K, V, bucketCount, bucketSize>::probe(K key, V& value) {
     size_t index = key % bucketCount;
     Entry* bucket = table + index * bucketSize;
-
+    
     for (size_t i = 0; i < bucketSizes[index]; i++) {
         if (bucket[i].key == key) {
             value = bucket[i].value;

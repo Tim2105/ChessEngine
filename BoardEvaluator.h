@@ -86,15 +86,18 @@ struct std::hash<PawnBitboards> {
 class BoardEvaluator {
 
     private:
-    public:
         // Das Spielfeld
         Board* b;
+
+        // Eine Hash-Tabelle, in der die Bewertung von Stellungen gespeichert wird,
+        // um sie bei der nächsten Bewertung(bei gleicher Stellung) wieder zu verwenden.
+        HeapHashTable<uint64_t, int32_t, 8192, 4> evaluationTable;
 
         // Die Bewertung von Bauernstrukturen ist sehr aufwendig,
         // weshalb berechnete Bewertungen von Bauernstrukturen in einer Hash-Tabelle gespeichert werden,
         // um sie bei der nächsten Bewertung(bei gleicher Bauernstruktur) wieder zu verwenden.
         // Weil Bauernstrukturen sich nicht zu häufig ändern, bekommt man hier eine hohe Trefferquote(Durchschnitt ca. 75%).
-        HeapHashTable<uint64_t, Score, 1024, 4> pawnStructureTable;
+        HeapHashTable<uint64_t, Score, 4096, 4> pawnStructureTable;
 
         /**
          * @brief Die Methode findDoublePawns findet alle Bauern, die sich auf derselben Linie befinden.
@@ -140,6 +143,16 @@ class BoardEvaluator {
          * mit dem Endgame-PSQT-Array.
          */
         inline int32_t evalEG_PSQT();
+
+        /**
+         * @brief Versucht die Bewertung einer Stellung aus der Hash-Tabelle zu laden.
+         */
+        bool probeEvaluationTable(int32_t& score);
+
+        /**
+         * @brief Speichert die Bewertung einer Stellung in der Hash-Tabelle.
+         */
+        void storeEvaluationTable(int32_t score);
 
         /**
          * @brief Versucht die Bewertung einer Bauernstruktur aus der Hash-Tabelle zu laden.

@@ -510,9 +510,14 @@ class Board {
         };
 
         /**
-         * @brief Gibt alle Positionen eines bestimmten Figurentyps zurück
+         * @brief Gibt alle Positionen eines bestimmten Figurentyps zurück.
          */
         inline Array<int32_t, 9> getPieceList(int32_t piece) const { return pieceList[piece]; };
+
+        /**
+         * @brief Gibt alle Positionen eines bestimmten Figurentyps als Bitboard zurück.
+         */
+        inline Bitboard getPieceBitboard(int32_t piece) const { return pieceBitboard[piece]; };
 
         /**
          * @brief Überprüft, wie häufig die momentane Position schon aufgetreten ist. 

@@ -41,6 +41,9 @@
 #define TWO_THIRDS_PLY 4
 #define FIVE_SIXTHS_PLY 5
 
+#define MAX_REDUCTION (2 * ONE_PLY)
+#define NO_REDUCTION_DEPTH 2
+
 struct TranspositionTableEntry {
     int8_t depth;
     int16_t score;
@@ -61,7 +64,10 @@ class SearchTree {
 
         std::atomic_bool searching;
 
-        Move killerMoves[64][2];
+        Move killerMoves[32][2];
+        int32_t relativeHistory[2][64][64];
+
+        void clearRelativeHistory();
 
         std::vector<Move> principalVariation;
 
@@ -81,9 +87,9 @@ class SearchTree {
 
         int16_t quiescence(int16_t alpha, int16_t beta, int32_t captureSquare);
 
-        int8_t determineExtension(int8_t depth, Move& m, bool isCheckEvasion = false);
+        int8_t determineExtension(int8_t depth, Move& m, int32_t moveCount, bool isCheckEvasion = false);
 
-        int8_t determineReduction(int8_t depth, Move& m, int32_t moveNumber);
+        int8_t determineReduction(int8_t depth, Move& m, int32_t moveCount, bool isCheckEvasion = false);
 
         std::vector<Move> findPrincipalVariation();
 

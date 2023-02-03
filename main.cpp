@@ -38,20 +38,21 @@ int main() {
 
     Board board;
     SearchTree st(board);
+    BoardEvaluator evaluator(board);
 
-    while(board.generateLegalMoves().size() != 0) {
-        board.makeMove(getUserMove(board));
+    // while(board.generateLegalMoves().size() != 0 && !evaluator.isDraw()) {
+    //     board.makeMove(getUserMove(board));
 
-        if(board.generateLegalMoves().size() == 0)
-            break;
+    //     if(board.generateLegalMoves().size() == 0)
+    //         break;
 
-        int16_t score = st.search(100);
-        Move m = st.getPrincipalVariation()[0];
-        std::cout << "Playing " << m << " Eval " << score << std::endl;
-        board.makeMove(m);
-    }
+    //     int16_t score = st.search(1000);
+    //     Move m = st.getPrincipalVariation()[0];
+    //     std::cout << "Playing " << m << " Eval " << score << std::endl;
+    //     board.makeMove(m);
+    // }
 
-    st.search(100);
+    st.search(4000);
 
     return 0;
 }

@@ -44,7 +44,7 @@ extern Bitboard sentryMasks[][64];
 #define MG_PAWN_PASSED_BASE_VALUE 10
 #define EG_PAWN_PASSED_BASE_VALUE 30
 // Wird mit der Anzahl der fortgeschrittenen Felder multipliziert
-#define MG_PAWN_PASSED_RANK_ADVANCED_MULTIPLIER 30
+#define MG_PAWN_PASSED_RANK_ADVANCED_MULTIPLIER 20
 #define EG_PAWN_PASSED_RANK_ADVANCED_MULTIPLIER 45
 
 // Bestrafung für jedes Feld um den König herum, dass von einem Gegner angegriffen wird.
@@ -56,11 +56,11 @@ extern Bitboard sentryMasks[][64];
 // Felder auf denen eigene Figuren stehen werden ausgenommen.
 #define MG_PAWN_MOBILITY_VALUE 0
 #define EG_PAWN_MOBILITY_VALUE 0
-#define MG_KNIGHT_MOBILITY_VALUE 2
-#define EG_KNIGHT_MOBILITY_VALUE 2
+#define MG_KNIGHT_MOBILITY_VALUE 0
+#define EG_KNIGHT_MOBILITY_VALUE 0
 #define MG_BISHOP_MOBILITY_VALUE 5
 #define EG_BISHOP_MOBILITY_VALUE 3
-#define MG_ROOK_MOBILITY_VALUE 3
+#define MG_ROOK_MOBILITY_VALUE 4
 #define EG_ROOK_MOBILITY_VALUE 2
 #define MG_QUEEN_MOBILITY_VALUE 2
 #define EG_QUEEN_MOBILITY_VALUE 2
@@ -71,7 +71,7 @@ extern Bitboard sentryMasks[][64];
 
 // Bonus für jeden Bauern, der den König schützt.
 extern Bitboard pawnShieldMask[][64];
-#define MG_PAWN_SHIELD_VALUE 40
+#define MG_PAWN_SHIELD_VALUE 35
 
 // Bonus für jeden Bauern, der den König angreift(oder einen Angriff droht)
 extern Bitboard pawnStormMask[][64];
@@ -88,7 +88,7 @@ extern Bitboard pawnStormMask[][64];
  * wenn die gegnerische Farbe mehr Material besitzt.
  */
 #define EG_KING_DISTANCE_VALUE 20
-#define EG_WINNING_MATERIAL_ADVANTAGE 200
+#define EG_WINNING_MATERIAL_ADVANTAGE 500
 
 /**
  * @brief Die PSQT-Tabellen aus der Sicht der weißen Figuren für das Midgame.
