@@ -62,8 +62,8 @@ extern Bitboard sentryMasks[][64];
 #define EG_BISHOP_MOBILITY_VALUE 3
 #define MG_ROOK_MOBILITY_VALUE 4
 #define EG_ROOK_MOBILITY_VALUE 2
-#define MG_QUEEN_MOBILITY_VALUE 2
-#define EG_QUEEN_MOBILITY_VALUE 2
+#define MG_QUEEN_MOBILITY_VALUE 1
+#define EG_QUEEN_MOBILITY_VALUE 1
 
 /**
  * @brief Bauernschilder und -stürme werden nur für das Midgame bewertet.
@@ -71,7 +71,7 @@ extern Bitboard sentryMasks[][64];
 
 // Bonus für jeden Bauern, der den König schützt.
 extern Bitboard pawnShieldMask[][64];
-#define MG_PAWN_SHIELD_VALUE 35
+#define MG_PAWN_SHIELD_VALUE 21
 
 // Bonus für jeden Bauern, der den König angreift(oder einen Angriff droht)
 extern Bitboard pawnStormMask[][64];

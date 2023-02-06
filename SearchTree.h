@@ -23,7 +23,7 @@
 #define MIN_SCORE -32000
 #define MAX_SCORE 32000
 
-#define MATE_SCORE 20000
+#define MATE_SCORE 21000
 
 #define MVVLVA 0
 #define SEE 1
@@ -51,6 +51,25 @@ struct TranspositionTableEntry {
     Move hashMove;
 };
 
+struct MoveScorePair {
+    Move move;
+    int32_t score;
+};
+
+template<>
+struct std::greater<MoveScorePair> {
+    bool operator()(const MoveScorePair& lhs, const MoveScorePair& rhs) {
+        return lhs.score > rhs.score;
+    }
+};
+
+template<>
+struct std::less<MoveScorePair> {
+    bool operator()(const MoveScorePair& lhs, const MoveScorePair& rhs) {
+        return lhs.score < rhs.score;
+    }
+};
+
 class SearchTree {
 
     private:
@@ -64,12 +83,15 @@ class SearchTree {
 
         std::atomic_bool searching;
 
+        Array<Move, 32> pvTable[32];
         Move killerMoves[32][2];
         int32_t relativeHistory[2][64][64];
 
+        std::vector<Move> principalVariation;
+
         void clearRelativeHistory();
 
-        std::vector<Move> principalVariation;
+        void clearPvTable();
 
         void searchTimer(uint32_t searchTime);
 
@@ -81,17 +103,17 @@ class SearchTree {
 
         int16_t rootSearch(int8_t depth, int16_t expectedScore);
 
-        int16_t pvSearch(int8_t depth, int16_t alpha, int16_t beta);
+        int16_t pvSearchRoot(int8_t depth, int16_t alpha, int16_t beta);
 
-        int16_t nwSearch(int8_t depth, int16_t alpha, int16_t beta);
+        int16_t pvSearch(int8_t depth, int16_t ply, int16_t alpha, int16_t beta, Array<Move, 32>& pv);
+
+        int16_t nwSearch(int8_t depth, int16_t ply, int16_t alpha, int16_t beta);
 
         int16_t quiescence(int16_t alpha, int16_t beta, int32_t captureSquare);
 
         int8_t determineExtension(int8_t depth, Move& m, int32_t moveCount, bool isCheckEvasion = false);
 
         int8_t determineReduction(int8_t depth, Move& m, int32_t moveCount, bool isCheckEvasion = false);
-
-        std::vector<Move> findPrincipalVariation();
 
     public:
         SearchTree(Board& b);

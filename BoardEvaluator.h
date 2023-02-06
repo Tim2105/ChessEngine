@@ -97,7 +97,7 @@ class BoardEvaluator {
         // weshalb berechnete Bewertungen von Bauernstrukturen in einer Hash-Tabelle gespeichert werden,
         // um sie bei der nächsten Bewertung(bei gleicher Bauernstruktur) wieder zu verwenden.
         // Weil Bauernstrukturen sich nicht zu häufig ändern, bekommt man hier eine hohe Trefferquote(Durchschnitt ca. 75%).
-        HeapHashTable<uint64_t, Score, 4096, 4> pawnStructureTable;
+        HeapHashTable<uint64_t, Score, 8192, 4> pawnStructureTable;
 
         /**
          * @brief Die Methode findDoublePawns findet alle Bauern, die sich auf derselben Linie befinden.
