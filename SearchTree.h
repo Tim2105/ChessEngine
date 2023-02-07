@@ -105,7 +105,7 @@ class SearchTree {
 
         int16_t pvSearchRoot(int8_t depth, int16_t alpha, int16_t beta);
 
-        int16_t pvSearch(int8_t depth, int16_t ply, int16_t alpha, int16_t beta, Array<Move, 32>& pv);
+        int16_t pvSearch(int8_t depth, int16_t ply, int16_t alpha, int16_t beta);
 
         int16_t nwSearch(int8_t depth, int16_t ply, int16_t alpha, int16_t beta);
 
