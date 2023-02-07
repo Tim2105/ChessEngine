@@ -41,8 +41,8 @@
 #define TWO_THIRDS_PLY 4
 #define FIVE_SIXTHS_PLY 5
 
-#define MAX_REDUCTION (2 * ONE_PLY)
-#define NO_REDUCTION_DEPTH 2
+#define MAX_REDUCTION (3 * ONE_PLY)
+#define DEFAULT_REDUCTION (1 * ONE_PLY)
 
 struct TranspositionTableEntry {
     int8_t depth;
@@ -95,11 +95,11 @@ class SearchTree {
 
         void searchTimer(uint32_t searchTime);
 
-        void sortMoves(Array<Move, 256>& moves, int8_t depth, int32_t moveEvalFunc);
+        void sortMoves(Array<Move, 256>& moves, int16_t ply, int32_t moveEvalFunc);
 
         void sortAndCutMoves(Array<Move, 256>& moves, int32_t minScore, int32_t moveEvalFunc);
 
-        void sortAndCutMoves(Array<Move, 256>& moves, int8_t depth, int32_t minScore, int32_t moveEvalFunc);
+        void sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t minScore, int32_t moveEvalFunc);
 
         int16_t rootSearch(int8_t depth, int16_t expectedScore);
 
