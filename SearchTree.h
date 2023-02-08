@@ -41,8 +41,8 @@
 #define TWO_THIRDS_PLY 4
 #define FIVE_SIXTHS_PLY 5
 
-#define MAX_REDUCTION (3 * ONE_PLY)
-#define DEFAULT_REDUCTION (1 * ONE_PLY)
+#define MAX_REDUCTION (4 * ONE_PLY)
+#define DEFAULT_REDUCTION (FIVE_SIXTHS_PLY)
 
 struct TranspositionTableEntry {
     int8_t depth;

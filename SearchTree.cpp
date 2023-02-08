@@ -237,7 +237,6 @@ int16_t SearchTree::rootSearch(int8_t depth, int16_t expectedScore) {
             numBetaReduction++;
         }
 
-        transpositionTable.clear();
         score = pvSearchRoot(depth, alpha, beta);
     }
     
@@ -274,7 +273,7 @@ int16_t SearchTree::pvSearchRoot(int8_t depth, int16_t alpha, int16_t beta) {
             score = -pvSearch(depth - ONE_PLY + extension, 1, -beta, -alpha);
         } else {
             score = -nwSearch(depth - ONE_PLY + extension - reduction, 1, -alpha - 1, -alpha);
-            if(score > alpha && (score <= beta || reduction > 0))
+            if(score > alpha)
                 score = -pvSearch(depth - ONE_PLY + extension, 1, -beta, -alpha);
         }
 
@@ -351,23 +350,9 @@ int16_t SearchTree::pvSearch(int8_t depth, int16_t ply, int16_t alpha, int16_t b
         return score;
     }
 
-    TranspositionTableEntry ttEntry;
-    bool tableHit = transpositionTable.probe(board->getHashValue(), ttEntry);
+    pvTable[ply + 1].clear();
 
-    if(tableHit) {
-        if(ttEntry.depth >= depth && IS_REGULAR_NODE(ttEntry.type)) {
-            switch(NODE_TYPE(ttEntry.type)) {
-                case EXACT_NODE:
-                    pvTable[ply].clear();
-                    return ttEntry.score;
-                case CUT_NODE:
-                    if(ttEntry.score >= beta) {
-                        pvTable[ply].clear();
-                        return ttEntry.score;
-                    }
-            }
-        }
-    }
+    TranspositionTableEntry ttEntry;
     
     bool searchPv = true;
     int16_t score, bestScore = MIN_SCORE;
@@ -404,7 +389,7 @@ int16_t SearchTree::pvSearch(int8_t depth, int16_t ply, int16_t alpha, int16_t b
             score = -pvSearch(depth - ONE_PLY + extension, ply + 1, -beta, -alpha);
         } else {
             score = -nwSearch(depth - ONE_PLY + extension - reduction, ply + 1, -alpha - 1, -alpha);
-            if(score > alpha && (score <= beta || reduction > 0))
+            if(score > alpha)
                 score = -pvSearch(depth - ONE_PLY + extension, ply + 1, -beta, -alpha);
         }
 
@@ -419,7 +404,7 @@ int16_t SearchTree::pvSearch(int8_t depth, int16_t ply, int16_t alpha, int16_t b
         
 
         if(score >= beta) {
-            tableHit = transpositionTable.probe(board->getHashValue(), ttEntry);
+            bool tableHit = transpositionTable.probe(board->getHashValue(), ttEntry);
 
             if(!tableHit || (depth > ttEntry.depth) &&
                              ttEntry.type != PV_NODE | EXACT_NODE)
@@ -456,6 +441,8 @@ int16_t SearchTree::pvSearch(int8_t depth, int16_t ply, int16_t alpha, int16_t b
         searchPv = false;
         moveNumber++;
     }
+
+    bool tableHit = transpositionTable.probe(board->getHashValue(), ttEntry);
 
     if(!tableHit || (depth > ttEntry.depth))
         transpositionTable.put(board->getHashValue(), {
@@ -592,20 +579,27 @@ int8_t SearchTree::determineExtension(int8_t depth, Move& m, int32_t moveCount, 
     int32_t movedPieceType = TYPEOF(board->pieceAt(m.getDestination()));
     int32_t capturedPieceType = TYPEOF(board->getLastMoveHistoryEntry().capturedPiece);
 
+    int32_t origin64 = board->sq120To64(m.getOrigin());
+    int32_t destination64 = board->sq120To64(m.getDestination());
+
     bool isCheck = board->isCheck();
 
     // Extensions
     if(isCheck || isCheckEvasion)
         extension += TWO_THIRDS_PLY;
     else if(!m.isQuiet())
-        extension += ONE_HALF_PLY;
+        extension += ONE_THIRD_PLY;
     else if(movedPieceType == PAWN) {
         int32_t side = board->getSideToMove() ^ COLOR_MASK;
         int32_t otherSide = board->getSideToMove();
 
         if(!(sentryMasks[side / COLOR_MASK][board->sq120To64(m.getDestination())]
             & board->getPieceBitboard(otherSide | PAWN)))
-            extension += ONE_HALF_PLY;
+            extension += ONE_THIRD_PLY;
+    } else if(board->squareAttacked(origin64, board->getSideToMove()) &&
+                !board->squareAttacked(destination64, board->getSideToMove())) {
+        // Capture evasion
+        extension += ONE_THIRD_PLY;
     }
     
     return std::min(extension, (int8_t)FIVE_SIXTHS_PLY);
@@ -623,7 +617,7 @@ int8_t SearchTree::determineReduction(int8_t depth, Move& m, int32_t moveCount, 
 
     int8_t upperBound = 0;
 
-    if(moveCount > 1)
+    if(moveCount > 2 && m.isQuiet())
         upperBound = MAX_REDUCTION;
 
     // Reductions
