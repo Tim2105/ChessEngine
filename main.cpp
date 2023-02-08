@@ -36,12 +36,12 @@ Move getUserMove(Board& board) {
 
 int main() {
 
-    Board board("r1bqkb1r/ppppnppp/2n5/4P3/8/1Q3N2/PPP2PPP/RNB1KB1R w KQkq - 0 1");
+    Board board("5k2/5p2/8/6Q1/PP6/8/2P2PP1/4R1K1 w - - 0 1");
     SearchTree st(board);
     BoardEvaluator evaluator(board);
 
     // while(board.generateLegalMoves().size() != 0 && !evaluator.isDraw()) {
-    //     int16_t score = st.search(3000);
+    //     int16_t score = st.search(100);
     //     Move m = st.getPrincipalVariation()[0];
     //     std::cout << "Playing " << m << " Eval " << score << std::endl;
     //     board.makeMove(m);
@@ -52,7 +52,7 @@ int main() {
     //     board.makeMove(getUserMove(board));
     // }
 
-    st.search(20000);
+    st.search(5000);
 
     return 0;
 }

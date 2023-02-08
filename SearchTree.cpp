@@ -340,8 +340,10 @@ int16_t SearchTree::pvSearch(int8_t depth, int16_t ply, int16_t alpha, int16_t b
     if(!searching)
         return 0;
 
-    if(evaluator.isDraw())
+    if(evaluator.isDraw()) {
+        pvTable[ply].clear();
         return 0;
+    }
 
     if(depth <= 0) {
         int32_t lastMovedSquare = board->getLastMove().getDestination();
@@ -374,6 +376,8 @@ int16_t SearchTree::pvSearch(int8_t depth, int16_t ply, int16_t alpha, int16_t b
     Array<Move, 256> moves = board->generateLegalMoves();
 
     if(moves.size() == 0) {
+        pvTable[ply].clear();
+
         if(board->isCheck())
             return -MATE_SCORE + ply;
         else
