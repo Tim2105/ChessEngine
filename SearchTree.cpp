@@ -51,7 +51,7 @@ int16_t SearchTree::search(uint32_t searchTime) {
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    for(int8_t depth = ONE_PLY; searching; depth += ONE_PLY) {
+    for(int8_t depth = ONE_PLY; searching && depth < 127 - ONE_PLY; depth += ONE_PLY) {
         currentMaxDepth = depth;
 
         score = rootSearch(depth, score);
@@ -617,13 +617,16 @@ int8_t SearchTree::determineReduction(int8_t depth, Move& m, int32_t moveCount, 
 
     int8_t upperBound = 0;
 
-    if(moveCount > 2 && m.isQuiet())
+    if(moveCount > 2)
         upperBound = MAX_REDUCTION;
 
     // Reductions
     reduction += (int32_t)(DEFAULT_REDUCTION - (relativeHistory[(board->getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
                                  [board->sq120To64(m.getOrigin())]
                                  [board->sq120To64(m.getDestination())] / 20000.0) * ONE_PLY);
+                        
+    if(!m.isQuiet())
+        reduction /= 2;
     
     return std::clamp(reduction, (int8_t)0, upperBound);
 }

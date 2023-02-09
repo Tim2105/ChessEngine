@@ -46,13 +46,13 @@ int main() {
         if(board.generateLegalMoves().size() == 0)
             break;
         
-        int16_t score = st.search(500);
+        int16_t score = st.search(10000);
         Move m = st.getPrincipalVariation()[0];
         std::cout << "Playing " << m << " Eval " << score << std::endl;
         board.makeMove(m);
     }
 
-    // st.search(50000);
+    //st.search(50000);
 
     return 0;
 }

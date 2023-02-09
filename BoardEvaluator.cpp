@@ -531,14 +531,14 @@ int32_t BoardEvaluator::evalMGMobility() {
 
     Bitboard ownPawnMobility = b->pieceAttackBitboard[side | PAWN] & ~ownPieces;
     Bitboard otherPawnMobility = b->pieceAttackBitboard[otherSide | PAWN] & ~otherPieces;
-    Bitboard ownKnightMobility = b->pieceAttackBitboard[side | KNIGHT] & ~ownPieces;
-    Bitboard otherKnightMobility = b->pieceAttackBitboard[otherSide | KNIGHT] & ~otherPieces;
-    Bitboard ownBishopMobility = b->pieceAttackBitboard[side | BISHOP] & ~ownPieces;
-    Bitboard otherBishopMobility = b->pieceAttackBitboard[otherSide | BISHOP] & ~otherPieces;
-    Bitboard ownRookMobility = b->pieceAttackBitboard[side | ROOK] & ~ownPieces;
-    Bitboard otherRookMobility = b->pieceAttackBitboard[otherSide | ROOK] & ~otherPieces;
-    Bitboard ownQueenMobility = b->pieceAttackBitboard[side | QUEEN] & ~ownPieces;
-    Bitboard otherQueenMobility = b->pieceAttackBitboard[otherSide | QUEEN] & ~otherPieces;
+    Bitboard ownKnightMobility = b->pieceAttackBitboard[side | KNIGHT] & ~ownPieces & ~b->pieceAttackBitboard[otherSide | PAWN];
+    Bitboard otherKnightMobility = b->pieceAttackBitboard[otherSide | KNIGHT] & ~otherPieces & ~b->pieceAttackBitboard[side | PAWN];
+    Bitboard ownBishopMobility = b->pieceAttackBitboard[side | BISHOP] & ~ownPieces & ~b->pieceAttackBitboard[otherSide | PAWN];
+    Bitboard otherBishopMobility = b->pieceAttackBitboard[otherSide | BISHOP] & ~otherPieces & ~b->pieceAttackBitboard[side | PAWN];
+    Bitboard ownRookMobility = b->pieceAttackBitboard[side | ROOK] & ~ownPieces & ~b->pieceAttackBitboard[otherSide | PAWN];
+    Bitboard otherRookMobility = b->pieceAttackBitboard[otherSide | ROOK] & ~otherPieces & ~b->pieceAttackBitboard[side | PAWN];
+    Bitboard ownQueenMobility = b->pieceAttackBitboard[side | QUEEN] & ~ownPieces & ~b->pieceAttackBitboard[otherSide | PAWN];
+    Bitboard otherQueenMobility = b->pieceAttackBitboard[otherSide | QUEEN] & ~otherPieces & ~b->pieceAttackBitboard[side | PAWN];
 
     score += ownPawnMobility.getNumberOfSetBits() * MG_PAWN_MOBILITY_VALUE;
     score -= otherPawnMobility.getNumberOfSetBits() * MG_PAWN_MOBILITY_VALUE;
@@ -569,14 +569,14 @@ int32_t BoardEvaluator::evalEGMobility() {
 
     Bitboard ownPawnMobility = b->pieceAttackBitboard[side | PAWN] & ~ownPieces;
     Bitboard otherPawnMobility = b->pieceAttackBitboard[otherSide | PAWN] & ~otherPieces;
-    Bitboard ownKnightMobility = b->pieceAttackBitboard[side | KNIGHT] & ~ownPieces;
-    Bitboard otherKnightMobility = b->pieceAttackBitboard[otherSide | KNIGHT] & ~otherPieces;
-    Bitboard ownBishopMobility = b->pieceAttackBitboard[side | BISHOP] & ~ownPieces;
-    Bitboard otherBishopMobility = b->pieceAttackBitboard[otherSide | BISHOP] & ~otherPieces;
-    Bitboard ownRookMobility = b->pieceAttackBitboard[side | ROOK] & ~ownPieces;
-    Bitboard otherRookMobility = b->pieceAttackBitboard[otherSide | ROOK] & ~otherPieces;
-    Bitboard ownQueenMobility = b->pieceAttackBitboard[side | QUEEN] & ~ownPieces;
-    Bitboard otherQueenMobility = b->pieceAttackBitboard[otherSide | QUEEN] & ~otherPieces;
+    Bitboard ownKnightMobility = b->pieceAttackBitboard[side | KNIGHT] & ~ownPieces & ~b->pieceAttackBitboard[otherSide | PAWN];
+    Bitboard otherKnightMobility = b->pieceAttackBitboard[otherSide | KNIGHT] & ~otherPieces & ~b->pieceAttackBitboard[side | PAWN];
+    Bitboard ownBishopMobility = b->pieceAttackBitboard[side | BISHOP] & ~ownPieces & ~b->pieceAttackBitboard[otherSide | PAWN];
+    Bitboard otherBishopMobility = b->pieceAttackBitboard[otherSide | BISHOP] & ~otherPieces & ~b->pieceAttackBitboard[side | PAWN];
+    Bitboard ownRookMobility = b->pieceAttackBitboard[side | ROOK] & ~ownPieces & ~b->pieceAttackBitboard[otherSide | PAWN];
+    Bitboard otherRookMobility = b->pieceAttackBitboard[otherSide | ROOK] & ~otherPieces & ~b->pieceAttackBitboard[side | PAWN];
+    Bitboard ownQueenMobility = b->pieceAttackBitboard[side | QUEEN] & ~ownPieces & ~b->pieceAttackBitboard[otherSide | PAWN];
+    Bitboard otherQueenMobility = b->pieceAttackBitboard[otherSide | QUEEN] & ~otherPieces & ~b->pieceAttackBitboard[side | PAWN];
 
     score += ownPawnMobility.getNumberOfSetBits() * EG_PAWN_MOBILITY_VALUE;
     score -= otherPawnMobility.getNumberOfSetBits() * EG_PAWN_MOBILITY_VALUE;

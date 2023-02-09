@@ -24,6 +24,7 @@
 #define MAX_SCORE 32000
 
 #define MATE_SCORE 21000
+#define IS_MATE_SCORE(x) ((x) > MATE_SCORE - 1000)
 
 #define MVVLVA 0
 #define SEE 1

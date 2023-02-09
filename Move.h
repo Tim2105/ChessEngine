@@ -28,6 +28,8 @@ class Move {
 
         constexpr uint32_t getMove() const { return move; }
 
+        constexpr operator uint32_t() const { return move; }
+
         /**
          * @brief Überprüft, ob der Zug Inhalt hat.
          */
