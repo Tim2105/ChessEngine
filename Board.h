@@ -509,6 +509,8 @@ class Board {
             return moveHistory.back();
         };
 
+        inline std::vector<MoveHistoryEntry> getMoveHistory() const { return moveHistory; };
+
         /**
          * @brief Gibt alle Positionen eines bestimmten Figurentyps zurück.
          */
@@ -518,6 +520,13 @@ class Board {
          * @brief Gibt alle Positionen eines bestimmten Figurentyps als Bitboard zurück.
          */
         inline Bitboard getPieceBitboard(int32_t piece) const { return pieceBitboard[piece]; };
+
+        /**
+         * @brief Gibt alle Felder zurück, die von einer bestimmten Figur angegriffen werden.
+         */
+        inline Bitboard getPieceAttackBitboard(int32_t piece) const { return pieceAttackBitboard[piece]; };
+
+        inline Bitboard getAttackBitboard(int32_t side) const { return side == WHITE ? whiteAttackBitboard : blackAttackBitboard; };
 
         /**
          * @brief Überprüft, wie häufig die momentane Position schon aufgetreten ist. 

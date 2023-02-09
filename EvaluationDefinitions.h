@@ -22,18 +22,18 @@ extern Bitboard centerSquares;
 
 // Bonus für jeden Bauern, der neben mindestens einem anderen Bauern steht
 extern Bitboard connectedPawnMasks[];
-#define MG_PAWN_CONNECTED_VALUE 10
-#define EG_PAWN_CONNECTED_VALUE 8
+#define MG_PAWN_CONNECTED_VALUE 3
+#define EG_PAWN_CONNECTED_VALUE 1
 
 // Bonus für jeden Bauern, der mindestens einen anderen Bauern deckt
 extern Bitboard pawnChainMasks[][64];
-#define MG_PAWN_CHAIN_VALUE 18
+#define MG_PAWN_CHAIN_VALUE 16
 #define EG_PAWN_CHAIN_VALUE 12
 
 // Bestrafung für zwei oder mehrere Bauern in einer Spalte (doppelte Bauern)
 extern Bitboard doubledPawnMasks[][64];
-#define MG_PAWN_DOUBLED_VALUE -22
-#define EG_PAWN_DOUBLED_VALUE -26
+#define MG_PAWN_DOUBLED_VALUE -13
+#define EG_PAWN_DOUBLED_VALUE -20
 
 // Bestrafung für einen Bauern, der keine Nachbarn hat(keine Bauern in einer Nachbarspalte)
 #define MG_PAWN_ISOLATED_VALUE -14
@@ -49,7 +49,7 @@ extern Bitboard sentryMasks[][64];
 
 // Bestrafung für jedes Feld um den König herum, dass von einem Gegner angegriffen wird.
 // Felder auf denen eigene Figuren stehen werden ausgenommen.
-#define MG_KING_SAFETY_VALUE -40
+#define MG_KING_SAFETY_VALUE -58
 #define EG_KING_SAFETY_VALUE -24
 
 // Bonus für jedes Feld, dass von einer Figur angegriffen wird.
@@ -77,7 +77,7 @@ extern Bitboard pawnShieldMask[][64];
 extern Bitboard pawnStormMask[][64];
 #define MG_PAWN_STORM_BASE_VALUE 5
 // Wird mit der Anzahl der fortgeschrittenen Felder multipliziert
-#define MG_PAWN_STORM_DISTANCE_MULTIPLIER 15
+#define MG_PAWN_STORM_DISTANCE_MULTIPLIER 20
 
 // Bonus für jedes Feld in der Mitte, das von einem eigenen Bauern besetzt ist
 #define MG_CENTER_CONTROL_VALUE 12

@@ -100,6 +100,12 @@ class BoardEvaluator {
         HeapHashTable<uint64_t, Score, 8192, 4> pawnStructureTable;
 
         /**
+         * @brief Überprüft ob eine Position anhand des Materials wahrscheinlich ein Unentschieden ist.
+         * Die Methode wird false zurückgeben, solange mindestens ein Bauer auf dem Spielfeld ist.
+         */
+        bool isLikelyDraw();
+
+        /**
          * @brief Die Methode findDoublePawns findet alle Bauern, die sich auf derselben Linie befinden.
          */
         Bitboard findDoublePawns(const Bitboard& ownPawns, int32_t side);

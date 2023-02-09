@@ -42,9 +42,6 @@
 #define TWO_THIRDS_PLY 4
 #define FIVE_SIXTHS_PLY 5
 
-#define MAX_REDUCTION (4 * ONE_PLY)
-#define DEFAULT_REDUCTION (FIVE_SIXTHS_PLY)
-
 struct TranspositionTableEntry {
     int8_t depth;
     int16_t score;
@@ -84,8 +81,8 @@ class SearchTree {
 
         std::atomic_bool searching;
 
-        Array<Move, 32> pvTable[32];
-        Move killerMoves[32][2];
+        Array<Move, 64> pvTable[64];
+        Move killerMoves[64][2];
         int32_t relativeHistory[2][64][64];
 
         std::vector<Move> principalVariation;

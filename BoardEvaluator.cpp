@@ -20,7 +20,7 @@ BoardEvaluator& BoardEvaluator::operator=(BoardEvaluator&& other) {
 }
 
 int32_t BoardEvaluator::evaluate() {
-    if(isDraw()) // Unentschieden
+    if(isDraw() || isLikelyDraw()) // Unentschieden
         return 0;
     
     int32_t storedScore;
@@ -176,6 +176,36 @@ bool BoardEvaluator::isDraw() {
                 return true;
         }
     }
+
+    return false;
+}
+
+bool BoardEvaluator::isLikelyDraw() {
+    // Unzureichendes Material
+    int32_t whitePawns = b->pieceList[WHITE_PAWN].size();
+    int32_t whiteKnights = b->pieceList[WHITE_KNIGHT].size();
+    int32_t whiteBishops = b->pieceList[WHITE_BISHOP].size();
+    int32_t whiteRooks = b->pieceList[WHITE_ROOK].size();
+    int32_t whiteQueens = b->pieceList[WHITE_QUEEN].size();
+
+    int32_t blackPawns = b->pieceList[BLACK_PAWN].size();
+    int32_t blackKnights = b->pieceList[BLACK_KNIGHT].size();
+    int32_t blackBishops = b->pieceList[BLACK_BISHOP].size();
+    int32_t blackRooks = b->pieceList[BLACK_ROOK].size();
+    int32_t blackQueens = b->pieceList[BLACK_QUEEN].size();
+
+    if(whitePawns != 0 || blackPawns != 0)
+        return false;
+    
+    int32_t whitePieceValue = whiteKnights * PIECE_VALUE[KNIGHT] + whiteBishops * PIECE_VALUE[BISHOP] +
+        whiteRooks * PIECE_VALUE[ROOK] + whiteQueens * PIECE_VALUE[QUEEN];
+    
+    int32_t blackPieceValue = blackKnights * PIECE_VALUE[KNIGHT] + blackBishops * PIECE_VALUE[BISHOP] +
+        blackRooks * PIECE_VALUE[ROOK] + blackQueens * PIECE_VALUE[QUEEN];
+    
+    if(abs(whitePieceValue - blackPieceValue) <= std::max(PIECE_VALUE[KNIGHT], PIECE_VALUE[BISHOP]) &&
+        std::max(whitePieceValue, blackPieceValue) <= PIECE_VALUE[ROOK] * 2)
+        return true;
 
     return false;
 }
