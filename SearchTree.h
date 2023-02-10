@@ -66,7 +66,7 @@ class SearchTree {
     private:
         TranspositionTable<262144, 4> transpositionTable;
 
-        int8_t currentMaxDepth;
+        int16_t currentMaxDepth;
         uint32_t nodesSearched;
 
         Board* board;
@@ -92,19 +92,19 @@ class SearchTree {
 
         void sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t minScore, int32_t moveEvalFunc);
 
-        int16_t rootSearch(int8_t depth, int16_t expectedScore);
+        int16_t rootSearch(int16_t depth, int16_t expectedScore);
 
-        int16_t pvSearchRoot(int8_t depth, int16_t alpha, int16_t beta);
+        int16_t pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta);
 
-        int16_t pvSearch(int8_t depth, int16_t ply, int16_t alpha, int16_t beta);
+        int16_t pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta);
 
-        int16_t nwSearch(int8_t depth, int16_t ply, int16_t alpha, int16_t beta);
+        int16_t nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta);
 
         int16_t quiescence(int16_t alpha, int16_t beta, int32_t captureSquare);
 
-        int8_t determineExtension(int8_t depth, Move& m, int32_t moveCount, int32_t legalMoveCount, bool isCheckEvasion = false);
+        int16_t determineExtension(int16_t depth, Move& m, int32_t moveCount, int32_t legalMoveCount, bool isCheckEvasion = false);
 
-        int8_t determineReduction(int8_t depth, Move& m, int32_t moveCount, int32_t legalMoveCount, bool isCheckEvasion = false);
+        int16_t determineReduction(int16_t depth, Move& m, int32_t moveCount, int32_t legalMoveCount, bool isCheckEvasion = false);
 
     public:
         SearchTree(Board& b);
@@ -113,7 +113,7 @@ class SearchTree {
 
         int16_t search(uint32_t searchTime);
 
-        constexpr int8_t getLastSearchDepth() { return currentMaxDepth; }
+        constexpr int16_t getLastSearchDepth() { return currentMaxDepth; }
 
         constexpr uint32_t getNodesSearched() { return nodesSearched; }
 

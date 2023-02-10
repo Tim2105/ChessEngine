@@ -51,7 +51,7 @@ int16_t SearchTree::search(uint32_t searchTime) {
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    for(int8_t depth = ONE_PLY; searching && depth < 127 - ONE_PLY; depth += ONE_PLY) {
+    for(int16_t depth = ONE_PLY; searching; depth += ONE_PLY) {
         currentMaxDepth = depth;
 
         score = rootSearch(depth, score);
@@ -208,7 +208,7 @@ void SearchTree::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t m
         moves.push_back(pair.move);
 }
 
-int16_t SearchTree::rootSearch(int8_t depth, int16_t expectedScore) {
+int16_t SearchTree::rootSearch(int16_t depth, int16_t expectedScore) {
     int32_t aspAlphaReduction = ASP_WINDOW, numAlphaReduction = 1;
     int32_t aspBetaReduction = ASP_WINDOW, numBetaReduction = 1;
 
@@ -244,7 +244,7 @@ int16_t SearchTree::rootSearch(int8_t depth, int16_t expectedScore) {
     return score;
 }
 
-int16_t SearchTree::pvSearchRoot(int8_t depth, int16_t alpha, int16_t beta) {
+int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
     clearPvTable();
 
     bool searchPv = true;
@@ -267,8 +267,8 @@ int16_t SearchTree::pvSearchRoot(int8_t depth, int16_t alpha, int16_t beta) {
 
         board->makeMove(move);
 
-        int8_t extension = determineExtension(depth, move, moveNumber, moves.size(), isCheckEvasion);
-        int8_t reduction = determineReduction(depth, move, moveNumber, moves.size(), isCheckEvasion);
+        int16_t extension = determineExtension(depth, move, moveNumber, moves.size(), isCheckEvasion);
+        int16_t reduction = determineReduction(depth, move, moveNumber, moves.size(), isCheckEvasion);
 
         if(searchPv) {
             score = -pvSearch(depth - ONE_PLY + extension, 1, -beta, -alpha);
@@ -289,16 +289,14 @@ int16_t SearchTree::pvSearchRoot(int8_t depth, int16_t alpha, int16_t beta) {
         
 
         if(score >= beta) {
-            int8_t ply = (currentMaxDepth - depth) / ONE_PLY;
-
             transpositionTable.put(board->getHashValue(), {
                 depth, score, CUT_NODE, move
             });
 
             if(move.isQuiet()) {
-                if(killerMoves[ply][0] != move) {
-                    killerMoves[ply][1] = killerMoves[ply][0];
-                    killerMoves[ply][0] = move;
+                if(killerMoves[0][0] != move) {
+                    killerMoves[0][1] = killerMoves[0][0];
+                    killerMoves[0][0] = move;
                 }
             }
 
@@ -336,7 +334,7 @@ int16_t SearchTree::pvSearchRoot(int8_t depth, int16_t alpha, int16_t beta) {
     return bestScore;
 }
 
-int16_t SearchTree::pvSearch(int8_t depth, int16_t ply, int16_t alpha, int16_t beta) {
+int16_t SearchTree::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta) {
     if(!searching)
         return 0;
 
@@ -383,8 +381,8 @@ int16_t SearchTree::pvSearch(int8_t depth, int16_t ply, int16_t alpha, int16_t b
 
         board->makeMove(move);
 
-        int8_t extension = determineExtension(depth, move, moveNumber, moves.size(), isCheckEvasion);
-        int8_t reduction = determineReduction(depth, move, moveNumber, moves.size(), isCheckEvasion);
+        int16_t extension = determineExtension(depth, move, moveNumber, moves.size(), isCheckEvasion);
+        int16_t reduction = determineReduction(depth, move, moveNumber, moves.size(), isCheckEvasion);
 
         if(searchPv) {
             score = -pvSearch(depth - ONE_PLY + extension, ply + 1, -beta, -alpha);
@@ -457,7 +455,7 @@ int16_t SearchTree::pvSearch(int8_t depth, int16_t ply, int16_t alpha, int16_t b
     return bestScore;
 }
 
-int16_t SearchTree::nwSearch(int8_t depth, int16_t ply, int16_t alpha, int16_t beta) {
+int16_t SearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta) {
     if(!searching)
         return 0;
 
@@ -498,8 +496,6 @@ int16_t SearchTree::nwSearch(int8_t depth, int16_t ply, int16_t alpha, int16_t b
     }
 
     sortMoves(moves, ply, SEE);
-
-    int8_t ply = currentMaxDepth - depth;
     int32_t moveNumber = 1;
     bool isCheckEvasion = board->isCheck();
 
@@ -511,8 +507,8 @@ int16_t SearchTree::nwSearch(int8_t depth, int16_t ply, int16_t alpha, int16_t b
 
         board->makeMove(move);
 
-        int8_t extension = determineExtension(depth, move, moveNumber, moves.size(), isCheckEvasion);
-        int8_t reduction = determineReduction(depth, move, moveNumber, moves.size(), isCheckEvasion);
+        int16_t extension = determineExtension(depth, move, moveNumber, moves.size(), isCheckEvasion);
+        int16_t reduction = determineReduction(depth, move, moveNumber, moves.size(), isCheckEvasion);
 
         int16_t score = -nwSearch(depth - ONE_PLY - reduction + extension, ply + 1, -beta, -alpha);
 
@@ -572,10 +568,8 @@ int16_t SearchTree::nwSearch(int8_t depth, int16_t ply, int16_t alpha, int16_t b
     return bestScore;
 }
 
-int8_t SearchTree::determineExtension(int8_t depth, Move& m, int32_t moveCount, int32_t legalMoveCount, bool isCheckEvasion) {
-    int8_t ply = currentMaxDepth - depth;
-
-    int8_t extension = 0;
+int16_t SearchTree::determineExtension(int16_t depth, Move& m, int32_t moveCount, int32_t legalMoveCount, bool isCheckEvasion) {
+    int16_t extension = 0;
 
     int32_t movedPieceType = TYPEOF(board->pieceAt(m.getDestination()));
     int32_t capturedPieceType = TYPEOF(board->getLastMoveHistoryEntry().capturedPiece);
@@ -589,11 +583,11 @@ int8_t SearchTree::determineExtension(int8_t depth, Move& m, int32_t moveCount, 
     if(isCheck || isCheckEvasion)
         extension += ONE_HALF_PLY;
     
-    return std::min(extension, (int8_t)FIVE_SIXTHS_PLY);
+    return std::min(extension, (int16_t)FIVE_SIXTHS_PLY);
 }
 
-int8_t SearchTree::determineReduction(int8_t depth, Move& m, int32_t moveCount, int32_t legalMoveCount, bool isCheckEvasion) {
-    int8_t reduction = 0;
+int16_t SearchTree::determineReduction(int16_t depth, Move& m, int32_t moveCount, int32_t legalMoveCount, bool isCheckEvasion) {
+    int16_t reduction = 0;
 
     bool isCheck = board->isCheck();
 
@@ -609,9 +603,9 @@ int8_t SearchTree::determineReduction(int8_t depth, Move& m, int32_t moveCount, 
     double maxReduction = log(legalMoveCount) * log((currentMaxDepth / ONE_PLY) + 1);
     double reductionFactor = log(moveCount) * log((depth / ONE_PLY) + 1);
 
-    // reduction += (int8_t)(reductionFactor / maxReduction * ONE_PLY * ((currentMaxDepth / ONE_PLY) / 3.0));
+    // reduction += (int16_t)(reductionFactor / maxReduction * ONE_PLY * ((currentMaxDepth / ONE_PLY) / 3.0));
 
-    reduction += (int8_t)(log(moveCount) / log(legalMoveCount) * ONE_PLY * ((currentMaxDepth / ONE_PLY) / 3.0));
+    reduction += (int16_t)(log(moveCount) / log(legalMoveCount) * ONE_PLY * ((currentMaxDepth / ONE_PLY) / 3.0));
 
     // Reductions
     reduction -= (int32_t)((relativeHistory[(board->getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
@@ -633,7 +627,7 @@ int8_t SearchTree::determineReduction(int8_t depth, Move& m, int32_t moveCount, 
         reduction -= ONE_HALF_PLY;
     }
     
-    return std::clamp(reduction, (int8_t)0, (int8_t)(ONE_PLY * 3));
+    return std::clamp(reduction, (int16_t)0, (int16_t)(ONE_PLY * 3));
 }
 
 int16_t SearchTree::quiescence(int16_t alpha, int16_t beta, int32_t captureSquare) {

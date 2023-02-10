@@ -7,7 +7,7 @@
 #include <functional>
 
 struct TranspositionTableEntry {
-    int8_t depth;
+    int16_t depth;
     int16_t score;
     uint8_t type;
     Move hashMove;
