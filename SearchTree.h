@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include "Move.h"
-#include "HeapHashTable.h"
+#include "TranspositionTable.h"
 #include <thread>
 #include <atomic>
 #include "Board.h"
@@ -42,13 +42,6 @@
 #define TWO_THIRDS_PLY 4
 #define FIVE_SIXTHS_PLY 5
 
-struct TranspositionTableEntry {
-    int8_t depth;
-    int16_t score;
-    uint8_t type;
-    Move hashMove;
-};
-
 struct MoveScorePair {
     Move move;
     int32_t score;
@@ -71,7 +64,7 @@ struct std::less<MoveScorePair> {
 class SearchTree {
 
     private:
-        HeapHashTable<uint64_t, TranspositionTableEntry, 131072, 4> transpositionTable;
+        TranspositionTable<262144, 4> transpositionTable;
 
         int8_t currentMaxDepth;
         uint32_t nodesSearched;
@@ -109,9 +102,9 @@ class SearchTree {
 
         int16_t quiescence(int16_t alpha, int16_t beta, int32_t captureSquare);
 
-        int8_t determineExtension(int8_t depth, Move& m, int32_t moveCount, bool isCheckEvasion = false);
+        int8_t determineExtension(int8_t depth, Move& m, int32_t moveCount, int32_t legalMoveCount, bool isCheckEvasion = false);
 
-        int8_t determineReduction(int8_t depth, Move& m, int32_t moveCount, bool isCheckEvasion = false);
+        int8_t determineReduction(int8_t depth, Move& m, int32_t moveCount, int32_t legalMoveCount, bool isCheckEvasion = false);
 
     public:
         SearchTree(Board& b);

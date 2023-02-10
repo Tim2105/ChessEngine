@@ -1,8 +1,6 @@
 #ifndef EVALUATIONDEFINITIONS_H
 #define EVALUATIONDEFINITIONS_H
 
-#define MAX_DEPTH 32
-
 #include <stdint.h>
 #include "Bitboard.h"
 
@@ -15,6 +13,12 @@
  */
 
 extern int16_t PIECE_VALUE[];
+
+// Springer sind weniger Wert, wenn weniger Bauern auf dem Feld sind
+#define KNIGHT_CAPTURED_PAWN_VALUE -4
+
+// Bonus für das Läuferpaar
+#define BISHOP_PAIR_VALUE 45
 
 extern Bitboard neighboringFiles[];
 
@@ -48,7 +52,7 @@ extern Bitboard sentryMasks[][64];
 #define EG_PAWN_PASSED_RANK_ADVANCED_MULTIPLIER 45
 
 // Bestrafung für jedes Feld um den König herum, dass von einem Gegner angegriffen wird.
-// Felder auf denen eigene Figuren stehen werden ausgenommen.
+// Felder auf denen eigene Bauern stehen werden ausgenommen.
 #define MG_KING_SAFETY_VALUE -58
 #define EG_KING_SAFETY_VALUE -24
 

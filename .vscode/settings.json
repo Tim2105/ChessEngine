@@ -61,6 +61,7 @@
         "queue": "cpp",
         "xthread": "cpp",
         "thread": "cpp",
-        "atomic": "cpp"
+        "atomic": "cpp",
+        "xxatomic": "cpp"
     }
 }

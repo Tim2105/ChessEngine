@@ -41,7 +41,7 @@ int main() {
     BoardEvaluator evaluator(board);
 
     while(board.generateLegalMoves().size() != 0 && !evaluator.isDraw()) {  
-        int16_t score = st.search(5000);
+        int16_t score = st.search(500);
         Move m = st.getPrincipalVariation()[0];
         std::cout << "Playing " << m << " Eval " << score << std::endl;
         board.makeMove(m);
