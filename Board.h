@@ -526,6 +526,9 @@ class Board {
          */
         inline Bitboard getPieceAttackBitboard(int32_t piece) const { return pieceAttackBitboard[piece]; };
 
+        /**
+         * @brief Gibt alle Felder zurück, die von einer bestimmten Seite angegriffen werden.
+         */
         inline Bitboard getAttackBitboard(int32_t side) const { return side == WHITE ? whiteAttackBitboard : blackAttackBitboard; };
 
         /**

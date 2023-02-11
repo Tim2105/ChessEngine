@@ -219,7 +219,7 @@ int16_t SearchTree::rootSearch(int16_t depth, int16_t expectedScore) {
 
     while((score <= alpha || score >= beta)) {
         if(score <= alpha) {
-            if(numAlphaReduction >= ASP_MAX_DEPTH || aspAlphaReduction >= 10000)
+            if(numAlphaReduction >= ASP_MAX_DEPTH)
                 alpha = MIN_SCORE;
             else {
                 aspAlphaReduction *= ASP_STEP_FACTOR;
@@ -227,7 +227,7 @@ int16_t SearchTree::rootSearch(int16_t depth, int16_t expectedScore) {
             }
 
             numAlphaReduction++;
-        } else if(score >= beta || aspBetaReduction >= 10000) {
+        } else if(score >= beta) {
             if(numBetaReduction >= ASP_MAX_DEPTH)
                 beta = MAX_SCORE;
             else {
@@ -600,18 +600,15 @@ int16_t SearchTree::determineReduction(int16_t depth, Move& m, int32_t moveCount
     if(moveCount <= 1 || isCheck || isCheckEvasion)
         return 0;
 
-    double maxReduction = log(legalMoveCount) * log((currentMaxDepth / ONE_PLY) + 1);
-    double reductionFactor = log(moveCount) * log((depth / ONE_PLY) + 1);
+    double maxReduction = ONE_PLY * ((currentMaxDepth / ONE_PLY) / 4.0);
 
-    // reduction += (int16_t)(reductionFactor / maxReduction * ONE_PLY * ((currentMaxDepth / ONE_PLY) / 3.0));
-
-    reduction += (int16_t)(log(moveCount) / log(legalMoveCount) * ONE_PLY * ((currentMaxDepth / ONE_PLY) / 3.0));
+    reduction += (int16_t)(log(moveCount) / log(legalMoveCount) * maxReduction);
 
     // Reductions
-    reduction -= (int32_t)((relativeHistory[(board->getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
+    reduction -= (int16_t)((relativeHistory[(board->getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
                                  [board->sq120To64(m.getOrigin())]
                                  [board->sq120To64(m.getDestination())] / 20000.0) * ONE_PLY);
-                            
+                                              
     if(!m.isQuiet())
         reduction -= ONE_PLY;
     else if(movedPieceType == PAWN) {
@@ -627,7 +624,7 @@ int16_t SearchTree::determineReduction(int16_t depth, Move& m, int32_t moveCount
         reduction -= ONE_HALF_PLY;
     }
     
-    return std::clamp(reduction, (int16_t)0, (int16_t)(ONE_PLY * 3));
+    return std::clamp(reduction, (int16_t)0, (int16_t)maxReduction);
 }
 
 int16_t SearchTree::quiescence(int16_t alpha, int16_t beta, int32_t captureSquare) {

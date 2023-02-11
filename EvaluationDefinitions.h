@@ -18,7 +18,7 @@ extern int16_t PIECE_VALUE[];
 #define KNIGHT_CAPTURED_PAWN_VALUE -4
 
 // Bonus für das Läuferpaar
-#define BISHOP_PAIR_VALUE 45
+#define BISHOP_PAIR_VALUE 40
 
 extern Bitboard neighboringFiles[];
 
