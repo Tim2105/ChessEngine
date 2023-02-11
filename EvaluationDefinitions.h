@@ -51,23 +51,33 @@ extern Bitboard sentryMasks[][64];
 #define MG_PAWN_PASSED_RANK_ADVANCED_MULTIPLIER 20
 #define EG_PAWN_PASSED_RANK_ADVANCED_MULTIPLIER 45
 
-// Bestrafung für jedes Feld um den König herum, dass von einem Gegner angegriffen wird.
-// Felder auf denen eigene Bauern stehen werden ausgenommen.
-#define MG_KING_SAFETY_VALUE -58
-#define EG_KING_SAFETY_VALUE -24
-
 // Bonus für jedes Feld, dass von einer Figur angegriffen wird.
 // Felder auf denen eigene Figuren stehen werden ausgenommen.
 #define MG_PAWN_MOBILITY_VALUE 0
 #define EG_PAWN_MOBILITY_VALUE 0
-#define MG_KNIGHT_MOBILITY_VALUE 0
-#define EG_KNIGHT_MOBILITY_VALUE 0
-#define MG_BISHOP_MOBILITY_VALUE 5
-#define EG_BISHOP_MOBILITY_VALUE 3
-#define MG_ROOK_MOBILITY_VALUE 4
-#define EG_ROOK_MOBILITY_VALUE 2
-#define MG_QUEEN_MOBILITY_VALUE 1
+#define MG_KNIGHT_MOBILITY_VALUE 2
+#define EG_KNIGHT_MOBILITY_VALUE 1
+#define MG_BISHOP_MOBILITY_VALUE 6
+#define EG_BISHOP_MOBILITY_VALUE 4
+#define MG_ROOK_MOBILITY_VALUE 5
+#define EG_ROOK_MOBILITY_VALUE 3
+#define MG_QUEEN_MOBILITY_VALUE 2
 #define EG_QUEEN_MOBILITY_VALUE 1
+
+// Bestrafung für Figuren, die En Prise(ungeschützt) sind
+#define MG_PIECE_EN_PRISE_VALUE -10
+#define EG_PIECE_EN_PRISE_VALUE -5
+
+// Angriffszone des Königs
+extern Bitboard kingAttackZoneMask[][64];
+
+#define MG_KNIGHT_ATTACK_WEIGHT 5
+#define MG_BISHOP_ATTACK_WEIGHT 5
+#define MG_ROOK_ATTACK_WEIGHT 15
+#define MG_QUEEN_ATTACK_WEIGHT 30
+
+#define MG_MAX_KING_ATTACKERS 7
+extern int32_t kingAttackWeight[];
 
 /**
  * @brief Bauernschilder und -stürme werden nur für das Midgame bewertet.

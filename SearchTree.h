@@ -67,6 +67,7 @@ class SearchTree {
         TranspositionTable<262144, 4> transpositionTable;
 
         int16_t currentMaxDepth;
+        uint16_t currentAge;
         uint32_t nodesSearched;
 
         Board* board;

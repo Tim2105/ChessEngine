@@ -3,6 +3,7 @@
 #include <chrono>
 #include "SearchTree.h"
 #include <iomanip>
+#include "EvaluationDefinitions.h"
 
 
 void perft(Board& board, int depth, int& count) {
@@ -36,23 +37,23 @@ Move getUserMove(Board& board) {
 
 int main() {
 
-    Board board;
+    Board board("rnbq1rk1/2p2ppp/p2bpn2/1p1p4/3P1BQN/3BP3/PPP2PPP/RN3RK1 w - - 0 1");
     SearchTree st(board);
     BoardEvaluator evaluator(board);
 
-    while(board.generateLegalMoves().size() != 0 && !evaluator.isDraw()) {  
-        board.makeMove(getUserMove(board));
+    // while(board.generateLegalMoves().size() != 0 && !evaluator.isDraw()) {  
+    //     board.makeMove(getUserMove(board));
 
-        if(board.generateLegalMoves().size() == 0)
-            break;
+    //     if(board.generateLegalMoves().size() == 0)
+    //         break;
 
-        int16_t score = st.search(10000);
-        Move m = st.getPrincipalVariation()[0];
-        std::cout << "Playing " << m << " Eval " << score << std::endl;
-        board.makeMove(m);
-    }
+    //     int16_t score = st.search(4000);
+    //     Move m = st.getPrincipalVariation()[0];
+    //     std::cout << "Playing " << m << " Eval " << score << std::endl;
+    //     board.makeMove(m);
+    // }
 
-    // st.search(50000);
+    st.search(50000);
 
     return 0;
 }

@@ -7,17 +7,21 @@
 #include <functional>
 
 struct TranspositionTableEntry {
+    uint16_t age;
     int16_t depth;
     int16_t score;
     uint8_t type;
     Move hashMove;
 
     bool operator<(const TranspositionTableEntry& other) const {
-        return depth < other.depth;
+        if(age == other.age)
+            return depth < other.depth;
+
+        return age > other.age;
     }
 
     bool operator>(const TranspositionTableEntry& other) const {
-        return depth > other.depth;
+        return (uint16_t)depth + age > (uint16_t)other.depth + other.age;
     }
 };
 

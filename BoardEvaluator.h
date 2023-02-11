@@ -196,7 +196,7 @@ class BoardEvaluator {
         int32_t evalMGKingSafety();
         inline int32_t evalMGPawnShield(int32_t kingSquare, const Bitboard& ownPawns, const Bitboard& otherPawns, int32_t side);
         inline int32_t evalMGPawnStorm(int32_t otherKingSquare, const Bitboard& ownPawns, const Bitboard& otherPawns, int32_t side);
-        inline int32_t evalMGKingMobility(int32_t side, const Bitboard& ownPawns);
+        int32_t evalMGKingAttackZone(int32_t side);
         
         /**
          * @brief Die Methode evalMGCenterControl bewertet die Kontrolle des Zentrums der beiden Spieler im Midgame.
@@ -207,7 +207,6 @@ class BoardEvaluator {
          * @brief Die Methode evalEGKingSafety bewertet die Sicherheit des Königs der beiden Spieler im Endgame.
          */
         int32_t evalEGKingSafety();
-        inline int32_t evalEGKingMobility(int32_t side, const Bitboard& ownPawns);
 
         /**
          * @brief Die Methode evalMobility bewertet die Mobilität der beiden Spieler.

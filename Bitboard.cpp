@@ -54,7 +54,7 @@ std::ostream& operator<<(std::ostream& os, const Bitboard& bitboard) {
             if(bitboard.getBit(r * 8 + f))
                 os << "1";
             else
-                os << "0";
+                os << ".";
         }
         os << std::endl;
     }

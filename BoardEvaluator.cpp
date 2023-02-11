@@ -249,12 +249,18 @@ inline int32_t BoardEvaluator::evalMG_PSQT() {
     for(int p = PAWN; p <= KING; p++) {
         for(int sq : b->pieceList[WHITE | p]) {
             whiteScore += MG_PSQT[p][b->mailbox[sq]];
+
+            if(!b->getAttackBitboard(WHITE).getBit(b->mailbox[sq]))
+                whiteScore += MG_PIECE_EN_PRISE_VALUE;
         }
         
         for(int sq : b->pieceList[BLACK | p]) {
             int rank = SQ2R(sq);
             int file = SQ2F(sq);
             blackScore += MG_PSQT[p][(RANK_8 - rank) * 8 + file];
+
+            if(!b->getAttackBitboard(BLACK).getBit(b->mailbox[sq]))
+                blackScore += MG_PIECE_EN_PRISE_VALUE;
         }
     }
 
@@ -277,12 +283,18 @@ inline int32_t BoardEvaluator::evalEG_PSQT() {
     for(int p = PAWN; p <= KING; p++) {
         for(int sq : b->pieceList[WHITE | p]) {
             whiteScore += EG_PSQT[p][b->mailbox[sq]];
+
+            if(!b->getAttackBitboard(WHITE).getBit(b->mailbox[sq]))
+                whiteScore += EG_PIECE_EN_PRISE_VALUE;
         }
         
         for(int sq : b->pieceList[BLACK | p]) {
             int rank = SQ2R(sq);
             int file = SQ2F(sq);
             blackScore += EG_PSQT[p][(RANK_8 - rank) * 8 + file];
+
+            if(!b->getAttackBitboard(BLACK).getBit(b->mailbox[sq]))
+                whiteScore += EG_PIECE_EN_PRISE_VALUE;
         }
     }
 
@@ -430,34 +442,41 @@ inline int32_t BoardEvaluator::evalMGPawnStorm(int32_t otherKingSquare, const Bi
     return score;
 }
 
-inline int32_t BoardEvaluator::evalMGKingMobility(int32_t side, const Bitboard& ownPawns) {
-    Bitboard enemyAttackedSquares;
+int32_t BoardEvaluator::evalMGKingAttackZone(int32_t side) {
+    int32_t score = 0;
 
-    if(side == WHITE)
-        enemyAttackedSquares = b->blackAttackBitboard;
-    else
-        enemyAttackedSquares = b->whiteAttackBitboard;
+    int32_t otherSide = side ^ COLOR_MASK;
+    Bitboard kingAttackZone = kingAttackZoneMask[side / COLOR_MASK][b->mailbox[b->pieceList[side | KING].front()]];
 
-    int32_t ownKingSquare = b->mailbox[b->pieceList[side | KING].front()];
+    int32_t numAttackers = 0;
+    
+    int32_t knightAttackValue = (b->pieceAttackBitboard[otherSide | KNIGHT] & kingAttackZone).getNumberOfSetBits() * MG_KNIGHT_ATTACK_WEIGHT;
+    if(knightAttackValue > 0) {
+        score += knightAttackValue;
+        numAttackers++;
+    }
 
-    Bitboard attackedKingSquares = kingAttackBitboard(ownKingSquare) & ~ownPawns & enemyAttackedSquares;
+    int32_t bishopAttackValue = (b->pieceAttackBitboard[otherSide | BISHOP] & kingAttackZone).getNumberOfSetBits() * MG_BISHOP_ATTACK_WEIGHT;
+    if(bishopAttackValue > 0) {
+        score += bishopAttackValue;
+        numAttackers++;
+    }
 
-    return attackedKingSquares.getNumberOfSetBits() * MG_KING_SAFETY_VALUE;
-}
+    int32_t rookAttackValue = (b->pieceAttackBitboard[otherSide | ROOK] & kingAttackZone).getNumberOfSetBits() * MG_ROOK_ATTACK_WEIGHT;
+    if(rookAttackValue > 0) {
+        score += rookAttackValue;
+        numAttackers++;
+    }
 
-inline int32_t BoardEvaluator::evalEGKingMobility(int32_t side, const Bitboard& ownPawns) {
-    Bitboard enemyAttackedSquares;
+    int32_t queenAttackValue = (b->pieceAttackBitboard[otherSide | QUEEN] & kingAttackZone).getNumberOfSetBits() * MG_QUEEN_ATTACK_WEIGHT;
+    if(queenAttackValue > 0) {
+        score += queenAttackValue;
+        numAttackers++;
+    }
 
-    if(side == WHITE)
-        enemyAttackedSquares = b->blackAttackBitboard;
-    else
-        enemyAttackedSquares = b->whiteAttackBitboard;
+    score = score * kingAttackWeight[std::min(numAttackers, MG_MAX_KING_ATTACKERS)] / -kingAttackWeight[MG_MAX_KING_ATTACKERS];
 
-    int32_t ownKingSquare = b->mailbox[b->pieceList[side | KING].front()];
-
-    Bitboard attackedKingSquares = kingAttackBitboard(ownKingSquare) & ~ownPawns & enemyAttackedSquares;
-
-    return attackedKingSquares.getNumberOfSetBits() * EG_KING_SAFETY_VALUE;
+    return score;
 }
 
 Score BoardEvaluator::evalPawnStructure(Bitboard doublePawns, Bitboard isolatedPawns, Bitboard passedPawns, Bitboard pawnChains, Bitboard connectedPawns, int32_t side) {
@@ -497,11 +516,11 @@ int32_t BoardEvaluator::evalMGKingSafety() {
 
     ownKingSafetyScore += evalMGPawnShield(ownKingSquare, ownPawns, otherPawns, side);
     ownKingSafetyScore += evalMGPawnStorm(otherKingSquare, ownPawns, otherPawns, side);
-    ownKingSafetyScore += evalMGKingMobility(side, ownPawns);
+    ownKingSafetyScore += evalMGKingAttackZone(side);
 
     otherKingSafetyScore += evalMGPawnShield(otherKingSquare, otherPawns, ownPawns, otherSide);
     otherKingSafetyScore += evalMGPawnStorm(ownKingSquare, otherPawns, ownPawns, otherSide);
-    otherKingSafetyScore += evalMGKingMobility(otherSide, otherPawns);
+    otherKingSafetyScore += evalMGKingAttackZone(otherSide);
 
     score += ownKingSafetyScore - otherKingSafetyScore;
 
@@ -510,16 +529,9 @@ int32_t BoardEvaluator::evalMGKingSafety() {
 
 int32_t BoardEvaluator::evalEGKingSafety() {
     int32_t score = 0;
+
     int32_t side = b->side;
     int32_t otherSide = side ^ COLOR_MASK;
-
-    Bitboard ownPawns = b->pieceBitboard[side | PAWN];
-    Bitboard otherPawns = b->pieceBitboard[otherSide | PAWN];
-
-    int32_t ownKingSafetyScore = evalEGKingMobility(side, ownPawns);
-    int32_t otherKingSafetyScore = evalEGKingMobility(otherSide, otherPawns);
-
-    score += ownKingSafetyScore - otherKingSafetyScore;
 
     return score;
 }

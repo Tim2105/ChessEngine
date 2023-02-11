@@ -234,7 +234,7 @@ class Board {
         /**
          * @brief Speichert die Anzahl der Halbzüge, die seit dem Anfang des Spiels vergangen sind.
          */
-        int32_t ply;
+        uint16_t ply;
 
         /**
          * @brief Der Zobristhash des Schachbretts.
@@ -535,6 +535,11 @@ class Board {
          * @brief Überprüft, wie häufig die momentane Position schon aufgetreten ist. 
          */
         uint8_t repetitionCount();
+
+        /**
+         * @brief Gibt die Anzahl der Halbzüge zurück, die gespielt wurden.
+         */
+        constexpr uint16_t getPly() const { return ply; };
 
         inline int32_t sq120To64(int32_t sq120) const { return mailbox[sq120]; };
         inline int32_t sq64To120(int32_t sq64) const { return mailbox64[sq64]; };

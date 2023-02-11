@@ -9,6 +9,7 @@ SearchTree::SearchTree(Board& b) {
     evaluator = BoardEvaluator(b);
 
     currentMaxDepth = 0;
+    currentAge = b.getPly();
     nodesSearched = 0;
 
     searching = false;
@@ -38,11 +39,10 @@ void SearchTree::clearPvTable() {
 int16_t SearchTree::search(uint32_t searchTime) {
     searching = true;
     currentMaxDepth = 0;
+    currentAge = board->getPly();
     nodesSearched = 0;
 
     int16_t lastScore;
-
-    transpositionTable.clear();
     clearRelativeHistory();
 
     std::thread timer(std::bind(&SearchTree::searchTimer, this, searchTime));
@@ -290,7 +290,7 @@ int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
 
         if(score >= beta) {
             transpositionTable.put(board->getHashValue(), {
-                depth, score, CUT_NODE, move
+                currentAge, depth, score, CUT_NODE, move
             });
 
             if(move.isQuiet()) {
@@ -324,7 +324,7 @@ int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
     }
 
     transpositionTable.put(board->getHashValue(), {
-        depth, bestScore, EXACT_NODE, bestMove
+        currentAge, depth, bestScore, EXACT_NODE, bestMove
     });
 
     relativeHistory[board->getSideToMove() / COLOR_MASK]
@@ -408,7 +408,7 @@ int16_t SearchTree::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
             if(!tableHit || (depth > ttEntry.depth) &&
                              ttEntry.type != PV_NODE | EXACT_NODE)
                 transpositionTable.put(board->getHashValue(), {
-                    depth, score, CUT_NODE, move
+                    currentAge, depth, score, CUT_NODE, move
                 });
 
             if(move.isQuiet()) {
@@ -445,7 +445,7 @@ int16_t SearchTree::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
 
     if(!tableHit || (depth > ttEntry.depth))
         transpositionTable.put(board->getHashValue(), {
-            depth, bestScore, EXACT_NODE, bestMove
+            currentAge, depth, bestScore, EXACT_NODE, bestMove
         });
 
     relativeHistory[board->getSideToMove() / COLOR_MASK]
@@ -530,7 +530,7 @@ int16_t SearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
             if(!tableHit || (depth > ttEntry.depth &&
                                ttEntry.type == NW_NODE | CUT_NODE))
                 transpositionTable.put(board->getHashValue(), {
-                    depth, score, NW_NODE | CUT_NODE, move
+                    currentAge, depth, score, NW_NODE | CUT_NODE, move
                 });
             
             if(move.isQuiet()) {
@@ -558,7 +558,7 @@ int16_t SearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
     if(!tableHit || (depth > ttEntry.depth &&
                         !IS_REGULAR_NODE(ttEntry.type)))
         transpositionTable.put(board->getHashValue(), {
-            depth, bestScore, NW_NODE | EXACT_NODE, bestMove
+            currentAge, depth, bestScore, NW_NODE | EXACT_NODE, bestMove
         });
     
     relativeHistory[board->getSideToMove() / COLOR_MASK]
