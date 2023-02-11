@@ -448,33 +448,34 @@ int32_t BoardEvaluator::evalMGKingAttackZone(int32_t side) {
     int32_t otherSide = side ^ COLOR_MASK;
     Bitboard kingAttackZone = kingAttackZoneMask[side / COLOR_MASK][b->mailbox[b->pieceList[side | KING].front()]];
 
-    int32_t numAttackers = 0;
+    int32_t numAttackers = 0, attackCounter = 0;
     
-    int32_t knightAttackValue = (b->pieceAttackBitboard[otherSide | KNIGHT] & kingAttackZone).getNumberOfSetBits() * MG_KNIGHT_ATTACK_WEIGHT;
-    if(knightAttackValue > 0) {
-        score += knightAttackValue;
+    int32_t knightThreats = (b->pieceAttackBitboard[otherSide | KNIGHT] & kingAttackZone).getNumberOfSetBits();
+    if(knightThreats > 0) {
+        attackCounter += knightThreats * MG_KING_SAFETY_KNIGHT_THREAT_VALUE;
         numAttackers++;
     }
 
-    int32_t bishopAttackValue = (b->pieceAttackBitboard[otherSide | BISHOP] & kingAttackZone).getNumberOfSetBits() * MG_BISHOP_ATTACK_WEIGHT;
-    if(bishopAttackValue > 0) {
-        score += bishopAttackValue;
+    int32_t bishopThreats = (b->pieceAttackBitboard[otherSide | BISHOP] & kingAttackZone).getNumberOfSetBits();
+    if(bishopThreats > 0) {
+        attackCounter += bishopThreats * MG_KING_SAFETY_BISHOP_THREAT_VALUE;
         numAttackers++;
     }
 
-    int32_t rookAttackValue = (b->pieceAttackBitboard[otherSide | ROOK] & kingAttackZone).getNumberOfSetBits() * MG_ROOK_ATTACK_WEIGHT;
-    if(rookAttackValue > 0) {
-        score += rookAttackValue;
+    int32_t rookThreats = (b->pieceAttackBitboard[otherSide | ROOK] & kingAttackZone).getNumberOfSetBits();
+    if(rookThreats > 0) {
+        attackCounter += rookThreats * MG_KING_SAFETY_ROOK_THREAT_VALUE;
         numAttackers++;
     }
 
-    int32_t queenAttackValue = (b->pieceAttackBitboard[otherSide | QUEEN] & kingAttackZone).getNumberOfSetBits() * MG_QUEEN_ATTACK_WEIGHT;
-    if(queenAttackValue > 0) {
-        score += queenAttackValue;
+    int32_t queenThreats = (b->pieceAttackBitboard[otherSide | QUEEN] & kingAttackZone).getNumberOfSetBits();
+    if(queenThreats > 0) {
+        attackCounter += queenThreats * MG_KING_SAFETY_QUEEN_THREAT_VALUE;
         numAttackers++;
     }
 
-    score = score * kingAttackWeight[std::min(numAttackers, MG_MAX_KING_ATTACKERS)] / -kingAttackWeight[MG_MAX_KING_ATTACKERS];
+    if(numAttackers > 1)
+        score -= kingSafetyTable[std::min(attackCounter, KING_SAFETY_TABLE_SIZE - 1)];
 
     return score;
 }

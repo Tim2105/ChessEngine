@@ -597,7 +597,7 @@ int16_t SearchTree::determineReduction(int16_t depth, Move& m, int32_t moveCount
     int32_t origin64 = board->sq120To64(m.getOrigin());
     int32_t destination64 = board->sq120To64(m.getDestination());
     
-    if(moveCount <= 1 || isCheck || isCheckEvasion)
+    if(moveCount <= 3 || isCheck || isCheckEvasion)
         return 0;
 
     double maxReduction = ONE_PLY * ((currentMaxDepth / ONE_PLY) / 4.0);

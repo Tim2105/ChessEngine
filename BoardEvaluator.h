@@ -86,6 +86,7 @@ struct std::hash<PawnBitboards> {
 class BoardEvaluator {
 
     private:
+    public:
         // Das Spielfeld
         Board* b;
 

@@ -71,13 +71,13 @@ extern Bitboard sentryMasks[][64];
 // Angriffszone des Königs
 extern Bitboard kingAttackZoneMask[][64];
 
-#define MG_KNIGHT_ATTACK_WEIGHT 5
-#define MG_BISHOP_ATTACK_WEIGHT 5
-#define MG_ROOK_ATTACK_WEIGHT 15
-#define MG_QUEEN_ATTACK_WEIGHT 30
+#define KING_SAFETY_TABLE_SIZE 100
+extern int32_t kingSafetyTable[];
 
-#define MG_MAX_KING_ATTACKERS 7
-extern int32_t kingAttackWeight[];
+#define MG_KING_SAFETY_KNIGHT_THREAT_VALUE 2
+#define MG_KING_SAFETY_BISHOP_THREAT_VALUE 2
+#define MG_KING_SAFETY_ROOK_THREAT_VALUE 3
+#define MG_KING_SAFETY_QUEEN_THREAT_VALUE 5
 
 /**
  * @brief Bauernschilder und -stürme werden nur für das Midgame bewertet.
