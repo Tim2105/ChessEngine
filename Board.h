@@ -519,17 +519,32 @@ class Board {
         /**
          * @brief Gibt alle Positionen eines bestimmten Figurentyps als Bitboard zurück.
          */
-        inline Bitboard getPieceBitboard(int32_t piece) const { return pieceBitboard[piece]; };
+        constexpr Bitboard getPieceBitboard(int32_t piece) const { return pieceBitboard[piece]; };
 
         /**
          * @brief Gibt alle Felder zurück, die von einer bestimmten Figur angegriffen werden.
          */
-        inline Bitboard getPieceAttackBitboard(int32_t piece) const { return pieceAttackBitboard[piece]; };
+        constexpr Bitboard getPieceAttackBitboard(int32_t piece) const { return pieceAttackBitboard[piece]; };
 
         /**
          * @brief Gibt alle Felder zurück, die von einer bestimmten Seite angegriffen werden.
          */
-        inline Bitboard getAttackBitboard(int32_t side) const { return side == WHITE ? whiteAttackBitboard : blackAttackBitboard; };
+        constexpr Bitboard getAttackBitboard(int32_t side) const { return side == WHITE ? whiteAttackBitboard : blackAttackBitboard; };
+
+        /**
+         * @brief Gibt alle Felder zurück, auf denen eine Figur steht(Könige ausgenommen).
+         */
+        constexpr Bitboard getOccupiedBitboard() const { return allPiecesBitboard; };
+
+        /**
+         * @brief Gibt alle Felder zurück, auf denen eine weiße Figur steht(Könige ausgenommen).
+         */
+        constexpr Bitboard getWhiteOccupiedBitboard() const { return whitePiecesBitboard; };
+
+        /**
+         * @brief Gibt alle Felder zurück, auf denen eine schwarze Figur steht(Könige ausgenommen).
+         */
+        constexpr Bitboard getBlackOccupiedBitboard() const { return blackPiecesBitboard; };
 
         /**
          * @brief Überprüft, wie häufig die momentane Position schon aufgetreten ist. 

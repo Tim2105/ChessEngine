@@ -4,6 +4,7 @@
 #include "SearchTree.h"
 #include <iomanip>
 #include "EvaluationDefinitions.h"
+#include "MoveNotations.h"
 
 
 void perft(Board& board, int depth, int& count) {

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include "EvaluationDefinitions.h"
 #include <cmath>
+#include "MoveNotations.h"
 
 SearchTree::SearchTree(Board& b) {
     board = &b;
@@ -61,7 +62,7 @@ int16_t SearchTree::search(uint32_t searchTime) {
         std::cout << "(" << (now - start).count() / 1000000 << "ms)" << "Depth: " << (int32_t)ceil((float)depth / ONE_PLY) << " Score: " << score
             << " Nodes: " << nodesSearched << " PV: ";
         
-        for(Move move : principalVariation)
+        for(std::string move : variationToFigurineAlgebraicNotation(principalVariation, *board))
             std::cout << move << " ";
 
         std::cout << std::endl;
