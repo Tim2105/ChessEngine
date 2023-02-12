@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "Move.h"
 #include "TranspositionTable.h"
+#include "HashTable.h"
 #include <thread>
 #include <atomic>
 #include "Board.h"
@@ -78,6 +79,8 @@ class SearchTree {
         Array<Move, 64> pvTable[64];
         Move killerMoves[64][2];
         int32_t relativeHistory[2][64][64];
+
+        HashTable<Move, int32_t, 64, 4> seeCache;
 
         std::vector<Move> principalVariation;
 

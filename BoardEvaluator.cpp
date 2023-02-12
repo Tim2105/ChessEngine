@@ -247,29 +247,37 @@ inline int32_t BoardEvaluator::evalMG_PSQT() {
     int32_t blackScore = 0;
 
     for(int p = PAWN; p <= KING; p++) {
-        for(int sq : b->pieceList[WHITE | p]) {
-            whiteScore += MG_PSQT[p][b->mailbox[sq]];
+        Bitboard whitePieces = b->getPieceBitboard(WHITE | p);
+        Bitboard blackPieces = b->getPieceBitboard(BLACK | p);
 
-            if(!b->getAttackBitboard(WHITE).getBit(b->mailbox[sq]))
-                whiteScore += MG_PIECE_EN_PRISE_VALUE;
+        while(whitePieces) {
+            int sq = whitePieces.getFirstSetBit();
+            whiteScore += MG_PSQT[p][sq];
+            whitePieces.clearBit(sq);
         }
-        
-        for(int sq : b->pieceList[BLACK | p]) {
-            int rank = SQ2R(sq);
-            int file = SQ2F(sq);
-            blackScore += MG_PSQT[p][(RANK_8 - rank) * 8 + file];
 
-            if(!b->getAttackBitboard(BLACK).getBit(b->mailbox[sq]))
-                blackScore += MG_PIECE_EN_PRISE_VALUE;
+        while(blackPieces) {
+            int sq = blackPieces.getFirstSetBit();
+            int rank = sq / 8;
+            int file = sq % 8;
+            blackScore += MG_PSQT[p][(RANK_8 - rank) * 8 + file];
+            blackPieces.clearBit(sq);
         }
     }
 
+    Bitboard whiteEnPrise = b->whitePiecesBitboard & ~b->getAttackBitboard(WHITE);
+    Bitboard blackEnPrise = b->blackPiecesBitboard & ~b->getAttackBitboard(BLACK);
+
     if(b->side == WHITE) {
         score += whiteScore;
+        score -= whiteEnPrise.getNumberOfSetBits() * MG_PIECE_EN_PRISE_VALUE;
         score -= blackScore;
+        score += blackEnPrise.getNumberOfSetBits() * MG_PIECE_EN_PRISE_VALUE;
     } else {
         score += blackScore;
+        score -= blackEnPrise.getNumberOfSetBits() * MG_PIECE_EN_PRISE_VALUE;
         score -= whiteScore;
+        score += whiteEnPrise.getNumberOfSetBits() * MG_PIECE_EN_PRISE_VALUE;
     }
 
     return score;
@@ -281,29 +289,37 @@ inline int32_t BoardEvaluator::evalEG_PSQT() {
     int32_t blackScore = 0;
 
     for(int p = PAWN; p <= KING; p++) {
-        for(int sq : b->pieceList[WHITE | p]) {
-            whiteScore += EG_PSQT[p][b->mailbox[sq]];
+        Bitboard whitePieces = b->getPieceBitboard(WHITE | p);
+        Bitboard blackPieces = b->getPieceBitboard(BLACK | p);
 
-            if(!b->getAttackBitboard(WHITE).getBit(b->mailbox[sq]))
-                whiteScore += EG_PIECE_EN_PRISE_VALUE;
+        while(whitePieces) {
+            int sq = whitePieces.getFirstSetBit();
+            whiteScore += EG_PSQT[p][sq];
+            whitePieces.clearBit(sq);
         }
-        
-        for(int sq : b->pieceList[BLACK | p]) {
-            int rank = SQ2R(sq);
-            int file = SQ2F(sq);
-            blackScore += EG_PSQT[p][(RANK_8 - rank) * 8 + file];
 
-            if(!b->getAttackBitboard(BLACK).getBit(b->mailbox[sq]))
-                whiteScore += EG_PIECE_EN_PRISE_VALUE;
+        while(blackPieces) {
+            int sq = blackPieces.getFirstSetBit();
+            int rank = sq / 8;
+            int file = sq % 8;
+            blackScore += EG_PSQT[p][(RANK_8 - rank) * 8 + file];
+            blackPieces.clearBit(sq);
         }
     }
 
+    Bitboard whiteEnPrise = b->whitePiecesBitboard & ~b->getAttackBitboard(WHITE);
+    Bitboard blackEnPrise = b->blackPiecesBitboard & ~b->getAttackBitboard(BLACK);
+
     if(b->side == WHITE) {
         score += whiteScore;
+        score -= whiteEnPrise.getNumberOfSetBits() * EG_PIECE_EN_PRISE_VALUE;
         score -= blackScore;
+        score += blackEnPrise.getNumberOfSetBits() * EG_PIECE_EN_PRISE_VALUE;
     } else {
         score += blackScore;
+        score -= blackEnPrise.getNumberOfSetBits() * EG_PIECE_EN_PRISE_VALUE;
         score -= whiteScore;
+        score += whiteEnPrise.getNumberOfSetBits() * EG_PIECE_EN_PRISE_VALUE;
     }
 
     return score;

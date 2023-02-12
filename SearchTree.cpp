@@ -79,6 +79,8 @@ int16_t SearchTree::search(uint32_t searchTime) {
 void SearchTree::sortMoves(Array<Move, 256>& moves, int16_t ply, int32_t moveEvalFunc) {
     Array<MoveScorePair, 256> msp;
 
+    Move hashMove;
+
     TranspositionTableEntry ttEntry;
     bool hashHit = transpositionTable.probe(board->getHashValue(), ttEntry);
 
@@ -87,14 +89,15 @@ void SearchTree::sortMoves(Array<Move, 256>& moves, int16_t ply, int32_t moveEva
 
         if(move == ttEntry.hashMove) {
             moveScore += 30000;
-        }
-        else if(move.isCapture() || move.isPromotion()) {
+        } else if(move.isCapture() || move.isPromotion()) {
             switch(moveEvalFunc) {
                 case MVVLVA:
                     moveScore += evaluator.evaluateMoveMVVLVA(move);
                     break;
                 case SEE:
-                    moveScore += evaluator.evaluateMoveSEE(move);
+                    int32_t seeScore = evaluator.evaluateMoveSEE(move);
+                    seeCache.put(move, seeScore);
+                    moveScore += seeScore;
                     break;
             }
         } else if(move.isQuiet()) {
@@ -139,7 +142,9 @@ void SearchTree::sortAndCutMoves(Array<Move, 256>& moves, int32_t minScore, int3
                 moveScore += evaluator.evaluateMoveMVVLVA(move);
                 break;
             case SEE:
-                moveScore += evaluator.evaluateMoveSEE(move);
+                int32_t seeScore = evaluator.evaluateMoveSEE(move);
+                seeCache.put(move, seeScore);
+                moveScore += seeScore;
                 break;
         }
 
@@ -166,14 +171,15 @@ void SearchTree::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t m
 
         if(move == ttEntry.hashMove) {
             moveScore += 30000;
-        }
-        else if(move.isCapture() || move.isPromotion()) {
+        }  else if(move.isCapture() || move.isPromotion()) {
             switch(moveEvalFunc) {
                 case MVVLVA:
                     moveScore += evaluator.evaluateMoveMVVLVA(move);
                     break;
                 case SEE:
-                    moveScore += evaluator.evaluateMoveSEE(move);
+                    int32_t seeScore = evaluator.evaluateMoveSEE(move);
+                    seeCache.put(move, seeScore);
+                    moveScore += seeScore;
                     break;
             }
         } else if(move.isQuiet()) {
@@ -246,6 +252,7 @@ int16_t SearchTree::rootSearch(int16_t depth, int16_t expectedScore) {
 
 int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
     clearPvTable();
+    seeCache.clear();
 
     bool searchPv = true;
     int16_t score, bestScore = MIN_SCORE;
@@ -496,6 +503,7 @@ int16_t SearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
     }
 
     sortMoves(moves, ply, SEE);
+
     int32_t moveNumber = 1;
     bool isCheckEvasion = board->isCheck();
 
@@ -562,8 +570,8 @@ int16_t SearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
         });
     
     relativeHistory[board->getSideToMove() / COLOR_MASK]
-                   [board->sq120To64(bestMove.getOrigin())]
-                   [board->sq120To64(bestMove.getDestination())] += 1 << (depth / ONE_PLY);
+                [board->sq120To64(bestMove.getOrigin())]
+                [board->sq120To64(bestMove.getDestination())] += 1 << (depth / ONE_PLY);
 
     return bestScore;
 }
@@ -600,7 +608,7 @@ int16_t SearchTree::determineReduction(int16_t depth, Move& m, int32_t moveCount
     if(moveCount <= 3 || isCheck || isCheckEvasion)
         return 0;
 
-    double maxReduction = ONE_PLY * ((currentMaxDepth / ONE_PLY) / 4.0);
+    double maxReduction = currentMaxDepth * 0.25;
 
     reduction += (int16_t)(log(moveCount) / log(legalMoveCount) * maxReduction);
 
@@ -608,9 +616,16 @@ int16_t SearchTree::determineReduction(int16_t depth, Move& m, int32_t moveCount
     reduction -= (int16_t)((relativeHistory[(board->getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
                                  [board->sq120To64(m.getOrigin())]
                                  [board->sq120To64(m.getDestination())] / 20000.0) * ONE_PLY);
-                                              
-    if(!m.isQuiet())
-        reduction -= ONE_PLY;
+                                                            
+    if(!m.isQuiet()) {
+        int32_t seeScore = MIN_SCORE;
+        bool seeCacheHit = seeCache.probe(m, seeScore);
+
+        if(!seeCacheHit || seeScore >= 0)
+            reduction -= ONE_PLY;
+        else
+            reduction -= ONE_THIRD_PLY;
+    }
     else if(movedPieceType == PAWN) {
         int32_t side = board->getSideToMove() ^ COLOR_MASK;
         int32_t otherSide = board->getSideToMove();
