@@ -609,7 +609,6 @@ void Board::makeMove(Move m) {
 
     hashValue ^= zobristPieceKeys[pieceType][origin64];
     hashValue ^= zobristPieceKeys[pieceType][destination64];
-
     // Könige sind in den allgemeinen Bitboards nicht enthalten
     if(TYPEOF(pieceType) != KING) {
         allPiecesBitboard.clearBit(origin64);

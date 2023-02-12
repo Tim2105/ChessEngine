@@ -7,7 +7,7 @@
 
 
 void perft(Board& board, int depth, int& count) {
-    if(depth == 1) {
+    if(depth <= 1) {
         count += board.generateLegalMoves().size();
         return;
     }
