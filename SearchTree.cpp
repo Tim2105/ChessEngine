@@ -277,14 +277,16 @@ int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
 
         int16_t extension = determineExtension(depth, move, moveNumber, moves.size(), isCheckEvasion);
         int16_t nwReduction = determineReduction(depth, move, moveNumber, moves.size(), isCheckEvasion);
-        int16_t pvReduction = (int16_t)(nwReduction * 0.33);
+
+        int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
+        nwDepthDelta = std::min(nwDepthDelta, (int16_t)(-ONE_PLY));
 
         if(searchPv) {
-            score = -pvSearch(depth - ONE_PLY - pvReduction + extension, 1, -beta, -alpha);
+            score = -pvSearch(depth - ONE_PLY, 1, -beta, -alpha);
         } else {
-            score = -nwSearch(depth - ONE_PLY - nwReduction + extension, 1, -alpha - 1, -alpha);
+            score = -nwSearch(depth + nwDepthDelta, 1, -alpha - 1, -alpha);
             if(score > alpha)
-                score = -pvSearch(depth - ONE_PLY - pvReduction + extension, 1, -beta, -alpha);
+                score = -pvSearch(depth - ONE_PLY, 1, -beta, -alpha);
         }
 
         board->undoMove();
@@ -392,14 +394,16 @@ int16_t SearchTree::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
 
         int16_t extension = determineExtension(depth, move, moveNumber, moves.size(), isCheckEvasion);
         int16_t nwReduction = determineReduction(depth, move, moveNumber, moves.size(), isCheckEvasion);
-        int16_t pvReduction = (int16_t)(nwReduction * 0.33);
+
+        int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
+        nwDepthDelta = std::min(nwDepthDelta, (int16_t)(-ONE_PLY));
 
         if(searchPv) {
-            score = -pvSearch(depth - ONE_PLY - pvReduction + extension, ply + 1, -beta, -alpha);
+            score = -pvSearch(depth - ONE_PLY, ply + 1, -beta, -alpha);
         } else {
-            score = -nwSearch(depth - ONE_PLY - nwReduction + extension, ply + 1, -alpha - 1, -alpha);
+            score = -nwSearch(depth + nwDepthDelta, ply + 1, -alpha - 1, -alpha);
             if(score > alpha)
-                score = -pvSearch(depth - ONE_PLY - pvReduction + extension, ply + 1, -beta, -alpha);
+                score = -pvSearch(depth - ONE_PLY, ply + 1, -beta, -alpha);
         }
 
         board->undoMove();
@@ -520,12 +524,16 @@ int16_t SearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
 
         int16_t extension = determineExtension(depth, move, moveNumber, moves.size(), isCheckEvasion);
         int16_t nwReduction = determineReduction(depth, move, moveNumber, moves.size(), isCheckEvasion);
-        int16_t pvReduction = (int16_t)(nwReduction * 0.33);
 
-        int16_t score = -nwSearch(depth - ONE_PLY - nwReduction + extension, ply + 1, -beta, -alpha);
+        int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
+        nwDepthDelta = std::min(nwDepthDelta, (int16_t)(-ONE_PLY));
 
-        if(nwReduction > 0 && score > alpha)
-            score = -nwSearch(depth - ONE_PLY - pvReduction + extension, ply + 1, -beta, -alpha);
+        int16_t score = -nwSearch(depth + nwDepthDelta, ply + 1, -beta, -alpha);
+
+        // Wenn eine stark reduzierte Suche eine Bewertung > alpha liefert, dann
+        // wird eine vollständige Suche durchgeführt.
+        if(nwDepthDelta < -ONE_PLY && score > alpha)
+            score = -nwSearch(depth - ONE_PLY, ply + 1, -beta, -alpha);
 
         board->undoMove();
 
@@ -591,11 +599,40 @@ int16_t SearchTree::determineExtension(int16_t depth, Move& m, int32_t moveCount
 
     bool isCheck = board->isCheck();
 
-    // Extensions
+    // Erweiterungen
+
+    // Schach
     if(isCheck || isCheckEvasion)
-        extension += ONE_HALF_PLY;
+        extension += ONE_PLY * 2;
     
-    return std::min(extension, (int16_t)FIVE_SIXTHS_PLY);
+    // Schlagzug oder Bauernumwandlung
+    if(!m.isQuiet()) {
+        int32_t seeScore = MIN_SCORE;
+        bool seeCacheHit = seeCache.probe(m, seeScore);
+
+        if(!seeCacheHit || seeScore >= 0)
+            extension += ONE_PLY; // Höhere Erweiterung wenn der Schlagzug eine gute SEE-Bewertung hat
+        else
+            extension += ONE_HALF_PLY;
+    }
+
+    // Freibauerzüge
+    if(movedPieceType == PAWN) {
+        int32_t side = board->getSideToMove() ^ COLOR_MASK;
+        int32_t otherSide = board->getSideToMove();
+
+        if(!(sentryMasks[side / COLOR_MASK][board->sq120To64(m.getDestination())]
+            & board->getPieceBitboard(otherSide | PAWN)))
+            extension += TWO_THIRDS_PLY;
+    }
+
+    // Wenn eine Figur sich in Sicherheit bewegt 
+    if(board->squareAttacked(origin64, board->getSideToMove()) &&
+                !board->squareAttacked(destination64, board->getSideToMove())) {
+        extension += ONE_THIRD_PLY;
+    }
+    
+    return extension;
 }
 
 int16_t SearchTree::determineReduction(int16_t depth, Move& m, int32_t moveCount, int32_t legalMoveCount, bool isCheckEvasion) {
@@ -612,35 +649,9 @@ int16_t SearchTree::determineReduction(int16_t depth, Move& m, int32_t moveCount
     if(moveCount <= 3 || isCheck || isCheckEvasion)
         return 0;
 
-    reduction += (int16_t)(sqrt(depth - 1) + sqrt(moveCount - 1));
-
-    // Reductions
-    reduction -= (int16_t)((relativeHistory[(board->getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
-                                 [board->sq120To64(m.getOrigin())]
-                                 [board->sq120To64(m.getDestination())] / 20000.0) * ONE_PLY);
-                                                            
-    if(!m.isQuiet()) {
-        int32_t seeScore = MIN_SCORE;
-        bool seeCacheHit = seeCache.probe(m, seeScore);
-
-        if(!seeCacheHit || seeScore >= 0)
-            reduction -= ONE_PLY;
-        else
-            reduction -= ONE_THIRD_PLY;
-    } else if(movedPieceType == PAWN) {
-        int32_t side = board->getSideToMove() ^ COLOR_MASK;
-        int32_t otherSide = board->getSideToMove();
-
-        if(!(sentryMasks[side / COLOR_MASK][board->sq120To64(m.getDestination())]
-            & board->getPieceBitboard(otherSide | PAWN)))
-            reduction -= TWO_THIRDS_PLY;
-    } else if(board->squareAttacked(origin64, board->getSideToMove()) &&
-                !board->squareAttacked(destination64, board->getSideToMove())) {
-        // Capture evasion
-        reduction -= ONE_HALF_PLY;
-    }
+    reduction += (int16_t)(sqrt(depth) + sqrt(moveCount - 1) * ONE_PLY);
     
-    return std::max(reduction, (int16_t)0);
+    return reduction;
 }
 
 int16_t SearchTree::quiescence(int16_t alpha, int16_t beta, int32_t captureSquare) {
