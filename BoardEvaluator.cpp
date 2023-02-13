@@ -19,20 +19,7 @@ BoardEvaluator& BoardEvaluator::operator=(BoardEvaluator&& other) {
     return *this;
 }
 
-int32_t BoardEvaluator::evaluate() {
-    if(isDraw() || isLikelyDraw()) // Unentschieden
-        return 0;
-    
-    int32_t storedScore;
-    bool evaluationFound = probeEvaluationTable(storedScore);
-
-    if(evaluationFound)
-        return storedScore;
-
-    int32_t score = 0;
-    int32_t side = b->side;
-    int32_t otherSide = side ^ COLOR_MASK;
-
+double BoardEvaluator::getGamePhase() const {
     double totalWeight = PAWN_WEIGHT * 16 + KNIGHT_WEIGHT * 4 + BISHOP_WEIGHT * 4 + ROOK_WEIGHT * 4 + QUEEN_WEIGHT * 2;
     double phase = totalWeight;
 
@@ -50,6 +37,25 @@ int32_t BoardEvaluator::evaluate() {
     phase = phase / totalWeight;
     phase = phase * (MAX_PHASE - MIN_PHASE) + MIN_PHASE; // phase in [MIN_PHASE, MAX_PHASE]
     phase = std::clamp(phase, 0.0, 1.0); // phase auf [0, 1] begrenzen
+
+    return phase;
+}
+
+int32_t BoardEvaluator::evaluate() {
+    if(isDraw() || isLikelyDraw()) // Unentschieden
+        return 0;
+    
+    int32_t storedScore;
+    bool evaluationFound = probeEvaluationTable(storedScore);
+
+    if(evaluationFound)
+        return storedScore;
+
+    int32_t score = 0;
+    int32_t side = b->side;
+    int32_t otherSide = side ^ COLOR_MASK;
+
+    double phase = getGamePhase();
 
     double midgameWeight = 1 - phase;
     double endgameWeight = phase;

@@ -295,6 +295,12 @@ class BoardEvaluator {
          * @brief Führt eine statische Bewertung eines Zugs mit MVVLVA durch.
          */
         int32_t evaluateMoveMVVLVA(Move& m);
+
+        /**
+         * @brief Bestimmt die Spielphase.
+         * Ein Wert von 0 bedeutet Mittelspiel, ein Wert von 1 bedeutet Endspiel.
+         */
+        double getGamePhase() const;
 };
 
 #endif

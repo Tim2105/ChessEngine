@@ -116,10 +116,29 @@ void SearchTree::sortMoves(Array<Move, 256>& moves, int16_t ply, int32_t moveEva
             }
         }
 
+        int32_t movedPieceType = TYPEOF(board->pieceAt(move.getOrigin()));
+        int32_t side = board->getSideToMove();
+        int32_t psqtOrigin64 = board->sq120To64(move.getOrigin());
+        int32_t psqtDestination64 = board->sq120To64(move.getDestination());
+
+        if(side == BLACK) {
+            int32_t rank = psqtOrigin64 / 8;
+            int32_t file = psqtOrigin64 % 8;
+
+            psqtOrigin64 = (RANK_8 - rank) * 8 + file;
+
+            rank = psqtDestination64 / 8;
+            file = psqtDestination64 % 8;
+
+            psqtDestination64 = (RANK_8 - rank) * 8 + file;
+        }
+
+        moveScore += MOVE_ORDERING_PSQT[movedPieceType][psqtDestination64] - MOVE_ORDERING_PSQT[movedPieceType][psqtOrigin64];
+
         moveScore += std::clamp(relativeHistory[board->getSideToMove() / COLOR_MASK]
                             [board->sq120To64(move.getOrigin())]
                             [board->sq120To64(move.getDestination())] / (1 << (currentMaxDepth / ONE_PLY)),
-                            -99, 49);
+                            -99, 69);
 
         msp.push_back({move, moveScore});
     }
@@ -198,10 +217,29 @@ void SearchTree::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t m
             }
         }
 
+        int32_t movedPieceType = TYPEOF(board->pieceAt(move.getOrigin()));
+        int32_t side = board->getSideToMove();
+        int32_t psqtOrigin64 = board->sq120To64(move.getOrigin());
+        int32_t psqtDestination64 = board->sq120To64(move.getDestination());
+
+        if(side == BLACK) {
+            int32_t rank = psqtOrigin64 / 8;
+            int32_t file = psqtOrigin64 % 8;
+
+            psqtOrigin64 = (RANK_8 - rank) * 8 + file;
+
+            rank = psqtDestination64 / 8;
+            file = psqtDestination64 % 8;
+
+            psqtDestination64 = (RANK_8 - rank) * 8 + file;
+        }
+
+        moveScore += MOVE_ORDERING_PSQT[movedPieceType][psqtDestination64] - MOVE_ORDERING_PSQT[movedPieceType][psqtOrigin64];
+
         moveScore += std::clamp(relativeHistory[board->getSideToMove() / COLOR_MASK]
                             [board->sq120To64(move.getOrigin())]
                             [board->sq120To64(move.getDestination())] / (1 << (currentMaxDepth / ONE_PLY)),
-                            -99, 49);
+                            -99, 69);
                                     
         if(moveScore >= minScore)
             msp.push_back({move, moveScore});

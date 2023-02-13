@@ -106,18 +106,23 @@ extern Bitboard pawnStormMask[][64];
 #define EG_WINNING_MATERIAL_ADVANTAGE 500
 
 /**
- * @brief Die PSQT-Tabellen aus der Sicht der weißen Figuren für das Midgame.
+ * @brief Die PSQT aus der Sicht der weißen Figuren für das Midgame.
  */
 extern int16_t MG_PSQT[][64];
 
 #define MG_PSQT_MULTIPLIER 1
 
 /**
- * @brief Die PSQT-Tabellen aus der Sicht der weißen Figuren für das Endgame.
+ * @brief Die PSQT aus der Sicht der weißen Figuren für das Endgame.
  */
 extern int16_t EG_PSQT[][64];
 
 #define EG_PSQT_MULTIPLIER 1
+
+/**
+ * @brief Die PSQT für die Zugvorsortierung.
+ */
+extern int16_t MOVE_ORDERING_PSQT[][64];
 
 /**
  * @brief Konstanten zur Berechnung der Spielphase.
