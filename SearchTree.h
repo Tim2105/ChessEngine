@@ -62,9 +62,30 @@ struct std::less<MoveScorePair> {
     }
 };
 
+struct Variation {
+    std::vector<Move> moves;
+    int32_t score;
+};
+
+template<>
+struct std::greater<Variation> {
+    bool operator()(const Variation& lhs, const Variation& rhs) {
+        return lhs.score > rhs.score;
+    }
+};
+
+template<>
+struct std::less<Variation> {
+    bool operator()(const Variation& lhs, const Variation& rhs) {
+        return lhs.score < rhs.score;
+    }
+};
+
 class SearchTree {
     private:
         TranspositionTable<524288, 4> transpositionTable;
+
+        int32_t numVariations;
 
         int16_t currentMaxDepth;
         uint16_t currentAge;
@@ -82,7 +103,7 @@ class SearchTree {
         HashTable<Move, int32_t, 128, 4> seeCache;
         HashTable<Move, int32_t, 128, 4> moveScoreCache;
 
-        std::vector<Move> principalVariation;
+        std::vector<Variation> variations;
 
         void clearRelativeHistory();
 
@@ -91,6 +112,8 @@ class SearchTree {
         void clearKillerMoves();
 
         void shiftKillerMoves();
+
+        void clearVariations();
 
         void searchTimer(uint32_t searchTime);
 
@@ -125,7 +148,13 @@ class SearchTree {
 
         constexpr uint32_t getNodesSearched() { return nodesSearched; }
 
-        inline std::vector<Move> getPrincipalVariation() { return principalVariation; }
+        inline std::vector<Move> getPrincipalVariation() {
+            if(variations.size() > 0) {
+                return variations[0].moves;
+            } else {
+                return std::vector<Move>();
+            }   
+        }
 
         void setBoard(Board& b);
 };

@@ -13,6 +13,8 @@ SearchTree::SearchTree(Board& b) {
     currentAge = b.getPly();
     nodesSearched = 0;
 
+    numVariations = 3;
+
     searching = false;
 }
 
@@ -65,6 +67,10 @@ void SearchTree::shiftKillerMoves() {
     }
 }
 
+void SearchTree::clearVariations() {
+    variations.clear();
+}
+
 int16_t SearchTree::search(uint32_t searchTime) {
     searching = true;
     currentMaxDepth = 0;
@@ -91,13 +97,18 @@ int16_t SearchTree::search(uint32_t searchTime) {
         std::chrono::duration<double> elapsed = end - start;
 
         std::cout << "info depth " << depth / ONE_PLY << " score cp " << score << " time " << elapsed.count() * 1000 << " nodes " << nodesSearched << " nps " << nodesSearched / elapsed.count() << std::endl;
-        std::cout << "info pv ";
 
-        for(std::string move : variationToFigurineAlgebraicNotation(principalVariation, *board)) {
-            std::cout << move << " ";
+        for(Variation& v : variations) {
+            std::cout << std::endl;
+            
+            std::cout << v.score << " - ";
+
+            for(std::string move : variationToFigurineAlgebraicNotation(v.moves, *board)) {
+                std::cout << move << " ";
+            }
         }
 
-        std::cout << std::endl << std::endl;
+        std::cout << std::endl << std::endl << std::endl;
         
         if(searching) {
             lastScore = score;
@@ -323,16 +334,17 @@ int16_t SearchTree::rootSearch(int16_t depth, int16_t expectedScore) {
         score = pvSearchRoot(depth, alpha, beta);
     }
     
-    return score;
+    return variations[0].score;
 }
 
 int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
+    clearVariations();
     clearPvTable();
     moveScoreCache.clear();
     seeCache.clear();
 
-    bool searchPv = true;
-    int16_t score, bestScore = MIN_SCORE;
+    int32_t pvNodes = numVariations;
+    int16_t score, bestScore = MIN_SCORE, worstVariationScore = MIN_SCORE;
     Move bestMove;
 
     int32_t moveNumber = 1;
@@ -357,11 +369,11 @@ int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
         int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
         nwDepthDelta = std::min(nwDepthDelta, (int16_t)(-ONE_PLY));
 
-        if(searchPv) {
+        if(pvNodes > 0) {
             score = -pvSearch(depth - ONE_PLY, 1, -beta, -alpha);
         } else {
             score = -nwSearch(depth + nwDepthDelta, 1, -alpha - 1, -alpha);
-            if(score > alpha)
+            if(score > worstVariationScore)
                 score = -pvSearch(depth - ONE_PLY, 1, -beta, -alpha);
         }
 
@@ -398,15 +410,41 @@ int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
             bestScore = score;
             bestMove = move;
         }
-        
-        if(score > alpha) {
-            alpha = score;
-            principalVariation.clear();
-            principalVariation.push_back(move);
-            principalVariation.insert(principalVariation.end(), pvTable[1].begin(), pvTable[1].end());
+
+        if(score > worstVariationScore) {
+            std::vector<Move> moves;
+            moves.push_back(move);
+            moves.insert(moves.end(), pvTable[1].begin(), pvTable[1].end());
+
+            Variation variation = {
+                moves,
+                score
+            };
+
+            auto insertionIndex = std::upper_bound(
+                variations.begin(),
+                variations.end(),
+                variation,
+                std::greater<Variation>());
+
+            if(variations.size() >= numVariations) {
+                if(insertionIndex != variations.end()) {
+                    variations.insert(insertionIndex, variation);
+                    variations.pop_back();
+                }
+            } else {
+                variations.insert(insertionIndex, variation);
+            }
+
+            if(variations.size() >= numVariations || variations.size() >= moves.size()) {
+                worstVariationScore = variations.back().score;
+
+                if(worstVariationScore > alpha)
+                    alpha = worstVariationScore;
+            }
         }
 
-        searchPv = false;
+        pvNodes--;
         moveNumber++;
     }
 
@@ -418,7 +456,7 @@ int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
                     [board->sq120To64(bestMove.getOrigin())]
                     [board->sq120To64(bestMove.getDestination())] += 1 << std::min(depth / ONE_PLY, 18);
 
-    return bestScore;
+    return worstVariationScore;
 }
 
 int16_t SearchTree::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta) {
