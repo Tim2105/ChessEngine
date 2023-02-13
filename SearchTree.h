@@ -63,9 +63,8 @@ struct std::less<MoveScorePair> {
 };
 
 class SearchTree {
-
     private:
-        TranspositionTable<262144, 4> transpositionTable;
+        TranspositionTable<524288, 4> transpositionTable;
 
         int16_t currentMaxDepth;
         uint16_t currentAge;
@@ -80,13 +79,16 @@ class SearchTree {
         Move killerMoves[256][2];
         int32_t relativeHistory[2][64][64];
 
-        HashTable<Move, int32_t, 64, 4> seeCache;
+        HashTable<Move, int32_t, 128, 4> seeCache;
+        HashTable<Move, int32_t, 128, 4> moveScoreCache;
 
         std::vector<Move> principalVariation;
 
         void clearRelativeHistory();
 
         void clearPvTable();
+
+        void clearKillerMoves();
 
         void shiftKillerMoves();
 
@@ -124,6 +126,8 @@ class SearchTree {
         constexpr uint32_t getNodesSearched() { return nodesSearched; }
 
         inline std::vector<Move> getPrincipalVariation() { return principalVariation; }
+
+        void setBoard(Board& b);
 };
 
 #endif

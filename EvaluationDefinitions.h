@@ -16,7 +16,7 @@ extern int16_t MG_PIECE_VALUE[];
 extern int16_t EG_PIECE_VALUE[];
 
 // Springer sind weniger Wert, wenn weniger Bauern auf dem Feld sind
-#define KNIGHT_CAPTURED_PAWN_VALUE -4
+#define KNIGHT_CAPTURED_PAWN_VALUE -3
 
 // Bonus für das Läuferpaar
 #define BISHOP_PAIR_VALUE 50
@@ -66,8 +66,8 @@ extern Bitboard sentryMasks[][64];
 #define EG_QUEEN_MOBILITY_VALUE 1
 
 // Bestrafung für Figuren, die En Prise(ungeschützt) sind
-#define MG_PIECE_EN_PRISE_VALUE -10
-#define EG_PIECE_EN_PRISE_VALUE -5
+#define MG_PIECE_EN_PRISE_VALUE -6
+#define EG_PIECE_EN_PRISE_VALUE -3
 
 // Angriffszone des Königs
 extern Bitboard kingAttackZoneMask[][64];
@@ -79,9 +79,6 @@ extern int32_t kingSafetyTable[];
 #define MG_KING_SAFETY_BISHOP_THREAT_VALUE 2
 #define MG_KING_SAFETY_ROOK_THREAT_VALUE 3
 #define MG_KING_SAFETY_QUEEN_THREAT_VALUE 5
-
-// Bonus für jedes Feld in der Mitte, das von einem eigenen Bauern angegriffen wird
-#define MG_CENTER_PAWN_ATTACK_VALUE 14
 
 /**
  * @brief Bauernschilder und -stürme werden nur für das Midgame bewertet.

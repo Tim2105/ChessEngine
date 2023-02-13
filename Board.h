@@ -409,7 +409,7 @@ class Board {
         Array<Move, 256> generatePseudoLegalMoves();
 
         /**
-         * @brief Generiert alle legalen Züge und gibt sie nach ihrer Stärke bewertet zurück.
+         * @brief Generiert alle legalen Züge.
          * Legale Züge sind Züge, die auf dem Schachbrett möglich sind und den eigenen König nicht im Schach lassen.
          */
         Array<Move, 256> generateLegalMoves();

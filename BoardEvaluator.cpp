@@ -9,11 +9,13 @@ BoardEvaluator::BoardEvaluator(Board& b) {
 
 BoardEvaluator::BoardEvaluator(BoardEvaluator&& other) {
     this->b = other.b;
+    this->evaluationTable = std::move(other.evaluationTable);
     this->pawnStructureTable = std::move(other.pawnStructureTable);
 }
 
 BoardEvaluator& BoardEvaluator::operator=(BoardEvaluator&& other) {
     this->b = other.b;
+    this->evaluationTable = std::move(other.evaluationTable);
     this->pawnStructureTable = std::move(other.pawnStructureTable);
 
     return *this;
@@ -95,7 +97,6 @@ int32_t BoardEvaluator::middlegameEvaluation() {
     score += evalMG_PSQT() * MG_PSQT_MULTIPLIER;
     score += evalMGKingSafety();
     score += evalMGMobility();
-    score += evalMGCenterPawnControl();
 
     return score;
 }
@@ -654,21 +655,6 @@ int32_t BoardEvaluator::evalEGMobility() {
     score -= otherRookMobility.getNumberOfSetBits() * EG_ROOK_MOBILITY_VALUE;
     score += ownQueenMobility.getNumberOfSetBits() * EG_QUEEN_MOBILITY_VALUE;
     score -= otherQueenMobility.getNumberOfSetBits() * EG_QUEEN_MOBILITY_VALUE;
-
-    return score;
-}
-
-int32_t BoardEvaluator::evalMGCenterPawnControl() {
-    int32_t score = 0;
-
-    int32_t side = b->side;
-    int32_t otherSide = side ^ COLOR_MASK;
-
-    Bitboard ownPawnAttacks = b->pieceAttackBitboard[side | PAWN];
-    Bitboard otherPawnAttacks = b->pieceAttackBitboard[otherSide | PAWN];
-
-    score += (ownPawnAttacks & centerSquares).getNumberOfSetBits() * MG_CENTER_PAWN_ATTACK_VALUE;
-    score -= (otherPawnAttacks & centerSquares).getNumberOfSetBits() * MG_CENTER_PAWN_ATTACK_VALUE;
 
     return score;
 }

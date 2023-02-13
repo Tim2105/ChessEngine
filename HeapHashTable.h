@@ -23,7 +23,7 @@ class HeapHashTable {
         };
 
         Entry* table;
-        int32_t bucketSizes[bucketCount];
+        uint8_t bucketSizes[bucketCount];
 
     public:
         HeapHashTable();

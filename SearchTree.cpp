@@ -16,6 +16,20 @@ SearchTree::SearchTree(Board& b) {
     searching = false;
 }
 
+void SearchTree::setBoard(Board& b) {
+    if(searching)
+        throw std::runtime_error("Cannot set board while searching");
+
+    board = &b;
+    evaluator = BoardEvaluator(b);
+
+    currentMaxDepth = 0;
+    currentAge = b.getPly();
+    nodesSearched = 0;
+
+    searching = false;
+}
+
 void SearchTree::searchTimer(uint32_t searchTime) {
     std::this_thread::sleep_for(std::chrono::milliseconds(searchTime));
     searching = false;
@@ -37,6 +51,13 @@ void SearchTree::clearPvTable() {
     }
 }
 
+void SearchTree::clearKillerMoves() {
+    for(int i = 0; i < 256; i++) {
+        killerMoves[i][0] = Move();
+        killerMoves[i][1] = Move();
+    }
+}
+
 void SearchTree::shiftKillerMoves() {
     for(int i = 1; i < 256; i++) {
         killerMoves[i - 1][0] = killerMoves[i][0];
@@ -52,6 +73,7 @@ int16_t SearchTree::search(uint32_t searchTime) {
 
     int16_t lastScore;
     clearRelativeHistory();
+    clearKillerMoves();
 
     std::thread timer(std::bind(&SearchTree::searchTimer, this, searchTime));
 
@@ -64,15 +86,18 @@ int16_t SearchTree::search(uint32_t searchTime) {
 
         score = rootSearch(depth, score);
 
-        auto now = std::chrono::high_resolution_clock::now();
+        auto end = std::chrono::high_resolution_clock::now();
 
-        std::cout << "(" << (now - start).count() / 1000000 << "ms)" << "Depth: " << (int32_t)ceil((float)depth / ONE_PLY) << " Score: " << score
-            << " Nodes: " << nodesSearched << " PV: ";
-        
-        for(std::string move : variationToFigurineAlgebraicNotation(principalVariation, *board))
+        std::chrono::duration<double> elapsed = end - start;
+
+        std::cout << "info depth " << depth / ONE_PLY << " score cp " << score << " time " << elapsed.count() * 1000 << " nodes " << nodesSearched << " nps " << nodesSearched / elapsed.count() << std::endl;
+        std::cout << "info pv ";
+
+        for(std::string move : variationToFigurineAlgebraicNotation(principalVariation, *board)) {
             std::cout << move << " ";
+        }
 
-        std::cout << std::endl;
+        std::cout << std::endl << std::endl;
         
         if(searching) {
             lastScore = score;
@@ -147,6 +172,7 @@ void SearchTree::sortMoves(Array<Move, 256>& moves, int16_t ply, int32_t moveEva
                             [board->sq120To64(move.getDestination())] / (1 << (currentMaxDepth / ONE_PLY)),
                             -99, 49);
 
+        moveScoreCache.put(move, moveScore);
         msp.push_back({move, moveScore});
     }
 
@@ -175,8 +201,10 @@ void SearchTree::sortAndCutMoves(Array<Move, 256>& moves, int32_t minScore, int3
                 break;
         }
 
-        if(moveScore >= minScore)
+        if(moveScore >= minScore) {
+            moveScoreCache.put(move, moveScore);
             msp.push_back({move, moveScore});
+        }
     }
 
     std::sort(msp.begin(), msp.end(), std::greater<MoveScorePair>());
@@ -248,8 +276,10 @@ void SearchTree::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t m
                             [board->sq120To64(move.getDestination())] / (1 << (currentMaxDepth / ONE_PLY)),
                             -99, 49);
                                     
-        if(moveScore >= minScore)
+        if(moveScore >= minScore) {
+            moveScoreCache.put(move, moveScore);
             msp.push_back({move, moveScore});
+        }
     }
 
     std::sort(msp.begin(), msp.end(), std::greater<MoveScorePair>());
@@ -298,6 +328,7 @@ int16_t SearchTree::rootSearch(int16_t depth, int16_t expectedScore) {
 
 int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
     clearPvTable();
+    moveScoreCache.clear();
     seeCache.clear();
 
     bool searchPv = true;

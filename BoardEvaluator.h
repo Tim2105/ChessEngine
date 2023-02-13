@@ -91,7 +91,7 @@ class BoardEvaluator {
 
         // Eine Hash-Tabelle, in der die Bewertung von Stellungen gespeichert wird,
         // um sie bei der nächsten Bewertung(bei gleicher Stellung) wieder zu verwenden.
-        HeapHashTable<uint64_t, int32_t, 8192, 4> evaluationTable;
+        HeapHashTable<uint64_t, int32_t, 65536, 4> evaluationTable;
 
         // Die Bewertung von Bauernstrukturen ist sehr aufwendig,
         // weshalb berechnete Bewertungen von Bauernstrukturen in einer Hash-Tabelle gespeichert werden,
@@ -208,11 +208,6 @@ class BoardEvaluator {
          */
         int32_t evalMGMobility();
         int32_t evalEGMobility();
-
-        /**
-         * @brief Die Methode evalMGCenterPawnControl bewertet die Kontrolle über das Zentrum des Spielfeldes durch Bauern.
-         */
-        int32_t evalMGCenterPawnControl();
 
         /**
          * @brief Versucht, den Angreifer mit dem geringsten Wert zu finden, der das Feld to angreift.
