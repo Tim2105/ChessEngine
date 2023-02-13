@@ -134,9 +134,14 @@ class BoardEvaluator {
         Bitboard findConnectedPawns(const Bitboard& ownPawns);
 
         /**
-         * @brief Die Methode evalMaterial bewertet die Materialstärke der beiden Spieler.
+         * @brief Die Methode evalMaterial bewertet die Materialstärke der beiden Spieler im Mittelspiel.
          */
-        int32_t evalMaterial();
+        int32_t evalMGMaterial();
+
+        /**
+         * @brief Die Methode evalMaterial bewertet die Materialstärke der beiden Spieler im Endspiel.
+         */
+        int32_t evalEGMaterial();
 
         /**
          * @brief Die Methode evalMG_PSQT bewertet die Figurenpositionen der beiden Spieler
@@ -197,22 +202,17 @@ class BoardEvaluator {
         inline int32_t evalMGPawnShield(int32_t kingSquare, const Bitboard& ownPawns, const Bitboard& otherPawns, int32_t side);
         inline int32_t evalMGPawnStorm(int32_t otherKingSquare, const Bitboard& ownPawns, const Bitboard& otherPawns, int32_t side);
         int32_t evalMGKingAttackZone(int32_t side);
-        
-        /**
-         * @brief Die Methode evalMGCenterControl bewertet die Kontrolle des Zentrums der beiden Spieler im Midgame.
-         */
-        inline int32_t evalMGCenterControl();
-
-        /**
-         * @brief Die Methode evalEGKingSafety bewertet die Sicherheit des Königs der beiden Spieler im Endgame.
-         */
-        int32_t evalEGKingSafety();
 
         /**
          * @brief Die Methode evalMobility bewertet die Mobilität der beiden Spieler.
          */
         int32_t evalMGMobility();
         int32_t evalEGMobility();
+
+        /**
+         * @brief Die Methode evalMGCenterPawnControl bewertet die Kontrolle über das Zentrum des Spielfeldes durch Bauern.
+         */
+        int32_t evalMGCenterPawnControl();
 
         /**
          * @brief Versucht, den Angreifer mit dem geringsten Wert zu finden, der das Feld to angreift.

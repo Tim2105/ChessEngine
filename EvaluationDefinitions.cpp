@@ -1,13 +1,22 @@
 #include "EvaluationDefinitions.h"
 
-int16_t PIECE_VALUE[7] = {
+int16_t MG_PIECE_VALUE[7] = {
         0, // Empty
         100, // Pawn
         400, // Knight
-        400, // Bishop
+        410, // Bishop
         600, // Rook
         1200, // Queen
         0 // King
+};
+
+int16_t EG_PIECE_VALUE[7] = {
+        0, // Empty
+        150, // Pawn
+        400, // Knight
+        410, // Bishop
+        720, // Rook
+        1300, // Queen
 };
 
 Bitboard neighboringFiles[8] = {

@@ -54,8 +54,11 @@ int32_t BoardEvaluator::evaluate() {
     double midgameWeight = 1 - phase;
     double endgameWeight = phase;
     
-    score += middlegameEvaluation() * midgameWeight;
-    score += endgameEvaluation() * endgameWeight;
+    if(midgameWeight > 0.0)
+        score += middlegameEvaluation() * midgameWeight;
+
+    if(endgameWeight > 0.0)
+        score += endgameEvaluation() * endgameWeight;
 
     Score pawnStructureScore = {0, 0};
     bool pawnStructureFound = probePawnStructure(pawnStructureScore);
@@ -82,11 +85,11 @@ int32_t BoardEvaluator::evaluate() {
 int32_t BoardEvaluator::middlegameEvaluation() {
     int32_t score = 0;
 
-    score += evalMaterial();
+    score += evalMGMaterial();
     score += evalMG_PSQT() * MG_PSQT_MULTIPLIER;
     score += evalMGKingSafety();
-    score += evalMGCenterControl();
     score += evalMGMobility();
+    score += evalMGCenterPawnControl();
 
     return score;
 }
@@ -107,7 +110,7 @@ int32_t BoardEvaluator::endgameEvaluation() {
 
     int32_t distBetweenKings = std::max(abs(ownKingFile - otherKingFile), abs(ownKingRank - otherKingRank));
 
-    int32_t materialScore = evalMaterial();
+    int32_t materialScore = evalEGMaterial();
 
     if(materialScore > EG_WINNING_MATERIAL_ADVANTAGE) // Wenn man einen gewinnenden Materialvorteil hat
         score += (7 - distBetweenKings) * EG_KING_DISTANCE_VALUE;
@@ -116,7 +119,6 @@ int32_t BoardEvaluator::endgameEvaluation() {
 
     score += materialScore;
     score += evalEG_PSQT() * EG_PSQT_MULTIPLIER;
-    score += evalEGKingSafety();
     score += evalEGMobility();
 
     return score;
@@ -197,37 +199,67 @@ bool BoardEvaluator::isLikelyDraw() {
     if(whitePawns != 0 || blackPawns != 0)
         return false;
     
-    int32_t whitePieceValue = whiteKnights * PIECE_VALUE[KNIGHT] + whiteBishops * PIECE_VALUE[BISHOP] +
-        whiteRooks * PIECE_VALUE[ROOK] + whiteQueens * PIECE_VALUE[QUEEN];
+    int32_t whitePieceValue = whiteKnights * MG_PIECE_VALUE[KNIGHT] + whiteBishops * MG_PIECE_VALUE[BISHOP] +
+        whiteRooks * MG_PIECE_VALUE[ROOK] + whiteQueens * MG_PIECE_VALUE[QUEEN];
     
-    int32_t blackPieceValue = blackKnights * PIECE_VALUE[KNIGHT] + blackBishops * PIECE_VALUE[BISHOP] +
-        blackRooks * PIECE_VALUE[ROOK] + blackQueens * PIECE_VALUE[QUEEN];
+    int32_t blackPieceValue = blackKnights * MG_PIECE_VALUE[KNIGHT] + blackBishops * MG_PIECE_VALUE[BISHOP] +
+        blackRooks * MG_PIECE_VALUE[ROOK] + blackQueens * MG_PIECE_VALUE[QUEEN];
     
-    if(abs(whitePieceValue - blackPieceValue) <= std::max(PIECE_VALUE[KNIGHT], PIECE_VALUE[BISHOP]) &&
-        std::max(whitePieceValue, blackPieceValue) <= PIECE_VALUE[ROOK] * 2)
+    if(abs(whitePieceValue - blackPieceValue) <= std::max(MG_PIECE_VALUE[KNIGHT], MG_PIECE_VALUE[BISHOP]))
         return true;
 
     return false;
 }
 
-int32_t BoardEvaluator::evalMaterial() {
+int32_t BoardEvaluator::evalMGMaterial() {
     int32_t score = 0;
     int32_t side = b->side;
     int32_t otherSide = side ^ COLOR_MASK;
 
     int32_t numPawns = b->pieceList[side | PAWN].size() + b->pieceList[otherSide | PAWN].size();
 
-    score += b->pieceList[side | PAWN].size() * PIECE_VALUE[PAWN];
-    score += b->pieceList[side | KNIGHT].size() * (PIECE_VALUE[KNIGHT] + KNIGHT_CAPTURED_PAWN_VALUE * (16 - numPawns));
-    score += b->pieceList[side | BISHOP].size() * PIECE_VALUE[BISHOP];
-    score += b->pieceList[side | ROOK].size() * PIECE_VALUE[ROOK];
-    score += b->pieceList[side | QUEEN].size() * PIECE_VALUE[QUEEN];
+    score += b->pieceList[side | PAWN].size() * MG_PIECE_VALUE[PAWN];
+    score += b->pieceList[side | KNIGHT].size() * (MG_PIECE_VALUE[KNIGHT] + KNIGHT_CAPTURED_PAWN_VALUE * (16 - numPawns));
+    score += b->pieceList[side | BISHOP].size() * MG_PIECE_VALUE[BISHOP];
+    score += b->pieceList[side | ROOK].size() * MG_PIECE_VALUE[ROOK];
+    score += b->pieceList[side | QUEEN].size() * MG_PIECE_VALUE[QUEEN];
 
-    score -= b->pieceList[otherSide | PAWN].size() * PIECE_VALUE[PAWN];
-    score -= b->pieceList[otherSide | KNIGHT].size() * (PIECE_VALUE[KNIGHT] + KNIGHT_CAPTURED_PAWN_VALUE * (16 - numPawns));
-    score -= b->pieceList[otherSide | BISHOP].size() * PIECE_VALUE[BISHOP];
-    score -= b->pieceList[otherSide | ROOK].size() * PIECE_VALUE[ROOK];
-    score -= b->pieceList[otherSide | QUEEN].size() * PIECE_VALUE[QUEEN];
+    score -= b->pieceList[otherSide | PAWN].size() * MG_PIECE_VALUE[PAWN];
+    score -= b->pieceList[otherSide | KNIGHT].size() * (MG_PIECE_VALUE[KNIGHT] + KNIGHT_CAPTURED_PAWN_VALUE * (16 - numPawns));
+    score -= b->pieceList[otherSide | BISHOP].size() * MG_PIECE_VALUE[BISHOP];
+    score -= b->pieceList[otherSide | ROOK].size() * MG_PIECE_VALUE[ROOK];
+    score -= b->pieceList[otherSide | QUEEN].size() * MG_PIECE_VALUE[QUEEN];
+
+    int32_t numOwnBishops = b->pieceList[side | BISHOP].size();
+    int32_t numOtherBishops = b->pieceList[otherSide | BISHOP].size();
+
+    if(numOwnBishops > 1)
+        score += BISHOP_PAIR_VALUE;
+
+    if(numOtherBishops > 1)
+        score -= BISHOP_PAIR_VALUE;
+
+    return score;
+}
+
+int32_t BoardEvaluator::evalEGMaterial() {
+    int32_t score = 0;
+    int32_t side = b->side;
+    int32_t otherSide = side ^ COLOR_MASK;
+
+    int32_t numPawns = b->pieceList[side | PAWN].size() + b->pieceList[otherSide | PAWN].size();
+
+    score += b->pieceList[side | PAWN].size() * EG_PIECE_VALUE[PAWN];
+    score += b->pieceList[side | KNIGHT].size() * (EG_PIECE_VALUE[KNIGHT] + KNIGHT_CAPTURED_PAWN_VALUE * (16 - numPawns));
+    score += b->pieceList[side | BISHOP].size() * EG_PIECE_VALUE[BISHOP];
+    score += b->pieceList[side | ROOK].size() * EG_PIECE_VALUE[ROOK];
+    score += b->pieceList[side | QUEEN].size() * EG_PIECE_VALUE[QUEEN];
+
+    score -= b->pieceList[otherSide | PAWN].size() * EG_PIECE_VALUE[PAWN];
+    score -= b->pieceList[otherSide | KNIGHT].size() * (EG_PIECE_VALUE[KNIGHT] + KNIGHT_CAPTURED_PAWN_VALUE * (16 - numPawns));
+    score -= b->pieceList[otherSide | BISHOP].size() * EG_PIECE_VALUE[BISHOP];
+    score -= b->pieceList[otherSide | ROOK].size() * EG_PIECE_VALUE[ROOK];
+    score -= b->pieceList[otherSide | QUEEN].size() * EG_PIECE_VALUE[QUEEN];
 
     int32_t numOwnBishops = b->pieceList[side | BISHOP].size();
     int32_t numOtherBishops = b->pieceList[otherSide | BISHOP].size();
@@ -544,32 +576,6 @@ int32_t BoardEvaluator::evalMGKingSafety() {
     return score;
 }
 
-int32_t BoardEvaluator::evalEGKingSafety() {
-    int32_t score = 0;
-
-    int32_t side = b->side;
-    int32_t otherSide = side ^ COLOR_MASK;
-
-    return score;
-}
-
-inline int32_t BoardEvaluator::evalMGCenterControl() {
-    int32_t score = 0;
-    int32_t side = b->side;
-    int32_t otherSide = side ^ COLOR_MASK;
-
-    Bitboard ownPawns = b->pieceBitboard[side | PAWN];
-    Bitboard otherPawns = b->pieceBitboard[otherSide | PAWN];
-
-    Bitboard ownCenter = ownPawns & centerSquares;
-    Bitboard otherCenter = otherPawns & centerSquares;
-
-    score += ownCenter.getNumberOfSetBits() * MG_CENTER_CONTROL_VALUE;
-    score -= otherCenter.getNumberOfSetBits() * MG_CENTER_CONTROL_VALUE;
-
-    return score;
-}
-
 int32_t BoardEvaluator::evalMGMobility() {
     int32_t score = 0;
     int32_t side = b->side;
@@ -642,6 +648,21 @@ int32_t BoardEvaluator::evalEGMobility() {
     score -= otherRookMobility.getNumberOfSetBits() * EG_ROOK_MOBILITY_VALUE;
     score += ownQueenMobility.getNumberOfSetBits() * EG_QUEEN_MOBILITY_VALUE;
     score -= otherQueenMobility.getNumberOfSetBits() * EG_QUEEN_MOBILITY_VALUE;
+
+    return score;
+}
+
+int32_t BoardEvaluator::evalMGCenterPawnControl() {
+    int32_t score = 0;
+
+    int32_t side = b->side;
+    int32_t otherSide = side ^ COLOR_MASK;
+
+    Bitboard ownPawnAttacks = b->pieceAttackBitboard[side | PAWN];
+    Bitboard otherPawnAttacks = b->pieceAttackBitboard[otherSide | PAWN];
+
+    score += (ownPawnAttacks & centerSquares).getNumberOfSetBits() * MG_CENTER_PAWN_ATTACK_VALUE;
+    score -= (otherPawnAttacks & centerSquares).getNumberOfSetBits() * MG_CENTER_PAWN_ATTACK_VALUE;
 
     return score;
 }
@@ -781,7 +802,7 @@ int32_t BoardEvaluator::see(Move& m) {
     int32_t attackerSq = getSmallestAttacker(m.getDestination(), side);
     if(attackerSq != NO_SQ) {
         Move newMove(attackerSq, m.getDestination(), MOVE_CAPTURE);
-        int32_t capturedPieceValue = PIECE_VALUE[TYPEOF(b->pieces[m.getDestination()])];
+        int32_t capturedPieceValue = MG_PIECE_VALUE[TYPEOF(b->pieces[m.getDestination()])];
         score = std::max(score, capturedPieceValue - see(newMove));
     }
 
@@ -806,7 +827,7 @@ int32_t BoardEvaluator::evaluateMoveSEE(Move& m) {
 
     if(m.isCapture()) {
         // SEE-Heuristik
-        int32_t capturedPieceValue = PIECE_VALUE[TYPEOF(b->pieces[m.getDestination()])];
+        int32_t capturedPieceValue = MG_PIECE_VALUE[TYPEOF(b->pieces[m.getDestination()])];
         moveScore += capturedPieceValue - see(m);
     }
     
@@ -829,8 +850,8 @@ int32_t BoardEvaluator::evaluateMoveMVVLVA(Move& m) {
 
     if(m.isCapture()) {
         // MVVLVA-Heuristik
-        int32_t movedPieceValue = PIECE_VALUE[TYPEOF(b->pieces[m.getOrigin()])];
-        int32_t capturedPieceValue = PIECE_VALUE[TYPEOF(b->pieces[m.getDestination()])];
+        int32_t movedPieceValue = MG_PIECE_VALUE[TYPEOF(b->pieces[m.getOrigin()])];
+        int32_t capturedPieceValue = MG_PIECE_VALUE[TYPEOF(b->pieces[m.getDestination()])];
 
         moveScore += capturedPieceValue - movedPieceValue;
     }

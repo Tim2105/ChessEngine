@@ -286,7 +286,7 @@ std::vector<std::string> variationToStandardAlgebraicNotation(const std::vector<
     if(board.getSideToMove() == WHITE)
         moveString += std::to_string(board.getPly() / 2 + 1) + ".";
     else
-        moveString += std::to_string(board.getPly() / 2 + 1) + "...";
+        moveString += std::to_string(board.getPly() / 2 + 1) + "... ";
 
     for(Move m : moves) {
         moveString += toStandardAlgebraicNotation(m, board);
@@ -313,7 +313,7 @@ std::vector<std::string> variationToFigurineAlgebraicNotation(const std::vector<
     if(board.getSideToMove() == WHITE)
         moveString += std::to_string(board.getPly() / 2 + 1) + ".";
     else
-        moveString += std::to_string(board.getPly() / 2 + 1) + "...";
+        moveString += std::to_string(board.getPly() / 2 + 1) + "... ";
 
     for(Move m : moves) {
         moveString += toFigurineAlgebraicNotation(m, board);

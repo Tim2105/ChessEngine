@@ -62,6 +62,10 @@
         "xthread": "cpp",
         "thread": "cpp",
         "atomic": "cpp",
-        "xxatomic": "cpp"
+        "xxatomic": "cpp",
+        "codecvt": "cpp",
+        "locale": "cpp",
+        "xlocbuf": "cpp",
+        "xlocmes": "cpp"
     }
 }

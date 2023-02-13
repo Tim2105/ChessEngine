@@ -12,13 +12,14 @@
  * während Konstanten mit dem Präfix EG für das Endgame sind.
  */
 
-extern int16_t PIECE_VALUE[];
+extern int16_t MG_PIECE_VALUE[];
+extern int16_t EG_PIECE_VALUE[];
 
 // Springer sind weniger Wert, wenn weniger Bauern auf dem Feld sind
 #define KNIGHT_CAPTURED_PAWN_VALUE -4
 
 // Bonus für das Läuferpaar
-#define BISHOP_PAIR_VALUE 40
+#define BISHOP_PAIR_VALUE 50
 
 extern Bitboard neighboringFiles[];
 
@@ -79,6 +80,9 @@ extern int32_t kingSafetyTable[];
 #define MG_KING_SAFETY_ROOK_THREAT_VALUE 3
 #define MG_KING_SAFETY_QUEEN_THREAT_VALUE 5
 
+// Bonus für jedes Feld in der Mitte, das von einem eigenen Bauern angegriffen wird
+#define MG_CENTER_PAWN_ATTACK_VALUE 14
+
 /**
  * @brief Bauernschilder und -stürme werden nur für das Midgame bewertet.
  */
@@ -92,9 +96,6 @@ extern Bitboard pawnStormMask[][64];
 #define MG_PAWN_STORM_BASE_VALUE 5
 // Wird mit der Anzahl der fortgeschrittenen Felder multipliziert
 #define MG_PAWN_STORM_DISTANCE_MULTIPLIER 20
-
-// Bonus für jedes Feld in der Mitte, das von einem eigenen Bauern besetzt ist
-#define MG_CENTER_CONTROL_VALUE 12
 
 /**
  * @brief Bewertung für die Distanz zwischen den Königen.
