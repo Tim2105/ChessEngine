@@ -5,8 +5,14 @@
 #include "Board.h"
 #include <ostream>
 
+/**
+ * @brief Symbole für die Figuren. Die Indizes entsprechen den Werten der Piece-Enum-Klasse.
+ */
 extern const std::string pieceFigurineSymbols[];
 
+/**
+ * @brief ASCII-Symbole für die Figuren. Die Indizes entsprechen den Werten der Piece-Enum-Klasse.
+ */
 extern const std::string pieceAsciiSymbols[];
 
 /**

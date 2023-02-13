@@ -77,7 +77,7 @@ class SearchTree {
         std::atomic_bool searching;
 
         Array<Move, 64> pvTable[64];
-        Move killerMoves[64][2];
+        Move killerMoves[256][2];
         int32_t relativeHistory[2][64][64];
 
         HashTable<Move, int32_t, 64, 4> seeCache;
@@ -87,6 +87,8 @@ class SearchTree {
         void clearRelativeHistory();
 
         void clearPvTable();
+
+        void shiftKillerMoves();
 
         void searchTimer(uint32_t searchTime);
 
