@@ -1,11 +1,10 @@
 #ifndef MOVEGEN_H
 #define MOVEGEN_H
 
-#include "Board.h"
-#include "BoardDefinitions.h"
-#include "Move.h"
-#include "Bitboard.h"
-#include "Array.h"
+#include "core/chess/Board.h"
+#include "core/chess/BoardDefinitions.h"
+#include "core/chess/Move.h"
+#include "core/utils/Array.h"
 
 class Board;
 

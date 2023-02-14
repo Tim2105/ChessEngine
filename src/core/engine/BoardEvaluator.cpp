@@ -1,8 +1,8 @@
 #include "BoardEvaluator.h"
-#include "BoardDefinitions.h"
-#include "EvaluationDefinitions.h"
+#include "core/chess/BoardDefinitions.h"
+#include "core/engine/EvaluationDefinitions.h"
 #include <algorithm>
-#include "MailboxDefinitions.h"
+#include "core/chess/MailboxDefinitions.h"
 
 BoardEvaluator::BoardEvaluator(Board& b) {
     this->b = &b;
@@ -56,7 +56,6 @@ int32_t BoardEvaluator::evaluate() {
 
     int32_t score = 0;
     int32_t side = b->side;
-    int32_t otherSide = side ^ COLOR_MASK;
 
     double phase = getGamePhase();
 
@@ -164,12 +163,12 @@ bool BoardEvaluator::isDraw() {
         
         // König und Springer gegen König
         if(whiteBishops == 0 && blackBishops == 0 &&
-        (whiteKnights == 1 && blackKnights == 0 || whiteKnights == 0 && blackKnights == 1))
+        ((whiteKnights == 1 && blackKnights == 0) || (whiteKnights == 0 && blackKnights == 1)))
             return true;
         
         // König und Läufer gegen König
         if(whiteKnights == 0 && blackKnights == 0 &&
-        (whiteBishops == 1 && blackBishops == 0 || whiteBishops == 0 && blackBishops == 1))
+        ((whiteBishops == 1 && blackBishops == 0) || (whiteBishops == 0 && blackBishops == 1)))
             return true;
         
         // König und Läufer gegen König und Läufer mit gleicher Farbe
@@ -403,31 +402,31 @@ Score BoardEvaluator::evalPawnStructure(int32_t side) {
     Score score = Score{0, 0};
 
     Bitboard ownPawns = b->pieceBitboard[side | PAWN];
-    Bitboard otherPawns = b->pieceBitboard[side ^ COLOR_MASK | PAWN];
+    Bitboard otherPawns = b->pieceBitboard[(side ^ COLOR_MASK) | PAWN];
 
     Bitboard doublePawns = findDoublePawns(ownPawns, side);
-    Bitboard isolatedPawns = findIsolatedPawns(ownPawns, side);
+    Bitboard isolatedPawns = findIsolatedPawns(ownPawns);
     Bitboard passedPawns = findPassedPawns(ownPawns, otherPawns, side);
     Bitboard pawnChains = findPawnChains(ownPawns, side);
     Bitboard connectedPawns = findConnectedPawns(ownPawns);
 
-    score += evalDoublePawns(doublePawns, side);
-    score += evalIsolatedPawns(isolatedPawns, side);
+    score += evalDoublePawns(doublePawns);
+    score += evalIsolatedPawns(isolatedPawns);
     score += evalPassedPawns(passedPawns, side);
-    score += evalPawnChains(pawnChains, side);
-    score += evalConnectedPawns(connectedPawns, side);
+    score += evalPawnChains(pawnChains);
+    score += evalConnectedPawns(connectedPawns);
 
     return score;
 }
 
-inline Score BoardEvaluator::evalDoublePawns(Bitboard doublePawns, int32_t side) {
+inline Score BoardEvaluator::evalDoublePawns(Bitboard doublePawns) {
     return Score{
         doublePawns.getNumberOfSetBits() * MG_PAWN_DOUBLED_VALUE,
         doublePawns.getNumberOfSetBits() * EG_PAWN_DOUBLED_VALUE
     };
 }
 
-inline Score BoardEvaluator::evalIsolatedPawns(Bitboard isolatedPawns, int32_t side) {
+inline Score BoardEvaluator::evalIsolatedPawns(Bitboard isolatedPawns) {
     return {
         isolatedPawns.getNumberOfSetBits() * MG_PAWN_ISOLATED_VALUE,
         isolatedPawns.getNumberOfSetBits() * EG_PAWN_ISOLATED_VALUE
@@ -453,29 +452,26 @@ inline Score BoardEvaluator::evalPassedPawns(Bitboard passedPawns, int32_t side)
     return score;
 }
 
-inline Score BoardEvaluator::evalPawnChains(Bitboard pawnChains, int32_t side) {
+inline Score BoardEvaluator::evalPawnChains(Bitboard pawnChains) {
     return Score{
         pawnChains.getNumberOfSetBits() * MG_PAWN_CHAIN_VALUE,
         pawnChains.getNumberOfSetBits() * EG_PAWN_CHAIN_VALUE
     };
 }
 
-inline Score BoardEvaluator::evalConnectedPawns(Bitboard connectedPawns, int32_t side) {
+inline Score BoardEvaluator::evalConnectedPawns(Bitboard connectedPawns) {
     return {
         connectedPawns.getNumberOfSetBits() * MG_PAWN_CONNECTED_VALUE,
         connectedPawns.getNumberOfSetBits() * EG_PAWN_CONNECTED_VALUE
     };
 }
 
-inline int32_t BoardEvaluator::evalMGPawnShield(int32_t kingSquare, const Bitboard& ownPawns, const Bitboard& otherPawns, int32_t side) {
+inline int32_t BoardEvaluator::evalMGPawnShield(int32_t kingSquare, const Bitboard& ownPawns, int32_t side) {
     return (pawnShieldMask[side / 8][kingSquare] & ownPawns).getNumberOfSetBits() * MG_PAWN_SHIELD_VALUE;
 }
 
-inline int32_t BoardEvaluator::evalMGPawnStorm(int32_t otherKingSquare, const Bitboard& ownPawns, const Bitboard& otherPawns, int32_t side) {
+inline int32_t BoardEvaluator::evalMGPawnStorm(int32_t otherKingSquare, const Bitboard& ownPawns, int32_t side) {
     int score = 0;
-
-    int rank = otherKingSquare / 8;
-    int file = otherKingSquare % 8;
 
     Bitboard stormingPawns = pawnStormMask[side / 8][otherKingSquare] & ownPawns;
 
@@ -540,19 +536,19 @@ Score BoardEvaluator::evalPawnStructure(Bitboard doublePawns, Bitboard isolatedP
     Score score{0, 0};
 
     // Doppelte Bauern bewerten
-    score += evalDoublePawns(doublePawns, side);
+    score += evalDoublePawns(doublePawns);
 
     // Isolierte Bauern bewerten
-    score += evalIsolatedPawns(isolatedPawns, side);
+    score += evalIsolatedPawns(isolatedPawns);
 
     // Freibauern(passed pawns) bewerten
     score += evalPassedPawns(passedPawns, side);
 
     // Bauernketten bewerten
-    score += evalPawnChains(pawnChains, side);
+    score += evalPawnChains(pawnChains);
 
     // Verbundene(nebeneinander stehende) Bauern bewerten
-    score += evalConnectedPawns(connectedPawns, side);
+    score += evalConnectedPawns(connectedPawns);
 
     return score;
 }
@@ -571,12 +567,12 @@ int32_t BoardEvaluator::evalMGKingSafety() {
     int32_t ownKingSquare = Mailbox::mailbox[b->pieceList[side | KING].front()];
     int32_t otherKingSquare = Mailbox::mailbox[b->pieceList[otherSide | KING].front()];
 
-    ownKingSafetyScore += evalMGPawnShield(ownKingSquare, ownPawns, otherPawns, side);
-    ownKingSafetyScore += evalMGPawnStorm(otherKingSquare, ownPawns, otherPawns, side);
+    ownKingSafetyScore += evalMGPawnShield(ownKingSquare, ownPawns, side);
+    ownKingSafetyScore += evalMGPawnStorm(otherKingSquare, ownPawns, side);
     ownKingSafetyScore += evalMGKingAttackZone(side);
 
-    otherKingSafetyScore += evalMGPawnShield(otherKingSquare, otherPawns, ownPawns, otherSide);
-    otherKingSafetyScore += evalMGPawnStorm(ownKingSquare, otherPawns, ownPawns, otherSide);
+    otherKingSafetyScore += evalMGPawnShield(otherKingSquare, otherPawns, otherSide);
+    otherKingSafetyScore += evalMGPawnStorm(ownKingSquare, otherPawns, otherSide);
     otherKingSafetyScore += evalMGKingAttackZone(otherSide);
 
     score += ownKingSafetyScore - otherKingSafetyScore;
@@ -675,9 +671,8 @@ Bitboard BoardEvaluator::findDoublePawns(const Bitboard& ownPawns, int32_t side)
     return doublePawns;
 }
 
-Bitboard BoardEvaluator::findIsolatedPawns(const Bitboard& ownPawns, int32_t side) {
+Bitboard BoardEvaluator::findIsolatedPawns(const Bitboard& ownPawns) {
     Bitboard isolatedPawns; 
-    int32_t pawnForw = side == WHITE ? 8 : -8;
     Bitboard pawnCopy = ownPawns;
 
     while(pawnCopy) {
@@ -738,7 +733,6 @@ Bitboard BoardEvaluator::findConnectedPawns(const Bitboard& ownPawns) {
 }
 
 int32_t BoardEvaluator::getSmallestAttacker(int32_t to, int32_t side) {
-    int32_t smallestAttacker = EMPTY;
     int32_t otherSide = side ^ COLOR_MASK;
     int32_t to64 = Mailbox::mailbox[to];
 
@@ -788,7 +782,6 @@ int32_t BoardEvaluator::getSmallestAttacker(int32_t to, int32_t side) {
 int32_t BoardEvaluator::see(Move& m) {
     int32_t score = 0;
     int32_t side = b->side ^ COLOR_MASK;
-    int32_t otherSide = b->side;
 
     b->makeMove(m);
 

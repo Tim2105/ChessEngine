@@ -1,5 +1,5 @@
-#include "MoveNotations.h"
-#include "MailboxDefinitions.h"
+#include "core/utils/MoveNotations.h"
+#include "core/chess/MailboxDefinitions.h"
 
 /**
  * @brief Ein Array mit den Figurenbezeichnungen für die Figurine Notation.
@@ -48,7 +48,6 @@ std::string toAlgebraicNotation(const Move& move, Board& board, const std::strin
 
     std::string result = "";
 
-    int32_t origin64 = Mailbox::mailbox[move.getOrigin()];
     int32_t dest64 = Mailbox::mailbox[move.getDestination()];
 
     int32_t originRank = SQ2R(move.getOrigin());
@@ -57,7 +56,6 @@ std::string toAlgebraicNotation(const Move& move, Board& board, const std::strin
     int32_t destFile = SQ2F(move.getDestination());
 
     int32_t side = board.getSideToMove();
-    int32_t otherSide = side ^ COLOR_MASK;
 
     int32_t movedPiece = board.pieceAt(move.getOrigin());
 
@@ -300,7 +298,7 @@ std::vector<std::string> variationToStandardAlgebraicNotation(const std::vector<
             moveString += std::to_string(board.getPly() / 2 + 1) + ".";
     }
 
-    for(int i = 0; i < moves.size(); i++)
+    for(size_t i = 0; i < moves.size(); i++)
         board.undoMove();
 
     return result;
@@ -327,7 +325,7 @@ std::vector<std::string> variationToFigurineAlgebraicNotation(const std::vector<
             moveString += std::to_string(board.getPly() / 2 + 1) + ".";
     }
 
-    for(int i = 0; i < moves.size(); i++)
+    for(size_t i = 0; i < moves.size(); i++)
         board.undoMove();
 
     return result;

@@ -1,10 +1,8 @@
 #include <iostream>
-#include "Board.h"
 #include <chrono>
-#include "SearchTree.h"
+#include "core/engine/SearchTree.h"
+#include "core/utils/MoveNotations.h"
 #include <iomanip>
-#include "EvaluationDefinitions.h"
-#include "MoveNotations.h"
 #include <random>
 
 #ifdef _WIN32
@@ -49,7 +47,7 @@ int32_t runGame(SearchTree& s1, SearchTree& s2, Board& board, int32_t time = 100
     bool white = board.getSideToMove() == WHITE;
 
     while(board.generateLegalMoves().size() != 0 && !evaluator.isDraw()) {
-        int16_t score = s1.search(time);
+        s1.search(time);
         Move m = s1.getPrincipalVariation()[0];
         board.makeMove(m);
 
@@ -58,7 +56,7 @@ int32_t runGame(SearchTree& s1, SearchTree& s2, Board& board, int32_t time = 100
         if(board.generateLegalMoves().size() == 0)
             break;
 
-        int16_t score2 = s2.search(time);
+        s2.search(time);
         Move m2 = s2.getPrincipalVariation()[0];
         board.makeMove(m2);
 

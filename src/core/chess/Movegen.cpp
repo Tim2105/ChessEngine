@@ -1,5 +1,5 @@
-#include "Movegen.h"
-#include "MailboxDefinitions.h"
+#include "core/chess/Movegen.h"
+#include "core/chess/MailboxDefinitions.h"
 
 void Movegen::generatePseudoLegalWhitePawnMoves(Array<Move, 256>& moves, Board& b) {
     for(int& sq : b.pieceList[WHITE_PAWN]) {
@@ -344,7 +344,6 @@ void Movegen::generateWhitePawnMoves(Array<Move, 256>& moves, Board& b,
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Bauer den Angreifer schlagen oder den König schützen
     if(numAttackers == 1) {
         for(int& sq : b.pieceList[WHITE_PAWN]) {
-            int32_t file = SQ2F(sq);
             int32_t rank = SQ2R(sq);
 
             int32_t destForw = sq + NORTH;
@@ -408,7 +407,6 @@ void Movegen::generateWhitePawnMoves(Array<Move, 256>& moves, Board& b,
         }
     } else {
         for(int& sq : b.pieceList[WHITE_PAWN]) {
-            int32_t file = SQ2F(sq);
             int32_t rank = SQ2R(sq);
 
             int32_t destForw = sq + NORTH;
@@ -534,7 +532,6 @@ void Movegen::generateBlackPawnMoves(Array<Move, 256>& moves, Board& b,
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Bauer den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
         for(int& sq : b.pieceList[BLACK_PAWN]) {
-            int32_t file = SQ2F(sq);
             int32_t rank = SQ2R(sq);
 
             int32_t destForw = sq + SOUTH;
@@ -598,7 +595,6 @@ void Movegen::generateBlackPawnMoves(Array<Move, 256>& moves, Board& b,
         }
     } else {
         for(int& sq : b.pieceList[BLACK_PAWN]) {
-            int32_t file = SQ2F(sq);
             int32_t rank = SQ2R(sq);
 
             int32_t destForw = sq + SOUTH;
@@ -735,11 +731,12 @@ void Movegen::generateWhiteKnightMoves(Array<Move, 256>& moves, Board& b,
                     continue;
                 
                 // Wenn der Springer den Angreifer schlagen oder sich dazwischen stellen kann, ist der Zug legal
-                if(attackingRays & Bitboard(1ULL << Mailbox::mailbox[n_sq]))
+                if(attackingRays & Bitboard(1ULL << Mailbox::mailbox[n_sq])) {
                     if(b.pieces[n_sq] == EMPTY)
                         moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                     else
                         moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
+                }
             }
         }
     } else {
@@ -784,11 +781,12 @@ void Movegen::generateBlackKnightMoves(Array<Move, 256>& moves, Board& b,
                     continue;
                 
                 // Wenn der Springer den Angreifer schlagen oder sich dazwischen stellen kann, ist der Zug legal
-                if(attackingRays & Bitboard(1ULL << Mailbox::mailbox[n_sq]))
+                if(attackingRays & Bitboard(1ULL << Mailbox::mailbox[n_sq])) {
                     if(b.pieces[n_sq] == EMPTY)
                         moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                     else
                         moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
+                }
             }
         }
     } else {
@@ -1774,11 +1772,8 @@ void Movegen::generateWhitePawnCaptures(Array<Move, 256>& moves, Board& b,
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Bauer den Angreifer schlagen oder den König schützen
     if(numAttackers == 1) {
         for(int& sq : b.pieceList[WHITE_PAWN]) {
-            int32_t file = SQ2F(sq);
             int32_t rank = SQ2R(sq);
 
-            int32_t destForw = sq + NORTH;
-            int32_t destForw2 = sq + 2 * NORTH;
             int32_t destLeft = sq + NORTH_WEST;
             int32_t destRight = sq + NORTH_EAST;
 
@@ -1824,11 +1819,8 @@ void Movegen::generateWhitePawnCaptures(Array<Move, 256>& moves, Board& b,
         }
     } else {
         for(int& sq : b.pieceList[WHITE_PAWN]) {
-            int32_t file = SQ2F(sq);
             int32_t rank = SQ2R(sq);
 
-            int32_t destForw = sq + NORTH;
-            int32_t destForw2 = sq + 2 * NORTH;
             int32_t destLeft = sq + NORTH_WEST;
             int32_t destRight = sq + NORTH_EAST;
 
@@ -1935,11 +1927,8 @@ void Movegen::generateBlackPawnCaptures(Array<Move, 256>& moves, Board& b,
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Bauer den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
         for(int& sq : b.pieceList[BLACK_PAWN]) {
-            int32_t file = SQ2F(sq);
             int32_t rank = SQ2R(sq);
 
-            int32_t destForw = sq + SOUTH;
-            int32_t destForw2 = sq + 2 * SOUTH;
             int32_t destLeft = sq + SOUTH_WEST;
             int32_t destRight = sq + SOUTH_EAST;
 
@@ -1985,11 +1974,8 @@ void Movegen::generateBlackPawnCaptures(Array<Move, 256>& moves, Board& b,
         }
     } else {
         for(int& sq : b.pieceList[BLACK_PAWN]) {
-            int32_t file = SQ2F(sq);
             int32_t rank = SQ2R(sq);
 
-            int32_t destForw = sq + SOUTH;
-            int32_t destForw2 = sq + 2 * SOUTH;
             int32_t destLeft = sq + SOUTH_WEST;
             int32_t destRight = sq + SOUTH_EAST;
 

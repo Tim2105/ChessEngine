@@ -2,7 +2,7 @@
 #define EVALUATIONDEFINITIONS_H
 
 #include <stdint.h>
-#include "Bitboard.h"
+#include "core/utils/Bitboard.h"
 
 /**
  * @brief Hier werden Konstanten für die statische Evaluation definiert,

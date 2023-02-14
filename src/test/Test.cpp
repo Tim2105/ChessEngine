@@ -1,8 +1,8 @@
-#include "Test.h"
+#include "test/Test.h"
 
 #include <iostream>
 #include <fstream>
-#include "Array.h"
+#include "core/utils/Array.h"
 
 MovegenTestCase::MovegenTestCase(Board b, std::string d, std::vector<std::string> e) : board(b), description(d), expectedOutcomes(e) {
     std::cout << "Created test case: " << description << std::endl << std::endl;

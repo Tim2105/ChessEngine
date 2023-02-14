@@ -1,10 +1,10 @@
-#include "SearchTree.h"
+#include "core/engine/SearchTree.h"
 #include <thread>
 #include <algorithm>
-#include "EvaluationDefinitions.h"
+#include "core/engine/EvaluationDefinitions.h"
 #include <cmath>
-#include "MoveNotations.h"
-#include "MailboxDefinitions.h"
+#include "core/utils/MoveNotations.h"
+#include "core/chess/MailboxDefinitions.h"
 
 SearchTree::SearchTree(Board& b) {
     board = &b;
@@ -80,7 +80,6 @@ int16_t SearchTree::search(uint32_t searchTime) {
     currentAge = board->getPly();
     nodesSearched = 0;
 
-    int16_t lastScore;
     clearRelativeHistory();
     clearKillerMoves();
     clearVariations();
@@ -88,6 +87,7 @@ int16_t SearchTree::search(uint32_t searchTime) {
     std::thread timer(std::bind(&SearchTree::searchTimer, this, searchTime));
 
     int16_t score = evaluator.evaluate();
+    int16_t lastScore = score;
 
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -136,7 +136,7 @@ void SearchTree::sortMovesAtRoot(Array<Move, 256>& moves, int32_t moveEvalFunc) 
     for(Move move : moves) {
         int32_t moveScore = 0;
 
-        int32_t index = std::find(bestMovesFromLastDepth.begin(), bestMovesFromLastDepth.end(), move) - bestMovesFromLastDepth.begin();
+        size_t index = std::find(bestMovesFromLastDepth.begin(), bestMovesFromLastDepth.end(), move) - bestMovesFromLastDepth.begin();
         if(index < bestMovesFromLastDepth.size()) {
             moveScore += 30000 - index;
         } else if(move.isCapture() || move.isPromotion()) {
@@ -201,7 +201,7 @@ void SearchTree::sortMoves(Array<Move, 256>& moves, int16_t ply, int32_t moveEva
     Move hashMove;
 
     TranspositionTableEntry ttEntry;
-    bool hashHit = transpositionTable.probe(board->getHashValue(), ttEntry);
+    transpositionTable.probe(board->getHashValue(), ttEntry);
 
     for(Move move : moves) {
         int32_t moveScore = 0;
@@ -305,7 +305,7 @@ void SearchTree::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t m
     Array<MoveScorePair, 256> msp;
 
     TranspositionTableEntry ttEntry;
-    bool hashHit = transpositionTable.probe(board->getHashValue(), ttEntry);
+    transpositionTable.probe(board->getHashValue(), ttEntry);
 
     for(Move move : moves) {
         int32_t moveScore = 0;
@@ -448,8 +448,8 @@ int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
 
         board->makeMove(move);
 
-        int16_t extension = determineExtension(depth, move, moveNumber, moves.size(), isCheckEvasion);
-        int16_t nwReduction = determineReduction(depth, move, moveNumber, moves.size(), isCheckEvasion);
+        int16_t extension = determineExtension(move, isCheckEvasion);
+        int16_t nwReduction = determineReduction(depth, moveNumber, isCheckEvasion);
 
         int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
         nwDepthDelta = std::min(nwDepthDelta, (int16_t)(-ONE_PLY));
@@ -597,8 +597,8 @@ int16_t SearchTree::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
 
         board->makeMove(move);
 
-        int16_t extension = determineExtension(depth, move, moveNumber, moves.size(), isCheckEvasion);
-        int16_t nwReduction = determineReduction(depth, move, moveNumber, moves.size(), isCheckEvasion);
+        int16_t extension = determineExtension(move, isCheckEvasion);
+        int16_t nwReduction = determineReduction(depth, moveNumber, isCheckEvasion);
 
         int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
         nwDepthDelta = std::min(nwDepthDelta, (int16_t)(-ONE_PLY));
@@ -624,8 +624,8 @@ int16_t SearchTree::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
         if(score >= beta) {
             bool tableHit = transpositionTable.probe(board->getHashValue(), ttEntry);
 
-            if(!tableHit || (depth > ttEntry.depth) &&
-                             ttEntry.type != PV_NODE | EXACT_NODE)
+            if((!tableHit || (depth > ttEntry.depth)) &&
+                             (ttEntry.type != (PV_NODE | EXACT_NODE)))
                 transpositionTable.put(board->getHashValue(), {
                     currentAge, depth, score, CUT_NODE, move
                 });
@@ -730,8 +730,8 @@ int16_t SearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
 
         board->makeMove(move);
 
-        int16_t extension = determineExtension(depth, move, moveNumber, moves.size(), isCheckEvasion);
-        int16_t nwReduction = determineReduction(depth, move, moveNumber, moves.size(), isCheckEvasion);
+        int16_t extension = determineExtension(move, isCheckEvasion);
+        int16_t nwReduction = determineReduction(depth, moveNumber, isCheckEvasion);
 
         int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
         nwDepthDelta = std::min(nwDepthDelta, (int16_t)(-ONE_PLY));
@@ -756,7 +756,7 @@ int16_t SearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
             bool tableHit = transpositionTable.probe(board->getHashValue(), ttEntry);
 
             if(!tableHit || (depth > ttEntry.depth &&
-                               ttEntry.type == NW_NODE | CUT_NODE))
+                               ttEntry.type == (NW_NODE | CUT_NODE)))
                 transpositionTable.put(board->getHashValue(), {
                     currentAge, depth, score, NW_NODE | CUT_NODE, move
                 });
@@ -796,11 +796,10 @@ int16_t SearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
     return bestScore;
 }
 
-int16_t SearchTree::determineExtension(int16_t depth, Move& m, int32_t moveCount, int32_t legalMoveCount, bool isCheckEvasion) {
+int16_t SearchTree::determineExtension(Move& m, bool isCheckEvasion) {
     int16_t extension = 0;
 
     int32_t movedPieceType = TYPEOF(board->pieceAt(m.getDestination()));
-    int32_t capturedPieceType = TYPEOF(board->getLastMoveHistoryEntry().capturedPiece);
 
     int32_t origin64 = Mailbox::mailbox[m.getOrigin()];
     int32_t destination64 = Mailbox::mailbox[m.getDestination()];
@@ -843,16 +842,10 @@ int16_t SearchTree::determineExtension(int16_t depth, Move& m, int32_t moveCount
     return extension;
 }
 
-int16_t SearchTree::determineReduction(int16_t depth, Move& m, int32_t moveCount, int32_t legalMoveCount, bool isCheckEvasion) {
+int16_t SearchTree::determineReduction(int16_t depth, int32_t moveCount, bool isCheckEvasion) {
     int16_t reduction = 0;
 
     bool isCheck = board->isCheck();
-
-    int32_t movedPieceType = TYPEOF(board->pieceAt(m.getDestination()));
-    int32_t capturedPieceType = TYPEOF(board->getLastMoveHistoryEntry().capturedPiece);
-
-    int32_t origin64 = Mailbox::mailbox[m.getOrigin()];
-    int32_t destination64 = Mailbox::mailbox[m.getDestination()];
     
     if(moveCount <= 3 || isCheck || isCheckEvasion)
         return 0;

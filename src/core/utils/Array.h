@@ -149,7 +149,7 @@ void Array<T, s>::insert(size_t index, T elem) {
 
 template <typename T, size_t s>
 void Array<T, s>::remove(T elem) {
-    for(int i = 0; i < count; i++) {
+    for(size_t i = 0; i < count; i++) {
         if(array[i] == elem) {
             memmove(array + i, array + i + 1, (count - i - 1) * sizeof(T));
             count--;

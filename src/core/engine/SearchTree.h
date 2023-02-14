@@ -2,16 +2,16 @@
 #define SEARCH_TREE_H
 
 #include <stdint.h>
-#include "Move.h"
-#include "TranspositionTable.h"
-#include "HashTable.h"
+#include "core/chess/Move.h"
+#include "core/utils/tables/TranspositionTable.h"
+#include "core/utils/tables/HashTable.h"
 #include <thread>
 #include <atomic>
 #include <chrono>
 #include <mutex>
-#include "Board.h"
+#include "core/chess/Board.h"
 #include <vector>
-#include "BoardEvaluator.h"
+#include "core/engine/BoardEvaluator.h"
 
 #define EXACT_NODE 1
 #define CUT_NODE 2
@@ -87,7 +87,7 @@ class SearchTree {
     private:
         TranspositionTable<524288, 4> transpositionTable;
 
-        int32_t numVariations;
+        uint32_t numVariations;
 
         int16_t currentMaxDepth;
         uint16_t currentAge;
@@ -138,9 +138,9 @@ class SearchTree {
 
         int16_t quiescence(int16_t alpha, int16_t beta, int32_t captureSquare);
 
-        int16_t determineExtension(int16_t depth, Move& m, int32_t moveCount, int32_t legalMoveCount, bool isCheckEvasion = false);
+        int16_t determineExtension(Move& m, bool isCheckEvasion = false);
 
-        int16_t determineReduction(int16_t depth, Move& m, int32_t moveCount, int32_t legalMoveCount, bool isCheckEvasion = false);
+        int16_t determineReduction(int16_t depth, int32_t moveCount, bool isCheckEvasion = false);
 
     public:
         SearchTree(Board& b);

@@ -1,4 +1,4 @@
-#include "Move.h"
+#include "core/chess/Move.h"
 #include <string>
 
 std::ostream& operator<<(std::ostream &os, const Move &m) {
@@ -20,13 +20,13 @@ std::string Move::toString() const {
 
     if (isPromotion()) {
         if (isPromotionKnight()) {
-            promotionType = "n";
+            promotionType += "n";
         } else if (isPromotionBishop()) {
-            promotionType = "b";
+            promotionType += "b";
         } else if (isPromotionRook()) {
-            promotionType = "r";
+            promotionType += "r";
         } else {
-            promotionType = "q";
+            promotionType += "q";
         }
     }
 

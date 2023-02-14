@@ -2,7 +2,7 @@
 #define TRANSPOSITION_TABLE_H
 
 #include <stdint.h>
-#include "Move.h"
+#include "core/chess/Move.h"
 #include <cstring>
 #include <functional>
 
@@ -114,7 +114,7 @@ void TranspositionTable<bucketCount, bucketSize>::put(uint64_t hash, Transpositi
 
     // Wenn der Schlüssel nicht existiert, füge ihn hinzu.
     if (bucketSizes[index] < bucketSize) {
-        int32_t insertionIndex = std::lower_bound(bucket, bucket + bucketSizes[index], entry, replacementPredicate) - bucket;
+        size_t insertionIndex = std::lower_bound(bucket, bucket + bucketSizes[index], entry, replacementPredicate) - bucket;
         
         memmove(bucket + insertionIndex + 1, bucket + insertionIndex, sizeof(Entry) * (bucketSizes[index] - insertionIndex));
         bucket[insertionIndex].hash = hash;
@@ -122,7 +122,7 @@ void TranspositionTable<bucketCount, bucketSize>::put(uint64_t hash, Transpositi
 
         bucketSizes[index]++;
     } else {
-        int32_t insertionIndex = std::lower_bound(bucket, bucket + bucketSize, entry, replacementPredicate) - bucket;
+        size_t insertionIndex = std::lower_bound(bucket, bucket + bucketSize, entry, replacementPredicate) - bucket;
         if (insertionIndex < bucketSize) {
             memmove(bucket + insertionIndex + 1, bucket + insertionIndex, sizeof(Entry) * (bucketSize - insertionIndex - 1));
             bucket[insertionIndex].hash = hash;

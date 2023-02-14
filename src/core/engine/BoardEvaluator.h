@@ -1,9 +1,9 @@
 #ifndef BOARD_EVALUATOR_H
 #define BOARD_EVALUATOR_H
 
-#include "Board.h"
-#include "HashTable.h"
-#include "HeapHashTable.h"
+#include "core/chess/Board.h"
+#include "core/utils/tables/HashTable.h"
+#include "core/utils/tables/HeapHashTable.h"
 #include <functional>
 
 struct Score {
@@ -114,7 +114,7 @@ class BoardEvaluator {
          * @brief Die Methode findIsolatedPawns findet alle isolierten Bauern.
          * Isolierte Bauern sind Bauern, die keine befreundeten Bauern auf der Linie links oder rechts von ihnen haben.
          */
-        Bitboard findIsolatedPawns(const Bitboard& ownPawns, int32_t side);
+        Bitboard findIsolatedPawns(const Bitboard& ownPawns);
 
         /**
          * @brief Die Methode findPassedPawns findet alle Bauern, die nicht von gegnerischen Bauern abgefangen werden können.
@@ -189,18 +189,18 @@ class BoardEvaluator {
         Score evalPawnStructure(int32_t side);
 
         Score evalPawnStructure(Bitboard doublePawns, Bitboard isolatedPawns, Bitboard passedPawns, Bitboard pawnChains, Bitboard connectedPawns, int32_t side);
-        inline Score evalDoublePawns(Bitboard doublePawns, int32_t side);
-        inline Score evalIsolatedPawns(Bitboard isolatedPawns, int32_t side);
+        inline Score evalDoublePawns(Bitboard doublePawns);
+        inline Score evalIsolatedPawns(Bitboard isolatedPawns);
         inline Score evalPassedPawns(Bitboard passedPawns, int32_t side);
-        inline Score evalPawnChains(Bitboard pawnChains, int32_t side);
-        inline Score evalConnectedPawns(Bitboard connectedPawns, int32_t side);
+        inline Score evalPawnChains(Bitboard pawnChains);
+        inline Score evalConnectedPawns(Bitboard connectedPawns);
         
         /**
          * @brief Die Methode evalMGKingSafety bewertet die Sicherheit des Königs der beiden Spieler im Midgame.
          */
         int32_t evalMGKingSafety();
-        inline int32_t evalMGPawnShield(int32_t kingSquare, const Bitboard& ownPawns, const Bitboard& otherPawns, int32_t side);
-        inline int32_t evalMGPawnStorm(int32_t otherKingSquare, const Bitboard& ownPawns, const Bitboard& otherPawns, int32_t side);
+        inline int32_t evalMGPawnShield(int32_t kingSquare, const Bitboard& ownPawns, int32_t side);
+        inline int32_t evalMGPawnStorm(int32_t otherKingSquare, const Bitboard& ownPawns, int32_t side);
         int32_t evalMGKingAttackZone(int32_t side);
 
         /**

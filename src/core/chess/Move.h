@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <iostream>
-#include "BoardDefinitions.h"
+#include "core/chess/BoardDefinitions.h"
 #include <functional>
 
 /**

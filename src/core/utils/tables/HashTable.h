@@ -1,7 +1,7 @@
 #ifndef HASH_TABLE_H
 #define HASH_TABLE_H
 
-#include "Array.h"
+#include "core/utils/Array.h"
 #include <stdint.h>
 #include <functional>
 

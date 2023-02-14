@@ -2,7 +2,7 @@
 #define MOVE_NOTATIONS_H
 
 #include <string>
-#include "Board.h"
+#include "core/chess/Board.h"
 #include <ostream>
 
 /**

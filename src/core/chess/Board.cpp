@@ -1,7 +1,7 @@
 #include "Board.h"
 #include <stdio.h>
-#include "ZobristDefinitions.h"
-#include "MailboxDefinitions.h"
+#include "core/chess/ZobristDefinitions.h"
+#include "core/chess/MailboxDefinitions.h"
 
 Board::Board() {
     side = WHITE;
@@ -38,9 +38,32 @@ Board::Board(const Board& b) {
     moveHistory = b.moveHistory;
     repetitionTable = b.repetitionTable;
 
-    hashValue = generateHashValue();
+    hashValue = b.hashValue;
 
     generateBitboards();
+}
+
+Board& Board::operator=(const Board& b) {
+    for(int i = 0; i < 15; i++)
+        pieceList[i] = b.pieceList[i];
+    
+    for(int i = 0; i < 120; i++)
+        pieces[i] = b.pieces[i];
+
+    side = b.side;
+    enPassantSquare = b.enPassantSquare;
+    fiftyMoveRule = b.fiftyMoveRule;
+    castlingPermission = b.castlingPermission;
+    ply = b.ply;
+
+    moveHistory = b.moveHistory;
+    repetitionTable = b.repetitionTable;
+
+    hashValue = b.hashValue;
+
+    generateBitboards();
+
+    return *this;
 }
 
 Board::Board(std::string fen) {
@@ -391,10 +414,10 @@ bool Board::isMoveLegal(Move move) {
             }
 
             if(!move.isEnPassant()) {
-                if(destination == origin + destLeft)
+                if(destination == origin + destLeft) {
                     if(pieces[destination] == EMPTY)
                         return false;
-                else if(destination == origin + destRight)
+                } else if(destination == origin + destRight)
                     if(pieces[destination] == EMPTY)
                         return false;
             }
@@ -443,9 +466,6 @@ bool Board::isMoveLegal(Move move) {
             break;
         }
     }
-
-    if(move.toString() == "e8d8")
-        int i = 0;
 
     // Überprüfe, ob der Zug den eigenen König in Schach setzt/lässt
     makeMove(move);
@@ -498,8 +518,6 @@ void Board::makeMove(Move m) {
     // Spezialfall: En Passant
     if(m.isEnPassant()) {
         // Entferne den geschlagenen Bauern
-        int32_t other = side ^ COLOR_MASK;
-
         int32_t enPassantSquare64 = Mailbox::mailbox[enPassantCaptureSq];
         pieces[enPassantCaptureSq] = EMPTY;
         pieceList[capturedPieceType].remove(enPassantCaptureSq);
@@ -1160,7 +1178,7 @@ std::string Board::fenString() const {
                     emptySquares = 0;
                 }
 
-                char pieceChar;
+                char pieceChar = ' ';
 
                 switch(pieces[square]) {
                     case WHITE_PAWN:

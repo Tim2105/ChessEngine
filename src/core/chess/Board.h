@@ -3,12 +3,12 @@
 
 #include <vector>
 #include <stdint.h>
-#include "Move.h"
-#include "BoardDefinitions.h"
+#include "core/chess/Move.h"
+#include "core/chess/BoardDefinitions.h"
 #include <string>
-#include "Bitboard.h"
-#include "Movegen.h"
-#include "Array.h"
+#include "core/utils/Bitboard.h"
+#include "core/chess/Movegen.h"
+#include "core/utils/Array.h"
 #include <list>
 
 /**
@@ -334,6 +334,12 @@ class Board {
          * @param fen Die FEN-Notation des Schachbretts.
          */
         Board(std::string fen);
+
+        /**
+         * @brief Erstellt ein neues Schachbrett, das eine Kopie eines anderen Schachbretts ist.
+         * @param other Das andere Schachbrett.
+         */
+        Board& operator=(const Board& other);
 
         virtual ~Board();
 
