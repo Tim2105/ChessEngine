@@ -2561,7 +2561,7 @@ void Movegen::generateWhiteQueenCaptures(Array<Move, 256>& moves, Board& b,
             if(pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq]))
                 continue;
 
-            for(int i = 0; i < 8; i++) {
+            for(int i = 0; i < 4; i++) {
                 int n_sq = sq + DIAGONAL_ATTACKS[i];
                 while(Mailbox::mailbox[n_sq] != NO_SQ) {
                     // Wenn die Dame den Angreifer schlagen oder sich dazwischen stellen kann, ist der Zug legal
@@ -2575,6 +2575,7 @@ void Movegen::generateWhiteQueenCaptures(Array<Move, 256>& moves, Board& b,
                     n_sq += DIAGONAL_ATTACKS[i];
                 }
             }
+            
             for(int i = 0; i < 4; i++) {
                 int n_sq = sq + STRAIGHT_ATTACKS[i];
                 while(Mailbox::mailbox[n_sq] != NO_SQ) {
@@ -2721,7 +2722,7 @@ void Movegen::generateBlackQueenCaptures(Array<Move, 256>& moves, Board& b,
             if(pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq]))
                 continue;
 
-            for(int i = 0; i < 8; i++) {
+            for(int i = 0; i < 4; i++) {
                 int n_sq = sq + DIAGONAL_ATTACKS[i];
                 while(Mailbox::mailbox[n_sq] != NO_SQ) {
                     // Wenn die Dame den Angreifer schlagen oder sich dazwischen stellen kann, ist der Zug legal
@@ -2735,6 +2736,7 @@ void Movegen::generateBlackQueenCaptures(Array<Move, 256>& moves, Board& b,
                     n_sq += DIAGONAL_ATTACKS[i];
                 }
             }
+
             for(int i = 0; i < 4; i++) {
                 int n_sq = sq + STRAIGHT_ATTACKS[i];
                 while(Mailbox::mailbox[n_sq] != NO_SQ) {

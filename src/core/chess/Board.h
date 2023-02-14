@@ -9,7 +9,6 @@
 #include "core/utils/Bitboard.h"
 #include "core/chess/Movegen.h"
 #include "core/utils/Array.h"
-#include <list>
 
 /**
  * @brief Enthält alle notwendigen Informationen um einen Zug rückgängig zu machen.
@@ -119,7 +118,7 @@ class RepetitionTable {
             uint8_t count;
         };
 
-        std::list<Entry> entries;
+        std::vector<Entry> entries;
     
     public:
         inline void increment(uint64_t key) {
@@ -374,10 +373,14 @@ class Board {
 
         /**
          * @brief Generiert alle legalen Züge, die eine Figur schlagen
-         * 
-         * @return Array<Move, 256> 
          */
         Array<Move, 256> generateLegalCaptures();
+
+        /**
+         * @brief Generiert alle legalen Züge, die eine Figur schlagen
+         * Ignoriert manche Züge, die nicht auf die angegebenen Felder führen.
+         */
+        Array<Move, 256> generateLegalCaptures(Bitboard targetSquares);
 
         /**
          * @brief Führt einen Zug aus.

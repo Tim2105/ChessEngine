@@ -38,11 +38,17 @@ enum {
 
 #include <stdint.h>
 
-extern int32_t KNIGHT_ATTACKS[];
+constexpr int32_t KNIGHT_ATTACKS[8] = {
+    -21, -19, -12, -8, 8, 12, 19, 21
+};
 
-extern int32_t DIAGONAL_ATTACKS[];
+constexpr int32_t DIAGONAL_ATTACKS[4] = {
+    -11, -9, 9, 11
+};
 
-extern int32_t STRAIGHT_ATTACKS[];
+constexpr int32_t STRAIGHT_ATTACKS[4] = {
+    -10, -1, 1, 10
+};
 
 enum {
     FILE_A,

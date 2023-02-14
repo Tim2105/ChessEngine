@@ -27,3 +27,18 @@ $(EXEC): $(OBJ)
 bin/obj/%.o: src/%.cpp
 	mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c -o $@ $<
+
+# Löscht alle erstellten Dateien
+clean:
+	rm -rf bin
+
+# Erstellt die Ausführbare Datei neu
+rebuild: clean $(EXEC)
+
+# Erstellt die Ausführbare Datei neu und führt sie aus
+run: rebuild
+	./$(EXEC)
+
+# Erstellt die Ausführbare Datei neu und führt sie mit GDB aus
+gdb: rebuild
+	gdb ./$(EXEC)

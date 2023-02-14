@@ -417,7 +417,7 @@ int16_t SearchTree::rootSearch(int16_t depth, int16_t expectedScore) {
         score = pvSearchRoot(depth, alpha, beta);
     }
     
-    return variations[0].score;
+    return variations.front().score;
 }
 
 int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
@@ -879,7 +879,10 @@ int16_t SearchTree::quiescence(int16_t alpha, int16_t beta, int32_t captureSquar
         sortAndCutMoves(moves, MIN_SCORE, MVVLVA);
     }
     else {
-        moves = board->generateLegalCaptures();
+        Bitboard targetSquares;
+        targetSquares.setBit(Mailbox::mailbox[captureSquare]);
+
+        moves = board->generateLegalCaptures(targetSquares);
 
         std::remove_if(moves.begin(), moves.end(), [captureSquare](Move m) {
             return m.getDestination() != captureSquare;
