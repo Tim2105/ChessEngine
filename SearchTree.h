@@ -7,6 +7,8 @@
 #include "HashTable.h"
 #include <thread>
 #include <atomic>
+#include <chrono>
+#include <mutex>
 #include "Board.h"
 #include <vector>
 #include "BoardEvaluator.h"
@@ -104,6 +106,7 @@ class SearchTree {
         HashTable<Move, int32_t, 128, 4> moveScoreCache;
 
         std::vector<Variation> variations;
+        std::mutex variationMutex;
 
         void clearRelativeHistory();
 
@@ -116,6 +119,8 @@ class SearchTree {
         void clearVariations();
 
         void searchTimer(uint32_t searchTime);
+
+        void sortMovesAtRoot(Array<Move, 256>& moves, int32_t moveEvalFunc);
 
         void sortMoves(Array<Move, 256>& moves, int16_t ply, int32_t moveEvalFunc);
 
@@ -149,11 +154,25 @@ class SearchTree {
         constexpr uint32_t getNodesSearched() { return nodesSearched; }
 
         inline std::vector<Move> getPrincipalVariation() {
+            variationMutex.lock();
+
             if(variations.size() > 0) {
                 return variations[0].moves;
             } else {
                 return std::vector<Move>();
-            }   
+            }
+
+            variationMutex.unlock();
+        }
+
+        inline std::vector<Variation> getVariations() {
+            variationMutex.lock();
+
+            std::vector<Variation> variationsCopy = variations;
+
+            variationMutex.unlock();
+
+            return variationsCopy;
         }
 
         void setBoard(Board& b);

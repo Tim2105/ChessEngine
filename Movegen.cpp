@@ -1,4 +1,5 @@
 #include "Movegen.h"
+#include "MailboxDefinitions.h"
 
 void Movegen::generatePseudoLegalWhitePawnMoves(Array<Move, 256>& moves, Board& b) {
     for(int& sq : b.pieceList[WHITE_PAWN]) {
@@ -25,7 +26,7 @@ void Movegen::generatePseudoLegalWhitePawnMoves(Array<Move, 256>& moves, Board& 
         }
 
         int32_t destLeft = FR2SQ(file - 1, rank + 1);
-        if(b.mailbox[destLeft] != NO_SQ && b.pieces[destLeft] != EMPTY && (b.pieces[destLeft] & COLOR_MASK) == BLACK) {
+        if(Mailbox::mailbox[destLeft] != NO_SQ && b.pieces[destLeft] != EMPTY && (b.pieces[destLeft] & COLOR_MASK) == BLACK) {
             if(rank == RANK_7) {
                 moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_KNIGHT));
                 moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_BISHOP));
@@ -37,7 +38,7 @@ void Movegen::generatePseudoLegalWhitePawnMoves(Array<Move, 256>& moves, Board& 
         }
 
         int32_t destRight = FR2SQ(file + 1, rank + 1);
-        if(b.mailbox[destRight] != NO_SQ && b.pieces[destRight] != EMPTY && (b.pieces[destRight] & COLOR_MASK) == BLACK) {
+        if(Mailbox::mailbox[destRight] != NO_SQ && b.pieces[destRight] != EMPTY && (b.pieces[destRight] & COLOR_MASK) == BLACK) {
             if(rank == RANK_7) {
                 moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_KNIGHT));
                 moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_BISHOP));
@@ -82,7 +83,7 @@ void Movegen::generatePseudoLegalBlackPawnMoves(Array<Move, 256>& moves, Board& 
         }
 
         int32_t destLeft = FR2SQ(file - 1, rank - 1);
-        if(b.mailbox[destLeft] != NO_SQ && b.pieces[destLeft] != EMPTY && (b.pieces[destLeft] & COLOR_MASK) == WHITE) {
+        if(Mailbox::mailbox[destLeft] != NO_SQ && b.pieces[destLeft] != EMPTY && (b.pieces[destLeft] & COLOR_MASK) == WHITE) {
             if(rank == RANK_2) {
                 moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_KNIGHT));
                 moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_BISHOP));
@@ -94,7 +95,7 @@ void Movegen::generatePseudoLegalBlackPawnMoves(Array<Move, 256>& moves, Board& 
         }
 
         int32_t destRight = FR2SQ(file + 1, rank - 1);
-        if(b.mailbox[destRight] != NO_SQ && b.pieces[destRight] != EMPTY && (b.pieces[destRight] & COLOR_MASK) == WHITE) {
+        if(Mailbox::mailbox[destRight] != NO_SQ && b.pieces[destRight] != EMPTY && (b.pieces[destRight] & COLOR_MASK) == WHITE) {
             if(rank == RANK_2) {
                 moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_KNIGHT));
                 moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_BISHOP));
@@ -118,7 +119,7 @@ void Movegen::generatePseudoLegalWhiteKnightMoves(Array<Move, 256>& moves, Board
     for(int& sq : b.pieceList[WHITE_KNIGHT]) {
         for(int i = 0; i < 8; i++) {
             int n_sq = sq + KNIGHT_ATTACKS[i];
-            if(b.mailbox[n_sq] != NO_SQ) {
+            if(Mailbox::mailbox[n_sq] != NO_SQ) {
                 if(b.pieces[n_sq] == EMPTY)
                     moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                 else if((b.pieces[n_sq] & COLOR_MASK) == BLACK)
@@ -132,7 +133,7 @@ void Movegen:: generatePseudoLegalBlackKnightMoves(Array<Move, 256>& moves, Boar
     for(int& sq : b.pieceList[BLACK_KNIGHT]) {
         for(int i = 0; i < 8; i++) {
             int n_sq = sq + KNIGHT_ATTACKS[i];
-            if(b.mailbox[n_sq] != NO_SQ) {
+            if(Mailbox::mailbox[n_sq] != NO_SQ) {
                 if(b.pieces[n_sq] == EMPTY)
                     moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                 else if((b.pieces[n_sq] & COLOR_MASK) == WHITE)
@@ -146,7 +147,7 @@ void Movegen::generatePseudoLegalWhiteRookMoves(Array<Move, 256>& moves, Board& 
     for(int& sq : b.pieceList[WHITE_BISHOP]) {
         for(int i = 0; i < 4; i++) {
             int n_sq = sq + DIAGONAL_ATTACKS[i];
-            while(b.mailbox[n_sq] != NO_SQ) {
+            while(Mailbox::mailbox[n_sq] != NO_SQ) {
                 if(b.pieces[n_sq] == EMPTY)
                     moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                 else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -166,7 +167,7 @@ void Movegen::generatePseudoLegalBlackRookMoves(Array<Move, 256>& moves, Board& 
     for(int& sq : b.pieceList[BLACK_BISHOP]) {
         for(int i = 0; i < 4; i++) {
             int n_sq = sq + DIAGONAL_ATTACKS[i];
-            while(b.mailbox[n_sq] != NO_SQ) {
+            while(Mailbox::mailbox[n_sq] != NO_SQ) {
                 if(b.pieces[n_sq] == EMPTY)
                     moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                 else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -186,7 +187,7 @@ void Movegen::generatePseudoLegalWhiteBishopMoves(Array<Move, 256>& moves, Board
     for(int& sq : b.pieceList[WHITE_ROOK]) {
         for(int i = 0; i < 4; i++) {
             int n_sq = sq + STRAIGHT_ATTACKS[i];
-            while(b.mailbox[n_sq] != NO_SQ) {
+            while(Mailbox::mailbox[n_sq] != NO_SQ) {
                 if(b.pieces[n_sq] == EMPTY)
                     moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                 else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -206,7 +207,7 @@ void Movegen::generatePseudoLegalBlackBishopMoves(Array<Move, 256>& moves, Board
     for(int& sq : b.pieceList[BLACK_ROOK]) {
         for(int i = 0; i < 4; i++) {
             int n_sq = sq + STRAIGHT_ATTACKS[i];
-            while(b.mailbox[n_sq] != NO_SQ) {
+            while(Mailbox::mailbox[n_sq] != NO_SQ) {
                 if(b.pieces[n_sq] == EMPTY)
                     moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                 else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -231,7 +232,7 @@ void Movegen::generatePseudoLegalWhiteQueenMoves(Array<Move, 256>& moves, Board&
     for(int& sq : b.pieceList[WHITE_QUEEN]) {
         for(int i = 0; i < 8; i++) {
             int n_sq = sq + QUEEN_ATTACKS[i];
-            while(b.mailbox[n_sq] != NO_SQ) {
+            while(Mailbox::mailbox[n_sq] != NO_SQ) {
                 if(b.pieces[n_sq] == EMPTY)
                     moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                 else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -256,7 +257,7 @@ void Movegen::generatePseudoLegalBlackQueenMoves(Array<Move, 256>& moves, Board&
     for(int& sq : b.pieceList[BLACK_QUEEN]) {
         for(int i = 0; i < 8; i++) {
             int n_sq = sq + QUEEN_ATTACKS[i];
-            while(b.mailbox[n_sq] != NO_SQ) {
+            while(Mailbox::mailbox[n_sq] != NO_SQ) {
                 if(b.pieces[n_sq] == EMPTY)
                     moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                 else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -281,7 +282,7 @@ void Movegen::generatePseudoLegalWhiteKingMoves(Array<Move, 256>& moves, Board& 
     int sq = b.pieceList[WHITE_KING].front();
     for(int i = 0; i < 8; i++) {
         int n_sq = sq + KING_ATTACKS[i];
-        if(b.mailbox[n_sq] != NO_SQ) {
+        if(Mailbox::mailbox[n_sq] != NO_SQ) {
             if(b.pieces[n_sq] == EMPTY)
                 moves.push_back(Move(sq, n_sq, MOVE_QUIET));
             else if((b.pieces[n_sq] & COLOR_MASK) == BLACK)
@@ -311,7 +312,7 @@ void Movegen::generatePseudoLegalBlackKingMoves(Array<Move, 256>& moves, Board& 
     int sq = b.pieceList[BLACK_KING].front();
     for(int i = 0; i < 8; i++) {
         int n_sq = sq + KING_ATTACKS[i];
-        if(b.mailbox[n_sq] != NO_SQ) {
+        if(Mailbox::mailbox[n_sq] != NO_SQ) {
             if(b.pieces[n_sq] == EMPTY)
                 moves.push_back(Move(sq, n_sq, MOVE_QUIET));
             else if((b.pieces[n_sq] & COLOR_MASK) == WHITE)
@@ -351,7 +352,7 @@ void Movegen::generateWhitePawnMoves(Array<Move, 256>& moves, Board& b,
             int32_t destLeft = sq + NORTH_WEST;
             int32_t destRight = sq + NORTH_EAST;
 
-            bool pinned = pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]);
+            bool pinned = pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq]);
 
             // Wenn der Bauer gefesselt ist, kann er sich nicht bewegen
             if(pinned)
@@ -362,17 +363,17 @@ void Movegen::generateWhitePawnMoves(Array<Move, 256>& moves, Board& b,
                 int32_t captureSquare = b.enPassantSquare + SOUTH;
 
                 if(b.enPassantSquare == destLeft) {
-                    if(attackingRays.getBit(b.mailbox[captureSquare]))
+                    if(attackingRays.getBit(Mailbox::mailbox[captureSquare]))
                         moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
                 } else if(b.enPassantSquare == destRight) {
-                    if(attackingRays.getBit(b.mailbox[captureSquare]))
+                    if(attackingRays.getBit(Mailbox::mailbox[captureSquare]))
                         moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
                 }
             }
             
             // Wenn der Bauer den Angreifer blockiert, ist der Zug legal
             // Ein blockierende Zug kann kein normaler Schlagzug sein, weil der Bauer sonst nicht gefesselt wäre
-            if(attackingRays & Bitboard(1ULL << b.mailbox[destForw]) && b.pieces[destForw] == EMPTY) {
+            if(attackingRays & Bitboard(1ULL << Mailbox::mailbox[destForw]) && b.pieces[destForw] == EMPTY) {
                 // Promotion
                 if(rank == RANK_7) {
                         moves.push_back(Move(sq, destForw, MOVE_PROMOTION_QUEEN));
@@ -381,11 +382,11 @@ void Movegen::generateWhitePawnMoves(Array<Move, 256>& moves, Board& b,
                         moves.push_back(Move(sq, destForw, MOVE_PROMOTION_KNIGHT));
                 } else
                     moves.push_back(Move(sq, destForw, MOVE_QUIET));
-            } else if(rank == RANK_2 && attackingRays & Bitboard(1ULL << b.mailbox[destForw2]) && b.pieces[destForw2] == EMPTY && b.pieces[destForw] == EMPTY)
+            } else if(rank == RANK_2 && attackingRays & Bitboard(1ULL << Mailbox::mailbox[destForw2]) && b.pieces[destForw2] == EMPTY && b.pieces[destForw] == EMPTY)
                 moves.push_back(Move(sq, destForw2, MOVE_DOUBLE_PAWN));
             
             // Wenn der Bauer den Angreifer schlagen kann, ist der Zug legal
-            if(b.pieces[destLeft] != EMPTY && attackingRays & Bitboard(1ULL << b.mailbox[destLeft]) && (b.pieces[destLeft] & COLOR_MASK) == BLACK) {
+            if(b.pieces[destLeft] != EMPTY && attackingRays & Bitboard(1ULL << Mailbox::mailbox[destLeft]) && (b.pieces[destLeft] & COLOR_MASK) == BLACK) {
                 // Promotion
                 if(rank == RANK_7) {
                         moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_QUEEN));
@@ -394,7 +395,7 @@ void Movegen::generateWhitePawnMoves(Array<Move, 256>& moves, Board& b,
                         moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_KNIGHT));
                 } else
                     moves.push_back(Move(sq, destLeft, MOVE_CAPTURE));
-            } else if(b.pieces[destRight] != EMPTY && attackingRays & Bitboard(1ULL << b.mailbox[destRight]) && (b.pieces[destRight] & COLOR_MASK) == BLACK) {
+            } else if(b.pieces[destRight] != EMPTY && attackingRays & Bitboard(1ULL << Mailbox::mailbox[destRight]) && (b.pieces[destRight] & COLOR_MASK) == BLACK) {
                 // Promotion
                 if(rank == RANK_7) {
                         moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_QUEEN));
@@ -415,7 +416,7 @@ void Movegen::generateWhitePawnMoves(Array<Move, 256>& moves, Board& b,
             int32_t destLeft = sq + NORTH_WEST;
             int32_t destRight = sq + NORTH_EAST;
 
-            bool pinned = pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]);
+            bool pinned = pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq]);
 
             // En-Passant Züge entfernen 2 Figuren aus einer Reihe, daher muss immer überprüft werden, ob der König nach dem Zug im Schach stände
             // -> Ein En-Passant Zug mit einem ungefesselten Bauer kann illegal sein
@@ -425,18 +426,18 @@ void Movegen::generateWhitePawnMoves(Array<Move, 256>& moves, Board& b,
 
                 if(b.enPassantSquare == destLeft) {
                     Bitboard allPiecesAfterMove = b.allPiecesBitboard | b.pieceBitboard[BLACK_KING];
-                    allPiecesAfterMove.clearBit(b.mailbox[sq]);
-                    allPiecesAfterMove.clearBit(b.mailbox[captureSquare]);
-                    allPiecesAfterMove.setBit(b.mailbox[destLeft]);
+                    allPiecesAfterMove.clearBit(Mailbox::mailbox[sq]);
+                    allPiecesAfterMove.clearBit(Mailbox::mailbox[captureSquare]);
+                    allPiecesAfterMove.setBit(Mailbox::mailbox[destLeft]);
 
                     if(!b.squareAttacked(kingSquare, BLACK, allPiecesAfterMove))
                         moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
 
                 } else if(b.enPassantSquare == destRight) {
                     Bitboard allPiecesAfterMove = b.allPiecesBitboard | b.pieceBitboard[BLACK_KING];
-                    allPiecesAfterMove.clearBit(b.mailbox[sq]);
-                    allPiecesAfterMove.clearBit(b.mailbox[captureSquare]);
-                    allPiecesAfterMove.setBit(b.mailbox[destRight]);
+                    allPiecesAfterMove.clearBit(Mailbox::mailbox[sq]);
+                    allPiecesAfterMove.clearBit(Mailbox::mailbox[captureSquare]);
+                    allPiecesAfterMove.setBit(Mailbox::mailbox[destRight]);
 
                     if(!b.squareAttacked(kingSquare, BLACK, allPiecesAfterMove))
                         moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
@@ -446,7 +447,7 @@ void Movegen::generateWhitePawnMoves(Array<Move, 256>& moves, Board& b,
             // Überprüfe, ob der Bauer horizontal oder diagonal gefesselt ist
             // Wenn ja, kann er sich nur bewegen, wenn er den Angreifer schlägt(diagonal)
             if(pinned) {
-                int32_t pinDir = pinDirections[b.mailbox[sq]];
+                int32_t pinDir = pinDirections[Mailbox::mailbox[sq]];
                 if(pinDir == SOUTH_EAST || pinDir == NORTH_WEST) {
                     if(b.pieces[destLeft] != EMPTY && (b.pieces[destLeft] & COLOR_MASK) == BLACK) {
                         // Promotion
@@ -541,7 +542,7 @@ void Movegen::generateBlackPawnMoves(Array<Move, 256>& moves, Board& b,
             int32_t destLeft = sq + SOUTH_WEST;
             int32_t destRight = sq + SOUTH_EAST;
 
-            bool pinned = pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]);
+            bool pinned = pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq]);
 
             // Wenn der Bauer gefesselt ist, kann er sich nicht bewegen
             if(pinned)
@@ -552,17 +553,17 @@ void Movegen::generateBlackPawnMoves(Array<Move, 256>& moves, Board& b,
                 int32_t captureSquare = b.enPassantSquare + NORTH;
 
                 if(b.enPassantSquare == destLeft) {
-                    if(attackingRays.getBit(b.mailbox[captureSquare]))
+                    if(attackingRays.getBit(Mailbox::mailbox[captureSquare]))
                         moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
                 } else if(b.enPassantSquare == destRight) {
-                    if(attackingRays.getBit(b.mailbox[captureSquare]))
+                    if(attackingRays.getBit(Mailbox::mailbox[captureSquare]))
                         moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
                 }
             }
             
             // Wenn der Bauer den Angreifer blockiert, ist der Zug legal
             // Ein blockierende Zug kann kein normaler Schlagzug sein, weil der Bauer sonst nicht gefesselt wäre
-            if(attackingRays & Bitboard(1ULL << b.mailbox[destForw]) && b.pieces[destForw] == EMPTY) {
+            if(attackingRays & Bitboard(1ULL << Mailbox::mailbox[destForw]) && b.pieces[destForw] == EMPTY) {
                 // Promotion
                 if(rank == RANK_2) {
                         moves.push_back(Move(sq, destForw, MOVE_PROMOTION_QUEEN));
@@ -571,11 +572,11 @@ void Movegen::generateBlackPawnMoves(Array<Move, 256>& moves, Board& b,
                         moves.push_back(Move(sq, destForw, MOVE_PROMOTION_KNIGHT));
                 } else
                     moves.push_back(Move(sq, destForw, MOVE_QUIET));
-            } else if(rank == RANK_7 && attackingRays & Bitboard(1ULL << b.mailbox[destForw2]) && b.pieces[destForw2] == EMPTY && b.pieces[destForw] == EMPTY)
+            } else if(rank == RANK_7 && attackingRays & Bitboard(1ULL << Mailbox::mailbox[destForw2]) && b.pieces[destForw2] == EMPTY && b.pieces[destForw] == EMPTY)
                 moves.push_back(Move(sq, destForw2, MOVE_DOUBLE_PAWN));
             
             // Wenn der Bauer den Angreifer schlagen kann, ist der Zug legal
-            if(b.pieces[destLeft] != EMPTY && attackingRays & Bitboard(1ULL << b.mailbox[destLeft]) && (b.pieces[destLeft] & COLOR_MASK) == WHITE) {
+            if(b.pieces[destLeft] != EMPTY && attackingRays & Bitboard(1ULL << Mailbox::mailbox[destLeft]) && (b.pieces[destLeft] & COLOR_MASK) == WHITE) {
                 // Promotion
                 if(rank == RANK_2) {
                         moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_QUEEN));
@@ -584,7 +585,7 @@ void Movegen::generateBlackPawnMoves(Array<Move, 256>& moves, Board& b,
                         moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_KNIGHT));
                 } else
                     moves.push_back(Move(sq, destLeft, MOVE_CAPTURE));
-            } else if(b.pieces[destRight] != EMPTY && attackingRays & Bitboard(1ULL << b.mailbox[destRight]) && (b.pieces[destRight] & COLOR_MASK) == WHITE) {
+            } else if(b.pieces[destRight] != EMPTY && attackingRays & Bitboard(1ULL << Mailbox::mailbox[destRight]) && (b.pieces[destRight] & COLOR_MASK) == WHITE) {
                 // Promotion
                 if(rank == RANK_2) {
                         moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_QUEEN));
@@ -605,7 +606,7 @@ void Movegen::generateBlackPawnMoves(Array<Move, 256>& moves, Board& b,
             int32_t destLeft = sq + SOUTH_WEST;
             int32_t destRight = sq + SOUTH_EAST;
 
-            bool pinned = pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]);
+            bool pinned = pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq]);
 
             // En-Passant Züge entfernen 2 Figuren aus einer Reihe, daher muss immer überprüft werden, ob der König nach dem Zug im Schach stände
             // -> Ein En-Passant Zug mit einem ungefesselten Bauer kann illegal sein
@@ -615,18 +616,18 @@ void Movegen::generateBlackPawnMoves(Array<Move, 256>& moves, Board& b,
 
                 if(b.enPassantSquare == destLeft) {
                     Bitboard allPiecesAfterMove = b.allPiecesBitboard | b.pieceBitboard[WHITE_KING];
-                    allPiecesAfterMove.clearBit(b.mailbox[sq]);
-                    allPiecesAfterMove.clearBit(b.mailbox[captureSquare]);
-                    allPiecesAfterMove.setBit(b.mailbox[destLeft]);
+                    allPiecesAfterMove.clearBit(Mailbox::mailbox[sq]);
+                    allPiecesAfterMove.clearBit(Mailbox::mailbox[captureSquare]);
+                    allPiecesAfterMove.setBit(Mailbox::mailbox[destLeft]);
 
                     if(!b.squareAttacked(kingSquare, WHITE, allPiecesAfterMove))
                         moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
 
                 } else if(b.enPassantSquare == destRight) {
                     Bitboard allPiecesAfterMove = b.allPiecesBitboard | b.pieceBitboard[WHITE_KING];
-                    allPiecesAfterMove.clearBit(b.mailbox[sq]);
-                    allPiecesAfterMove.clearBit(b.mailbox[captureSquare]);
-                    allPiecesAfterMove.setBit(b.mailbox[destRight]);
+                    allPiecesAfterMove.clearBit(Mailbox::mailbox[sq]);
+                    allPiecesAfterMove.clearBit(Mailbox::mailbox[captureSquare]);
+                    allPiecesAfterMove.setBit(Mailbox::mailbox[destRight]);
 
                     if(!b.squareAttacked(kingSquare, WHITE, allPiecesAfterMove))
                         moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
@@ -636,7 +637,7 @@ void Movegen::generateBlackPawnMoves(Array<Move, 256>& moves, Board& b,
             // Überprüfe, ob der Bauer horizontal oder diagonal gefesselt ist
             // Wenn ja, kann er sich nur bewegen, wenn er den Angreifer schlägt(diagonal)
             if(pinned) {
-                int32_t pinDir = pinDirections[b.mailbox[sq]];
+                int32_t pinDir = pinDirections[Mailbox::mailbox[sq]];
                 
                 if(pinDir == NORTH_EAST || pinDir == SOUTH_WEST) {
                     if(b.pieces[destLeft] != EMPTY && (b.pieces[destLeft] & COLOR_MASK) == WHITE) {
@@ -724,17 +725,17 @@ void Movegen::generateWhiteKnightMoves(Array<Move, 256>& moves, Board& b,
     if(numAttackers == 1) {
         for(int& sq : b.pieceList[WHITE_KNIGHT]) {
             // Wenn der Springer gefesselt ist, kann er sich nicht bewegen
-            if(pinnedPieces & Bitboard(1ULL << b.mailbox[sq]))
+            if(pinnedPieces & Bitboard(1ULL << Mailbox::mailbox[sq]))
                 continue;
 
             for(int i = 0; i < 8; i++) {
                 int n_sq = sq + KNIGHT_ATTACKS[i];
 
-                if(b.mailbox[n_sq] == NO_SQ)
+                if(Mailbox::mailbox[n_sq] == NO_SQ)
                     continue;
                 
                 // Wenn der Springer den Angreifer schlagen oder sich dazwischen stellen kann, ist der Zug legal
-                if(attackingRays & Bitboard(1ULL << b.mailbox[n_sq]))
+                if(attackingRays & Bitboard(1ULL << Mailbox::mailbox[n_sq]))
                     if(b.pieces[n_sq] == EMPTY)
                         moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                     else
@@ -744,13 +745,13 @@ void Movegen::generateWhiteKnightMoves(Array<Move, 256>& moves, Board& b,
     } else {
         for(int& sq : b.pieceList[WHITE_KNIGHT]) {
             // Wenn der Springer gefesselt ist, kann er sich nicht bewegen
-            if(pinnedPieces & Bitboard(1ULL << b.mailbox[sq]))
+            if(pinnedPieces & Bitboard(1ULL << Mailbox::mailbox[sq]))
                 continue;
 
             // Ansonsten darf er sich frei bewegen
             for(int i = 0; i < 8; i++) {
                 int n_sq = sq + KNIGHT_ATTACKS[i];
-                if(b.mailbox[n_sq] != NO_SQ) {
+                if(Mailbox::mailbox[n_sq] != NO_SQ) {
                     if(b.pieces[n_sq] == EMPTY)
                         moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                     else if((b.pieces[n_sq] & COLOR_MASK) == BLACK)
@@ -773,17 +774,17 @@ void Movegen::generateBlackKnightMoves(Array<Move, 256>& moves, Board& b,
     if(numAttackers == 1) {
         for(int& sq : b.pieceList[BLACK_KNIGHT]) {
             // Wenn der Springer gefesselt ist, kann er sich nicht bewegen
-            if(pinnedPieces & Bitboard(1ULL << b.mailbox[sq]))
+            if(pinnedPieces & Bitboard(1ULL << Mailbox::mailbox[sq]))
                 continue;
 
             for(int i = 0; i < 8; i++) {
                 int n_sq = sq + KNIGHT_ATTACKS[i];
 
-                if(b.mailbox[n_sq] == NO_SQ)
+                if(Mailbox::mailbox[n_sq] == NO_SQ)
                     continue;
                 
                 // Wenn der Springer den Angreifer schlagen oder sich dazwischen stellen kann, ist der Zug legal
-                if(attackingRays & Bitboard(1ULL << b.mailbox[n_sq]))
+                if(attackingRays & Bitboard(1ULL << Mailbox::mailbox[n_sq]))
                     if(b.pieces[n_sq] == EMPTY)
                         moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                     else
@@ -793,13 +794,13 @@ void Movegen::generateBlackKnightMoves(Array<Move, 256>& moves, Board& b,
     } else {
         for(int& sq : b.pieceList[BLACK_KNIGHT]) {
             // Wenn der Springer gefesselt ist, kann er sich nicht bewegen
-            if(pinnedPieces & Bitboard(1ULL << b.mailbox[sq]))
+            if(pinnedPieces & Bitboard(1ULL << Mailbox::mailbox[sq]))
                 continue;
 
             // Ansonsten darf er sich frei bewegen
             for(int i = 0; i < 8; i++) {
                 int n_sq = sq + KNIGHT_ATTACKS[i];
-                if(b.mailbox[n_sq] != NO_SQ) {
+                if(Mailbox::mailbox[n_sq] != NO_SQ) {
                     if(b.pieces[n_sq] == EMPTY)
                         moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                     else if((b.pieces[n_sq] & COLOR_MASK) == WHITE)
@@ -822,14 +823,14 @@ void Movegen::generateWhiteBishopMoves(Array<Move, 256>& moves, Board& b,
     if(numAttackers == 1) {
         for(int& sq : b.pieceList[WHITE_BISHOP]) {
             // Wenn der Läufer gefesselt ist, kann er sich nicht bewegen
-            if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]))
+            if(pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq]))
                 continue;
 
             for(int i = 0; i < 4; i++) {
                 int n_sq = sq + DIAGONAL_ATTACKS[i];
-                while(b.mailbox[n_sq] != NO_SQ) {
+                while(Mailbox::mailbox[n_sq] != NO_SQ) {
                     // Wenn der Läufer den Angreifer schlagen oder sich dazwischen stellen kann, ist der Zug legal
-                    if(attackingRays & Bitboard(1ULL << b.mailbox[n_sq])) {
+                    if(attackingRays & Bitboard(1ULL << Mailbox::mailbox[n_sq])) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -848,13 +849,13 @@ void Movegen::generateWhiteBishopMoves(Array<Move, 256>& moves, Board& b,
     } else {
         for(int& sq : b.pieceList[WHITE_BISHOP]) {
             // Wenn der Läufer gefesselt ist, muss er sich in oder gegen die Richtung bewegen, in die er gefesselt ist
-            if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq])) {
-                int32_t pinDirection = pinDirections[b.mailbox[sq]];
+            if(pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq])) {
+                int32_t pinDirection = pinDirections[Mailbox::mailbox[sq]];
 
                 // Diagonale von links unten nach rechts oben
                 if(pinDirection == NORTH_EAST || pinDirection == SOUTH_WEST) {
                     int n_sq = sq + NORTH_EAST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -866,7 +867,7 @@ void Movegen::generateWhiteBishopMoves(Array<Move, 256>& moves, Board& b,
                         n_sq += NORTH_EAST;
                     }
                     n_sq = sq + SOUTH_WEST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -880,7 +881,7 @@ void Movegen::generateWhiteBishopMoves(Array<Move, 256>& moves, Board& b,
                 } else if(pinDirection == NORTH_WEST || pinDirection == SOUTH_EAST) {
                     // Diagonale von rechts unten nach links oben
                     int n_sq = sq + NORTH_WEST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -892,7 +893,7 @@ void Movegen::generateWhiteBishopMoves(Array<Move, 256>& moves, Board& b,
                         n_sq += NORTH_WEST;
                     }
                     n_sq = sq + SOUTH_EAST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -908,7 +909,7 @@ void Movegen::generateWhiteBishopMoves(Array<Move, 256>& moves, Board& b,
                 // Ansonsten darf er sich frei bewegen
                 for(int i = 0; i < 4; i++) {
                     int n_sq = sq + DIAGONAL_ATTACKS[i];
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -938,14 +939,14 @@ void Movegen::generateBlackBishopMoves(Array<Move, 256>& moves, Board& b,
     if(numAttackers == 1) {
         for(int& sq : b.pieceList[BLACK_BISHOP]) {
             // Wenn der Läufer gefesselt ist, kann er sich nicht bewegen
-            if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]))
+            if(pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq]))
                 continue;
 
             for(int i = 0; i < 4; i++) {
                 int n_sq = sq + DIAGONAL_ATTACKS[i];
-                while(b.mailbox[n_sq] != NO_SQ) {
+                while(Mailbox::mailbox[n_sq] != NO_SQ) {
                     // Wenn der Läufer den Angreifer schlagen oder sich dazwischen stellen kann, ist der Zug legal
-                    if(attackingRays & Bitboard(1ULL << b.mailbox[n_sq])) {
+                    if(attackingRays & Bitboard(1ULL << Mailbox::mailbox[n_sq])) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -964,13 +965,13 @@ void Movegen::generateBlackBishopMoves(Array<Move, 256>& moves, Board& b,
     } else {
         for(int& sq : b.pieceList[BLACK_BISHOP]) {
             // Wenn der Läufer gefesselt ist, muss er sich in oder gegen die Richtung bewegen, in die er gefesselt ist
-            if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq])) {
-                int32_t pinDirection = pinDirections[b.mailbox[sq]];
+            if(pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq])) {
+                int32_t pinDirection = pinDirections[Mailbox::mailbox[sq]];
 
                 // Diagonale von links unten nach rechts oben
                 if(pinDirection == NORTH_EAST || pinDirection == SOUTH_WEST) {
                     int n_sq = sq + NORTH_EAST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -982,7 +983,7 @@ void Movegen::generateBlackBishopMoves(Array<Move, 256>& moves, Board& b,
                         n_sq += NORTH_EAST;
                     }
                     n_sq = sq + SOUTH_WEST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -996,7 +997,7 @@ void Movegen::generateBlackBishopMoves(Array<Move, 256>& moves, Board& b,
                 } else if(pinDirection == NORTH_WEST || pinDirection == SOUTH_EAST) {
                     // Diagonale von rechts unten nach links oben
                     int n_sq = sq + NORTH_WEST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -1008,7 +1009,7 @@ void Movegen::generateBlackBishopMoves(Array<Move, 256>& moves, Board& b,
                         n_sq += NORTH_WEST;
                     }
                     n_sq = sq + SOUTH_EAST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -1024,7 +1025,7 @@ void Movegen::generateBlackBishopMoves(Array<Move, 256>& moves, Board& b,
                 // Ansonsten darf er sich frei bewegen
                 for(int i = 0; i < 4; i++) {
                     int n_sq = sq + DIAGONAL_ATTACKS[i];
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -1054,14 +1055,14 @@ void Movegen::generateWhiteRookMoves(Array<Move, 256>& moves, Board& b,
     if(numAttackers == 1) {
         for(int& sq : b.pieceList[WHITE_ROOK]) {
             // Wenn der Turm gefesselt ist, kann er sich nicht bewegen
-            if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]))
+            if(pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq]))
                 continue;
 
             for(int i = 0; i < 4; i++) {
                 int n_sq = sq + STRAIGHT_ATTACKS[i];
-                while(b.mailbox[n_sq] != NO_SQ) {
+                while(Mailbox::mailbox[n_sq] != NO_SQ) {
                     // Wenn der Turm den Angreifer schlagen oder sich dazwischen stellen kann, ist der Zug legal
-                    if(attackingRays & Bitboard(1ULL << b.mailbox[n_sq])) {
+                    if(attackingRays & Bitboard(1ULL << Mailbox::mailbox[n_sq])) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -1080,13 +1081,13 @@ void Movegen::generateWhiteRookMoves(Array<Move, 256>& moves, Board& b,
     } else {
         for(int& sq : b.pieceList[WHITE_ROOK]) {
             // Wenn der Turm gefesselt ist, muss er sich in oder gegen die Richtung bewegen, in die er gefesselt ist
-            if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq])) {
-                int32_t pinDirection = pinDirections[b.mailbox[sq]];
+            if(pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq])) {
+                int32_t pinDirection = pinDirections[Mailbox::mailbox[sq]];
 
                 // Gerade von oben nach unten
                 if(pinDirection == NORTH || pinDirection == SOUTH) {
                     int n_sq = sq + NORTH;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -1098,7 +1099,7 @@ void Movegen::generateWhiteRookMoves(Array<Move, 256>& moves, Board& b,
                         n_sq += NORTH;
                     }
                     n_sq = sq + SOUTH;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -1112,7 +1113,7 @@ void Movegen::generateWhiteRookMoves(Array<Move, 256>& moves, Board& b,
                 } else if(pinDirection == EAST || pinDirection == WEST) {
                     // Gerade von links nach rechts
                     int n_sq = sq + EAST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -1124,7 +1125,7 @@ void Movegen::generateWhiteRookMoves(Array<Move, 256>& moves, Board& b,
                         n_sq += EAST;
                     }
                     n_sq = sq + WEST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -1140,7 +1141,7 @@ void Movegen::generateWhiteRookMoves(Array<Move, 256>& moves, Board& b,
                 // Ansonsten darf er sich frei bewegen
                 for(int i = 0; i < 4; i++) {
                     int n_sq = sq + STRAIGHT_ATTACKS[i];
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -1170,14 +1171,14 @@ void Movegen::generateBlackRookMoves(Array<Move, 256>& moves, Board& b,
     if(numAttackers == 1) {
         for(int& sq : b.pieceList[BLACK_ROOK]) {
             // Wenn der Turm gefesselt ist, kann er sich nicht bewegen
-            if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]))
+            if(pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq]))
                 continue;
 
             for(int i = 0; i < 4; i++) {
                 int n_sq = sq + STRAIGHT_ATTACKS[i];
-                while(b.mailbox[n_sq] != NO_SQ) {
+                while(Mailbox::mailbox[n_sq] != NO_SQ) {
                     // Wenn der Turm den Angreifer schlagen oder sich dazwischen stellen kann, ist der Zug legal
-                    if(attackingRays & Bitboard(1ULL << b.mailbox[n_sq])) {
+                    if(attackingRays & Bitboard(1ULL << Mailbox::mailbox[n_sq])) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -1196,13 +1197,13 @@ void Movegen::generateBlackRookMoves(Array<Move, 256>& moves, Board& b,
     } else {
         for(int& sq : b.pieceList[BLACK_ROOK]) {
             // Wenn der Turm gefesselt ist, muss er sich in oder gegen die Richtung bewegen, in die er gefesselt ist
-            if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq])) {
-                int32_t pinDirection = pinDirections[b.mailbox[sq]];
+            if(pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq])) {
+                int32_t pinDirection = pinDirections[Mailbox::mailbox[sq]];
 
                 // Gerade von oben nach unten
                 if(pinDirection == NORTH || pinDirection == SOUTH) {
                     int n_sq = sq + NORTH;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -1214,7 +1215,7 @@ void Movegen::generateBlackRookMoves(Array<Move, 256>& moves, Board& b,
                         n_sq += NORTH;
                     }
                     n_sq = sq + SOUTH;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -1228,7 +1229,7 @@ void Movegen::generateBlackRookMoves(Array<Move, 256>& moves, Board& b,
                 } else if(pinDirection == EAST || pinDirection == WEST) {
                     // Gerade von links nach rechts
                     int n_sq = sq + EAST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -1240,7 +1241,7 @@ void Movegen::generateBlackRookMoves(Array<Move, 256>& moves, Board& b,
                         n_sq += EAST;
                     }
                     n_sq = sq + WEST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -1256,7 +1257,7 @@ void Movegen::generateBlackRookMoves(Array<Move, 256>& moves, Board& b,
                 // Ansonsten darf er sich frei bewegen
                 for(int i = 0; i < 4; i++) {
                     int n_sq = sq + STRAIGHT_ATTACKS[i];
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -1286,15 +1287,15 @@ void Movegen::generateWhiteQueenMoves(Array<Move, 256>& moves, Board& b,
     if(numAttackers == 1) {
         for(int& sq : b.pieceList[WHITE_QUEEN]) {
             // Wenn die Dame gefesselt ist, kann sie sich nicht bewegen
-            if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]))
+            if(pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq]))
                 continue;
 
             // Diagonal
             for(int i = 0; i < 4; i++) {
                 int n_sq = sq + DIAGONAL_ATTACKS[i];
-                while(b.mailbox[n_sq] != NO_SQ) {
+                while(Mailbox::mailbox[n_sq] != NO_SQ) {
                     // Wenn die Dame den Angreifer schlagen oder sich dazwischen stellen kann, ist der Zug legal
-                    if(attackingRays & Bitboard(1ULL << b.mailbox[n_sq])) {
+                    if(attackingRays & Bitboard(1ULL << Mailbox::mailbox[n_sq])) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -1313,9 +1314,9 @@ void Movegen::generateWhiteQueenMoves(Array<Move, 256>& moves, Board& b,
             // Gerade
             for(int i = 0; i < 4; i++) {
                 int n_sq = sq + STRAIGHT_ATTACKS[i];
-                while(b.mailbox[n_sq] != NO_SQ) {
+                while(Mailbox::mailbox[n_sq] != NO_SQ) {
                     // Wenn die Dame den Angreifer schlagen oder sich dazwischen stellen kann, ist der Zug legal
-                    if(attackingRays & Bitboard(1ULL << b.mailbox[n_sq])) {
+                    if(attackingRays & Bitboard(1ULL << Mailbox::mailbox[n_sq])) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -1334,13 +1335,13 @@ void Movegen::generateWhiteQueenMoves(Array<Move, 256>& moves, Board& b,
     } else {
         for(int& sq : b.pieceList[WHITE_QUEEN]) {
             // Wenn die Dame gefesselt ist, muss sie sich in oder gegen die Richtung bewegen, in die sie gefesselt ist
-            if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq])) {
-                int32_t pinDirection = pinDirections[b.mailbox[sq]];
+            if(pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq])) {
+                int32_t pinDirection = pinDirections[Mailbox::mailbox[sq]];
 
                 // Diagonal von links oben nach rechts unten
                 if(pinDirection == NORTH_WEST || pinDirection == SOUTH_EAST) {
                     int n_sq = sq + NORTH_WEST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -1352,7 +1353,7 @@ void Movegen::generateWhiteQueenMoves(Array<Move, 256>& moves, Board& b,
                         n_sq += NORTH_WEST;
                     }
                     n_sq = sq + SOUTH_EAST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -1366,7 +1367,7 @@ void Movegen::generateWhiteQueenMoves(Array<Move, 256>& moves, Board& b,
                 } else if(pinDirection == NORTH_EAST || pinDirection == SOUTH_WEST) {
                     // Diagonal von rechts oben nach links unten
                     int n_sq = sq + NORTH_EAST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -1378,7 +1379,7 @@ void Movegen::generateWhiteQueenMoves(Array<Move, 256>& moves, Board& b,
                         n_sq += NORTH_EAST;
                     }
                     n_sq = sq + SOUTH_WEST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -1392,7 +1393,7 @@ void Movegen::generateWhiteQueenMoves(Array<Move, 256>& moves, Board& b,
                 } else if(pinDirection == NORTH || pinDirection == SOUTH) {
                     // Gerade von oben nach unten
                     int n_sq = sq + NORTH;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -1404,7 +1405,7 @@ void Movegen::generateWhiteQueenMoves(Array<Move, 256>& moves, Board& b,
                         n_sq += NORTH;
                     }
                     n_sq = sq + SOUTH;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -1418,7 +1419,7 @@ void Movegen::generateWhiteQueenMoves(Array<Move, 256>& moves, Board& b,
                 } else if(pinDirection == EAST || pinDirection == WEST) {
                     // Gerade von links nach rechts
                     int n_sq = sq + EAST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -1430,7 +1431,7 @@ void Movegen::generateWhiteQueenMoves(Array<Move, 256>& moves, Board& b,
                         n_sq += EAST;
                     }
                     n_sq = sq + WEST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -1448,7 +1449,7 @@ void Movegen::generateWhiteQueenMoves(Array<Move, 256>& moves, Board& b,
                 // Diagonal
                 for(int i = 0; i < 4; i++) {
                     int n_sq = sq + DIAGONAL_ATTACKS[i];
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -1465,7 +1466,7 @@ void Movegen::generateWhiteQueenMoves(Array<Move, 256>& moves, Board& b,
                 // Gerade
                 for(int i = 0; i < 4; i++) {
                     int n_sq = sq + STRAIGHT_ATTACKS[i];
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
@@ -1495,15 +1496,15 @@ void Movegen::generateBlackQueenMoves(Array<Move, 256>& moves, Board& b,
     if(numAttackers == 1) {
         for(int& sq : b.pieceList[BLACK_QUEEN]) {
             // Wenn die Dame gefesselt ist, kann sie sich nicht bewegen
-            if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]))
+            if(pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq]))
                 continue;
 
             // Diagonal
             for(int i = 0; i < 4; i++) {
                 int n_sq = sq + DIAGONAL_ATTACKS[i];
-                while(b.mailbox[n_sq] != NO_SQ) {
+                while(Mailbox::mailbox[n_sq] != NO_SQ) {
                     // Wenn die Dame den Angreifer schlagen oder sich dazwischen stellen kann, ist der Zug legal
-                    if(attackingRays & Bitboard(1ULL << b.mailbox[n_sq])) {
+                    if(attackingRays & Bitboard(1ULL << Mailbox::mailbox[n_sq])) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -1522,9 +1523,9 @@ void Movegen::generateBlackQueenMoves(Array<Move, 256>& moves, Board& b,
             // Gerade
             for(int i = 0; i < 4; i++) {
                 int n_sq = sq + STRAIGHT_ATTACKS[i];
-                while(b.mailbox[n_sq] != NO_SQ) {
+                while(Mailbox::mailbox[n_sq] != NO_SQ) {
                     // Wenn die Dame den Angreifer schlagen oder sich dazwischen stellen kann, ist der Zug legal
-                    if(attackingRays & Bitboard(1ULL << b.mailbox[n_sq])) {
+                    if(attackingRays & Bitboard(1ULL << Mailbox::mailbox[n_sq])) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -1543,13 +1544,13 @@ void Movegen::generateBlackQueenMoves(Array<Move, 256>& moves, Board& b,
     } else {
         for(int& sq : b.pieceList[BLACK_QUEEN]) {
             // Wenn die Dame gefesselt ist, muss sie sich in oder gegen die Richtung bewegen, in die sie gefesselt ist
-            if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq])) {
-                int32_t pinDirection = pinDirections[b.mailbox[sq]];
+            if(pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq])) {
+                int32_t pinDirection = pinDirections[Mailbox::mailbox[sq]];
 
                 // Diagonal von links oben nach rechts unten
                 if(pinDirection == NORTH_WEST || pinDirection == SOUTH_EAST) {
                     int n_sq = sq + NORTH_WEST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -1561,7 +1562,7 @@ void Movegen::generateBlackQueenMoves(Array<Move, 256>& moves, Board& b,
                         n_sq += NORTH_WEST;
                     }
                     n_sq = sq + SOUTH_EAST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -1575,7 +1576,7 @@ void Movegen::generateBlackQueenMoves(Array<Move, 256>& moves, Board& b,
                 } else if(pinDirection == NORTH_EAST || pinDirection == SOUTH_WEST) {
                     // Diagonal von rechts oben nach links unten
                     int n_sq = sq + NORTH_EAST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -1587,7 +1588,7 @@ void Movegen::generateBlackQueenMoves(Array<Move, 256>& moves, Board& b,
                         n_sq += NORTH_EAST;
                     }
                     n_sq = sq + SOUTH_WEST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -1601,7 +1602,7 @@ void Movegen::generateBlackQueenMoves(Array<Move, 256>& moves, Board& b,
                 } else if(pinDirection == NORTH || pinDirection == SOUTH) {
                     // Gerade von oben nach unten
                     int n_sq = sq + NORTH;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -1613,7 +1614,7 @@ void Movegen::generateBlackQueenMoves(Array<Move, 256>& moves, Board& b,
                         n_sq += NORTH;
                     }
                     n_sq = sq + SOUTH;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -1627,7 +1628,7 @@ void Movegen::generateBlackQueenMoves(Array<Move, 256>& moves, Board& b,
                 } else if(pinDirection == EAST || pinDirection == WEST) {
                     // Gerade von links nach rechts
                     int n_sq = sq + EAST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -1639,7 +1640,7 @@ void Movegen::generateBlackQueenMoves(Array<Move, 256>& moves, Board& b,
                         n_sq += EAST;
                     }
                     n_sq = sq + WEST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -1657,7 +1658,7 @@ void Movegen::generateBlackQueenMoves(Array<Move, 256>& moves, Board& b,
                 // Diagonal
                 for(int i = 0; i < 4; i++) {
                     int n_sq = sq + DIAGONAL_ATTACKS[i];
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -1674,7 +1675,7 @@ void Movegen::generateBlackQueenMoves(Array<Move, 256>& moves, Board& b,
                 // Gerade
                 for(int i = 0; i < 4; i++) {
                     int n_sq = sq + STRAIGHT_ATTACKS[i];
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] == EMPTY)
                             moves.push_back(Move(sq, n_sq, MOVE_QUIET));
                         else if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
@@ -1702,25 +1703,25 @@ void Movegen::generateWhiteKingMoves(Array<Move, 256>& moves, Board& b,
     int sq = b.pieceList[WHITE_KING].front();
     for(int i = 0; i < 8; i++) {
         int n_sq = sq + KING_ATTACKS[i];
-        if(b.mailbox[n_sq] != NO_SQ) {
-            if(b.pieces[n_sq] == EMPTY && !attackedSquares.getBit(b.mailbox[n_sq]))
+        if(Mailbox::mailbox[n_sq] != NO_SQ) {
+            if(b.pieces[n_sq] == EMPTY && !attackedSquares.getBit(Mailbox::mailbox[n_sq]))
                 moves.push_back(Move(sq, n_sq, MOVE_QUIET));
-            else if((b.pieces[n_sq] & COLOR_MASK) == BLACK && !attackedSquares.getBit(b.mailbox[n_sq]))
+            else if((b.pieces[n_sq] & COLOR_MASK) == BLACK && !attackedSquares.getBit(Mailbox::mailbox[n_sq]))
                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
         }
     }
 
-    if(!attackedSquares.getBit(b.mailbox[E1])) {
+    if(!attackedSquares.getBit(Mailbox::mailbox[E1])) {
         if(b.castlingPermission & WHITE_KINGSIDE_CASTLE) {
             if(b.pieces[F1] == EMPTY && b.pieces[G1] == EMPTY &&
-                !attackedSquares.getBit(b.mailbox[F1]) && !attackedSquares.getBit(b.mailbox[G1])) {
+                !attackedSquares.getBit(Mailbox::mailbox[F1]) && !attackedSquares.getBit(Mailbox::mailbox[G1])) {
                 moves.push_back(Move(E1, G1, MOVE_KINGSIDE_CASTLE));
             }
         }
 
         if(b.castlingPermission & WHITE_QUEENSIDE_CASTLE) {
             if(b.pieces[D1] == EMPTY && b.pieces[C1] == EMPTY && b.pieces[B1] == EMPTY &&
-                !attackedSquares.getBit(b.mailbox[D1]) && !attackedSquares.getBit(b.mailbox[C1])) {
+                !attackedSquares.getBit(Mailbox::mailbox[D1]) && !attackedSquares.getBit(Mailbox::mailbox[C1])) {
                 moves.push_back(Move(E1, C1, MOVE_QUEENSIDE_CASTLE));
             }
         }
@@ -1737,25 +1738,25 @@ void Movegen::generateBlackKingMoves(Array<Move, 256>& moves, Board& b,
     int sq = b.pieceList[BLACK_KING].front();
     for(int i = 0; i < 8; i++) {
         int n_sq = sq + KING_ATTACKS[i];
-        if(b.mailbox[n_sq] != NO_SQ) {
-            if(b.pieces[n_sq] == EMPTY && !attackedSquares.getBit(b.mailbox[n_sq]))
+        if(Mailbox::mailbox[n_sq] != NO_SQ) {
+            if(b.pieces[n_sq] == EMPTY && !attackedSquares.getBit(Mailbox::mailbox[n_sq]))
                 moves.push_back(Move(sq, n_sq, MOVE_QUIET));
-            else if((b.pieces[n_sq] & COLOR_MASK) == WHITE && !attackedSquares.getBit(b.mailbox[n_sq]))
+            else if((b.pieces[n_sq] & COLOR_MASK) == WHITE && !attackedSquares.getBit(Mailbox::mailbox[n_sq]))
                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
         }
     }
 
-    if(!attackedSquares.getBit(b.mailbox[E8])) {
+    if(!attackedSquares.getBit(Mailbox::mailbox[E8])) {
         if(b.castlingPermission & BLACK_KINGSIDE_CASTLE) {
             if(b.pieces[F8] == EMPTY && b.pieces[G8] == EMPTY &&
-                !attackedSquares.getBit(b.mailbox[F8]) && !attackedSquares.getBit(b.mailbox[G8])) {
+                !attackedSquares.getBit(Mailbox::mailbox[F8]) && !attackedSquares.getBit(Mailbox::mailbox[G8])) {
                 moves.push_back(Move(E8, G8, MOVE_KINGSIDE_CASTLE));
             }
         }
 
         if(b.castlingPermission & BLACK_QUEENSIDE_CASTLE) {
             if(b.pieces[D8] == EMPTY && b.pieces[C8] == EMPTY && b.pieces[B8] == EMPTY &&
-                !attackedSquares.getBit(b.mailbox[D8]) && !attackedSquares.getBit(b.mailbox[C8])) {
+                !attackedSquares.getBit(Mailbox::mailbox[D8]) && !attackedSquares.getBit(Mailbox::mailbox[C8])) {
                 moves.push_back(Move(E8, C8, MOVE_QUEENSIDE_CASTLE));
             }
         }
@@ -1781,7 +1782,7 @@ void Movegen::generateWhitePawnCaptures(Array<Move, 256>& moves, Board& b,
             int32_t destLeft = sq + NORTH_WEST;
             int32_t destRight = sq + NORTH_EAST;
 
-            bool pinned = pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]);
+            bool pinned = pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq]);
 
             // Wenn der Bauer gefesselt ist, kann er sich nicht bewegen
             if(pinned)
@@ -1792,16 +1793,16 @@ void Movegen::generateWhitePawnCaptures(Array<Move, 256>& moves, Board& b,
                 int32_t captureSquare = b.enPassantSquare + SOUTH;
 
                 if(b.enPassantSquare == destLeft) {
-                    if(attackingRays.getBit(b.mailbox[captureSquare]))
+                    if(attackingRays.getBit(Mailbox::mailbox[captureSquare]))
                         moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
                 } else if(b.enPassantSquare == destRight) {
-                    if(attackingRays.getBit(b.mailbox[captureSquare]))
+                    if(attackingRays.getBit(Mailbox::mailbox[captureSquare]))
                         moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
                 }
             }
             
             // Wenn der Bauer den Angreifer schlagen kann, ist der Zug legal
-            if(b.pieces[destLeft] != EMPTY && attackingRays & Bitboard(1ULL << b.mailbox[destLeft]) && (b.pieces[destLeft] & COLOR_MASK) == BLACK) {
+            if(b.pieces[destLeft] != EMPTY && attackingRays & Bitboard(1ULL << Mailbox::mailbox[destLeft]) && (b.pieces[destLeft] & COLOR_MASK) == BLACK) {
                 // Promotion
                 if(rank == RANK_7) {
                         moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_QUEEN));
@@ -1810,7 +1811,7 @@ void Movegen::generateWhitePawnCaptures(Array<Move, 256>& moves, Board& b,
                         moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_KNIGHT));
                 } else
                     moves.push_back(Move(sq, destLeft, MOVE_CAPTURE));
-            } else if(b.pieces[destRight] != EMPTY && attackingRays & Bitboard(1ULL << b.mailbox[destRight]) && (b.pieces[destRight] & COLOR_MASK) == BLACK) {
+            } else if(b.pieces[destRight] != EMPTY && attackingRays & Bitboard(1ULL << Mailbox::mailbox[destRight]) && (b.pieces[destRight] & COLOR_MASK) == BLACK) {
                 // Promotion
                 if(rank == RANK_7) {
                         moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_QUEEN));
@@ -1831,7 +1832,7 @@ void Movegen::generateWhitePawnCaptures(Array<Move, 256>& moves, Board& b,
             int32_t destLeft = sq + NORTH_WEST;
             int32_t destRight = sq + NORTH_EAST;
 
-            bool pinned = pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]);
+            bool pinned = pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq]);
 
             // En-Passant Züge entfernen 2 Figuren aus einer Reihe, daher muss immer überprüft werden, ob der König nach dem Zug im Schach stände
             // -> Ein En-Passant Zug mit einem ungefesselten Bauer kann illegal sein
@@ -1841,18 +1842,18 @@ void Movegen::generateWhitePawnCaptures(Array<Move, 256>& moves, Board& b,
 
                 if(b.enPassantSquare == destLeft) {
                     Bitboard allPiecesAfterMove = b.allPiecesBitboard | b.pieceBitboard[BLACK_KING];
-                    allPiecesAfterMove.clearBit(b.mailbox[sq]);
-                    allPiecesAfterMove.clearBit(b.mailbox[captureSquare]);
-                    allPiecesAfterMove.setBit(b.mailbox[destLeft]);
+                    allPiecesAfterMove.clearBit(Mailbox::mailbox[sq]);
+                    allPiecesAfterMove.clearBit(Mailbox::mailbox[captureSquare]);
+                    allPiecesAfterMove.setBit(Mailbox::mailbox[destLeft]);
 
                     if(!b.squareAttacked(kingSquare, BLACK, allPiecesAfterMove))
                         moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
 
                 } else if(b.enPassantSquare == destRight) {
                     Bitboard allPiecesAfterMove = b.allPiecesBitboard | b.pieceBitboard[BLACK_KING];
-                    allPiecesAfterMove.clearBit(b.mailbox[sq]);
-                    allPiecesAfterMove.clearBit(b.mailbox[captureSquare]);
-                    allPiecesAfterMove.setBit(b.mailbox[destRight]);
+                    allPiecesAfterMove.clearBit(Mailbox::mailbox[sq]);
+                    allPiecesAfterMove.clearBit(Mailbox::mailbox[captureSquare]);
+                    allPiecesAfterMove.setBit(Mailbox::mailbox[destRight]);
 
                     if(!b.squareAttacked(kingSquare, BLACK, allPiecesAfterMove))
                         moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
@@ -1862,7 +1863,7 @@ void Movegen::generateWhitePawnCaptures(Array<Move, 256>& moves, Board& b,
             // Überprüfe, ob der Bauer horizontal oder diagonal gefesselt ist
             // Wenn ja, kann er sich nur bewegen, wenn er den Angreifer schlägt(diagonal)
             if(pinned) {
-                int32_t pinDir = pinDirections[b.mailbox[sq]];
+                int32_t pinDir = pinDirections[Mailbox::mailbox[sq]];
                 if(pinDir == SOUTH_EAST || pinDir == NORTH_WEST) {
                     if(b.pieces[destLeft] != EMPTY && (b.pieces[destLeft] & COLOR_MASK) == BLACK) {
                         // Promotion
@@ -1942,7 +1943,7 @@ void Movegen::generateBlackPawnCaptures(Array<Move, 256>& moves, Board& b,
             int32_t destLeft = sq + SOUTH_WEST;
             int32_t destRight = sq + SOUTH_EAST;
 
-            bool pinned = pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]);
+            bool pinned = pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq]);
 
             // Wenn der Bauer gefesselt ist, kann er sich nicht bewegen
             if(pinned)
@@ -1953,16 +1954,16 @@ void Movegen::generateBlackPawnCaptures(Array<Move, 256>& moves, Board& b,
                 int32_t captureSquare = b.enPassantSquare + NORTH;
 
                 if(b.enPassantSquare == destLeft) {
-                    if(attackingRays.getBit(b.mailbox[captureSquare]))
+                    if(attackingRays.getBit(Mailbox::mailbox[captureSquare]))
                         moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
                 } else if(b.enPassantSquare == destRight) {
-                    if(attackingRays.getBit(b.mailbox[captureSquare]))
+                    if(attackingRays.getBit(Mailbox::mailbox[captureSquare]))
                         moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
                 }
             }
             
             // Wenn der Bauer den Angreifer schlagen kann, ist der Zug legal
-            if(b.pieces[destLeft] != EMPTY && attackingRays & Bitboard(1ULL << b.mailbox[destLeft]) && (b.pieces[destLeft] & COLOR_MASK) == WHITE) {
+            if(b.pieces[destLeft] != EMPTY && attackingRays & Bitboard(1ULL << Mailbox::mailbox[destLeft]) && (b.pieces[destLeft] & COLOR_MASK) == WHITE) {
                 // Promotion
                 if(rank == RANK_2) {
                         moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_QUEEN));
@@ -1971,7 +1972,7 @@ void Movegen::generateBlackPawnCaptures(Array<Move, 256>& moves, Board& b,
                         moves.push_back(Move(sq, destLeft, MOVE_CAPTURE | MOVE_PROMOTION_KNIGHT));
                 } else
                     moves.push_back(Move(sq, destLeft, MOVE_CAPTURE));
-            } else if(b.pieces[destRight] != EMPTY && attackingRays & Bitboard(1ULL << b.mailbox[destRight]) && (b.pieces[destRight] & COLOR_MASK) == WHITE) {
+            } else if(b.pieces[destRight] != EMPTY && attackingRays & Bitboard(1ULL << Mailbox::mailbox[destRight]) && (b.pieces[destRight] & COLOR_MASK) == WHITE) {
                 // Promotion
                 if(rank == RANK_2) {
                         moves.push_back(Move(sq, destRight, MOVE_CAPTURE | MOVE_PROMOTION_QUEEN));
@@ -1992,7 +1993,7 @@ void Movegen::generateBlackPawnCaptures(Array<Move, 256>& moves, Board& b,
             int32_t destLeft = sq + SOUTH_WEST;
             int32_t destRight = sq + SOUTH_EAST;
 
-            bool pinned = pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]);
+            bool pinned = pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq]);
 
             // En-Passant Züge entfernen 2 Figuren aus einer Reihe, daher muss immer überprüft werden, ob der König nach dem Zug im Schach stände
             // -> Ein En-Passant Zug mit einem ungefesselten Bauer kann illegal sein
@@ -2002,18 +2003,18 @@ void Movegen::generateBlackPawnCaptures(Array<Move, 256>& moves, Board& b,
 
                 if(b.enPassantSquare == destLeft) {
                     Bitboard allPiecesAfterMove = b.allPiecesBitboard | b.pieceBitboard[WHITE_KING];
-                    allPiecesAfterMove.clearBit(b.mailbox[sq]);
-                    allPiecesAfterMove.clearBit(b.mailbox[captureSquare]);
-                    allPiecesAfterMove.setBit(b.mailbox[destLeft]);
+                    allPiecesAfterMove.clearBit(Mailbox::mailbox[sq]);
+                    allPiecesAfterMove.clearBit(Mailbox::mailbox[captureSquare]);
+                    allPiecesAfterMove.setBit(Mailbox::mailbox[destLeft]);
 
                     if(!b.squareAttacked(kingSquare, WHITE, allPiecesAfterMove))
                         moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
 
                 } else if(b.enPassantSquare == destRight) {
                     Bitboard allPiecesAfterMove = b.allPiecesBitboard | b.pieceBitboard[WHITE_KING];
-                    allPiecesAfterMove.clearBit(b.mailbox[sq]);
-                    allPiecesAfterMove.clearBit(b.mailbox[captureSquare]);
-                    allPiecesAfterMove.setBit(b.mailbox[destRight]);
+                    allPiecesAfterMove.clearBit(Mailbox::mailbox[sq]);
+                    allPiecesAfterMove.clearBit(Mailbox::mailbox[captureSquare]);
+                    allPiecesAfterMove.setBit(Mailbox::mailbox[destRight]);
 
                     if(!b.squareAttacked(kingSquare, WHITE, allPiecesAfterMove))
                         moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
@@ -2023,7 +2024,7 @@ void Movegen::generateBlackPawnCaptures(Array<Move, 256>& moves, Board& b,
             // Überprüfe, ob der Bauer horizontal oder diagonal gefesselt ist
             // Wenn ja, kann er sich nur bewegen, wenn er den Angreifer schlägt(diagonal)
             if(pinned) {
-                int32_t pinDir = pinDirections[b.mailbox[sq]];
+                int32_t pinDir = pinDirections[Mailbox::mailbox[sq]];
                 
                 if(pinDir == NORTH_EAST || pinDir == SOUTH_WEST) {
                     if(b.pieces[destLeft] != EMPTY && (b.pieces[destLeft] & COLOR_MASK) == WHITE) {
@@ -2096,17 +2097,17 @@ void Movegen::generateWhiteKnightCaptures(Array<Move, 256>& moves, Board& b,
     if(numAttackers == 1) {
         for(int& sq : b.pieceList[WHITE_KNIGHT]) {
             // Wenn der Springer gefesselt ist, kann er sich nicht bewegen
-            if(pinnedPieces & Bitboard(1ULL << b.mailbox[sq]))
+            if(pinnedPieces & Bitboard(1ULL << Mailbox::mailbox[sq]))
                 continue;
 
             for(int i = 0; i < 8; i++) {
                 int n_sq = sq + KNIGHT_ATTACKS[i];
 
-                if(b.mailbox[n_sq] == NO_SQ)
+                if(Mailbox::mailbox[n_sq] == NO_SQ)
                     continue;
                 
                 // Wenn der Springer den Angreifer schlagen oder sich dazwischen stellen kann, ist der Zug legal
-                if(attackingRays & Bitboard(1ULL << b.mailbox[n_sq]))
+                if(attackingRays & Bitboard(1ULL << Mailbox::mailbox[n_sq]))
                     if(b.pieces[n_sq] != EMPTY)
                         moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
             }
@@ -2114,13 +2115,13 @@ void Movegen::generateWhiteKnightCaptures(Array<Move, 256>& moves, Board& b,
     } else {
         for(int& sq : b.pieceList[WHITE_KNIGHT]) {
             // Wenn der Springer gefesselt ist, kann er sich nicht bewegen
-            if(pinnedPieces & Bitboard(1ULL << b.mailbox[sq]))
+            if(pinnedPieces & Bitboard(1ULL << Mailbox::mailbox[sq]))
                 continue;
 
             // Ansonsten darf er sich frei bewegen
             for(int i = 0; i < 8; i++) {
                 int n_sq = sq + KNIGHT_ATTACKS[i];
-                if(b.mailbox[n_sq] != NO_SQ) {
+                if(Mailbox::mailbox[n_sq] != NO_SQ) {
                     if(b.pieces[n_sq] != EMPTY && (b.pieces[n_sq] & COLOR_MASK) == BLACK)
                         moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                 }
@@ -2142,17 +2143,17 @@ void Movegen::generateBlackKnightCaptures(Array<Move, 256>& moves, Board& b,
     if(numAttackers == 1) {
         for(int& sq : b.pieceList[BLACK_KNIGHT]) {
             // Wenn der Springer gefesselt ist, kann er sich nicht bewegen
-            if(pinnedPieces & Bitboard(1ULL << b.mailbox[sq]))
+            if(pinnedPieces & Bitboard(1ULL << Mailbox::mailbox[sq]))
                 continue;
 
             for(int i = 0; i < 8; i++) {
                 int n_sq = sq + KNIGHT_ATTACKS[i];
 
-                if(b.mailbox[n_sq] == NO_SQ)
+                if(Mailbox::mailbox[n_sq] == NO_SQ)
                     continue;
                 
                 // Wenn der Springer den Angreifer schlagen oder sich dazwischen stellen kann, ist der Zug legal
-                if(attackingRays & Bitboard(1ULL << b.mailbox[n_sq]))
+                if(attackingRays & Bitboard(1ULL << Mailbox::mailbox[n_sq]))
                     if(b.pieces[n_sq] != EMPTY)
                         moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
             }
@@ -2160,13 +2161,13 @@ void Movegen::generateBlackKnightCaptures(Array<Move, 256>& moves, Board& b,
     } else {
         for(int& sq : b.pieceList[BLACK_KNIGHT]) {
             // Wenn der Springer gefesselt ist, kann er sich nicht bewegen
-            if(pinnedPieces & Bitboard(1ULL << b.mailbox[sq]))
+            if(pinnedPieces & Bitboard(1ULL << Mailbox::mailbox[sq]))
                 continue;
 
             // Ansonsten darf er sich frei bewegen
             for(int i = 0; i < 8; i++) {
                 int n_sq = sq + KNIGHT_ATTACKS[i];
-                if(b.mailbox[n_sq] != NO_SQ) {
+                if(Mailbox::mailbox[n_sq] != NO_SQ) {
                     if(b.pieces[n_sq] != EMPTY && (b.pieces[n_sq] & COLOR_MASK) == WHITE)
                         moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                 }
@@ -2187,14 +2188,14 @@ void Movegen::generateWhiteBishopCaptures(Array<Move, 256>& moves, Board& b,
     if(numAttackers == 1) {
         for(int& sq : b.pieceList[WHITE_BISHOP]) {
             // Wenn der Läufer gefesselt ist, kann er sich nicht bewegen
-            if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]))
+            if(pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq]))
                 continue;
 
             for(int i = 0; i < 4; i++) {
                 int n_sq = sq + DIAGONAL_ATTACKS[i];
-                while(b.mailbox[n_sq] != NO_SQ) {
+                while(Mailbox::mailbox[n_sq] != NO_SQ) {
                     // Wenn der Läufer den Angreifer schlagen oder sich dazwischen stellen kann, ist der Zug legal
-                    if(attackingRays & Bitboard(1ULL << b.mailbox[n_sq])) {
+                    if(attackingRays & Bitboard(1ULL << Mailbox::mailbox[n_sq])) {
                         if(b.pieces[n_sq] != EMPTY && (b.pieces[n_sq] & COLOR_MASK) == BLACK) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
@@ -2209,13 +2210,13 @@ void Movegen::generateWhiteBishopCaptures(Array<Move, 256>& moves, Board& b,
     } else {
         for(int& sq : b.pieceList[WHITE_BISHOP]) {
             // Wenn der Läufer gefesselt ist, muss er sich in oder gegen die Richtung bewegen, in die er gefesselt ist
-            if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq])) {
-                int32_t pinDirection = pinDirections[b.mailbox[sq]];
+            if(pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq])) {
+                int32_t pinDirection = pinDirections[Mailbox::mailbox[sq]];
 
                 // Diagonale von links unten nach rechts oben
                 if(pinDirection == NORTH_EAST || pinDirection == SOUTH_WEST) {
                     int n_sq = sq + NORTH_EAST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == BLACK)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2224,7 +2225,7 @@ void Movegen::generateWhiteBishopCaptures(Array<Move, 256>& moves, Board& b,
                         n_sq += NORTH_EAST;
                     }
                     n_sq = sq + SOUTH_WEST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == BLACK)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2235,7 +2236,7 @@ void Movegen::generateWhiteBishopCaptures(Array<Move, 256>& moves, Board& b,
                 } else if(pinDirection == NORTH_WEST || pinDirection == SOUTH_EAST) {
                     // Diagonale von rechts unten nach links oben
                     int n_sq = sq + NORTH_WEST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == BLACK)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2244,7 +2245,7 @@ void Movegen::generateWhiteBishopCaptures(Array<Move, 256>& moves, Board& b,
                         n_sq += NORTH_WEST;
                     }
                     n_sq = sq + SOUTH_EAST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == BLACK)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2257,7 +2258,7 @@ void Movegen::generateWhiteBishopCaptures(Array<Move, 256>& moves, Board& b,
                 // Ansonsten darf er sich frei bewegen
                 for(int i = 0; i < 4; i++) {
                     int n_sq = sq + DIAGONAL_ATTACKS[i];
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == BLACK)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2283,14 +2284,14 @@ void Movegen::generateBlackBishopCaptures(Array<Move, 256>& moves, Board& b,
     if(numAttackers == 1) {
         for(int& sq : b.pieceList[BLACK_BISHOP]) {
             // Wenn der Läufer gefesselt ist, kann er sich nicht bewegen
-            if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]))
+            if(pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq]))
                 continue;
 
             for(int i = 0; i < 4; i++) {
                 int n_sq = sq + DIAGONAL_ATTACKS[i];
-                while(b.mailbox[n_sq] != NO_SQ) {
+                while(Mailbox::mailbox[n_sq] != NO_SQ) {
                     // Wenn der Läufer den Angreifer schlagen oder sich dazwischen stellen kann, ist der Zug legal
-                    if(attackingRays & Bitboard(1ULL << b.mailbox[n_sq])) {
+                    if(attackingRays & Bitboard(1ULL << Mailbox::mailbox[n_sq])) {
                         if(b.pieces[n_sq] != EMPTY && (b.pieces[n_sq] & COLOR_MASK) == WHITE) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
@@ -2305,13 +2306,13 @@ void Movegen::generateBlackBishopCaptures(Array<Move, 256>& moves, Board& b,
     } else {
         for(int& sq : b.pieceList[BLACK_BISHOP]) {
             // Wenn der Läufer gefesselt ist, muss er sich in oder gegen die Richtung bewegen, in die er gefesselt ist
-            if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq])) {
-                int32_t pinDirection = pinDirections[b.mailbox[sq]];
+            if(pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq])) {
+                int32_t pinDirection = pinDirections[Mailbox::mailbox[sq]];
 
                 // Diagonale von links unten nach rechts oben
                 if(pinDirection == NORTH_EAST || pinDirection == SOUTH_WEST) {
                     int n_sq = sq + NORTH_EAST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == WHITE)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2320,7 +2321,7 @@ void Movegen::generateBlackBishopCaptures(Array<Move, 256>& moves, Board& b,
                         n_sq += NORTH_EAST;
                     }
                     n_sq = sq + SOUTH_WEST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == WHITE)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2331,7 +2332,7 @@ void Movegen::generateBlackBishopCaptures(Array<Move, 256>& moves, Board& b,
                 } else if(pinDirection == NORTH_WEST || pinDirection == SOUTH_EAST) {
                     // Diagonale von rechts unten nach links oben
                     int n_sq = sq + NORTH_WEST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == WHITE)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2340,7 +2341,7 @@ void Movegen::generateBlackBishopCaptures(Array<Move, 256>& moves, Board& b,
                         n_sq += NORTH_WEST;
                     }
                     n_sq = sq + SOUTH_EAST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == WHITE)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2353,7 +2354,7 @@ void Movegen::generateBlackBishopCaptures(Array<Move, 256>& moves, Board& b,
                 // Ansonsten darf er sich frei bewegen
                 for(int i = 0; i < 4; i++) {
                     int n_sq = sq + DIAGONAL_ATTACKS[i];
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == WHITE)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2379,14 +2380,14 @@ void Movegen::generateWhiteRookCaptures(Array<Move, 256>& moves, Board& b,
     if(numAttackers == 1) {
         for(int& sq : b.pieceList[WHITE_ROOK]) {
             // Wenn der Turm gefesselt ist, kann er sich nicht bewegen
-            if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]))
+            if(pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq]))
                 continue;
 
             for(int i = 0; i < 4; i++) {
                 int n_sq = sq + STRAIGHT_ATTACKS[i];
-                while(b.mailbox[n_sq] != NO_SQ) {
+                while(Mailbox::mailbox[n_sq] != NO_SQ) {
                     // Wenn der Turm den Angreifer schlagen oder sich dazwischen stellen kann, ist der Zug legal
-                    if(attackingRays & Bitboard(1ULL << b.mailbox[n_sq])) {
+                    if(attackingRays & Bitboard(1ULL << Mailbox::mailbox[n_sq])) {
                         if(b.pieces[n_sq] != EMPTY && (b.pieces[n_sq] & COLOR_MASK) == BLACK) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
@@ -2400,13 +2401,13 @@ void Movegen::generateWhiteRookCaptures(Array<Move, 256>& moves, Board& b,
     } else {
         for(int& sq : b.pieceList[WHITE_ROOK]) {
             // Wenn der Turm gefesselt ist, muss er sich in oder gegen die Richtung bewegen, in die er gefesselt ist
-            if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq])) {
-                int32_t pinDirection = pinDirections[b.mailbox[sq]];
+            if(pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq])) {
+                int32_t pinDirection = pinDirections[Mailbox::mailbox[sq]];
 
                 if(pinDirection == NORTH || pinDirection == SOUTH) {
                     // Gerade von oben nach unten
                     int n_sq = sq + NORTH;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == BLACK)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2415,7 +2416,7 @@ void Movegen::generateWhiteRookCaptures(Array<Move, 256>& moves, Board& b,
                         n_sq += NORTH;
                     }
                     n_sq = sq + SOUTH;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == BLACK)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2426,7 +2427,7 @@ void Movegen::generateWhiteRookCaptures(Array<Move, 256>& moves, Board& b,
                 } else if(pinDirection == EAST || pinDirection == WEST) {
                     // Gerade von rechts nach links
                     int n_sq = sq + EAST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == BLACK)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2435,7 +2436,7 @@ void Movegen::generateWhiteRookCaptures(Array<Move, 256>& moves, Board& b,
                         n_sq += EAST;
                     }
                     n_sq = sq + WEST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == BLACK)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2448,7 +2449,7 @@ void Movegen::generateWhiteRookCaptures(Array<Move, 256>& moves, Board& b,
                 // Ansonsten darf er sich frei bewegen
                 for(int i = 0; i < 4; i++) {
                     int n_sq = sq + STRAIGHT_ATTACKS[i];
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == BLACK)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2475,14 +2476,14 @@ void Movegen::generateBlackRookCaptures(Array<Move, 256>& moves, Board& b,
     if(numAttackers == 1) {
         for(int& sq : b.pieceList[BLACK_ROOK]) {
             // Wenn der Turm gefesselt ist, kann er sich nicht bewegen
-            if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]))
+            if(pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq]))
                 continue;
 
             for(int i = 0; i < 4; i++) {
                 int n_sq = sq + STRAIGHT_ATTACKS[i];
-                while(b.mailbox[n_sq] != NO_SQ) {
+                while(Mailbox::mailbox[n_sq] != NO_SQ) {
                     // Wenn der Turm den Angreifer schlagen oder sich dazwischen stellen kann, ist der Zug legal
-                    if(attackingRays & Bitboard(1ULL << b.mailbox[n_sq])) {
+                    if(attackingRays & Bitboard(1ULL << Mailbox::mailbox[n_sq])) {
                         if(b.pieces[n_sq] != EMPTY && (b.pieces[n_sq] & COLOR_MASK) == WHITE) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
@@ -2496,13 +2497,13 @@ void Movegen::generateBlackRookCaptures(Array<Move, 256>& moves, Board& b,
     } else {
         for(int& sq : b.pieceList[BLACK_ROOK]) {
             // Wenn der Turm gefesselt ist, muss er sich in oder gegen die Richtung bewegen, in die er gefesselt ist
-            if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq])) {
-                int32_t pinDirection = pinDirections[b.mailbox[sq]];
+            if(pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq])) {
+                int32_t pinDirection = pinDirections[Mailbox::mailbox[sq]];
 
                 if(pinDirection == NORTH || pinDirection == SOUTH) {
                     // Gerade von oben nach unten
                     int n_sq = sq + NORTH;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == WHITE)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2511,7 +2512,7 @@ void Movegen::generateBlackRookCaptures(Array<Move, 256>& moves, Board& b,
                         n_sq += NORTH;
                     }
                     n_sq = sq + SOUTH;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == WHITE)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2522,7 +2523,7 @@ void Movegen::generateBlackRookCaptures(Array<Move, 256>& moves, Board& b,
                 } else if(pinDirection == EAST || pinDirection == WEST) {
                     // Gerade von rechts nach links
                     int n_sq = sq + EAST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == WHITE)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2531,7 +2532,7 @@ void Movegen::generateBlackRookCaptures(Array<Move, 256>& moves, Board& b,
                         n_sq += EAST;
                     }
                     n_sq = sq + WEST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == WHITE)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2544,7 +2545,7 @@ void Movegen::generateBlackRookCaptures(Array<Move, 256>& moves, Board& b,
                 // Ansonsten darf er sich frei bewegen
                 for(int i = 0; i < 4; i++) {
                     int n_sq = sq + STRAIGHT_ATTACKS[i];
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == WHITE)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2571,14 +2572,14 @@ void Movegen::generateWhiteQueenCaptures(Array<Move, 256>& moves, Board& b,
     if(numAttackers == 1) {
         for(int& sq : b.pieceList[WHITE_QUEEN]) {
             // Wenn die Dame gefesselt ist, kann sie sich nicht bewegen
-            if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]))
+            if(pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq]))
                 continue;
 
             for(int i = 0; i < 8; i++) {
                 int n_sq = sq + DIAGONAL_ATTACKS[i];
-                while(b.mailbox[n_sq] != NO_SQ) {
+                while(Mailbox::mailbox[n_sq] != NO_SQ) {
                     // Wenn die Dame den Angreifer schlagen oder sich dazwischen stellen kann, ist der Zug legal
-                    if(attackingRays & Bitboard(1ULL << b.mailbox[n_sq])) {
+                    if(attackingRays & Bitboard(1ULL << Mailbox::mailbox[n_sq])) {
                         if(b.pieces[n_sq] != EMPTY && (b.pieces[n_sq] & COLOR_MASK) == BLACK) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
@@ -2590,9 +2591,9 @@ void Movegen::generateWhiteQueenCaptures(Array<Move, 256>& moves, Board& b,
             }
             for(int i = 0; i < 4; i++) {
                 int n_sq = sq + STRAIGHT_ATTACKS[i];
-                while(b.mailbox[n_sq] != NO_SQ) {
+                while(Mailbox::mailbox[n_sq] != NO_SQ) {
                     // Wenn die Dame den Angreifer schlagen oder sich dazwischen stellen kann, ist der Zug legal
-                    if(attackingRays & Bitboard(1ULL << b.mailbox[n_sq])) {
+                    if(attackingRays & Bitboard(1ULL << Mailbox::mailbox[n_sq])) {
                         if(b.pieces[n_sq] != EMPTY && (b.pieces[n_sq] & COLOR_MASK) == BLACK) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
@@ -2606,13 +2607,13 @@ void Movegen::generateWhiteQueenCaptures(Array<Move, 256>& moves, Board& b,
     } else {
         for(int& sq : b.pieceList[WHITE_QUEEN]) {
             // Wenn die Dame gefesselt ist, muss sie sich in oder gegen die Richtung bewegen, in die sie gefesselt ist
-            if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq])) {
-                int32_t pinDirection = pinDirections[b.mailbox[sq]];
+            if(pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq])) {
+                int32_t pinDirection = pinDirections[Mailbox::mailbox[sq]];
 
                 if(pinDirection == NORTH_EAST || pinDirection == SOUTH_WEST) {
                     // Diagonale von oben links nach unten rechts
                     int n_sq = sq + NORTH_EAST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == BLACK)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2621,7 +2622,7 @@ void Movegen::generateWhiteQueenCaptures(Array<Move, 256>& moves, Board& b,
                         n_sq += NORTH_EAST;
                     }
                     n_sq = sq + SOUTH_WEST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == BLACK)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2632,7 +2633,7 @@ void Movegen::generateWhiteQueenCaptures(Array<Move, 256>& moves, Board& b,
                 } else if(pinDirection == NORTH_WEST || pinDirection == SOUTH_EAST) {
                     // Diagonale von oben rechts nach unten links
                     int n_sq = sq + NORTH_WEST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == BLACK)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2641,7 +2642,7 @@ void Movegen::generateWhiteQueenCaptures(Array<Move, 256>& moves, Board& b,
                         n_sq += NORTH_WEST;
                     }
                     n_sq = sq + SOUTH_EAST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == BLACK)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2652,7 +2653,7 @@ void Movegen::generateWhiteQueenCaptures(Array<Move, 256>& moves, Board& b,
                 } else if(pinDirection == NORTH || pinDirection == SOUTH) {
                     // Gerade von oben nach unten
                     int n_sq = sq + NORTH;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == BLACK)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2661,7 +2662,7 @@ void Movegen::generateWhiteQueenCaptures(Array<Move, 256>& moves, Board& b,
                         n_sq += NORTH;
                     }
                     n_sq = sq + SOUTH;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == BLACK)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2672,7 +2673,7 @@ void Movegen::generateWhiteQueenCaptures(Array<Move, 256>& moves, Board& b,
                 } else if(pinDirection == WEST || pinDirection == EAST) {
                     // Gerade von links nach rechts
                     int n_sq = sq + WEST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == BLACK)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2681,7 +2682,7 @@ void Movegen::generateWhiteQueenCaptures(Array<Move, 256>& moves, Board& b,
                         n_sq += WEST;
                     }
                     n_sq = sq + EAST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == BLACK)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2694,7 +2695,7 @@ void Movegen::generateWhiteQueenCaptures(Array<Move, 256>& moves, Board& b,
                 // Wenn die Dame nicht gefesselt ist, kann sie sich in jede Richtung bewegen
                 for(int i = 0; i < 4; i++) {
                     int n_sq = sq + DIAGONAL_ATTACKS[i];
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == BLACK)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2705,7 +2706,7 @@ void Movegen::generateWhiteQueenCaptures(Array<Move, 256>& moves, Board& b,
                 }
                 for(int i = 0; i < 4; i++) {
                     int n_sq = sq + STRAIGHT_ATTACKS[i];
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == BLACK)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2731,14 +2732,14 @@ void Movegen::generateBlackQueenCaptures(Array<Move, 256>& moves, Board& b,
     if(numAttackers == 1) {
         for(int& sq : b.pieceList[BLACK_QUEEN]) {
             // Wenn die Dame gefesselt ist, kann sie sich nicht bewegen
-            if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq]))
+            if(pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq]))
                 continue;
 
             for(int i = 0; i < 8; i++) {
                 int n_sq = sq + DIAGONAL_ATTACKS[i];
-                while(b.mailbox[n_sq] != NO_SQ) {
+                while(Mailbox::mailbox[n_sq] != NO_SQ) {
                     // Wenn die Dame den Angreifer schlagen oder sich dazwischen stellen kann, ist der Zug legal
-                    if(attackingRays & Bitboard(1ULL << b.mailbox[n_sq])) {
+                    if(attackingRays & Bitboard(1ULL << Mailbox::mailbox[n_sq])) {
                         if(b.pieces[n_sq] != EMPTY && (b.pieces[n_sq] & COLOR_MASK) == WHITE) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
@@ -2750,9 +2751,9 @@ void Movegen::generateBlackQueenCaptures(Array<Move, 256>& moves, Board& b,
             }
             for(int i = 0; i < 4; i++) {
                 int n_sq = sq + STRAIGHT_ATTACKS[i];
-                while(b.mailbox[n_sq] != NO_SQ) {
+                while(Mailbox::mailbox[n_sq] != NO_SQ) {
                     // Wenn die Dame den Angreifer schlagen oder sich dazwischen stellen kann, ist der Zug legal
-                    if(attackingRays & Bitboard(1ULL << b.mailbox[n_sq])) {
+                    if(attackingRays & Bitboard(1ULL << Mailbox::mailbox[n_sq])) {
                         if(b.pieces[n_sq] != EMPTY && (b.pieces[n_sq] & COLOR_MASK) == WHITE) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
@@ -2766,13 +2767,13 @@ void Movegen::generateBlackQueenCaptures(Array<Move, 256>& moves, Board& b,
     } else {
         for(int& sq : b.pieceList[BLACK_QUEEN]) {
             // Wenn die Dame gefesselt ist, muss sie sich in oder gegen die Richtung bewegen, in die sie gefesselt ist
-            if(pinnedPiecesBitboard & Bitboard(1ULL << b.mailbox[sq])) {
-                int32_t pinDirection = pinDirections[b.mailbox[sq]];
+            if(pinnedPiecesBitboard & Bitboard(1ULL << Mailbox::mailbox[sq])) {
+                int32_t pinDirection = pinDirections[Mailbox::mailbox[sq]];
 
                 if(pinDirection == NORTH_EAST || pinDirection == SOUTH_WEST) {
                     // Diagonale von oben links nach unten rechts
                     int n_sq = sq + NORTH_EAST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == WHITE)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2781,7 +2782,7 @@ void Movegen::generateBlackQueenCaptures(Array<Move, 256>& moves, Board& b,
                         n_sq += NORTH_EAST;
                     }
                     n_sq = sq + SOUTH_WEST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == WHITE)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2792,7 +2793,7 @@ void Movegen::generateBlackQueenCaptures(Array<Move, 256>& moves, Board& b,
                 } else if(pinDirection == NORTH_WEST || pinDirection == SOUTH_EAST) {
                     // Diagonale von oben rechts nach unten links
                     int n_sq = sq + NORTH_WEST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == WHITE)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2801,7 +2802,7 @@ void Movegen::generateBlackQueenCaptures(Array<Move, 256>& moves, Board& b,
                         n_sq += NORTH_WEST;
                     }
                     n_sq = sq + SOUTH_EAST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == WHITE)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2812,7 +2813,7 @@ void Movegen::generateBlackQueenCaptures(Array<Move, 256>& moves, Board& b,
                 } else if(pinDirection == NORTH || pinDirection == SOUTH) {
                     // Gerade von oben nach unten
                     int n_sq = sq + NORTH;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == WHITE)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2821,7 +2822,7 @@ void Movegen::generateBlackQueenCaptures(Array<Move, 256>& moves, Board& b,
                         n_sq += NORTH;
                     }
                     n_sq = sq + SOUTH;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == WHITE)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2832,7 +2833,7 @@ void Movegen::generateBlackQueenCaptures(Array<Move, 256>& moves, Board& b,
                 } else if(pinDirection == WEST || pinDirection == EAST) {
                     // Gerade von links nach rechts
                     int n_sq = sq + WEST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == WHITE)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2841,7 +2842,7 @@ void Movegen::generateBlackQueenCaptures(Array<Move, 256>& moves, Board& b,
                         n_sq += WEST;
                     }
                     n_sq = sq + EAST;
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == WHITE)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2854,7 +2855,7 @@ void Movegen::generateBlackQueenCaptures(Array<Move, 256>& moves, Board& b,
                 // Wenn die Dame nicht gefesselt ist, kann sie sich in jede Richtung bewegen
                 for(int i = 0; i < 4; i++) {
                     int n_sq = sq + DIAGONAL_ATTACKS[i];
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == WHITE)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2865,7 +2866,7 @@ void Movegen::generateBlackQueenCaptures(Array<Move, 256>& moves, Board& b,
                 }
                 for(int i = 0; i < 4; i++) {
                     int n_sq = sq + STRAIGHT_ATTACKS[i];
-                    while(b.mailbox[n_sq] != NO_SQ) {
+                    while(Mailbox::mailbox[n_sq] != NO_SQ) {
                         if(b.pieces[n_sq] != EMPTY) {
                             if((b.pieces[n_sq] & COLOR_MASK) == WHITE)
                                 moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
@@ -2890,9 +2891,9 @@ void Movegen::generateWhiteKingCaptures(Array<Move, 256>& moves, Board& b,
     int sq = b.pieceList[WHITE_KING].front();
     for(int i = 0; i < 8; i++) {
         int n_sq = sq + KING_ATTACKS[i];
-        if(b.mailbox[n_sq] != NO_SQ) {
+        if(Mailbox::mailbox[n_sq] != NO_SQ) {
             if(b.pieces[n_sq] != EMPTY) {
-                if((b.pieces[n_sq] & COLOR_MASK) == BLACK && !attackedSquares.getBit(b.mailbox[n_sq]))
+                if((b.pieces[n_sq] & COLOR_MASK) == BLACK && !attackedSquares.getBit(Mailbox::mailbox[n_sq]))
                     moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                 
                 break;
@@ -2911,9 +2912,9 @@ void Movegen::generateBlackKingCaptures(Array<Move, 256>& moves, Board& b,
     int sq = b.pieceList[BLACK_KING].front();
     for(int i = 0; i < 8; i++) {
         int n_sq = sq + KING_ATTACKS[i];
-        if(b.mailbox[n_sq] != NO_SQ) {
+        if(Mailbox::mailbox[n_sq] != NO_SQ) {
             if(b.pieces[n_sq] != EMPTY) {
-                if((b.pieces[n_sq] & COLOR_MASK) == WHITE && !attackedSquares.getBit(b.mailbox[n_sq]))
+                if((b.pieces[n_sq] & COLOR_MASK) == WHITE && !attackedSquares.getBit(Mailbox::mailbox[n_sq]))
                     moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                 
                 break;

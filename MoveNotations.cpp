@@ -1,4 +1,5 @@
 #include "MoveNotations.h"
+#include "MailboxDefinitions.h"
 
 /**
  * @brief Ein Array mit den Figurenbezeichnungen für die Figurine Notation.
@@ -47,8 +48,8 @@ std::string toAlgebraicNotation(const Move& move, Board& board, const std::strin
 
     std::string result = "";
 
-    int32_t origin64 = board.sq120To64(move.getOrigin());
-    int32_t dest64 = board.sq120To64(move.getDestination());
+    int32_t origin64 = Mailbox::mailbox[move.getOrigin()];
+    int32_t dest64 = Mailbox::mailbox[move.getDestination()];
 
     int32_t originRank = SQ2R(move.getOrigin());
     int32_t originFile = SQ2F(move.getOrigin());

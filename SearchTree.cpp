@@ -4,6 +4,7 @@
 #include "EvaluationDefinitions.h"
 #include <cmath>
 #include "MoveNotations.h"
+#include "MailboxDefinitions.h"
 
 SearchTree::SearchTree(Board& b) {
     board = &b;
@@ -13,7 +14,7 @@ SearchTree::SearchTree(Board& b) {
     currentAge = b.getPly();
     nodesSearched = 0;
 
-    numVariations = 3;
+    numVariations = 1;
 
     searching = false;
 }
@@ -68,7 +69,9 @@ void SearchTree::shiftKillerMoves() {
 }
 
 void SearchTree::clearVariations() {
+    variationMutex.lock();
     variations.clear();
+    variationMutex.unlock();
 }
 
 int16_t SearchTree::search(uint32_t searchTime) {
@@ -80,6 +83,7 @@ int16_t SearchTree::search(uint32_t searchTime) {
     int16_t lastScore;
     clearRelativeHistory();
     clearKillerMoves();
+    clearVariations();
 
     std::thread timer(std::bind(&SearchTree::searchTimer, this, searchTime));
 
@@ -118,6 +122,77 @@ int16_t SearchTree::search(uint32_t searchTime) {
     timer.join();
 
     return lastScore;
+}
+
+void SearchTree::sortMovesAtRoot(Array<Move, 256>& moves, int32_t moveEvalFunc) {
+    Array<MoveScorePair, 256> msp;
+    
+    std::vector<Move> bestMovesFromLastDepth;
+
+    for(Variation v : variations) {
+        bestMovesFromLastDepth.push_back(v.moves[0]);
+    }
+
+    for(Move move : moves) {
+        int32_t moveScore = 0;
+
+        int32_t index = std::find(bestMovesFromLastDepth.begin(), bestMovesFromLastDepth.end(), move) - bestMovesFromLastDepth.begin();
+        if(index < bestMovesFromLastDepth.size()) {
+            moveScore += 30000 - index;
+        } else if(move.isCapture() || move.isPromotion()) {
+            switch(moveEvalFunc) {
+                case MVVLVA:
+                    moveScore += evaluator.evaluateMoveMVVLVA(move);
+                    break;
+                case SEE:
+                    int32_t seeScore = evaluator.evaluateMoveSEE(move);
+                    seeCache.put(move, seeScore);
+                    moveScore += seeScore;
+                    break;
+            }
+        } else if(move.isQuiet()) {
+            int32_t moveScore = 0;
+
+            if(killerMoves[0][0] == move)
+                moveScore += 80;
+            else if(killerMoves[0][1] == move)
+                moveScore += 70;
+        }
+
+        int32_t movedPieceType = TYPEOF(board->pieceAt(move.getOrigin()));
+        int32_t side = board->getSideToMove();
+        int32_t psqtOrigin64 = Mailbox::mailbox[move.getOrigin()];
+        int32_t psqtDestination64 = Mailbox::mailbox[move.getDestination()];
+
+        if(side == BLACK) {
+            int32_t rank = psqtOrigin64 / 8;
+            int32_t file = psqtOrigin64 % 8;
+
+            psqtOrigin64 = (RANK_8 - rank) * 8 + file;
+
+            rank = psqtDestination64 / 8;
+            file = psqtDestination64 % 8;
+
+            psqtDestination64 = (RANK_8 - rank) * 8 + file;
+        }
+
+        moveScore += MOVE_ORDERING_PSQT[movedPieceType][psqtDestination64] - MOVE_ORDERING_PSQT[movedPieceType][psqtOrigin64];
+
+        moveScore += std::clamp(relativeHistory[board->getSideToMove() / COLOR_MASK]
+                            [Mailbox::mailbox[move.getOrigin()]]
+                            [Mailbox::mailbox[move.getDestination()]] / (1 << (currentMaxDepth / ONE_PLY)),
+                            -99, 49);
+
+        moveScoreCache.put(move, moveScore);
+        msp.push_back({move, moveScore});
+    }
+
+    std::sort(msp.begin(), msp.end(), std::greater<MoveScorePair>());
+
+    moves.clear();
+
+    for(MoveScorePair pair : msp)
+        moves.push_back(pair.move);
 }
 
 void SearchTree::sortMoves(Array<Move, 256>& moves, int16_t ply, int32_t moveEvalFunc) {
@@ -161,8 +236,8 @@ void SearchTree::sortMoves(Array<Move, 256>& moves, int16_t ply, int32_t moveEva
 
         int32_t movedPieceType = TYPEOF(board->pieceAt(move.getOrigin()));
         int32_t side = board->getSideToMove();
-        int32_t psqtOrigin64 = board->sq120To64(move.getOrigin());
-        int32_t psqtDestination64 = board->sq120To64(move.getDestination());
+        int32_t psqtOrigin64 = Mailbox::mailbox[move.getOrigin()];
+        int32_t psqtDestination64 = Mailbox::mailbox[move.getDestination()];
 
         if(side == BLACK) {
             int32_t rank = psqtOrigin64 / 8;
@@ -179,8 +254,8 @@ void SearchTree::sortMoves(Array<Move, 256>& moves, int16_t ply, int32_t moveEva
         moveScore += MOVE_ORDERING_PSQT[movedPieceType][psqtDestination64] - MOVE_ORDERING_PSQT[movedPieceType][psqtOrigin64];
 
         moveScore += std::clamp(relativeHistory[board->getSideToMove() / COLOR_MASK]
-                            [board->sq120To64(move.getOrigin())]
-                            [board->sq120To64(move.getDestination())] / (1 << (currentMaxDepth / ONE_PLY)),
+                            [Mailbox::mailbox[move.getOrigin()]]
+                            [Mailbox::mailbox[move.getDestination()]] / (1 << (currentMaxDepth / ONE_PLY)),
                             -99, 49);
 
         moveScoreCache.put(move, moveScore);
@@ -265,8 +340,8 @@ void SearchTree::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t m
 
         int32_t movedPieceType = TYPEOF(board->pieceAt(move.getOrigin()));
         int32_t side = board->getSideToMove();
-        int32_t psqtOrigin64 = board->sq120To64(move.getOrigin());
-        int32_t psqtDestination64 = board->sq120To64(move.getDestination());
+        int32_t psqtOrigin64 = Mailbox::mailbox[move.getOrigin()];
+        int32_t psqtDestination64 = Mailbox::mailbox[move.getDestination()];
 
         if(side == BLACK) {
             int32_t rank = psqtOrigin64 / 8;
@@ -283,8 +358,8 @@ void SearchTree::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t m
         moveScore += MOVE_ORDERING_PSQT[movedPieceType][psqtDestination64] - MOVE_ORDERING_PSQT[movedPieceType][psqtOrigin64];
 
         moveScore += std::clamp(relativeHistory[board->getSideToMove() / COLOR_MASK]
-                            [board->sq120To64(move.getOrigin())]
-                            [board->sq120To64(move.getDestination())] / (1 << (currentMaxDepth / ONE_PLY)),
+                            [Mailbox::mailbox[move.getOrigin()]]
+                            [Mailbox::mailbox[move.getDestination()]] / (1 << (currentMaxDepth / ONE_PLY)),
                             -99, 49);
                                     
         if(moveScore >= minScore) {
@@ -305,8 +380,16 @@ int16_t SearchTree::rootSearch(int16_t depth, int16_t expectedScore) {
     int32_t aspAlphaReduction = ASP_WINDOW, numAlphaReduction = 1;
     int32_t aspBetaReduction = ASP_WINDOW, numBetaReduction = 1;
 
-    int16_t alpha = expectedScore - aspAlphaReduction;
-    int16_t beta = expectedScore + aspBetaReduction;
+    int16_t upperExpectedScore = expectedScore;
+    int16_t lowerExpectedScore = expectedScore;
+
+    if(variations.size() > 0) {
+        upperExpectedScore = variations.front().score;
+        lowerExpectedScore = variations.back().score;
+    }
+
+    int16_t alpha = lowerExpectedScore - aspAlphaReduction;
+    int16_t beta = upperExpectedScore + aspBetaReduction;
 
     int16_t score = pvSearchRoot(depth, alpha, beta);
 
@@ -316,7 +399,7 @@ int16_t SearchTree::rootSearch(int16_t depth, int16_t expectedScore) {
                 alpha = MIN_SCORE;
             else {
                 aspAlphaReduction *= ASP_STEP_FACTOR;
-                alpha = expectedScore - aspAlphaReduction;
+                alpha = lowerExpectedScore - aspAlphaReduction;
             }
 
             numAlphaReduction++;
@@ -325,7 +408,7 @@ int16_t SearchTree::rootSearch(int16_t depth, int16_t expectedScore) {
                 beta = MAX_SCORE;
             else {
                 aspBetaReduction *= ASP_STEP_FACTOR;
-                beta = expectedScore + aspBetaReduction;
+                beta = upperExpectedScore + aspBetaReduction;
             }
 
             numBetaReduction++;
@@ -338,7 +421,6 @@ int16_t SearchTree::rootSearch(int16_t depth, int16_t expectedScore) {
 }
 
 int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
-    clearVariations();
     clearPvTable();
     moveScoreCache.clear();
     seeCache.clear();
@@ -346,6 +428,9 @@ int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
     int32_t pvNodes = numVariations;
     int16_t score, bestScore = MIN_SCORE, worstVariationScore = MIN_SCORE;
     Move bestMove;
+    int16_t oldAlpha = alpha;
+
+    std::vector<Variation> newVariations;
 
     int32_t moveNumber = 1;
     bool isCheckEvasion = board->isCheck();
@@ -353,7 +438,7 @@ int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
     Array<Move, 256> moves;
 
     moves = board->generateLegalMoves();
-    sortMoves(moves, 0, SEE);
+    sortMovesAtRoot(moves, SEE);
 
     for(Move move : moves) {
         if(!searching)
@@ -383,8 +468,8 @@ int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
             return 0;
         
         relativeHistory[board->getSideToMove() / COLOR_MASK]
-                           [board->sq120To64(move.getOrigin())]
-                           [board->sq120To64(move.getDestination())] -= std::min(depth / ONE_PLY, 18);
+                           [Mailbox::mailbox[move.getOrigin()]]
+                           [Mailbox::mailbox[move.getDestination()]] -= std::min(depth / ONE_PLY, 18);
         
 
         if(score >= beta) {
@@ -400,8 +485,8 @@ int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
             }
 
             relativeHistory[board->getSideToMove() / COLOR_MASK]
-                           [board->sq120To64(move.getOrigin())]
-                           [board->sq120To64(move.getDestination())] += 1 << std::min(depth / ONE_PLY, 18);
+                           [Mailbox::mailbox[move.getOrigin()]]
+                           [Mailbox::mailbox[move.getDestination()]] += 1 << std::min(depth / ONE_PLY, 18);
 
             return score;
         }
@@ -412,34 +497,34 @@ int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
         }
 
         if(score > worstVariationScore) {
-            std::vector<Move> moves;
-            moves.push_back(move);
-            moves.insert(moves.end(), pvTable[1].begin(), pvTable[1].end());
+            std::vector<Move> variationMoves;
+            variationMoves.push_back(move);
+            variationMoves.insert(variationMoves.end(), pvTable[1].begin(), pvTable[1].end());
 
             Variation variation = {
-                moves,
+                variationMoves,
                 score
             };
 
             auto insertionIndex = std::upper_bound(
-                variations.begin(),
-                variations.end(),
+                newVariations.begin(),
+                newVariations.end(),
                 variation,
                 std::greater<Variation>());
 
-            if(variations.size() >= numVariations) {
-                if(insertionIndex != variations.end()) {
-                    variations.insert(insertionIndex, variation);
-                    variations.pop_back();
+            if(newVariations.size() >= numVariations) {
+                if(insertionIndex != newVariations.end()) {
+                    newVariations.insert(insertionIndex, variation);
+                    newVariations.pop_back();
                 }
             } else {
-                variations.insert(insertionIndex, variation);
+                newVariations.insert(insertionIndex, variation);
             }
 
-            if(variations.size() >= numVariations || variations.size() >= moves.size()) {
-                worstVariationScore = variations.back().score;
+            if(newVariations.size() >= numVariations || newVariations.size() >= moves.size()) {
+                worstVariationScore = newVariations.back().score;
 
-                if(worstVariationScore > alpha)
+                if(worstVariationScore > oldAlpha)
                     alpha = worstVariationScore;
             }
         }
@@ -453,8 +538,14 @@ int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
     });
 
     relativeHistory[board->getSideToMove() / COLOR_MASK]
-                    [board->sq120To64(bestMove.getOrigin())]
-                    [board->sq120To64(bestMove.getDestination())] += 1 << std::min(depth / ONE_PLY, 18);
+                    [Mailbox::mailbox[bestMove.getOrigin()]]
+                    [Mailbox::mailbox[bestMove.getDestination()]] += 1 << std::min(depth / ONE_PLY, 18);
+                
+    if(worstVariationScore > oldAlpha) {
+        variationMutex.lock();
+        variations = newVariations;
+        variationMutex.unlock();
+    }
 
     return worstVariationScore;
 }
@@ -526,8 +617,8 @@ int16_t SearchTree::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
             return 0;
         
         relativeHistory[board->getSideToMove() / COLOR_MASK]
-                           [board->sq120To64(move.getOrigin())]
-                           [board->sq120To64(move.getDestination())] -= std::min(depth / ONE_PLY, 18);
+                           [Mailbox::mailbox[move.getOrigin()]]
+                           [Mailbox::mailbox[move.getDestination()]] -= std::min(depth / ONE_PLY, 18);
         
 
         if(score >= beta) {
@@ -547,8 +638,8 @@ int16_t SearchTree::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
             }
 
             relativeHistory[board->getSideToMove() / COLOR_MASK]
-                           [board->sq120To64(move.getOrigin())]
-                           [board->sq120To64(move.getDestination())] += 1 << std::min(depth / ONE_PLY, 18);
+                           [Mailbox::mailbox[move.getOrigin()]]
+                           [Mailbox::mailbox[move.getDestination()]] += 1 << std::min(depth / ONE_PLY, 18);
 
             return score;
         }
@@ -580,8 +671,8 @@ int16_t SearchTree::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
         });
 
     relativeHistory[board->getSideToMove() / COLOR_MASK]
-                    [board->sq120To64(bestMove.getOrigin())]
-                    [board->sq120To64(bestMove.getDestination())] += 1 << std::min(depth / ONE_PLY, 18);
+                    [Mailbox::mailbox[bestMove.getOrigin()]]
+                    [Mailbox::mailbox[bestMove.getDestination()]] += 1 << std::min(depth / ONE_PLY, 18);
 
     return bestScore;
 }
@@ -658,8 +749,8 @@ int16_t SearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
             return 0;
         
         relativeHistory[board->getSideToMove() / COLOR_MASK]
-                        [board->sq120To64(move.getOrigin())]
-                        [board->sq120To64(move.getDestination())] -= std::min(depth / ONE_PLY, 18);
+                        [Mailbox::mailbox[move.getOrigin()]]
+                        [Mailbox::mailbox[move.getDestination()]] -= std::min(depth / ONE_PLY, 18);
 
         if(score >= beta) {
             bool tableHit = transpositionTable.probe(board->getHashValue(), ttEntry);
@@ -678,8 +769,8 @@ int16_t SearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
             }
 
             relativeHistory[board->getSideToMove() / COLOR_MASK]
-                           [board->sq120To64(move.getOrigin())]
-                           [board->sq120To64(move.getDestination())] += 1 << std::min(depth / ONE_PLY, 18);
+                           [Mailbox::mailbox[move.getOrigin()]]
+                           [Mailbox::mailbox[move.getDestination()]] += 1 << std::min(depth / ONE_PLY, 18);
 
             return score;
         }
@@ -699,8 +790,8 @@ int16_t SearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
         });
     
     relativeHistory[board->getSideToMove() / COLOR_MASK]
-                [board->sq120To64(bestMove.getOrigin())]
-                [board->sq120To64(bestMove.getDestination())] += 1 << std::min(depth / ONE_PLY, 18);
+                [Mailbox::mailbox[bestMove.getOrigin()]]
+                [Mailbox::mailbox[bestMove.getDestination()]] += 1 << std::min(depth / ONE_PLY, 18);
 
     return bestScore;
 }
@@ -711,8 +802,8 @@ int16_t SearchTree::determineExtension(int16_t depth, Move& m, int32_t moveCount
     int32_t movedPieceType = TYPEOF(board->pieceAt(m.getDestination()));
     int32_t capturedPieceType = TYPEOF(board->getLastMoveHistoryEntry().capturedPiece);
 
-    int32_t origin64 = board->sq120To64(m.getOrigin());
-    int32_t destination64 = board->sq120To64(m.getDestination());
+    int32_t origin64 = Mailbox::mailbox[m.getOrigin()];
+    int32_t destination64 = Mailbox::mailbox[m.getDestination()];
 
     bool isCheck = board->isCheck();
 
@@ -738,7 +829,7 @@ int16_t SearchTree::determineExtension(int16_t depth, Move& m, int32_t moveCount
         int32_t side = board->getSideToMove() ^ COLOR_MASK;
         int32_t otherSide = board->getSideToMove();
 
-        if(!(sentryMasks[side / COLOR_MASK][board->sq120To64(m.getDestination())]
+        if(!(sentryMasks[side / COLOR_MASK][Mailbox::mailbox[m.getDestination()]]
             & board->getPieceBitboard(otherSide | PAWN)))
             extension += TWO_THIRDS_PLY;
     }
@@ -760,8 +851,8 @@ int16_t SearchTree::determineReduction(int16_t depth, Move& m, int32_t moveCount
     int32_t movedPieceType = TYPEOF(board->pieceAt(m.getDestination()));
     int32_t capturedPieceType = TYPEOF(board->getLastMoveHistoryEntry().capturedPiece);
 
-    int32_t origin64 = board->sq120To64(m.getOrigin());
-    int32_t destination64 = board->sq120To64(m.getDestination());
+    int32_t origin64 = Mailbox::mailbox[m.getOrigin()];
+    int32_t destination64 = Mailbox::mailbox[m.getDestination()];
     
     if(moveCount <= 3 || isCheck || isCheckEvasion)
         return 0;

@@ -181,7 +181,7 @@ int main() {
         SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &cfi);
     #endif
 
-    Board board("r2q1rk1/pbpn1ppp/1p2p3/3p3n/1b1P1B2/2NBP1Q1/PPP1NPPP/2KR3R w - - 8 10");
+    Board board;
     SearchTree st(board);
     
     st.search(50000);

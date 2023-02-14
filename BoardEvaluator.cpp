@@ -2,6 +2,7 @@
 #include "BoardDefinitions.h"
 #include "EvaluationDefinitions.h"
 #include <algorithm>
+#include "MailboxDefinitions.h"
 
 BoardEvaluator::BoardEvaluator(Board& b) {
     this->b = &b;
@@ -501,7 +502,7 @@ int32_t BoardEvaluator::evalMGKingAttackZone(int32_t side) {
     int32_t score = 0;
 
     int32_t otherSide = side ^ COLOR_MASK;
-    Bitboard kingAttackZone = kingAttackZoneMask[side / COLOR_MASK][b->mailbox[b->pieceList[side | KING].front()]];
+    Bitboard kingAttackZone = kingAttackZoneMask[side / COLOR_MASK][Mailbox::mailbox[b->pieceList[side | KING].front()]];
 
     int32_t numAttackers = 0, attackCounter = 0;
     
@@ -567,8 +568,8 @@ int32_t BoardEvaluator::evalMGKingSafety() {
     int32_t ownKingSafetyScore = 0;
     int32_t otherKingSafetyScore = 0;
 
-    int32_t ownKingSquare = b->mailbox[b->pieceList[side | KING].front()];
-    int32_t otherKingSquare = b->mailbox[b->pieceList[otherSide | KING].front()];
+    int32_t ownKingSquare = Mailbox::mailbox[b->pieceList[side | KING].front()];
+    int32_t otherKingSquare = Mailbox::mailbox[b->pieceList[otherSide | KING].front()];
 
     ownKingSafetyScore += evalMGPawnShield(ownKingSquare, ownPawns, otherPawns, side);
     ownKingSafetyScore += evalMGPawnStorm(otherKingSquare, ownPawns, otherPawns, side);
@@ -739,7 +740,7 @@ Bitboard BoardEvaluator::findConnectedPawns(const Bitboard& ownPawns) {
 int32_t BoardEvaluator::getSmallestAttacker(int32_t to, int32_t side) {
     int32_t smallestAttacker = EMPTY;
     int32_t otherSide = side ^ COLOR_MASK;
-    int32_t to64 = b->mailbox[to];
+    int32_t to64 = Mailbox::mailbox[to];
 
     if(side == WHITE && !b->whiteAttackBitboard.getBit(to64))
         return NO_SQ;
@@ -748,27 +749,27 @@ int32_t BoardEvaluator::getSmallestAttacker(int32_t to, int32_t side) {
     
     Bitboard pawnAttackers = pawnAttackBitboard(to64, otherSide) & b->pieceBitboard[side | PAWN];
     if(pawnAttackers)
-        return b->mailbox64[pawnAttackers.getFirstSetBit()];
+        return Mailbox::mailbox64[pawnAttackers.getFirstSetBit()];
 
     Bitboard knightAttackers = knightAttackBitboard(to64) & b->pieceBitboard[side | KNIGHT];
     if(knightAttackers)
-        return b->mailbox64[knightAttackers.getFirstSetBit()];
+        return Mailbox::mailbox64[knightAttackers.getFirstSetBit()];
 
     Bitboard bishopAttackers = diagonalAttackBitboard(to64, b->allPiecesBitboard | b->pieceBitboard[side | KING])
                                                         & b->pieceBitboard[side | BISHOP];
     if(bishopAttackers)
-        return b->mailbox64[bishopAttackers.getFirstSetBit()];
+        return Mailbox::mailbox64[bishopAttackers.getFirstSetBit()];
 
     Bitboard rookAttackers = straightAttackBitboard(to64, b->allPiecesBitboard | b->pieceBitboard[side | KING])
                                                         & b->pieceBitboard[side | ROOK];
     if(rookAttackers)
-        return b->mailbox64[rookAttackers.getFirstSetBit()];
+        return Mailbox::mailbox64[rookAttackers.getFirstSetBit()];
 
     Bitboard queenAttackers = (diagonalAttackBitboard(to64, b->allPiecesBitboard | b->pieceBitboard[side | KING])
                                 | straightAttackBitboard(to64, b->allPiecesBitboard | b->pieceBitboard[side | KING]))
                                 & b->pieceBitboard[side | QUEEN];
     if(queenAttackers)
-        return b->mailbox64[queenAttackers.getFirstSetBit()];
+        return Mailbox::mailbox64[queenAttackers.getFirstSetBit()];
     
     Bitboard kingAttackers = kingAttackBitboard(to64) & b->pieceBitboard[side | KING];
     if(kingAttackers) {
@@ -778,7 +779,7 @@ int32_t BoardEvaluator::getSmallestAttacker(int32_t to, int32_t side) {
         else if(side == BLACK && b->whiteAttackBitboard.getBit(to64))
             return NO_SQ;
 
-        return b->mailbox64[kingAttackers.getFirstSetBit()];
+        return Mailbox::mailbox64[kingAttackers.getFirstSetBit()];
     }
 
     return NO_SQ;

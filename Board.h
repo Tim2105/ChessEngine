@@ -5,12 +5,10 @@
 #include <stdint.h>
 #include "Move.h"
 #include "BoardDefinitions.h"
-#include <stdio.h>
 #include <string>
 #include "Bitboard.h"
 #include "Movegen.h"
 #include "Array.h"
-#include <functional>
 #include <list>
 
 /**
@@ -111,6 +109,9 @@ class MoveHistoryEntry {
         }
 };
 
+/**
+ * @brief Speichert die Anzahl der Wiederholungen für alle, bereits gesehenen, Stellungen.
+ */
 class RepetitionTable {
     private:
         struct Entry {
@@ -288,47 +289,6 @@ class Board {
         RepetitionTable repetitionTable;
 
         /**
-         * @brief Array zur Konvertierung der 10x12 Notation in 8x8 Notation.
-         * Invalide Felder werden als NO_SQ markiert.
-         */
-        inline static int32_t mailbox[120];
-
-        /**
-         * @brief Array zur Konvertierung der 8x8 Notation in 10x12 Notation.
-         */
-        inline static int32_t mailbox64[64];
-
-        /**
-         * @brief Array mit allen Zobrist-Hashes für alle Figuren und Felder
-         */ 
-        inline static uint64_t zobristPieceKeys[15][64];
-
-        /**
-         * @brief Zobrist-Hash für die Seite, die am Zug ist.
-         */
-        inline static uint64_t zobristBlackToMove;
-
-        /**
-         * @brief Zobrist-Hash für alle noch offenen Rochaden.
-         */
-        inline static uint64_t zobristCastlingKeys[16];
-
-        /**
-         * @brief Zobrist-Hash für alle Linien, auf denen ein Bauer En Passant geschlagen werden kann.
-         */
-        inline static uint64_t zobristEnPassantKeys[8];
-
-        /**
-         * @brief Initialisiert die Mailbox-Arrays
-         */
-        static void initMailbox();
-
-        /**
-         * @brief Initialisiert die Zobrist-Hashes für alle Figuren, Felder und Sonderinformationen.
-         */
-        static void initZobrist();
-
-        /**
          * @brief Generiert einen Zobrist-Hash für das aktuelle Schachbrett.
          */
         uint64_t generateHashValue();
@@ -358,14 +318,6 @@ class Board {
                                            int32_t* pinnedPiecesDirection);
 
     public:
-        static void init() {
-            if(!initialized) {
-                initMailbox();
-                initZobrist();
-                initialized = true;
-            }
-        };
-
         /**
          * @brief Erstellt ein neues Schachbrett.
          */
@@ -555,9 +507,6 @@ class Board {
          * @brief Gibt die Anzahl der Halbzüge zurück, die gespielt wurden.
          */
         constexpr uint16_t getPly() const { return ply; };
-
-        inline int32_t sq120To64(int32_t sq120) const { return mailbox[sq120]; };
-        inline int32_t sq64To120(int32_t sq64) const { return mailbox64[sq64]; };
 };
 
 #endif

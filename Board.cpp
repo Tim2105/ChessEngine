@@ -1,10 +1,9 @@
 #include "Board.h"
 #include <stdio.h>
-#include <random>
+#include "ZobristDefinitions.h"
+#include "MailboxDefinitions.h"
 
 Board::Board() {
-    init();
-
     side = WHITE;
     enPassantSquare = NO_SQ;
     fiftyMoveRule = 0;
@@ -24,8 +23,6 @@ Board::Board() {
 }
 
 Board::Board(const Board& b) {
-    init();
-
     for(int i = 0; i < 15; i++)
         pieceList[i] = b.pieceList[i];
     
@@ -47,8 +44,6 @@ Board::Board(const Board& b) {
 }
 
 Board::Board(std::string fen) {
-    init();
-
     // Spielfeld-Array und Figurlisten leeren
     for(int i = 0; i < 15; i++)
         pieceList[i].clear();
@@ -147,40 +142,6 @@ Board::~Board() {
 
 }
 
-void Board::initMailbox() {
-    for(int i = 0; i < 120; i++)
-        mailbox[i] = NO_SQ;
-    
-    int index = 0;
-    for(int rank = RANK_1; rank <= RANK_8; rank++) {
-        for(int file = FILE_A; file <= FILE_H; file++) {
-            int square = FR2SQ(file, rank);
-            mailbox[square] = index;
-            mailbox64[index] = square;
-            index++;
-        }
-    }    
-}
-
-void Board::initZobrist() {
-    // PRNG initialisieren
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
-    std::uniform_int_distribution<uint64_t> dis(0, UINT64_MAX);
-
-    for(int i = 0; i < 15; i++)
-        for(int j = 0; j < 64; j++)
-            zobristPieceKeys[i][j] = dis(gen);
-    
-    zobristBlackToMove = dis(gen);
-
-    for(int i = 0; i < 16; i++)
-        zobristCastlingKeys[i] = dis(gen);
-
-    for(int i = 0; i < 8; i++)
-        zobristEnPassantKeys[i] = dis(gen);
-}
-
 uint64_t Board::generateHashValue() {
     uint64_t hash = 0ULL;
 
@@ -188,20 +149,20 @@ uint64_t Board::generateHashValue() {
     for(int i = 0; i < 120; i++) {
         int piece = pieces[i];
         if(piece != EMPTY)
-            hash ^= zobristPieceKeys[piece][mailbox[i]];
+            hash ^= Zobrist::zobristPieceKeys[piece][Mailbox::mailbox[i]];
     }
 
     // Zugfarbe
     if(side == BLACK)
-        hash ^= zobristBlackToMove;
+        hash ^= Zobrist::zobristBlackToMove;
     
     // Rochadenrechte
-    hash ^= zobristCastlingKeys[castlingPermission];
+    hash ^= Zobrist::zobristCastlingKeys[castlingPermission];
 
     // En Passant
     if(enPassantSquare != NO_SQ) {
         int file = SQ2F(enPassantSquare);
-        hash ^= zobristEnPassantKeys[file];
+        hash ^= Zobrist::zobristEnPassantKeys[file];
     }
 
     return hash;
@@ -212,84 +173,84 @@ void Board::generateBitboards() {
     // weißer Bauer
     uint64_t res = 0ULL;
     for(int i : pieceList[WHITE_PAWN])
-        res |= (1ULL << mailbox[i]);
+        res |= (1ULL << Mailbox::mailbox[i]);
     
     pieceBitboard[WHITE_PAWN] = Bitboard(res);
 
     // weißer Springer
     res = 0ULL;
     for(int i : pieceList[WHITE_KNIGHT])
-        res |= (1ULL << mailbox[i]);
+        res |= (1ULL << Mailbox::mailbox[i]);
 
     pieceBitboard[WHITE_KNIGHT] = Bitboard(res);
 
     // weißer Läufer
     res = 0ULL;
     for(int i : pieceList[WHITE_BISHOP])
-        res |= (1ULL << mailbox[i]);
+        res |= (1ULL << Mailbox::mailbox[i]);
 
     pieceBitboard[WHITE_BISHOP] = Bitboard(res);
 
     // weißer Turm
     res = 0ULL;
     for(int i : pieceList[WHITE_ROOK])
-        res |= (1ULL << mailbox[i]);
+        res |= (1ULL << Mailbox::mailbox[i]);
 
     pieceBitboard[WHITE_ROOK] = Bitboard(res);
 
     // weiße Dame
     res = 0ULL;
     for(int i : pieceList[WHITE_QUEEN])
-        res |= (1ULL << mailbox[i]);
+        res |= (1ULL << Mailbox::mailbox[i]);
 
     pieceBitboard[WHITE_QUEEN] = Bitboard(res);
 
     // weißer König
     res = 0ULL;
     for(int i : pieceList[WHITE_KING])
-        res |= (1ULL << mailbox[i]);
+        res |= (1ULL << Mailbox::mailbox[i]);
 
     pieceBitboard[WHITE_KING] = Bitboard(res);
 
     // schwarzer Bauer
     res = 0ULL;
     for(int i : pieceList[BLACK_PAWN])
-        res |= (1ULL << mailbox[i]);
+        res |= (1ULL << Mailbox::mailbox[i]);
 
     pieceBitboard[BLACK_PAWN] = Bitboard(res);
 
     // schwarzer Springer
     res = 0ULL;
     for(int i : pieceList[BLACK_KNIGHT])
-        res |= (1ULL << mailbox[i]);
+        res |= (1ULL << Mailbox::mailbox[i]);
 
     pieceBitboard[BLACK_KNIGHT] = Bitboard(res);
 
     // schwarzer Läufer
     res = 0ULL;
     for(int i : pieceList[BLACK_BISHOP])
-        res |= (1ULL << mailbox[i]);
+        res |= (1ULL << Mailbox::mailbox[i]);
 
     pieceBitboard[BLACK_BISHOP] = Bitboard(res);
 
     // schwarzer Turm
     res = 0ULL;
     for(int i : pieceList[BLACK_ROOK])
-        res |= (1ULL << mailbox[i]);
+        res |= (1ULL << Mailbox::mailbox[i]);
 
     pieceBitboard[BLACK_ROOK] = Bitboard(res);
 
     // schwarze Dame
     res = 0ULL;
     for(int i : pieceList[BLACK_QUEEN])
-        res |= (1ULL << mailbox[i]);
+        res |= (1ULL << Mailbox::mailbox[i]);
 
     pieceBitboard[BLACK_QUEEN] = Bitboard(res);
 
     // schwarzer König
     res = 0ULL;
     for(int i : pieceList[BLACK_KING])
-        res |= (1ULL << mailbox[i]);
+        res |= (1ULL << Mailbox::mailbox[i]);
 
     pieceBitboard[BLACK_KING] = Bitboard(res);
 
@@ -457,27 +418,27 @@ bool Board::isMoveLegal(Move move) {
         }
         case WHITE_BISHOP: {
         case BLACK_BISHOP:
-            if(!(diagonalAttackBitboard(mailbox[origin], allPiecesBitboard | pieceBitboard[side | KING]).getBit(mailbox[destination])))
+            if(!(diagonalAttackBitboard(Mailbox::mailbox[origin], allPiecesBitboard | pieceBitboard[side | KING]).getBit(Mailbox::mailbox[destination])))
                 return false;
             break;
         }
         case WHITE_ROOK: {
         case BLACK_ROOK:
-            if(!(straightAttackBitboard(mailbox[origin], allPiecesBitboard | pieceBitboard[side | KING]).getBit(mailbox[destination])))
+            if(!(straightAttackBitboard(Mailbox::mailbox[origin], allPiecesBitboard | pieceBitboard[side | KING]).getBit(Mailbox::mailbox[destination])))
                 return false;
             break;
         }
         case WHITE_QUEEN: {
         case BLACK_QUEEN:
-            if(!(diagonalAttackBitboard(mailbox[origin], allPiecesBitboard | pieceBitboard[side | KING]).getBit(mailbox[destination])
-                || straightAttackBitboard(mailbox[origin], allPiecesBitboard | pieceBitboard[side | KING]).getBit(mailbox[destination])))
+            if(!(diagonalAttackBitboard(Mailbox::mailbox[origin], allPiecesBitboard | pieceBitboard[side | KING]).getBit(Mailbox::mailbox[destination])
+                || straightAttackBitboard(Mailbox::mailbox[origin], allPiecesBitboard | pieceBitboard[side | KING]).getBit(Mailbox::mailbox[destination])))
                 return false;
             break;
         }
         case WHITE_KING: {
         case BLACK_KING:
             if(!move.isCastle() &&
-               !(kingAttackBitboard(mailbox[origin]).getBit(mailbox[destination])))
+               !(kingAttackBitboard(Mailbox::mailbox[origin]).getBit(Mailbox::mailbox[destination])))
                 return false;
             break;
         }
@@ -491,7 +452,7 @@ bool Board::isMoveLegal(Move move) {
 
     Bitboard otherSideAttackBitboard = generateAttackBitboard(otherSide);
 
-    if(otherSideAttackBitboard.getBit(mailbox[pieceList[side | KING].front()])) {
+    if(otherSideAttackBitboard.getBit(Mailbox::mailbox[pieceList[side | KING].front()])) {
         undoMove();
         return false;
     }
@@ -508,8 +469,8 @@ bool Board::isCheck() {
 void Board::makeMove(Move m) {
     int32_t origin = m.getOrigin();
     int32_t destination = m.getDestination();
-    int32_t origin64 = mailbox[origin];
-    int32_t destination64 = mailbox[destination];
+    int32_t origin64 = Mailbox::mailbox[origin];
+    int32_t destination64 = Mailbox::mailbox[destination];
     int32_t pieceType = pieces[origin];
     int32_t capturedPieceType = pieces[destination];
     int32_t enPassantCaptureSq = enPassantSquare + (side == WHITE ? SOUTH : NORTH);
@@ -539,7 +500,7 @@ void Board::makeMove(Move m) {
         // Entferne den geschlagenen Bauern
         int32_t other = side ^ COLOR_MASK;
 
-        int32_t enPassantSquare64 = mailbox[enPassantCaptureSq];
+        int32_t enPassantSquare64 = Mailbox::mailbox[enPassantCaptureSq];
         pieces[enPassantCaptureSq] = EMPTY;
         pieceList[capturedPieceType].remove(enPassantCaptureSq);
         pieceBitboard[capturedPieceType].clearBit(enPassantSquare64);
@@ -549,7 +510,7 @@ void Board::makeMove(Move m) {
         else
             whitePiecesBitboard.clearBit(enPassantSquare64);
         
-        hashValue ^= zobristPieceKeys[capturedPieceType][enPassantSquare64];
+        hashValue ^= Zobrist::zobristPieceKeys[capturedPieceType][enPassantSquare64];
     }
 
     // Spezialfall: Rochade
@@ -573,8 +534,8 @@ void Board::makeMove(Move m) {
                 blackPiecesBitboard.setBit(origin64 + 1);
             }
 
-            hashValue ^= zobristPieceKeys[side | ROOK][origin64 + 3];
-            hashValue ^= zobristPieceKeys[side | ROOK][origin64 + 1];
+            hashValue ^= Zobrist::zobristPieceKeys[side | ROOK][origin64 + 3];
+            hashValue ^= Zobrist::zobristPieceKeys[side | ROOK][origin64 + 1];
         } else {
             // Turm auf Damenseite bewegen
             pieces[origin - 4] = EMPTY;
@@ -594,8 +555,8 @@ void Board::makeMove(Move m) {
                 blackPiecesBitboard.setBit(origin64 - 1);
             }
 
-            hashValue ^= zobristPieceKeys[side | ROOK][origin64 - 4];
-            hashValue ^= zobristPieceKeys[side | ROOK][origin64 - 1];
+            hashValue ^= Zobrist::zobristPieceKeys[side | ROOK][origin64 - 4];
+            hashValue ^= Zobrist::zobristPieceKeys[side | ROOK][origin64 - 1];
         }
     }
 
@@ -607,8 +568,8 @@ void Board::makeMove(Move m) {
     pieceBitboard[pieceType].clearBit(origin64);
     pieceBitboard[pieceType].setBit(destination64);
 
-    hashValue ^= zobristPieceKeys[pieceType][origin64];
-    hashValue ^= zobristPieceKeys[pieceType][destination64];
+    hashValue ^= Zobrist::zobristPieceKeys[pieceType][origin64];
+    hashValue ^= Zobrist::zobristPieceKeys[pieceType][destination64];
     // Könige sind in den allgemeinen Bitboards nicht enthalten
     if(TYPEOF(pieceType) != KING) {
         allPiecesBitboard.clearBit(origin64);
@@ -631,7 +592,7 @@ void Board::makeMove(Move m) {
         else
             whitePiecesBitboard.clearBit(destination64);
         
-        hashValue ^= zobristPieceKeys[capturedPieceType][destination64];
+        hashValue ^= Zobrist::zobristPieceKeys[capturedPieceType][destination64];
         
         // Wenn die schlagende Figur ein König ist, muss das Feld aus dem allgemeinen Bitboard entfernt werden
         if(TYPEOF(pieceType) == KING)
@@ -654,14 +615,14 @@ void Board::makeMove(Move m) {
         pieceList[side | PAWN].remove(destination);
         pieceBitboard[side | PAWN].clearBit(destination64);
 
-        hashValue ^= zobristPieceKeys[side | PAWN][destination64];
+        hashValue ^= Zobrist::zobristPieceKeys[side | PAWN][destination64];
 
         // Füge die neue Figur hinzu
         pieces[destination] = side | promotedPieceType;
         pieceList[side | promotedPieceType].push_back(destination);
         pieceBitboard[side | promotedPieceType].setBit(destination64);
 
-        hashValue ^= zobristPieceKeys[side | promotedPieceType][destination64];
+        hashValue ^= Zobrist::zobristPieceKeys[side | promotedPieceType][destination64];
     }
 
     // Aktualisiere Angriffsbitboards
@@ -698,8 +659,8 @@ void Board::makeMove(Move m) {
     }
 
     if(castlingPermission != entry.castlingPermission) {
-        hashValue ^= zobristCastlingKeys[entry.castlingPermission];
-        hashValue ^= zobristCastlingKeys[castlingPermission];
+        hashValue ^= Zobrist::zobristCastlingKeys[entry.castlingPermission];
+        hashValue ^= Zobrist::zobristCastlingKeys[castlingPermission];
     }
 
     if(m.isDoublePawn()) {
@@ -711,10 +672,10 @@ void Board::makeMove(Move m) {
 
     if(enPassantSquare != entry.enPassantSquare) {
         if(entry.enPassantSquare != NO_SQ)
-            hashValue ^= zobristEnPassantKeys[SQ2F(entry.enPassantSquare)];
+            hashValue ^= Zobrist::zobristEnPassantKeys[SQ2F(entry.enPassantSquare)];
         
         if(enPassantSquare != NO_SQ)
-            hashValue ^= zobristEnPassantKeys[SQ2F(enPassantSquare)];
+            hashValue ^= Zobrist::zobristEnPassantKeys[SQ2F(enPassantSquare)];
     }
 
     // Aktualisiere den Spielzustand
@@ -724,7 +685,7 @@ void Board::makeMove(Move m) {
         fiftyMoveRule++;
 
     side = side ^ COLOR_MASK;
-    hashValue ^= zobristBlackToMove;
+    hashValue ^= Zobrist::zobristBlackToMove;
     ply++;
 
     // Aktualisiere die Wiederholungstabelle
@@ -738,8 +699,8 @@ void Board::undoMove() {
 
     int32_t origin = move.getOrigin();
     int32_t destination = move.getDestination();
-    int32_t origin64 = mailbox[origin];
-    int32_t destination64 = mailbox[destination];
+    int32_t origin64 = Mailbox::mailbox[origin];
+    int32_t destination64 = Mailbox::mailbox[destination];
     int32_t pieceType = pieces[destination];
     int32_t capturedPieceType = moveEntry.capturedPiece;
 
@@ -858,7 +819,7 @@ void Board::undoMove() {
 
     // Spezialfall: En Passant
     if(move.isEnPassant()) {
-        int32_t enPassantSquare64 = mailbox[enPassantCaptureSq];
+        int32_t enPassantSquare64 = Mailbox::mailbox[enPassantCaptureSq];
         pieces[enPassantCaptureSq] = capturedPieceType;
         pieceList[capturedPieceType].push_back(enPassantCaptureSq);
         pieceBitboard[capturedPieceType].setBit(enPassantSquare64);
@@ -871,7 +832,7 @@ void Board::undoMove() {
 }
 
 bool Board::squareAttacked(int32_t sq120, int32_t ownSide) {
-    int32_t sq64 = mailbox[sq120];
+    int32_t sq64 = Mailbox::mailbox[sq120];
     
     if(ownSide == WHITE)
         return whiteAttackBitboard.getBit(sq64);
@@ -880,7 +841,7 @@ bool Board::squareAttacked(int32_t sq120, int32_t ownSide) {
 }
 
 bool Board::squareAttacked(int32_t sq120, int32_t ownSide, Bitboard occupied) {
-    int32_t sq64 = mailbox[sq120];
+    int32_t sq64 = Mailbox::mailbox[sq120];
     int32_t otherSide = (ownSide == WHITE) ? BLACK : WHITE;
 
     // Diagonale Angriffe
@@ -911,7 +872,7 @@ bool Board::squareAttacked(int32_t sq120, int32_t ownSide, Bitboard occupied, Bi
 }
 
 int32_t Board::numSquareAttackers(int32_t sq120, int32_t ownSide, Bitboard occupied) {
-    int32_t sq64 = mailbox[sq120];
+    int32_t sq64 = Mailbox::mailbox[sq120];
     int32_t otherSide = (ownSide == WHITE) ? BLACK : WHITE;
     int32_t numAttackers = 0;
 
@@ -939,7 +900,7 @@ int32_t Board::numSquareAttackers(int32_t sq120, int32_t ownSide, Bitboard occup
 }
 
 int32_t Board::numSquareAttackers(int32_t sq120, int32_t ownSide, Bitboard occupied, Bitboard& attackerRays) {
-    int32_t sq64 = mailbox[sq120];
+    int32_t sq64 = Mailbox::mailbox[sq120];
     int32_t otherSide = (ownSide == WHITE) ? BLACK : WHITE;
     int32_t numAttackers = 0;
 
@@ -980,47 +941,47 @@ Bitboard Board::generateAttackBitboard(int32_t side) {
     
     // Diagonale Angriffe
     for(int sq : pieceList[side | BISHOP]) {
-        int sq64 = mailbox[sq];
+        int sq64 = Mailbox::mailbox[sq];
         pieceAttackBitboard[side | BISHOP] |= diagonalAttackBitboard(sq64, piecesPlusOwnKing);
         attackBitboard |= pieceAttackBitboard[side | BISHOP];
     }
 
     for(int sq : pieceList[side | QUEEN]) {
-        int sq64 = mailbox[sq];
+        int sq64 = Mailbox::mailbox[sq];
         pieceAttackBitboard[side | QUEEN] |= diagonalAttackBitboard(sq64, piecesPlusOwnKing);
         attackBitboard |= pieceAttackBitboard[side | QUEEN];
     }
 
     // Waagerechte Angriffe
     for(int sq : pieceList[side | ROOK]) {
-        int sq64 = mailbox[sq];
+        int sq64 = Mailbox::mailbox[sq];
         pieceAttackBitboard[side | ROOK] |= straightAttackBitboard(sq64, piecesPlusOwnKing);
         attackBitboard |= pieceAttackBitboard[side | ROOK];
     }
 
     for(int sq : pieceList[side | QUEEN]) {
-        int sq64 = mailbox[sq];
+        int sq64 = Mailbox::mailbox[sq];
         pieceAttackBitboard[side | QUEEN] |= straightAttackBitboard(sq64, piecesPlusOwnKing);
         attackBitboard |= pieceAttackBitboard[side | QUEEN];
     }
 
     // Springer Angriffe
     for(int sq : pieceList[side | KNIGHT]) {
-        int sq64 = mailbox[sq];
+        int sq64 = Mailbox::mailbox[sq];
         pieceAttackBitboard[side | KNIGHT] |= knightAttackBitboard(sq64);
         attackBitboard |= pieceAttackBitboard[side | KNIGHT];
     }
 
     // Bauer Angriffe
     for(int sq : pieceList[side | PAWN]) {
-        int sq64 = mailbox[sq];
+        int sq64 = Mailbox::mailbox[sq];
         pieceAttackBitboard[side | PAWN] |= pawnAttackBitboard(sq64, side);
         attackBitboard |= pieceAttackBitboard[side | PAWN];
     }
 
     // König Angriffe
     for(int sq : pieceList[side | KING]) {
-        int sq64 = mailbox[sq];
+        int sq64 = Mailbox::mailbox[sq];
         pieceAttackBitboard[side | KING] |= kingAttackBitboard(sq64);
         attackBitboard |= pieceAttackBitboard[side | KING];
     }
@@ -1032,7 +993,7 @@ void Board::generatePinnedPiecesBitboards(int32_t side, Bitboard& pinnedPiecesBi
                                           int32_t* pinnedPiecesDirection) {
 
     int32_t kingSquare = pieceList[side | KING].front();
-    int32_t kingSquare64 = mailbox[kingSquare];
+    int32_t kingSquare64 = Mailbox::mailbox[kingSquare];
     int32_t otherSide = side ^ COLOR_MASK;
     Bitboard enemyPiecesPlusKing;
     if(side == WHITE)
@@ -1189,7 +1150,7 @@ std::string Board::fenString() const {
 
     for(int r = RANK_8; r >= RANK_1; r--) {
         for(int f = FILE_A; f <= FILE_H; f++) {
-            int square = mailbox64[r * 8 + f];
+            int square = Mailbox::mailbox64[r * 8 + f];
 
             if(pieces[square] == EMPTY) {
                 emptySquares++;
