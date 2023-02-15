@@ -377,12 +377,6 @@ class Board {
         Array<Move, 256> generateLegalCaptures();
 
         /**
-         * @brief Generiert alle legalen Züge, die eine Figur schlagen
-         * Ignoriert manche Züge, die nicht auf die angegebenen Felder führen.
-         */
-        Array<Move, 256> generateLegalCaptures(Bitboard targetSquares);
-
-        /**
          * @brief Führt einen Zug aus.
          */
         void makeMove(Move move);

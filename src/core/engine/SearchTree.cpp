@@ -879,16 +879,8 @@ int16_t SearchTree::quiescence(int16_t alpha, int16_t beta, int32_t captureSquar
         sortAndCutMoves(moves, MIN_SCORE, MVVLVA);
     }
     else {
-        Bitboard targetSquares;
-        targetSquares.setBit(Mailbox::mailbox[captureSquare]);
-
-        moves = board->generateLegalCaptures(targetSquares);
-
-        std::remove_if(moves.begin(), moves.end(), [captureSquare](Move m) {
-            return m.getDestination() != captureSquare;
-        });
-
-        sortAndCutMoves(moves, QUIESCENCE_SCORE_CUTOFF, MVVLVA);
+        moves = board->generateLegalCaptures();
+        sortAndCutMoves(moves, MIN_SCORE, MVVLVA);
     }
     
     for(Move move : moves) {
