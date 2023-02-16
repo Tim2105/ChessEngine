@@ -162,6 +162,54 @@ Board::Board(std::string fen) {
     repetitionTable.increment(hashValue);
 }
 
+
+Board Board::fromPGN(std::string pgn) {
+    Board board;
+
+    std::vector<std::string> sections;
+
+    std::string section;
+    for(char c : pgn) {
+        if(c == ' ') {
+            sections.push_back(section);
+            section = "";
+        }
+        else if(c == '.')
+            section = "";
+        else
+            section += c;
+    }
+
+    std::vector<std::string> stringHistory;
+
+    for(std::string s : sections) {  
+        Move move;
+
+        for(Move m : board.generateLegalMoves()) {
+            if(toStandardAlgebraicNotation(m, board) == s) {
+                move = m;
+                break;
+            }
+        }
+
+        if(!board.isMoveLegal(move)) {
+            std::string error = "Illegal move in PGN: ";
+            error += s;
+            error += " after ";
+
+            for(std::string s : stringHistory)
+                error += s + " ";
+            
+            throw std::runtime_error(error);
+        }
+
+        board.makeMove(move);
+        stringHistory.push_back(s);
+    }
+
+    return board;
+}
+
 Board::~Board() {
 
 }
@@ -1336,6 +1384,7 @@ std::string Board::pgnString() const {
         }
 
         pgn += toStandardAlgebraicNotation(entry.move, temp);
+        pgn += " ";
         temp.makeMove(entry.move);
 
         white = !white;

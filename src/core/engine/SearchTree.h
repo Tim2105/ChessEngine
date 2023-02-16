@@ -88,7 +88,7 @@ class SearchTree {
         TranspositionTable<2097152, 4> transpositionTable;
 
         Evaluator& evaluator;
-        Board& board;
+        Board* board;
 
         uint32_t numVariations;
 
@@ -180,8 +180,14 @@ class SearchTree {
         }
 
         inline void setBoard(Board& b) {
-            board = b;
+            board = &b;
             evaluator.setBoard(b);
+
+            transpositionTable.clear();
+            clearRelativeHistory();
+            clearPvTable();
+            clearKillerMoves();
+            clearVariations();
         }
 
     private:

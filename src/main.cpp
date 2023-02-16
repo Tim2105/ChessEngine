@@ -63,26 +63,26 @@ int main() {
     NewEvaluator newEvaluator(board);
 
     SearchTree st1(evaluator);
-    SearchTree st2(evaluator);
+    SearchTree st2(newEvaluator);
 
     Tournament t(st1, st2, "Engine 1", "Engine 2");
     t.run();
     
-    // while(board.generateLegalMoves().size() > 0 && !evaluator.isDraw()) {
-    //     Move move = getUserMove(board);
-    //     board.makeMove(move);
+    // // while(board.generateLegalMoves().size() > 0 && !evaluator.isDraw()) {
+    // //     Move move = getUserMove(board);
+    // //     board.makeMove(move);
 
-    //     if(board.generateLegalMoves().size() == 0 || evaluator.isDraw()) {
-    //         break;
-    //     }
+    // //     if(board.generateLegalMoves().size() == 0 || evaluator.isDraw()) {
+    // //         break;
+    // //     }
 
-    //     std::cout << std::endl << "Thinking..." << std::endl;
-    //     st.search(5000);
-    //     move = st.getPrincipalVariation()[0];
+    // //     std::cout << std::endl << "Thinking..." << std::endl;
+    // //     st.search(5000);
+    // //     move = st.getPrincipalVariation()[0];
 
-    //     std::cout << "Computer move: " << toFigurineAlgebraicNotation(move, board) << std::endl << std::endl;
-    //     board.makeMove(move);
-    // }
+    // //     std::cout << "Computer move: " << toFigurineAlgebraicNotation(move, board) << std::endl << std::endl;
+    // //     board.makeMove(move);
+    // // }
 
     return 0;
 }

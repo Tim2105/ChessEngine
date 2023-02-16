@@ -37,10 +37,10 @@ class Evaluator {
         int32_t see(Move& m);
     
     protected:
-        Board& b;
+        Board* b;
 
     public:
-        Evaluator(Board& b) : b(b) {}
+        Evaluator(Board& b) : b(&b) {}
 
         virtual ~Evaluator() = default;
 
@@ -48,7 +48,7 @@ class Evaluator {
          * @brief Setzt das Spielfeld, auf dem die statische Bewertung ausgeführt werden soll.
          */
         inline void setBoard(Board& b) {
-            this->b = b;
+            this->b = &b;
         }
 
         /**
@@ -86,7 +86,7 @@ class Evaluator {
         /**
          * @brief Gibt eine Referenz auf das aktuelle Spielfeld zurück.
          */
-        constexpr Board& getBoard() const { return b; }
+        constexpr Board& getBoard() { return *b; }
 };
 
 #endif

@@ -5,9 +5,9 @@
 #include "core/utils/MoveNotations.h"
 #include "core/chess/MailboxDefinitions.h"
 
-SearchTree::SearchTree(Evaluator& e, uint32_t numVariations) : evaluator(e), board(e.getBoard()), numVariations(numVariations) {
+SearchTree::SearchTree(Evaluator& e, uint32_t numVariations) : evaluator(e), board(&(e.getBoard())), numVariations(numVariations) {
     currentMaxDepth = 0;
-    currentAge = board.getPly();
+    currentAge = board->getPly();
     nodesSearched = 0;
 
     searching = false;
@@ -57,7 +57,7 @@ void SearchTree::clearVariations() {
 int16_t SearchTree::search(uint32_t searchTime) {
     searching = true;
     currentMaxDepth = 0;
-    currentAge = board.getPly();
+    currentAge = board->getPly();
     nodesSearched = 0;
 
     clearRelativeHistory();
@@ -119,8 +119,8 @@ void SearchTree::sortMovesAtRoot(Array<Move, 256>& moves, int32_t moveEvalFunc) 
                 moveScore += 70;
         }
 
-        int32_t movedPieceType = TYPEOF(board.pieceAt(move.getOrigin()));
-        int32_t side = board.getSideToMove();
+        int32_t movedPieceType = TYPEOF(board->pieceAt(move.getOrigin()));
+        int32_t side = board->getSideToMove();
         int32_t psqtOrigin64 = Mailbox::mailbox[move.getOrigin()];
         int32_t psqtDestination64 = Mailbox::mailbox[move.getDestination()];
 
@@ -138,7 +138,7 @@ void SearchTree::sortMovesAtRoot(Array<Move, 256>& moves, int32_t moveEvalFunc) 
 
         moveScore += MOVE_ORDERING_PSQT[movedPieceType][psqtDestination64] - MOVE_ORDERING_PSQT[movedPieceType][psqtOrigin64];
 
-        moveScore += std::clamp(relativeHistory[board.getSideToMove() / COLOR_MASK]
+        moveScore += std::clamp(relativeHistory[board->getSideToMove() / COLOR_MASK]
                             [Mailbox::mailbox[move.getOrigin()]]
                             [Mailbox::mailbox[move.getDestination()]] / (1 << (currentMaxDepth / ONE_PLY)),
                             -99, 49);
@@ -161,7 +161,7 @@ void SearchTree::sortMoves(Array<Move, 256>& moves, int16_t ply, int32_t moveEva
     Move hashMove;
 
     TranspositionTableEntry ttEntry;
-    transpositionTable.probe(board.getHashValue(), ttEntry);
+    transpositionTable.probe(board->getHashValue(), ttEntry);
 
     for(Move move : moves) {
         int32_t moveScore = 0;
@@ -194,8 +194,8 @@ void SearchTree::sortMoves(Array<Move, 256>& moves, int16_t ply, int32_t moveEva
             }
         }
 
-        int32_t movedPieceType = TYPEOF(board.pieceAt(move.getOrigin()));
-        int32_t side = board.getSideToMove();
+        int32_t movedPieceType = TYPEOF(board->pieceAt(move.getOrigin()));
+        int32_t side = board->getSideToMove();
         int32_t psqtOrigin64 = Mailbox::mailbox[move.getOrigin()];
         int32_t psqtDestination64 = Mailbox::mailbox[move.getDestination()];
 
@@ -213,7 +213,7 @@ void SearchTree::sortMoves(Array<Move, 256>& moves, int16_t ply, int32_t moveEva
 
         moveScore += MOVE_ORDERING_PSQT[movedPieceType][psqtDestination64] - MOVE_ORDERING_PSQT[movedPieceType][psqtOrigin64];
 
-        moveScore += std::clamp(relativeHistory[board.getSideToMove() / COLOR_MASK]
+        moveScore += std::clamp(relativeHistory[board->getSideToMove() / COLOR_MASK]
                             [Mailbox::mailbox[move.getOrigin()]]
                             [Mailbox::mailbox[move.getDestination()]] / (1 << (currentMaxDepth / ONE_PLY)),
                             -99, 49);
@@ -265,7 +265,7 @@ void SearchTree::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t m
     Array<MoveScorePair, 256> msp;
 
     TranspositionTableEntry ttEntry;
-    transpositionTable.probe(board.getHashValue(), ttEntry);
+    transpositionTable.probe(board->getHashValue(), ttEntry);
 
     for(Move move : moves) {
         int32_t moveScore = 0;
@@ -298,8 +298,8 @@ void SearchTree::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t m
             }
         }
 
-        int32_t movedPieceType = TYPEOF(board.pieceAt(move.getOrigin()));
-        int32_t side = board.getSideToMove();
+        int32_t movedPieceType = TYPEOF(board->pieceAt(move.getOrigin()));
+        int32_t side = board->getSideToMove();
         int32_t psqtOrigin64 = Mailbox::mailbox[move.getOrigin()];
         int32_t psqtDestination64 = Mailbox::mailbox[move.getDestination()];
 
@@ -317,7 +317,7 @@ void SearchTree::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t m
 
         moveScore += MOVE_ORDERING_PSQT[movedPieceType][psqtDestination64] - MOVE_ORDERING_PSQT[movedPieceType][psqtOrigin64];
 
-        moveScore += std::clamp(relativeHistory[board.getSideToMove() / COLOR_MASK]
+        moveScore += std::clamp(relativeHistory[board->getSideToMove() / COLOR_MASK]
                             [Mailbox::mailbox[move.getOrigin()]]
                             [Mailbox::mailbox[move.getDestination()]] / (1 << (currentMaxDepth / ONE_PLY)),
                             -99, 49);
@@ -393,9 +393,9 @@ int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
     std::vector<Variation> newVariations;
 
     int32_t moveNumber = 1;
-    bool isCheckEvasion = board.isCheck();
+    bool isCheckEvasion = board->isCheck();
 
-    Array<Move, 256> moves = board.generateLegalMoves();
+    Array<Move, 256> moves = board->generateLegalMoves();
     sortMovesAtRoot(moves, SEE);
 
     for(Move move : moves) {
@@ -404,7 +404,7 @@ int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
         
         nodesSearched++;
 
-        board.makeMove(move);
+        board->makeMove(move);
 
         int16_t extension = determineExtension(move, false, isCheckEvasion);
         int16_t nwReduction = determineReduction(depth, moveNumber, isCheckEvasion);
@@ -420,18 +420,18 @@ int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
                 score = -pvSearch(depth - ONE_PLY, 1, -beta, -alpha);
         }
 
-        board.undoMove();
+        board->undoMove();
 
         if(!searching)
             return 0;
         
-        relativeHistory[board.getSideToMove() / COLOR_MASK]
+        relativeHistory[board->getSideToMove() / COLOR_MASK]
                            [Mailbox::mailbox[move.getOrigin()]]
                            [Mailbox::mailbox[move.getDestination()]] -= std::min(depth / ONE_PLY, 18);
         
 
         if(score >= beta) {
-            transpositionTable.put(board.getHashValue(), {
+            transpositionTable.put(board->getHashValue(), {
                 currentAge, depth, score, CUT_NODE, move
             });
 
@@ -442,7 +442,7 @@ int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
                 }
             }
 
-            relativeHistory[board.getSideToMove() / COLOR_MASK]
+            relativeHistory[board->getSideToMove() / COLOR_MASK]
                            [Mailbox::mailbox[move.getOrigin()]]
                            [Mailbox::mailbox[move.getDestination()]] += 1 << std::min(depth / ONE_PLY, 18);
 
@@ -491,11 +491,11 @@ int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
         moveNumber++;
     }
 
-    transpositionTable.put(board.getHashValue(), {
+    transpositionTable.put(board->getHashValue(), {
         currentAge, depth, bestScore, EXACT_NODE, bestMove
     });
 
-    relativeHistory[board.getSideToMove() / COLOR_MASK]
+    relativeHistory[board->getSideToMove() / COLOR_MASK]
                     [Mailbox::mailbox[bestMove.getOrigin()]]
                     [Mailbox::mailbox[bestMove.getDestination()]] += 1 << std::min(depth / ONE_PLY, 18);
                 
@@ -518,7 +518,7 @@ int16_t SearchTree::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
     }
 
     if(depth <= 0) {
-        int32_t lastMovedSquare = board.getLastMove().getDestination();
+        int32_t lastMovedSquare = board->getLastMove().getDestination();
         int16_t score = quiescence(alpha, beta, lastMovedSquare);
         return score;
     }
@@ -531,19 +531,19 @@ int16_t SearchTree::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
     int16_t score, bestScore = MIN_SCORE;
     Move bestMove;
     
-    Array<Move, 256> moves = board.generateLegalMoves();
+    Array<Move, 256> moves = board->generateLegalMoves();
 
     if(moves.size() == 0) {
         pvTable[ply].clear();
 
-        if(board.isCheck())
+        if(board->isCheck())
             return -MATE_SCORE + ply;
         else
             return 0;
     }
 
     int32_t moveNumber = 1;
-    bool isCheckEvasion = board.isCheck();
+    bool isCheckEvasion = board->isCheck();
 
     sortMoves(moves, ply, SEE);
 
@@ -553,7 +553,7 @@ int16_t SearchTree::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
         
         nodesSearched++;
 
-        board.makeMove(move);
+        board->makeMove(move);
 
         int16_t extension = determineExtension(move, false, isCheckEvasion);
         int16_t nwReduction = determineReduction(depth, moveNumber, isCheckEvasion);
@@ -569,22 +569,22 @@ int16_t SearchTree::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
                 score = -pvSearch(depth - ONE_PLY, ply + 1, -beta, -alpha);
         }
 
-        board.undoMove();
+        board->undoMove();
 
         if(!searching)
             return 0;
         
-        relativeHistory[board.getSideToMove() / COLOR_MASK]
+        relativeHistory[board->getSideToMove() / COLOR_MASK]
                            [Mailbox::mailbox[move.getOrigin()]]
                            [Mailbox::mailbox[move.getDestination()]] -= std::min(depth / ONE_PLY, 18);
         
 
         if(score >= beta) {
-            bool tableHit = transpositionTable.probe(board.getHashValue(), ttEntry);
+            bool tableHit = transpositionTable.probe(board->getHashValue(), ttEntry);
 
             if((!tableHit || (depth > ttEntry.depth)) &&
                              (ttEntry.type != (PV_NODE | EXACT_NODE)))
-                transpositionTable.put(board.getHashValue(), {
+                transpositionTable.put(board->getHashValue(), {
                     currentAge, depth, score, CUT_NODE, move
                 });
 
@@ -595,7 +595,7 @@ int16_t SearchTree::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
                 }
             }
 
-            relativeHistory[board.getSideToMove() / COLOR_MASK]
+            relativeHistory[board->getSideToMove() / COLOR_MASK]
                            [Mailbox::mailbox[move.getOrigin()]]
                            [Mailbox::mailbox[move.getDestination()]] += 1 << std::min(depth / ONE_PLY, 18);
 
@@ -621,14 +621,14 @@ int16_t SearchTree::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
         moveNumber++;
     }
 
-    bool tableHit = transpositionTable.probe(board.getHashValue(), ttEntry);
+    bool tableHit = transpositionTable.probe(board->getHashValue(), ttEntry);
 
     if(!tableHit || (depth > ttEntry.depth))
-        transpositionTable.put(board.getHashValue(), {
+        transpositionTable.put(board->getHashValue(), {
             currentAge, depth, bestScore, EXACT_NODE, bestMove
         });
 
-    relativeHistory[board.getSideToMove() / COLOR_MASK]
+    relativeHistory[board->getSideToMove() / COLOR_MASK]
                     [Mailbox::mailbox[bestMove.getOrigin()]]
                     [Mailbox::mailbox[bestMove.getDestination()]] += 1 << std::min(depth / ONE_PLY, 18);
 
@@ -643,13 +643,13 @@ int16_t SearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
         return 0;
 
     if(depth <= 0) {
-        int32_t lastMovedSquare = board.getLastMove().getDestination();
+        int32_t lastMovedSquare = board->getLastMove().getDestination();
         int16_t score = quiescence(alpha, beta, lastMovedSquare);
         return score;
     }
 
     TranspositionTableEntry ttEntry;
-    bool tableHit = transpositionTable.probe(board.getHashValue(), ttEntry);
+    bool tableHit = transpositionTable.probe(board->getHashValue(), ttEntry);
 
     if(tableHit) {
         if(ttEntry.depth >= depth) {
@@ -666,35 +666,35 @@ int16_t SearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
     int16_t bestScore = MIN_SCORE;
     Move bestMove;
     
-    Array<Move, 256> moves = board.generateLegalMoves();
+    Array<Move, 256> moves = board->generateLegalMoves();
 
     if(moves.size() == 0) {
-        if(board.isCheck())
+        if(board->isCheck())
             return -MATE_SCORE + ply;
         else
             return 0;
     }
 
     int32_t moveNumber = 1;
-    bool isCheckEvasion = board.isCheck();
+    bool isCheckEvasion = board->isCheck();
     bool isThreat = false;
 
     // Null move pruning
     if(nullMoveAllowed && !isCheckEvasion && depth >= 4 * ONE_PLY) {
-        // int32_t side = board.getSideToMove();
-        // Bitboard minorOrMajorPieces = board.getPieceBitboard(side | KNIGHT) |
-        //                               board.getPieceBitboard(side | BISHOP) |
-        //                               board.getPieceBitboard(side | ROOK) |
-        //                               board.getPieceBitboard(side | QUEEN);
+        // int32_t side = board->getSideToMove();
+        // Bitboard minorOrMajorPieces = board->getPieceBitboard(side | KNIGHT) |
+        //                               board->getPieceBitboard(side | BISHOP) |
+        //                               board->getPieceBitboard(side | ROOK) |
+        //                               board->getPieceBitboard(side | QUEEN);
 
         // // Nullzug nur durchführen, wenn wir mindestens eine Leichtfigur haben          
         // if(minorOrMajorPieces) {
         //     Move nullMove = Move::nullMove();
-        //     board.makeMove(nullMove);
+        //     board->makeMove(nullMove);
 
         //     int16_t nullMoveScore = -nwSearch(depth - 3 * ONE_PLY, ply + 1, -beta, -beta + 1, false);
 
-        //     board.undoMove();
+        //     board->undoMove();
 
         //     if(nullMoveScore >= beta) {
         //         return nullMoveScore;
@@ -713,7 +713,7 @@ int16_t SearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
         
         nodesSearched++;
 
-        board.makeMove(move);
+        board->makeMove(move);
 
         int16_t extension = determineExtension(move, isThreat, isCheckEvasion);
         int16_t nwReduction = determineReduction(depth, moveNumber, isCheckEvasion);
@@ -728,21 +728,21 @@ int16_t SearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
         if(nwDepthDelta < -ONE_PLY && score > alpha)
             score = -nwSearch(depth - ONE_PLY, ply + 1, -beta, -alpha);
 
-        board.undoMove();
+        board->undoMove();
 
         if(!searching)
             return 0;
         
-        relativeHistory[board.getSideToMove() / COLOR_MASK]
+        relativeHistory[board->getSideToMove() / COLOR_MASK]
                         [Mailbox::mailbox[move.getOrigin()]]
                         [Mailbox::mailbox[move.getDestination()]] -= std::min(depth / ONE_PLY, 18);
 
         if(score >= beta) {
-            bool tableHit = transpositionTable.probe(board.getHashValue(), ttEntry);
+            bool tableHit = transpositionTable.probe(board->getHashValue(), ttEntry);
 
             if(!tableHit || (depth > ttEntry.depth &&
                                ttEntry.type == (NW_NODE | CUT_NODE)))
-                transpositionTable.put(board.getHashValue(), {
+                transpositionTable.put(board->getHashValue(), {
                     currentAge, depth, score, NW_NODE | CUT_NODE, move
                 });
             
@@ -753,7 +753,7 @@ int16_t SearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
                 }
             }
 
-            relativeHistory[board.getSideToMove() / COLOR_MASK]
+            relativeHistory[board->getSideToMove() / COLOR_MASK]
                            [Mailbox::mailbox[move.getOrigin()]]
                            [Mailbox::mailbox[move.getDestination()]] += 1 << std::min(depth / ONE_PLY, 18);
 
@@ -770,11 +770,11 @@ int16_t SearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
 
     if(!tableHit || (depth > ttEntry.depth &&
                         !IS_REGULAR_NODE(ttEntry.type)))
-        transpositionTable.put(board.getHashValue(), {
+        transpositionTable.put(board->getHashValue(), {
             currentAge, depth, bestScore, NW_NODE | EXACT_NODE, bestMove
         });
     
-    relativeHistory[board.getSideToMove() / COLOR_MASK]
+    relativeHistory[board->getSideToMove() / COLOR_MASK]
                 [Mailbox::mailbox[bestMove.getOrigin()]]
                 [Mailbox::mailbox[bestMove.getDestination()]] += 1 << std::min(depth / ONE_PLY, 18);
 
@@ -784,9 +784,9 @@ int16_t SearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
 int16_t SearchTree::determineExtension(Move& m, bool isThreat, bool isCheckEvasion) {
     int16_t extension = 0;
 
-    int32_t movedPieceType = TYPEOF(board.pieceAt(m.getDestination()));
+    int32_t movedPieceType = TYPEOF(board->pieceAt(m.getDestination()));
 
-    bool isCheck = board.isCheck();
+    bool isCheck = board->isCheck();
 
     // Erweiterungen
 
@@ -807,11 +807,11 @@ int16_t SearchTree::determineExtension(Move& m, bool isThreat, bool isCheckEvasi
 
     // Freibauerzüge
     if(movedPieceType == PAWN) {
-        int32_t side = board.getSideToMove() ^ COLOR_MASK;
-        int32_t otherSide = board.getSideToMove();
+        int32_t side = board->getSideToMove() ^ COLOR_MASK;
+        int32_t otherSide = board->getSideToMove();
 
         if(!(sentryMasks[side / COLOR_MASK][Mailbox::mailbox[m.getDestination()]]
-            & board.getPieceBitboard(otherSide | PAWN)))
+            & board->getPieceBitboard(otherSide | PAWN)))
             extension += TWO_THIRDS_PLY;
     }
 
@@ -825,7 +825,7 @@ int16_t SearchTree::determineExtension(Move& m, bool isThreat, bool isCheckEvasi
 int16_t SearchTree::determineReduction(int16_t depth, int32_t moveCount, bool isCheckEvasion) {
     int16_t reduction = 0;
 
-    bool isCheck = board.isCheck();
+    bool isCheck = board->isCheck();
     
     if(moveCount <= 3 || isCheck || isCheckEvasion)
         return 0;
@@ -853,15 +853,15 @@ int16_t SearchTree::quiescence(int16_t alpha, int16_t beta, int32_t captureSquar
     
     Array<Move, 256> moves;
 
-    if(board.isCheck()) {
-        moves = board.generateLegalMoves();
+    if(board->isCheck()) {
+        moves = board->generateLegalMoves();
         if(moves.size() == 0)
             return -MATE_SCORE;
 
         sortAndCutMoves(moves, MIN_SCORE, MVVLVA);
     }
     else {
-        moves = board.generateLegalCaptures();
+        moves = board->generateLegalCaptures();
 
         sortAndCutMoves(moves, QUIESCENCE_SCORE_CUTOFF, SEE);
     }
@@ -872,11 +872,11 @@ int16_t SearchTree::quiescence(int16_t alpha, int16_t beta, int32_t captureSquar
         
         nodesSearched++;
 
-        board.makeMove(move);
+        board->makeMove(move);
 
         score = -quiescence(-beta, -alpha, captureSquare);
 
-        board.undoMove();
+        board->undoMove();
 
         if(!searching)
             return 0;

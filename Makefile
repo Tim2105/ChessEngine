@@ -1,6 +1,16 @@
 # Eine Makefile, die Dateien aus dem Verzeichnis "src" kompiliert und
 # das Ergebnis in das Verzeichnis "bin" legt.
 
+# Shell für die Ausführung von Befehlen setzen
+ifeq ($(OS),Windows_NT)
+	SHELL = cmd.exe
+else
+	SHELL = /bin/bash
+endif
+
+# Rekursives Wildcard
+rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
+
 # Compiler
 CC = g++
 
@@ -8,7 +18,7 @@ CC = g++
 CFLAGS = -Wall -Wextra -Werror -std=c++20 -O3 -Isrc
 
 # Quelldateien
-SRC = $(shell find src -name "*.cpp")
+SRC = $(call rwildcard,src/,*.cpp)
 
 # Objektdateien
 # Werden in den Ordner bin/obj erstellt
@@ -25,20 +35,11 @@ $(EXEC): $(OBJ)
 # Erstellt die Objektdateien
 # Fehlende Ordner werden erstellt
 bin/obj/%.o: src/%.cpp
-	mkdir -p $(@D)
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(info Compiling $<)
+	@if not exist "$(subst /,\,$(@D))" mkdir $(subst /,\,$(@D))
+	@$(CC) $(CFLAGS) -c -o $@ $<
+
 
 # Löscht alle erstellten Dateien
 clean:
-	rm -r bin
-
-# Erstellt die Ausführbare Datei neu
-rebuild: clean $(EXEC)
-
-# Erstellt die Ausführbare Datei neu und führt sie aus
-run: rebuild
-	./$(EXEC)
-
-# Erstellt die Ausführbare Datei neu und führt sie mit GDB aus
-gdb: rebuild
-	gdb ./$(EXEC)
+	rmdir /s /q bin

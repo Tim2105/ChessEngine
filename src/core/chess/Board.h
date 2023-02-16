@@ -159,7 +159,6 @@ class RepetitionTable {
 /**
  * @brief Stellt ein Schachbrett dar.
  * Die Klasse Board stellt ein Schachbrett dar und enthält Methoden zur Zuggeneration.
- * Dieser Teil des Programms ist sehr Performancekritisch und folgt daher nicht strikt den Regeln der Objektorientierten Programmierung.
  */
 class Board {
     friend class Movegen;
@@ -332,6 +331,12 @@ class Board {
          * @param fen Die FEN-Notation des Schachbretts.
          */
         Board(std::string fen);
+
+        /**
+         * @brief Erstellt ausgehend von einem PGN-String ein neues Schachbrett.
+         * @param pgn Die PGN-Notation des Schachbretts.
+         */
+        static Board fromPGN(std::string pgn);
 
         /**
          * @brief Erstellt ein neues Schachbrett, das eine Kopie eines anderen Schachbretts ist.

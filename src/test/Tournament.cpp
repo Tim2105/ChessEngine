@@ -3,26 +3,27 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+#include "core/utils/MoveNotations.h"
 
 const std::vector<std::string> Tournament::openings = {
-    "r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 1", "Ruy Lopez Opening",
-    "rnbqkbnr/pppp1ppp/4p3/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1", "French Defense",
-    "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 1", "Sicilian Defense",
-    "rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1", "Caro-Kann Defense",
-    "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 1", "Italian Game",
-    "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 1", "Scandinavian Defense",
-    "rnbqkb1r/ppp1pppp/3p1n2/8/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 1", "Pirc Defense",
-    "rnbqkbnr/ppp1pppp/8/3p4/2PP4/8/PP2PPPP/RNBQKBNR b KQkq c3 0 1", "Queen's Gambit",
-    "rnbqkb1r/pppppp1p/5np1/8/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 1", "King's Indian Defense",
-    "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 0 1", "Nimzo-Indian Defense",
-    "rnbqkb1r/ppp1pp1p/5np1/3p4/2PP4/2N5/PP2PPPP/R1BQKBNR w KQkq d6 0 1", "Grünfeld Defense",
-    "rnbqkb1r/ppp1pppp/5n2/3p4/3P1B2/5N2/PPP1PPPP/RN1QKB1R b KQkq - 0 1", "London System",
-    "rnbqkbnr/pppppppp/8/8/2P5/8/PP1PPPPP/RNBQKBNR b KQkq c3 0 1", "English Opening",
-    "rnbqkbnr/ppp1pppp/8/3p4/8/5NP1/PPPPPP1P/RNBQKB1R b KQkq - 0 1", "King's Indian Attack",
-    "rnbqkbnr/pppp1ppp/8/4p3/4P3/2N5/PPPP1PPP/R1BQKBNR b KQkq - 0 1", "Vienna Game",
-    "rnbqkbnr/pp2pppp/2p5/3p4/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 1", "Slav Defense",
-    "rnbqkb1r/pppp1ppp/4pn2/8/2PP4/6P1/PP2PP1P/RNBQKBNR b KQkq - 0 1", "Catalan Opening",
-    "rnbqkb1r/pp3ppp/3p1n2/2pP4/8/2N5/PP2PPPP/R1BQKBNR w KQkq - 0 1", "Benoni Defense: Modern Variation",
+    "1.e4 e5 2.Nf3 Nc6 3.Bb5", "Ruy Lopez Opening",
+    "1.e4 e6", "French Defense",
+    "1.e4 c5", "Sicilian Defense",
+    "1.e4 c6", "Caro-Kann Defense",
+    "1.e4 e5 2.Nf3 Nc6 3.Bc4", "Italian Game",
+    "1.e4 d5", "Scandinavian Defense",
+    "1.e4 d6 2.d4 Nf6", "Pirc Defense",
+    "1.d4 d5 2.c4", "Queen's Gambit",
+    "1.d4 Nf6 2.c4 g6", "King's Indian Defense",
+    "1.d4 Nf6 2.c4 e6 3.Nc3 Bb4", "Nimzo-Indian Defense",
+    "1.d4 Nf6 2.c4 g6 3.Nc3 d5", "Gruenfeld Defense",
+    "1.d4 d5 2.Nf3 Nf6 3.Bf4", "London System",
+    "1.c4", "English Opening",
+    "1.Nf3 d5 2.g3", "King's Indian Attack",
+    "1.e4 e5 2.Nc3", "Vienna Game",
+    "1.d4 d5 2.c4 c6", "Slav Defense",
+    "1.d4 Nf6 2.c4 e6 3.g3", "Catalan Opening",
+    "1.d4 Nf6 2.c4 c5 3.d5 e6 4.Nc3 exd5 5.cxd5 d6", "Benoni Defense: Modern Variation",
 };
 
 const std::vector<int32_t> Tournament::timeControls = {
@@ -30,7 +31,7 @@ const std::vector<int32_t> Tournament::timeControls = {
 };
 
 const std::vector<int32_t> Tournament::numGames = {
-    3, 2, 1, 1
+    1, 1, 0, 0
 };
 
 int32_t Tournament::runGame(Board& board, SearchTree& st1, SearchTree& st2, int32_t time) {
@@ -50,6 +51,9 @@ int32_t Tournament::runGame(Board& board, SearchTree& st1, SearchTree& st2, int3
             // Führe Zug aus
             Move bestMove = st1.getPrincipalVariation()[0];
 
+            if(!board.isMoveLegal(bestMove))
+                throw std::runtime_error("Illegal move by " + engineName1 + "! " + bestMove.toString() + " Move " + std::to_string(board.getMoveHistory().size() + 1));
+
             board.makeMove(bestMove);
 
             // Wechsle Engine
@@ -61,6 +65,9 @@ int32_t Tournament::runGame(Board& board, SearchTree& st1, SearchTree& st2, int3
             st2.search(time);
             // Führe Zug aus
             Move bestMove = st2.getPrincipalVariation()[0];
+
+            if(!board.isMoveLegal(bestMove))
+                throw std::runtime_error("Illegal move by " + engineName2 + "! " + bestMove.toString() + " Move " + std::to_string(board.getMoveHistory().size() + 1));
 
             board.makeMove(bestMove);
 
@@ -97,11 +104,11 @@ void Tournament::run() {
             std::uniform_int_distribution<> dis(0, openings.size() / 2 - 1);
 
             int32_t openingIndex = dis(gen);
-            std::string fen = openings[openingIndex * 2];
+            std::string pgn = openings[openingIndex * 2];
             std::string openingName = openings[openingIndex * 2 + 1];
 
             // Erstelle Spielfeld
-            Board board(fen);
+            Board board = Board::fromPGN(pgn);
 
             bool engine1White = board.getSideToMove() == WHITE;
 
@@ -111,22 +118,28 @@ void Tournament::run() {
             // Spiele Partie
             int32_t result = runGame(board, st1, st2, timeControl);
 
+
             // Speichere die Partie als PGN in Datei
             std::string filename;
 
             filename = "pgn/";
+            filename += std::to_string(timeControl);
+            filename += "ms_";
+            filename += openingName;
+            filename += "_";
+            filename += std::to_string(i * 2 + 1);
+            filename += "_";
             filename += engineName1;
             filename += "vs";
             filename += engineName2;
-            filename += "_";
-            filename += std::to_string(timeControl);
-            filename += "ms_";
-            filename += std::to_string(i + 1);
-            filename += "_";
-            filename += openingName;
             filename += ".pgn";
 
-            std::ofstream file(filename);
+            std::ofstream file;
+
+            file.open(filename, std::ios::out);
+
+            if(!file.is_open())
+                throw std::runtime_error("Could not open file " + filename + " for writing! (Tournament::run())");
 
             file << board.pgnString();
 
@@ -163,13 +176,15 @@ void Tournament::run() {
                 }
             }
             else {
-                std::cout << "Draw" << std::endl;
+                std::cout << "Draw";
             }
+
+            std::cout << std::endl;
 
             // Wechsele Seiten
 
             // Erstelle Spielfeld
-            board = Board(fen);
+            board = Board::fromPGN(pgn);
 
             bool engine2White = board.getSideToMove() == WHITE;
 
@@ -180,21 +195,19 @@ void Tournament::run() {
             result = runGame(board, st2, st1, timeControl);
 
             // Speichere die Partie als PGN in Datei
-            filename = "";
-
             filename = "pgn/";
-            filename += engineName2;
-            filename += "vs";
-            filename += engineName1;
-            filename += "_";
             filename += std::to_string(timeControl);
             filename += "ms_";
-            filename += std::to_string(i + 1);
-            filename += "_";
             filename += openingName;
+            filename += "_";
+            filename += std::to_string(i * 2 + 2);
+            filename += "_";
+            filename += engineName1;
+            filename += "vs";
+            filename += engineName2;
             filename += ".pgn";
 
-            file = std::ofstream(filename);
+            file.open(filename, std::ios::out);
 
             file << board.pgnString();
 
@@ -231,7 +244,7 @@ void Tournament::run() {
                 }
             }
             else {
-                std::cout << "Draw" << std::endl;
+                std::cout << "Draw";
             }
 
             std::cout << std::endl;
