@@ -30,10 +30,17 @@ class Move {
 
         constexpr operator uint32_t() const { return move; }
 
+        constexpr static Move nullMove() { return Move(NULL_MOVE); }
+
         /**
          * @brief Überprüft, ob der Zug Inhalt hat.
          */
         constexpr bool exists() const { return move != 0; }
+
+        /**
+         * @brief Überprüft, ob es sich um einen Nullzug handelt.
+         */
+        constexpr bool isNullMove() const { return move == NULL_MOVE; }
 
         /**
          * @brief Gibt den Zug als String zurück.

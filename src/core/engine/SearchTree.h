@@ -134,11 +134,11 @@ class SearchTree {
 
         int16_t pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta);
 
-        int16_t nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta);
+        int16_t nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, bool nullMoveAllowed = true);
 
         int16_t quiescence(int16_t alpha, int16_t beta, int32_t captureSquare);
 
-        int16_t determineExtension(Move& m, bool isCheckEvasion = false);
+        int16_t determineExtension(Move& m, bool isThreat, bool isCheckEvasion = false);
 
         int16_t determineReduction(int16_t depth, int32_t moveCount, bool isCheckEvasion = false);
 
@@ -180,10 +180,14 @@ class SearchTree {
         }
 
     private:
+
+        // Für die Gefahrenerkennung in der Nullzugusche
+        static constexpr int16_t THREAT_MARGIN = 200;
+
         /**
          * @brief Die PSQT für die Zugvorsortierung.
          */
-        static constexpr int16_t MOVE_ORDERING_PSQT[7][64] {
+        static constexpr int16_t MOVE_ORDERING_PSQT[7][64] = {
                 // Empty
                 {},
                 // Pawn

@@ -415,9 +415,7 @@ int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
     int32_t moveNumber = 1;
     bool isCheckEvasion = board.isCheck();
 
-    Array<Move, 256> moves;
-
-    moves = board.generateLegalMoves();
+    Array<Move, 256> moves = board.generateLegalMoves();
     sortMovesAtRoot(moves, SEE);
 
     for(Move move : moves) {
@@ -428,7 +426,7 @@ int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
 
         board.makeMove(move);
 
-        int16_t extension = determineExtension(move, isCheckEvasion);
+        int16_t extension = determineExtension(move, false, isCheckEvasion);
         int16_t nwReduction = determineReduction(depth, moveNumber, isCheckEvasion);
 
         int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
@@ -577,7 +575,7 @@ int16_t SearchTree::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
 
         board.makeMove(move);
 
-        int16_t extension = determineExtension(move, isCheckEvasion);
+        int16_t extension = determineExtension(move, false, isCheckEvasion);
         int16_t nwReduction = determineReduction(depth, moveNumber, isCheckEvasion);
 
         int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
@@ -657,7 +655,7 @@ int16_t SearchTree::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
     return bestScore;
 }
 
-int16_t SearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta) {
+int16_t SearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, bool nullMoveAllowed) {
     if(!searching)
         return 0;
 
@@ -697,10 +695,37 @@ int16_t SearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
             return 0;
     }
 
-    sortMoves(moves, ply, SEE);
-
     int32_t moveNumber = 1;
     bool isCheckEvasion = board.isCheck();
+    bool isThreat = false;
+
+    // Null move pruning
+    if(nullMoveAllowed && !isCheckEvasion && depth >= 4 * ONE_PLY) {
+        // int32_t side = board.getSideToMove();
+        // Bitboard minorOrMajorPieces = board.getPieceBitboard(side | KNIGHT) |
+        //                               board.getPieceBitboard(side | BISHOP) |
+        //                               board.getPieceBitboard(side | ROOK) |
+        //                               board.getPieceBitboard(side | QUEEN);
+
+        // // Nullzug nur durchführen, wenn wir mindestens eine Leichtfigur haben          
+        // if(minorOrMajorPieces) {
+        //     Move nullMove = Move::nullMove();
+        //     board.makeMove(nullMove);
+
+        //     int16_t nullMoveScore = -nwSearch(depth - 3 * ONE_PLY, ply + 1, -beta, -beta + 1, false);
+
+        //     board.undoMove();
+
+        //     if(nullMoveScore >= beta) {
+        //         return nullMoveScore;
+        //     }
+
+        //     if(nullMoveScore < (alpha - THREAT_MARGIN))
+        //         isThreat = true;
+        // }
+    }
+
+    sortMoves(moves, ply, SEE);
 
     for(Move move : moves) {
         if(!searching)
@@ -710,7 +735,7 @@ int16_t SearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
 
         board.makeMove(move);
 
-        int16_t extension = determineExtension(move, isCheckEvasion);
+        int16_t extension = determineExtension(move, isThreat, isCheckEvasion);
         int16_t nwReduction = determineReduction(depth, moveNumber, isCheckEvasion);
 
         int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
@@ -776,13 +801,10 @@ int16_t SearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
     return bestScore;
 }
 
-int16_t SearchTree::determineExtension(Move& m, bool isCheckEvasion) {
+int16_t SearchTree::determineExtension(Move& m, bool isThreat, bool isCheckEvasion) {
     int16_t extension = 0;
 
     int32_t movedPieceType = TYPEOF(board.pieceAt(m.getDestination()));
-
-    int32_t origin64 = Mailbox::mailbox[m.getOrigin()];
-    int32_t destination64 = Mailbox::mailbox[m.getDestination()];
 
     bool isCheck = board.isCheck();
 
@@ -813,11 +835,9 @@ int16_t SearchTree::determineExtension(Move& m, bool isCheckEvasion) {
             extension += TWO_THIRDS_PLY;
     }
 
-    // Wenn sich eine Figur in Sicherheit bewegt 
-    if(board.squareAttacked(origin64, board.getSideToMove()) &&
-                !board.squareAttacked(destination64, board.getSideToMove())) {
-        extension += ONE_THIRD_PLY;
-    }
+    // Wenn Gefahr besteht
+    if(isThreat)
+        extension += ONE_PLY;
     
     return extension;
 }
@@ -839,7 +859,9 @@ int16_t SearchTree::quiescence(int16_t alpha, int16_t beta, int32_t captureSquar
     if(!searching)
         return 0;
 
-    int16_t score = (int16_t)evaluator.evaluate();
+    int16_t staticEvaluationScore = (int16_t)evaluator.evaluate();
+
+    int16_t score = staticEvaluationScore;
 
     if(score >= beta)
         return score;
@@ -860,6 +882,7 @@ int16_t SearchTree::quiescence(int16_t alpha, int16_t beta, int32_t captureSquar
     }
     else {
         moves = board.generateLegalCaptures();
+
         sortAndCutMoves(moves, QUIESCENCE_SCORE_CUTOFF, SEE);
     }
     

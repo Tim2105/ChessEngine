@@ -73,7 +73,7 @@ int main() {
 
     Board board;
     BoardEvaluator evaluator(board);
-    SearchTree st(evaluator, 1);
+    SearchTree st(evaluator, 3);
 
     st.search(50000);
     

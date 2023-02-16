@@ -300,6 +300,11 @@ void Board::generateBitboards() {
 }
 
 bool Board::isMoveLegal(Move move) {
+    
+    // Nullzüge sind immer illegal
+    if(move.isNullMove())
+        return false;
+
     int32_t side = this->side;
     int32_t otherSide = side ^ COLOR_MASK;
 
@@ -514,6 +519,30 @@ void Board::makeMove(Move m) {
     moveHistory.push_back(entry);
 
     // Zug ausführen
+
+    // Spezialfall: Nullzug
+    // Bei einem Nullzug wird nur der Spieler gewechselt
+    if(m.isNullMove()) {
+        enPassantSquare = NO_SQ;
+
+        if(enPassantSquare != entry.enPassantSquare) {
+            if(entry.enPassantSquare != NO_SQ)
+                hashValue ^= Zobrist::zobristEnPassantKeys[SQ2F(entry.enPassantSquare)];
+            
+            if(enPassantSquare != NO_SQ)
+                hashValue ^= Zobrist::zobristEnPassantKeys[SQ2F(enPassantSquare)];
+        }
+
+        fiftyMoveRule++;
+
+        side = side ^ COLOR_MASK;
+        hashValue ^= Zobrist::zobristBlackToMove;
+        ply++;
+
+        repetitionTable.increment(hashValue);
+
+        return;
+    }
 
     // Spezialfall: En Passant
     if(m.isEnPassant()) {
@@ -736,6 +765,10 @@ void Board::undoMove() {
     blackAttackBitboard = moveEntry.blackAttackBitboard;
     for(int i = 0; i < 15; i++)
         pieceAttackBitboard[i] = moveEntry.pieceAttackBitboard[i];
+    
+    // Spezialfall: Nullzug
+    if(move.isNullMove())
+        return;
 
     int32_t enPassantCaptureSq = enPassantSquare + (side == WHITE ? SOUTH : NORTH);
 
