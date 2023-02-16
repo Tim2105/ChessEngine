@@ -45,6 +45,13 @@ class Evaluator {
         virtual ~Evaluator() = default;
 
         /**
+         * @brief Setzt das Spielfeld, auf dem die statische Bewertung ausgeführt werden soll.
+         */
+        inline void setBoard(Board& b) {
+            this->b = b;
+        }
+
+        /**
          * @brief Überprüft, ob das Spiel zwangsläufig ein Unentschieden ist.
          * Ein Spiel ist zwangsläufig ein Unentschieden, wenn kein Spieler Schachmatt gesetzt werden kann,
          * auch wenn beide Spieler kooperieren würden.

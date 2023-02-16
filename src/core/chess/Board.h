@@ -391,6 +391,11 @@ class Board {
         std::string fenString() const;
 
         /**
+         * @brief Wandelt das Spiel in einen PGN-String um.
+         */
+        std::string pgnString() const;
+
+        /**
          * @brief Überprüft bei einem anzugebenden Belegbitboard, ob ein Feld von einer bestimmten Seite angegriffen wird.
          * 
          * @param square Das Feld, das überprüft werden soll(in 120er Notation).

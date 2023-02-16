@@ -69,30 +69,10 @@ int16_t SearchTree::search(uint32_t searchTime) {
     int16_t score = evaluator.evaluate();
     int16_t lastScore = score;
 
-    auto start = std::chrono::high_resolution_clock::now();
-
-    for(int16_t depth = ONE_PLY; searching; depth += ONE_PLY) {
+    for(int16_t depth = ONE_PLY; searching || variations.size() == 0; depth += ONE_PLY) {
         currentMaxDepth = depth;
 
         score = rootSearch(depth, score);
-
-        auto end = std::chrono::high_resolution_clock::now();
-
-        std::chrono::duration<double> elapsed = end - start;
-
-        std::cout << "info depth " << depth / ONE_PLY << " score cp " << score << " time " << elapsed.count() * 1000 << " nodes " << nodesSearched << " nps " << nodesSearched / elapsed.count() << std::endl;
-
-        for(Variation& v : variations) {
-            std::cout << std::endl;
-            
-            std::cout << v.score << " - ";
-
-            for(std::string move : variationToFigurineAlgebraicNotation(v.moves, board)) {
-                std::cout << move << " ";
-            }
-        }
-
-        std::cout << std::endl << std::endl << std::endl;
         
         if(searching) {
             lastScore = score;

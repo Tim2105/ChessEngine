@@ -1,18 +1,18 @@
-#ifndef BOARD_EVALUATOR_H
-#define BOARD_EVALUATOR_H
+#ifndef NEW_EVALUATOR_H
+#define NEW_EVALUATOR_H
 
 #include "core/chess/Board.h"
 #include "core/engine/Evaluator.h"
+#include "core/engine/EvaluationDefinitons.h"
 #include "core/utils/Bitboard.h"
 #include "core/utils/tables/HashTable.h"
 #include "core/utils/tables/HeapHashTable.h"
-#include "core/engine/EvaluationDefinitons.h"
 
 /**
  * @brief Die Klasse BoardEvaluator ist für die statische Bewertung eines Spielfeldes zuständig.
  * Parameter können in den Dateien "EvaluationDefinitions.h" und "EvaluationDefinitions.cpp" angepasst werden.
  */
-class BoardEvaluator : public Evaluator {
+class NewEvaluator : public Evaluator {
 
     private:
         // Eine Hash-Tabelle, in der die Bewertung von Stellungen gespeichert wird,
@@ -136,17 +136,17 @@ class BoardEvaluator : public Evaluator {
         int32_t evalEGMobility();
 
     public:
-        BoardEvaluator() = delete;
+        NewEvaluator() = delete;
 
-        BoardEvaluator(Board& b) : Evaluator(b) {};
+        NewEvaluator(Board& b) : Evaluator(b) {};
 
-        ~BoardEvaluator() override = default;
+        ~NewEvaluator() override = default;
 
-        BoardEvaluator(const BoardEvaluator& other) = delete;
-        BoardEvaluator& operator=(const BoardEvaluator& other) = delete;
+        NewEvaluator(const NewEvaluator& other) = delete;
+        NewEvaluator& operator=(const NewEvaluator& other) = delete;
 
-        BoardEvaluator(BoardEvaluator&& other);
-        BoardEvaluator& operator=(BoardEvaluator&& other);
+        NewEvaluator(NewEvaluator&& other);
+        NewEvaluator& operator=(NewEvaluator&& other);
 
         /**
          * @brief Führt eine statische Bewertung für das Midgame der

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include "core/chess/ZobristDefinitions.h"
 #include "core/chess/MailboxDefinitions.h"
+#include "core/utils/MoveNotations.h"
 
 Board::Board() {
     side = WHITE;
@@ -1310,6 +1311,40 @@ std::string Board::fenString() const {
     fen += std::to_string(fullMoves);
 
     return fen;
+}
+
+std::string Board::pgnString() const {
+    std::string pgn = "";
+
+    Board temp;
+
+    if(moveHistory.size() == 0)
+        return pgn;
+
+    int32_t startPly = ply - moveHistory.size();
+
+    if(startPly != 0)
+        throw std::runtime_error("The game hasn't started here. Can't generate PGN string.");
+
+    int32_t fullMoves = 1;
+    bool white = true;
+
+    for(MoveHistoryEntry entry : moveHistory) {
+        if(white) {
+            pgn += std::to_string(fullMoves);
+            pgn += ". ";
+        }
+
+        pgn += toStandardAlgebraicNotation(entry.move, temp);
+        temp.makeMove(entry.move);
+
+        white = !white;
+
+        if(white)
+            fullMoves++;
+    }
+
+    return pgn;
 }
 
 uint8_t Board::repetitionCount() {

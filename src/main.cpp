@@ -4,6 +4,9 @@
 #include "core/utils/MoveNotations.h"
 #include <iomanip>
 #include <random>
+#include "core/engine/BoardEvaluator.h"
+#include "core/engine/NewEvaluator.h"
+#include "test/Tournament.h"
 
 #ifdef _WIN32
     #include <windows.h>
@@ -40,23 +43,6 @@ Move getUserMove(Board& board) {
     }
 }
 
-std::string openings[] = {
-    "r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 1", "Ruy Lopez Opening",
-    "rnbqkbnr/pppp1ppp/4p3/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1", "French Defense",
-    "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 1", "Sicilian Defense",
-    "rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1", "Caro-Kann Defense",
-    "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 1", "Italian Game",
-    "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 1", "Scandinavian Defense",
-    "rnbqkb1r/ppp1pppp/3p1n2/8/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 1", "Pirc Defense",
-    "rnbqkbnr/ppp1pppp/8/3p4/2PP4/8/PP2PPPP/RNBQKBNR b KQkq c3 0 1", "Queen's Gambit",
-    "rnbqkb1r/pppppp1p/5np1/8/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 1", "King's Indian Defense",
-    "rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 0 1", "Nimzo-Indian Defense",
-    "rnbqkb1r/ppp1pp1p/5np1/3p4/2PP4/2N5/PP2PPPP/R1BQKBNR w KQkq d6 0 1", "Grünfeld Defense",
-    "rnbqkb1r/ppp1pppp/5n2/3p4/3P1B2/5N2/PPP1PPPP/RN1QKB1R b KQkq - 0 1", "London System",
-    "rnbqkbnr/pppppppp/8/8/2P5/8/PP1PPPPP/RNBQKBNR b KQkq c3 0 1", "English Opening",
-    "rnbqkbnr/ppp1pppp/8/3p4/8/5NP1/PPPPPP1P/RNBQKB1R b KQkq - 0 1", "King's Indian Attack"
-};
-
 int main() {
     #ifdef _WIN32
         SetConsoleOutputCP(CP_UTF8);
@@ -72,11 +58,15 @@ int main() {
     #endif
 
     Board board;
-    BoardEvaluator evaluator(board);
-    SearchTree st(evaluator, 3);
 
-    st.search(50000);
-    
+    BoardEvaluator evaluator(board);
+    NewEvaluator newEvaluator(board);
+
+    SearchTree st1(evaluator);
+    SearchTree st2(evaluator);
+
+    Tournament t(st1, st2, "Engine 1", "Engine 2");
+    t.run();
     
     // while(board.generateLegalMoves().size() > 0 && !evaluator.isDraw()) {
     //     Move move = getUserMove(board);

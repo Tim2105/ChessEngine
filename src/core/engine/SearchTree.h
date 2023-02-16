@@ -11,7 +11,7 @@
 #include <mutex>
 #include "core/chess/Board.h"
 #include <vector>
-#include "core/engine/BoardEvaluator.h"
+#include "core/engine/Evaluator.h"
 
 #define EXACT_NODE 1
 #define CUT_NODE 2
@@ -177,6 +177,11 @@ class SearchTree {
             variationMutex.unlock();
 
             return variationsCopy;
+        }
+
+        inline void setBoard(Board& b) {
+            board = b;
+            evaluator.setBoard(b);
         }
 
     private:
