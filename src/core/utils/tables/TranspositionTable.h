@@ -42,7 +42,7 @@ class TranspositionTable {
         };
 
         Entry* table;
-        uint8_t bucketSizes[bucketCount];
+        uint8_t* bucketSizes;
     
     public:
         TranspositionTable();
@@ -64,6 +64,7 @@ class TranspositionTable {
 template<size_t bucketCount, size_t bucketSize>
 TranspositionTable<bucketCount, bucketSize>::TranspositionTable() {
     table = new Entry[bucketCount * bucketSize];
+    bucketSizes = new uint8_t[bucketCount];
 
     for (size_t i = 0; i < bucketCount; i++) {
         bucketSizes[i] = 0;
@@ -73,28 +74,31 @@ TranspositionTable<bucketCount, bucketSize>::TranspositionTable() {
 template<size_t bucketCount, size_t bucketSize>
 TranspositionTable<bucketCount, bucketSize>::~TranspositionTable() {
     delete[] table;
+    delete[] bucketSizes;
 }
 
 template<size_t bucketCount, size_t bucketSize>
 TranspositionTable<bucketCount, bucketSize>::TranspositionTable(TranspositionTable&& other) {
     delete[] table;
+    delete[] bucketSizes;
+
     table = other.table;
     other.table = nullptr;
 
-    for (size_t i = 0; i < bucketCount; i++) {
-        bucketSizes[i] = other.bucketSizes[i];
-    }
+    bucketSizes = other.bucketSizes;
+    other.bucketSizes = nullptr;
 }
 
 template<size_t bucketCount, size_t bucketSize>
 TranspositionTable<bucketCount, bucketSize>& TranspositionTable<bucketCount, bucketSize>::operator=(TranspositionTable&& other) {
     delete[] table;
+    delete[] bucketSizes;
+
     table = other.table;
     other.table = nullptr;
 
-    for (size_t i = 0; i < bucketCount; i++) {
-        bucketSizes[i] = other.bucketSizes[i];
-    }
+    bucketSizes = other.bucketSizes;
+    other.bucketSizes = nullptr;
 
     return *this;
 }

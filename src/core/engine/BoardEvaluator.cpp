@@ -436,34 +436,21 @@ int32_t BoardEvaluator::evalMGKingAttackZone(int32_t side) {
     int32_t otherSide = side ^ COLOR_MASK;
     Bitboard kingAttackZone = kingAttackZoneMask[side / COLOR_MASK][Mailbox::mailbox[b.getKingSquare(side)]];
 
-    int32_t numAttackers = 0, attackCounter = 0;
+    int32_t attackCounter = 0;
     
     int32_t knightThreats = (b.getPieceAttackBitboard(otherSide | KNIGHT) & kingAttackZone).getNumberOfSetBits();
-    if(knightThreats > 0) {
-        attackCounter += knightThreats * MG_KING_SAFETY_KNIGHT_THREAT_VALUE;
-        numAttackers++;
-    }
+    attackCounter += knightThreats * MG_KING_SAFETY_KNIGHT_THREAT_VALUE;
 
     int32_t bishopThreats = (b.getPieceAttackBitboard(otherSide | BISHOP) & kingAttackZone).getNumberOfSetBits();
-    if(bishopThreats > 0) {
-        attackCounter += bishopThreats * MG_KING_SAFETY_BISHOP_THREAT_VALUE;
-        numAttackers++;
-    }
+    attackCounter += bishopThreats * MG_KING_SAFETY_BISHOP_THREAT_VALUE;
 
     int32_t rookThreats = (b.getPieceAttackBitboard(otherSide | ROOK) & kingAttackZone).getNumberOfSetBits();
-    if(rookThreats > 0) {
-        attackCounter += rookThreats * MG_KING_SAFETY_ROOK_THREAT_VALUE;
-        numAttackers++;
-    }
+    attackCounter += rookThreats * MG_KING_SAFETY_ROOK_THREAT_VALUE;
 
     int32_t queenThreats = (b.getPieceAttackBitboard(otherSide | QUEEN) & kingAttackZone).getNumberOfSetBits();
-    if(queenThreats > 0) {
-        attackCounter += queenThreats * MG_KING_SAFETY_QUEEN_THREAT_VALUE;
-        numAttackers++;
-    }
-
-    if(numAttackers > 1)
-        score -= kingSafetyTable[std::min(attackCounter, KING_SAFETY_TABLE_SIZE - 1)];
+    attackCounter += queenThreats * MG_KING_SAFETY_QUEEN_THREAT_VALUE;
+        
+    score -= kingSafetyTable[attackCounter];
 
     return score;
 }
@@ -505,11 +492,11 @@ int32_t BoardEvaluator::evalMGKingSafety() {
 
     ownKingSafetyScore += evalMGPawnShield(ownKingSquare, ownPawns, side);
     ownKingSafetyScore += evalMGPawnStorm(otherKingSquare, ownPawns, side);
-    // ownKingSafetyScore += evalMGKingAttackZone(side);
+    ownKingSafetyScore += evalMGKingAttackZone(side);
 
     otherKingSafetyScore += evalMGPawnShield(otherKingSquare, otherPawns, otherSide);
     otherKingSafetyScore += evalMGPawnStorm(ownKingSquare, otherPawns, otherSide);
-    // otherKingSafetyScore += evalMGKingAttackZone(otherSide);
+    otherKingSafetyScore += evalMGKingAttackZone(otherSide);
 
     score += ownKingSafetyScore - otherKingSafetyScore;
 

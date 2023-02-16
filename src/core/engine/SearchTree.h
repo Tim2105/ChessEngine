@@ -32,7 +32,7 @@
 #define MVVLVA 0
 #define SEE 1
 
-#define QUIESCENCE_SCORE_CUTOFF (MIN_SCORE)
+#define QUIESCENCE_SCORE_CUTOFF (-10)
 
 #define ASP_WINDOW 25
 #define ASP_STEP_FACTOR 4
@@ -85,7 +85,7 @@ struct std::less<Variation> {
 
 class SearchTree {
     private:
-        TranspositionTable<524288, 4> transpositionTable;
+        TranspositionTable<2097152, 4> transpositionTable;
 
         Evaluator& evaluator;
         Board& board;

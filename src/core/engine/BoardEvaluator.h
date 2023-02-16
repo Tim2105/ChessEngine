@@ -465,8 +465,6 @@ class BoardEvaluator : public Evaluator {
                 }
         };
 
-        static constexpr int32_t KING_SAFETY_TABLE_SIZE = 100;
-
         static constexpr int16_t kingSafetyTable[100] = {
                 0,  0,   1,   2,   3,   5,   7,   9,  12,  15,
                 18,  22,  26,  30,  35,  39,  44,  50,  56,  62,

@@ -23,7 +23,7 @@ class HeapHashTable {
         };
 
         Entry* table;
-        uint8_t bucketSizes[bucketCount];
+        uint8_t* bucketSizes;
 
     public:
         HeapHashTable();
@@ -60,6 +60,7 @@ class HeapHashTable {
 template <typename K, typename V, size_t bucketCount, size_t bucketSize>
 HeapHashTable<K, V, bucketCount, bucketSize>::HeapHashTable() {
     table = new Entry[bucketCount * bucketSize];
+    bucketSizes = new uint8_t[bucketCount];
 
     for (size_t i = 0; i < bucketCount; i++) {
         bucketSizes[i] = 0;
@@ -69,28 +70,31 @@ HeapHashTable<K, V, bucketCount, bucketSize>::HeapHashTable() {
 template <typename K, typename V, size_t bucketCount, size_t bucketSize>
 HeapHashTable<K, V, bucketCount, bucketSize>::~HeapHashTable() {
     delete[] table;
+    delete[] bucketSizes;
 }
 
 template <typename K, typename V, size_t bucketCount, size_t bucketSize>
 HeapHashTable<K, V, bucketCount, bucketSize>::HeapHashTable(HeapHashTable&& other) {
     delete[] table;
+    delete[] bucketSizes;
+
     table = other.table;
     other.table = nullptr;
 
-    for (size_t i = 0; i < bucketCount; i++) {
-        bucketSizes[i] = other.bucketSizes[i];
-    }
+    bucketSizes = other.bucketSizes;
+    other.bucketSizes = nullptr;
 }
 
 template <typename K, typename V, size_t bucketCount, size_t bucketSize>
 HeapHashTable<K, V, bucketCount, bucketSize>& HeapHashTable<K, V, bucketCount, bucketSize>::operator=(HeapHashTable&& other) {
     delete[] table;
+    delete[] bucketSizes;
+
     table = other.table;
     other.table = nullptr;
 
-    for (size_t i = 0; i < bucketCount; i++) {
-        bucketSizes[i] = other.bucketSizes[i];
-    }
+    bucketSizes = other.bucketSizes;
+    other.bucketSizes = nullptr;
 
     return *this;
 }

@@ -73,7 +73,9 @@ int main() {
 
     Board board;
     BoardEvaluator evaluator(board);
-    SearchTree st(evaluator);
+    SearchTree st(evaluator, 1);
+
+    st.search(50000);
     
     
     // while(board.generateLegalMoves().size() > 0 && !evaluator.isDraw()) {
@@ -85,14 +87,12 @@ int main() {
     //     }
 
     //     std::cout << std::endl << "Thinking..." << std::endl;
-    //     st.search(2000);
+    //     st.search(5000);
     //     move = st.getPrincipalVariation()[0];
 
     //     std::cout << "Computer move: " << toFigurineAlgebraicNotation(move, board) << std::endl << std::endl;
     //     board.makeMove(move);
     // }
-
-    st.search(50000);
 
     return 0;
 }
