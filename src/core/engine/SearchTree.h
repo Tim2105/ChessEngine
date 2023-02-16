@@ -87,14 +87,14 @@ class SearchTree {
     private:
         TranspositionTable<524288, 4> transpositionTable;
 
+        Evaluator& evaluator;
+        Board& board;
+
         uint32_t numVariations;
 
         int16_t currentMaxDepth;
         uint16_t currentAge;
         uint32_t nodesSearched;
-
-        Board* board;
-        BoardEvaluator evaluator;
 
         std::atomic_bool searching;
 
@@ -143,7 +143,9 @@ class SearchTree {
         int16_t determineReduction(int16_t depth, int32_t moveCount, bool isCheckEvasion = false);
 
     public:
-        SearchTree(Board& b);
+        SearchTree() = delete;
+
+        SearchTree(Evaluator& e, uint32_t numVariations = 1);
 
         ~SearchTree() = default;
 
@@ -156,13 +158,15 @@ class SearchTree {
         inline std::vector<Move> getPrincipalVariation() {
             variationMutex.lock();
 
+            std::vector<Move> pv;
+
             if(variations.size() > 0) {
-                return variations[0].moves;
-            } else {
-                return std::vector<Move>();
+                pv = variations[0].moves;
             }
 
             variationMutex.unlock();
+
+            return pv;
         }
 
         inline std::vector<Variation> getVariations() {
@@ -175,7 +179,109 @@ class SearchTree {
             return variationsCopy;
         }
 
-        void setBoard(Board& b);
+    private:
+        /**
+         * @brief Die PSQT für die Zugvorsortierung.
+         */
+        static constexpr int16_t MOVE_ORDERING_PSQT[7][64] {
+                // Empty
+                {},
+                // Pawn
+                {
+                        0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, -10, -10, 0, 0, 0,
+                        0, 0, 0, 5, 5, 0, 0, 0,
+                        5, 5, 10, 20, 20, 10, 5, 5,
+                        10, 10, 10, 20, 20, 10, 10, 10,
+                        20, 20, 20, 30, 30, 30, 20, 20,
+                        30, 30, 30, 40, 40, 30, 30, 30,
+                        90, 90, 90, 90, 90, 90, 90, 90
+                },
+                // Knight
+                {
+                        -5, -10, 0, 0, 0, 0, -10, -5,
+                        -5, 0, 0, 0, 0, 0, 0, -5,
+                        -5, 5, 20, 10, 10, 20, 5, -5,
+                        -5, 10, 20, 30, 30, 20, 10, -5,
+                        -5, 10, 20, 30, 30, 20, 10, -5,
+                        -5, 5, 20, 20, 20, 20, 5, -5,
+                        -5, 0, 0, 10, 10, 0, 0, -5,
+                        -5, 0, 0, 0, 0, 0, 0, -5
+                },
+                // Bishop
+                {
+                        0, 0, -10, 0, 0, -10, 0, 0,
+                        0, 30, 0, 0, 0, 0, 30, 0,
+                        0, 10, 0, 0, 0, 0, 10, 0,
+                        0, 0, 10, 20, 20, 10, 0, 0,
+                        0, 0, 10, 20, 20, 10, 0, 0,
+                        0, 0, 0, 10, 10, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0
+                },
+                // Rook
+                {
+                        0, 0, 0, 20, 20, 0, 0, 0,
+                        0, 0, 10, 20, 20, 10, 0, 0,
+                        0, 0, 10, 20, 20, 10, 0, 0,
+                        0, 0, 10, 20, 20, 10, 0, 0,
+                        0, 0, 10, 20, 20, 10, 0, 0,
+                        0, 0, 10, 20, 20, 10, 0, 0,
+                        50, 50, 50, 50, 50, 50, 50, 50,
+                        50, 50, 50, 50, 50, 50, 50, 50
+                },
+                // Queen
+                {
+                        -20, -10, -5, 0, 0, -5, -10, -20,
+                        -10, 0, 5, 10, 10, 5, 0, -10,
+                        -5, 5, 10, 15, 15, 10, 5, -5,
+                        0, 10, 15, 20, 20, 15, 10, 0,
+                        0, 10, 15, 20, 20, 15, 10, 0,
+                        -5, 5, 10, 15, 15, 10, 5, -5,
+                        -10, 0, 5, 10, 10, 5, 0, -10,
+                        -20, -10, -5, 0, 0, -5, -10, -20
+                },
+                // King
+                {
+                        0, 0, 5, 0, -15, 0, 10, 0,
+                        0, 5, 5, -5, -5, 0, 5, 0,
+                        0, 0, 5, 10, 10, 5, 0, 0,
+                        0, 5, 10, 20, 20, 10, 5, 0,
+                        0, 5, 10, 20, 20, 10, 5, 0,
+                        0, 5, 5, 10, 10, 5, 5, 0,
+                        0, 0, 5, 5, 5, 5, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0
+                }
+        };
+
+        /**
+         * @brief Masken unm Sentry-Bauern zu erkennen.
+         * Sentry-Bauern sind Bauern, die gegnerische Bauern auf dem Weg zur Aufwertung blockieren oder schlagen können.
+         */
+        static constexpr Bitboard sentryMasks[2][64] = {
+                // White
+                {
+                        0x303030303030300,0x707070707070700,0xE0E0E0E0E0E0E00,0x1C1C1C1C1C1C1C00,0x3838383838383800,0x7070707070707000,0xE0E0E0E0E0E0E000,0xC0C0C0C0C0C0C000,
+                        0x303030303030000,0x707070707070000,0xE0E0E0E0E0E0000,0x1C1C1C1C1C1C0000,0x3838383838380000,0x7070707070700000,0xE0E0E0E0E0E00000,0xC0C0C0C0C0C00000,
+                        0x303030303000000,0x707070707000000,0xE0E0E0E0E000000,0x1C1C1C1C1C000000,0x3838383838000000,0x7070707070000000,0xE0E0E0E0E0000000,0xC0C0C0C0C0000000,
+                        0x303030300000000,0x707070700000000,0xE0E0E0E00000000,0x1C1C1C1C00000000,0x3838383800000000,0x7070707000000000,0xE0E0E0E000000000,0xC0C0C0C000000000,
+                        0x303030000000000,0x707070000000000,0xE0E0E0000000000,0x1C1C1C0000000000,0x3838380000000000,0x7070700000000000,0xE0E0E00000000000,0xC0C0C00000000000,
+                        0x303000000000000,0x707000000000000,0xE0E000000000000,0x1C1C000000000000,0x3838000000000000,0x7070000000000000,0xE0E0000000000000,0xC0C0000000000000,
+                        0x300000000000000,0x700000000000000,0xE00000000000000,0x1C00000000000000,0x3800000000000000,0x7000000000000000,0xE000000000000000,0xC000000000000000,
+                        0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+                },
+                // Black
+                {
+                        0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+                        0x3,0x7,0xE,0x1C,0x38,0x70,0xE0,0xC0,
+                        0x303,0x707,0xE0E,0x1C1C,0x3838,0x7070,0xE0E0,0xC0C0,
+                        0x30303,0x70707,0xE0E0E,0x1C1C1C,0x383838,0x707070,0xE0E0E0,0xC0C0C0,
+                        0x3030303,0x7070707,0xE0E0E0E,0x1C1C1C1C,0x38383838,0x70707070,0xE0E0E0E0,0xC0C0C0C0,
+                        0x303030303,0x707070707,0xE0E0E0E0E,0x1C1C1C1C1C,0x3838383838,0x7070707070,0xE0E0E0E0E0,0xC0C0C0C0C0,
+                        0x30303030303,0x70707070707,0xE0E0E0E0E0E,0x1C1C1C1C1C1C,0x383838383838,0x707070707070,0xE0E0E0E0E0E0,0xC0C0C0C0C0C0,
+                        0x3030303030303,0x7070707070707,0xE0E0E0E0E0E0E,0x1C1C1C1C1C1C1C,0x38383838383838,0x70707070707070,0xE0E0E0E0E0E0E0,0xC0C0C0C0C0C0C0,
+                }
+        };
 };
 
 #endif

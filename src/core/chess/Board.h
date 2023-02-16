@@ -163,7 +163,6 @@ class RepetitionTable {
  */
 class Board {
     friend class Movegen;
-    friend class BoardEvaluator;
     
     private:
         inline static bool initialized = false;
@@ -510,6 +509,31 @@ class Board {
          * @brief Gibt die Anzahl der Halbzüge zurück, die gespielt wurden.
          */
         constexpr uint16_t getPly() const { return ply; };
+
+        /**
+         * @brief Gibt die Anzahl der Halbzüge zurück, die seit dem letzten Bauernzug oder Schlagzug gespielt wurden.
+         */
+        constexpr int32_t getFiftyMoveCounter() const { return fiftyMoveRule; };
+
+        /**
+         * @brief Gibt das Feld zurück, auf dem En-Passant geschlagen werden kann.
+         */
+        constexpr int32_t getEnPassantSquare() const { return enPassantSquare; };
+
+        /**
+         * @brief Gibt das Feld zurück, auf dem der weiße König steht.
+         */
+        inline int32_t getWhiteKingSquare() const { return pieceList[WHITE_KING].front(); };
+
+        /**
+         * @brief Gibt das Feld zurück, auf dem der schwarze König steht.
+         */
+        inline int32_t getBlackKingSquare() const { return pieceList[BLACK_KING].front(); };
+
+        /**
+         * @brief Gibt das Feld zurück, auf dem der König einer bestimmten Seite steht.
+         */
+        inline int32_t getKingSquare(int32_t side) const { return pieceList[side | KING].front(); };
 };
 
 #endif

@@ -24,7 +24,7 @@ class Array {
         size_t count;
     
     public:
-        Array();
+        constexpr Array() : count(0) {};
         Array(const Array<T, s>& other);
         Array(std::initializer_list<int32_t> list);
         ~Array();
@@ -80,7 +80,7 @@ class Array {
         /**
          * @brief Gibt die Anzahl der Elemente im Array zurück.
          */
-        size_t size() const;
+        constexpr size_t size() const { return count; };
 
         /**
          * @brief Entfernt alle Elemente aus dem Array.
@@ -95,11 +95,6 @@ class Array {
         constexpr T* begin() { return array; };
         constexpr T* end() { return array + count; };
 };
-
-template <typename T, size_t s>
-Array<T, s>::Array() {
-    count = 0;
-}
 
 template <typename T, size_t s>
 Array<T, s>::Array(const Array& other) {
@@ -184,11 +179,6 @@ void Array<T, s>::shiftRight(size_t index) {
         memmove(array + index + 1, array + index, (count - index) * sizeof(T));
         count++;
     }
-}
-
-template <typename T, size_t s>
-size_t Array<T, s>::size() const {
-    return count;
 }
 
 template <typename T, size_t s>

@@ -31,46 +31,12 @@ Move getUserMove(Board& board) {
         std::cin >> move;
 
         for(Move m : board.generateLegalMoves()) {
-            if(move == m.toString()) {
+            if(move == m.toString() || move == toStandardAlgebraicNotation(m, board)) {
                 return m;
             }
         }
 
         std::cout << "Invalid move" << std::endl;
-    }
-}
-
-int32_t runGame(SearchTree& s1, SearchTree& s2, Board& board, int32_t time = 100) {
-    s1.setBoard(board);
-    s2.setBoard(board);
-    BoardEvaluator evaluator(board);
-    bool white = board.getSideToMove() == WHITE;
-
-    while(board.generateLegalMoves().size() != 0 && !evaluator.isDraw()) {
-        s1.search(time);
-        Move m = s1.getPrincipalVariation()[0];
-        board.makeMove(m);
-
-        white = !white;
-
-        if(board.generateLegalMoves().size() == 0)
-            break;
-
-        s2.search(time);
-        Move m2 = s2.getPrincipalVariation()[0];
-        board.makeMove(m2);
-
-        white = !white;
-    }
-
-    if(evaluator.isDraw()) {
-        return 0;
-    } else {
-        if(white) {
-            return -1;
-        } else {
-            return 1;
-        }
     }
 }
 
@@ -91,80 +57,6 @@ std::string openings[] = {
     "rnbqkbnr/ppp1pppp/8/3p4/8/5NP1/PPPPPP1P/RNBQKB1R b KQkq - 0 1", "King's Indian Attack"
 };
 
-void runTournament(SearchTree& s1, SearchTree& s2, std::string name1, std::string name2) {
-    int32_t timeControls[] = {100, 200, 500, 1000};
-    int32_t games[] = {10, 6, 4, 3};
-
-    int32_t engine1Wins[4] = {0};
-    int32_t engine2Wins[4] = {0};
-    int32_t draws[4] = {0};
-
-    for(int i = 0; i < 4; i++) {
-        std::cout << "Time control: " << timeControls[i] << "ms" << std::endl;
-
-        for(int j = 0; j < games[i]; j++) {
-            std::random_device rd;
-            std::mt19937 gen(rd());
-            std::uniform_int_distribution<> dis(0, 13);
-
-            int32_t opening = dis(gen);
-
-            std::string openingName = openings[2 * opening + 1];
-            std::string openingFen = openings[2 * opening];
-            std::cout << "Opening: " << openingName << std::endl;
-            std::cout << std::endl;
-
-            Board board(openingFen);
-            int32_t engine1Color = board.getSideToMove() == WHITE ? 1 : -1;
-            int32_t engine2Color = -engine1Color;
-
-            int32_t result = runGame(s1, s2, board, timeControls[i]);
-
-            if(result == engine1Color) {
-                engine1Wins[i]++;
-                std::cout << name1 << " wins with" << (engine1Color == 1 ? " white" : " black");
-            } else if(result == engine2Color) {
-                engine2Wins[i]++;
-                std::cout << name2 << " wins with" << (engine2Color == 1 ? " white" : " black");
-            } else {
-                draws[i]++;
-                std::cout << "Draw";
-            }
-
-            std::cout << "(" << j * 2 + 1 << "/" << games[i] * 2 << ")" << std::endl;
-
-            board = Board(openingFen);
-            engine1Color = -engine1Color;
-            engine2Color = -engine2Color;
-
-            result = runGame(s2, s1, board, timeControls[i]);
-
-            if(result == engine2Color) {
-                engine2Wins[i]++;
-                std::cout << name2 << " wins with" << (engine2Color == 1 ? " white" : " black");
-            } else if(result == engine1Color) {
-                engine1Wins[i]++;
-                std::cout << name1 << " wins with" << (engine1Color == 1 ? " white" : " black");
-            } else {
-                draws[i]++;
-                std::cout << "Draw";
-            }
-
-            std::cout << "(" << j * 2 + 2 << "/" << games[i] * 2 << ")" << std::endl;
-            std::cout << std::endl;
-        }
-
-        std::cout << std::endl;
-    }
-
-    std::cout << std::endl << std::endl;
-    std::cout << "Results:" << std::endl;
-    std::cout << std::setw(20) << "Time Control(ms)" << std::setw(20) << name1 << std::setw(20) << name2 << std::setw(20) << "Draw" << std::endl;
-    for(int i = 0; i < 4; i++) {
-        std::cout << std::setw(20) << timeControls[i] << std::setw(20) << engine1Wins[i] << std::setw(20) << engine2Wins[i] << std::setw(20) << draws[i] << std::endl;
-    }
-}
-
 int main() {
     #ifdef _WIN32
         SetConsoleOutputCP(CP_UTF8);
@@ -180,8 +72,26 @@ int main() {
     #endif
 
     Board board;
-    SearchTree st(board);
+    BoardEvaluator evaluator(board);
+    SearchTree st(evaluator);
     
+    
+    // while(board.generateLegalMoves().size() > 0 && !evaluator.isDraw()) {
+    //     Move move = getUserMove(board);
+    //     board.makeMove(move);
+
+    //     if(board.generateLegalMoves().size() == 0 || evaluator.isDraw()) {
+    //         break;
+    //     }
+
+    //     std::cout << std::endl << "Thinking..." << std::endl;
+    //     st.search(2000);
+    //     move = st.getPrincipalVariation()[0];
+
+    //     std::cout << "Computer move: " << toFigurineAlgebraicNotation(move, board) << std::endl << std::endl;
+    //     board.makeMove(move);
+    // }
+
     st.search(50000);
 
     return 0;

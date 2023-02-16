@@ -30,7 +30,7 @@ bin/obj/%.o: src/%.cpp
 
 # Löscht alle erstellten Dateien
 clean:
-	rm -rf bin
+	rm -r bin
 
 # Erstellt die Ausführbare Datei neu
 rebuild: clean $(EXEC)
