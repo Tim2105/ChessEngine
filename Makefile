@@ -42,4 +42,9 @@ bin/obj/%.o: src/%.cpp
 
 # Löscht alle erstellten Dateien
 clean:
-	rmdir /s /q bin
+	@rmdir /s /q bin
+
+
+# Führt die Ausführbare Datei aus
+run: $(EXEC)
+	@$(EXEC)
