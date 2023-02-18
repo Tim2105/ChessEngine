@@ -17,6 +17,8 @@ CC = g++
 # Compilerflags
 CFLAGS = -Wall -Wextra -Werror -std=c++20 -O3 -Isrc
 
+$(info Compiling with $(CC) $(CFLAGS))
+
 # Quelldateien
 SRC = $(call rwildcard,src/,*.cpp)
 
@@ -30,7 +32,7 @@ EXEC = bin/main
 
 # Erstellt die Ausführbare Datei
 $(EXEC): $(OBJ)
-	$(CC) $(CFLAGS) -o $@ $^
+	@$(CC) $(CFLAGS) -o $@ $^
 
 # Erstellt die Objektdateien
 # Fehlende Ordner werden erstellt

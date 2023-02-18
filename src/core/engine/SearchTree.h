@@ -151,7 +151,7 @@ class SearchTree {
 
         int16_t search(uint32_t searchTime);
 
-        constexpr int16_t getLastSearchDepth() { return currentMaxDepth; }
+        constexpr int16_t getLastSearchDepth() { return currentMaxDepth / ONE_PLY - 1; }
 
         constexpr uint32_t getNodesSearched() { return nodesSearched; }
 

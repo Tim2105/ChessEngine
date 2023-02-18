@@ -62,27 +62,29 @@ int main() {
     BoardEvaluator evaluator(board);
     NewEvaluator newEvaluator(board);
 
-    SearchTree st1(evaluator);
-    SearchTree st2(newEvaluator);
+    SearchTree st(newEvaluator);
 
-    Tournament t(st1, st2, "Engine 1", "Engine 2");
-    t.run();
+    // SearchTree st1(evaluator);
+    // SearchTree st2(newEvaluator);
+
+    // Tournament t(st1, st2, "OldEngine", "NewEngine");
+    // t.run();
     
-    // // while(board.generateLegalMoves().size() > 0 && !evaluator.isDraw()) {
-    // //     Move move = getUserMove(board);
-    // //     board.makeMove(move);
+    while(board.generateLegalMoves().size() > 0 && !evaluator.isDraw()) {
+        std::cout << std::endl << "Thinking..." << std::endl;
+        st.search(5000);
+        Move move = st.getPrincipalVariation()[0];
 
-    // //     if(board.generateLegalMoves().size() == 0 || evaluator.isDraw()) {
-    // //         break;
-    // //     }
+        std::cout << "Depth: " << st.getLastSearchDepth() << " Computer move: " << toFigurineAlgebraicNotation(move, board) << std::endl << std::endl;
+        board.makeMove(move);
+        
+        if(board.generateLegalMoves().size() == 0 || evaluator.isDraw()) {
+            break;
+        }
 
-    // //     std::cout << std::endl << "Thinking..." << std::endl;
-    // //     st.search(5000);
-    // //     move = st.getPrincipalVariation()[0];
-
-    // //     std::cout << "Computer move: " << toFigurineAlgebraicNotation(move, board) << std::endl << std::endl;
-    // //     board.makeMove(move);
-    // // }
+        move = getUserMove(board);
+        board.makeMove(move);
+    }
 
     return 0;
 }

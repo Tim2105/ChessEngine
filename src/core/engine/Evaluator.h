@@ -72,7 +72,6 @@ class Evaluator {
          */
         virtual int32_t evaluate() = 0;
 
-
         /**
          * @brief Führt eine statische Bewertung eines Zugs mit SEE durch.
          */

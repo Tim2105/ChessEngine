@@ -69,7 +69,7 @@ int16_t SearchTree::search(uint32_t searchTime) {
     int16_t score = evaluator.evaluate();
     int16_t lastScore = score;
 
-    for(int16_t depth = ONE_PLY; searching || variations.size() == 0; depth += ONE_PLY) {
+    for(int16_t depth = ONE_PLY; searching; depth += ONE_PLY) {
         currentMaxDepth = depth;
 
         score = rootSearch(depth, score);

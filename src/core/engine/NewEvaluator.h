@@ -17,7 +17,7 @@ class NewEvaluator : public Evaluator {
     private:
         // Eine Hash-Tabelle, in der die Bewertung von Stellungen gespeichert wird,
         // um sie bei der nächsten Bewertung(bei gleicher Stellung) wieder zu verwenden.
-        HeapHashTable<uint64_t, int32_t, 65536, 4> evaluationTable;
+        HeapHashTable<uint64_t, int32_t, 131072, 4> evaluationTable;
 
         // Die Bewertung von Bauernstrukturen ist sehr aufwendig,
         // weshalb berechnete Bewertungen von Bauernstrukturen in einer Hash-Tabelle gespeichert werden,
@@ -70,6 +70,47 @@ class NewEvaluator : public Evaluator {
         int32_t evalEGMaterial();
 
         /**
+         * @brief Die Methode evalMGPieces bewertet die Stärke der Figuren der beiden Spieler im Mittelspiel.
+         */
+        int32_t evalMGPieces();
+
+        /**
+         * @brief Die Methode evalMGKnights bewertet die Stärke der Springer der beiden Spieler im Mittelspiel.
+        */
+        inline int32_t evalMGKnights(const Bitboard& ownKnights, const Bitboard& pawns);
+
+        /**
+         * @brief Die Methode evalMGBishops bewertet die Stärke der Läufer der beiden Spieler im Mittelspiel.
+        */
+        inline int32_t evalMGBishops(const Bitboard& ownBishops, const Bitboard& otherBishops, const Bitboard& pawns);
+
+        /**
+         * @brief Die Methode evalMGRooks bewertet die Stärke der Türme der beiden Spieler im Mittelspiel.
+         */
+        inline int32_t evalMGRooks(const Bitboard& ownRooks, const Bitboard& ownPawns, const Bitboard& otherPawns, int32_t side);
+
+        /**
+         * @brief Die Methode evalMGPieces bewertet die Stärke der Figuren der beiden Spieler im Endspiel.
+         */
+        int32_t evalEGPieces();
+
+        /**
+         * @brief Die Methode evalEGKnights bewertet die Stärke der Springer der beiden Spieler im Endspiel.
+        */
+        inline int32_t evalEGKnights(const Bitboard& ownKnights, const Bitboard& pawns);
+
+        /**
+         * @brief Die Methode evalEGBishops bewertet die Stärke der Läufer der beiden Spieler im Endspiel.
+        */
+        inline int32_t evalEGBishops(const Bitboard& ownBishops);
+
+        /**
+         * @brief Die Methode evalEGRooks bewertet die Stärke der Türme der beiden Spieler im Endspiel.
+         */
+        inline int32_t evalEGRooks(const Bitboard& ownRooks, const Bitboard& ownPawns, const Bitboard& otherPawns,
+                                   const Bitboard& ownPassedPawns, const Bitboard& otherPassedPawns, int32_t side);
+
+        /**
          * @brief Die Methode evalMG_PSQT bewertet die Figurenpositionen der beiden Spieler
          * mit dem Midgame-PSQT-Array.
          */
@@ -114,10 +155,9 @@ class NewEvaluator : public Evaluator {
          */
         Score evalPawnStructure(int32_t side);
 
-        Score evalPawnStructure(Bitboard doublePawns, Bitboard isolatedPawns, Bitboard passedPawns, Bitboard pawnChains, Bitboard connectedPawns, int32_t side);
         inline Score evalDoublePawns(Bitboard doublePawns);
         inline Score evalIsolatedPawns(Bitboard isolatedPawns);
-        inline Score evalPassedPawns(Bitboard passedPawns, int32_t side);
+        inline Score evalPassedPawns(Bitboard passedPawns, const Bitboard& ownPawnAttacks, int32_t side);
         inline Score evalPawnChains(Bitboard pawnChains);
         inline Score evalConnectedPawns(Bitboard connectedPawns);
         
@@ -134,6 +174,16 @@ class NewEvaluator : public Evaluator {
          */
         int32_t evalMGMobility();
         int32_t evalEGMobility();
+
+        /**
+         * @brief Die Methode evalKingPawnEG bewertet die Stellung des Königs und der Bauern im Endspiel.
+         */
+        int32_t evalKingPawnEG();
+
+        /**
+         * @brief Überprüft, ob die Seite side einen Freibauern hat, der nicht mehr gestoppt werden kann.
+         */
+        inline int32_t evalEGRuleOfTheSquare(const Bitboard& ownPassedPawns, int32_t otherKingSquare, int32_t side, bool canMoveNext);
 
     public:
         NewEvaluator() = delete;
@@ -215,16 +265,84 @@ class NewEvaluator : public Evaluator {
             150, // Pawn
             400, // Knight
             410, // Bishop
-            720, // Rook
-            1300, // Queen
+            600, // Rook
+            1200, // Queen
             0 // King
         };
 
-        // Springer sind weniger Wert, wenn weniger Bauern auf dem Feld sind
-        static constexpr int32_t KNIGHT_CAPTURED_PAWN_VALUE = -3;
+        // Springer sind mehr Wert, wenn mehr Bauern auf dem Feld sind
+        static constexpr int32_t KNIGHT_PAWN_VALUE = 2;
+
+        // Türme sind mehr Wert, wenn weniger Bauern auf dem Feld sind
+        static constexpr int32_t ROOK_CAPTURED_PAWN_VALUE = 7;
 
         // Bonus für das Läuferpaar
-        static constexpr int32_t BISHOP_PAIR_VALUE = 50;
+        static constexpr int32_t MG_BISHOP_PAIR_VALUE = 50;
+        static constexpr int32_t EG_BISHOP_PAIR_VALUE = 50;
+
+        // Bonus für Farbdominanz mit einem Läufer
+        static constexpr int32_t MG_BISHOP_COLOR_DOMINANCE_VALUE = 50;
+
+        // Bonus für Türme auf offenen/halboffenen Linien
+        static constexpr int32_t MG_ROOK_SEMI_OPEN_FILE_VALUE = 30;
+        static constexpr int32_t MG_ROOK_OPEN_FILE_VALUE = 45;
+
+        static constexpr int32_t EG_ROOK_SEMI_OPEN_FILE_VALUE = 40;
+        static constexpr int32_t EG_ROOK_OPEN_FILE_VALUE = 40;
+
+        // Bonus für Türme die eigene Freibauern von hinten decken(nur Endgame)
+        static constexpr int32_t EG_ROOK_SUPPORTING_PASSED_PAWN_VALUE = 50;
+
+        // Bonus für Türme die gegnerische Freibauern von hinten decken(nur Endgame)
+        static constexpr int32_t EG_ROOK_BLOCKING_PASSED_PAWN_VALUE = 40;
+
+        /**
+         * @brief König und Bauern Endspiel
+         */
+        
+        // Bonus für einen unaufhaltbaren Freibauern
+        static constexpr int32_t EG_UNSTOPPABLE_PAWN_VALUE = 1000;
+
+        static constexpr Bitboard fileMasks[64] = {
+                0x101010101010101,0x202020202020202,0x404040404040404,0x808080808080808,0x1010101010101010,0x2020202020202020,0x4040404040404040,0x8080808080808080,
+                0x101010101010101,0x202020202020202,0x404040404040404,0x808080808080808,0x1010101010101010,0x2020202020202020,0x4040404040404040,0x8080808080808080,
+                0x101010101010101,0x202020202020202,0x404040404040404,0x808080808080808,0x1010101010101010,0x2020202020202020,0x4040404040404040,0x8080808080808080,
+                0x101010101010101,0x202020202020202,0x404040404040404,0x808080808080808,0x1010101010101010,0x2020202020202020,0x4040404040404040,0x8080808080808080,
+                0x101010101010101,0x202020202020202,0x404040404040404,0x808080808080808,0x1010101010101010,0x2020202020202020,0x4040404040404040,0x8080808080808080,
+                0x101010101010101,0x202020202020202,0x404040404040404,0x808080808080808,0x1010101010101010,0x2020202020202020,0x4040404040404040,0x8080808080808080,
+                0x101010101010101,0x202020202020202,0x404040404040404,0x808080808080808,0x1010101010101010,0x2020202020202020,0x4040404040404040,0x8080808080808080,
+                0x101010101010101,0x202020202020202,0x404040404040404,0x808080808080808,0x1010101010101010,0x2020202020202020,0x4040404040404040,0x8080808080808080,
+        };
+
+        static constexpr Bitboard extendedCenter = 0x3C3C3C3C0000;
+
+        static constexpr Bitboard lightSquares = 0x55AA55AA55AA55AA;
+        static constexpr Bitboard darkSquares = 0xAA55AA55AA55AA55;
+
+        static constexpr Bitboard fileFacingEnemy[2][64] = {
+                // White
+                {
+                        0x101010101010100,0x202020202020200,0x404040404040400,0x808080808080800,0x1010101010101000,0x2020202020202000,0x4040404040404000,0x8080808080808000,
+                        0x101010101010000,0x202020202020000,0x404040404040000,0x808080808080000,0x1010101010100000,0x2020202020200000,0x4040404040400000,0x8080808080800000,
+                        0x101010101000000,0x202020202000000,0x404040404000000,0x808080808000000,0x1010101010000000,0x2020202020000000,0x4040404040000000,0x8080808080000000,
+                        0x101010100000000,0x202020200000000,0x404040400000000,0x808080800000000,0x1010101000000000,0x2020202000000000,0x4040404000000000,0x8080808000000000,
+                        0x101010000000000,0x202020000000000,0x404040000000000,0x808080000000000,0x1010100000000000,0x2020200000000000,0x4040400000000000,0x8080800000000000,
+                        0x101000000000000,0x202000000000000,0x404000000000000,0x808000000000000,0x1010000000000000,0x2020000000000000,0x4040000000000000,0x8080000000000000,
+                        0x100000000000000,0x200000000000000,0x400000000000000,0x800000000000000,0x1000000000000000,0x2000000000000000,0x4000000000000000,0x8000000000000000,
+                        0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+                },
+                // Black
+                {
+                        0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
+                        0x1,0x2,0x4,0x8,0x10,0x20,0x40,0x80,
+                        0x101,0x202,0x404,0x808,0x1010,0x2020,0x4040,0x8080,
+                        0x10101,0x20202,0x40404,0x80808,0x101010,0x202020,0x404040,0x808080,
+                        0x1010101,0x2020202,0x4040404,0x8080808,0x10101010,0x20202020,0x40404040,0x80808080,
+                        0x101010101,0x202020202,0x404040404,0x808080808,0x1010101010,0x2020202020,0x4040404040,0x8080808080,
+                        0x10101010101,0x20202020202,0x40404040404,0x80808080808,0x101010101010,0x202020202020,0x404040404040,0x808080808080,
+                        0x1010101010101,0x2020202020202,0x4040404040404,0x8080808080808,0x10101010101010,0x20202020202020,0x40404040404040,0x80808080808080,
+                }
+        };
 
         static constexpr Bitboard neighboringFiles[8] = {
                 0x101010101010101, // A
@@ -284,31 +402,6 @@ class NewEvaluator : public Evaluator {
         static constexpr int32_t EG_PAWN_CHAIN_VALUE = 12;
 
         // Bestrafung für zwei oder mehrere Bauern in einer Spalte (doppelte Bauern)
-        static constexpr Bitboard doubledPawnMasks[2][64] = {
-                // White
-                {
-                        0x101010101010100,0x202020202020200,0x404040404040400,0x808080808080800,0x1010101010101000,0x2020202020202000,0x4040404040404000,0x8080808080808000,
-                        0x101010101010000,0x202020202020000,0x404040404040000,0x808080808080000,0x1010101010100000,0x2020202020200000,0x4040404040400000,0x8080808080800000,
-                        0x101010101000000,0x202020202000000,0x404040404000000,0x808080808000000,0x1010101010000000,0x2020202020000000,0x4040404040000000,0x8080808080000000,
-                        0x101010100000000,0x202020200000000,0x404040400000000,0x808080800000000,0x1010101000000000,0x2020202000000000,0x4040404000000000,0x8080808000000000,
-                        0x101010000000000,0x202020000000000,0x404040000000000,0x808080000000000,0x1010100000000000,0x2020200000000000,0x4040400000000000,0x8080800000000000,
-                        0x101000000000000,0x202000000000000,0x404000000000000,0x808000000000000,0x1010000000000000,0x2020000000000000,0x4040000000000000,0x8080000000000000,
-                        0x100000000000000,0x200000000000000,0x400000000000000,0x800000000000000,0x1000000000000000,0x2000000000000000,0x4000000000000000,0x8000000000000000,
-                        0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
-                },
-                // Black
-                {
-                        0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
-                        0x1,0x2,0x4,0x8,0x10,0x20,0x40,0x80,
-                        0x101,0x202,0x404,0x808,0x1010,0x2020,0x4040,0x8080,
-                        0x10101,0x20202,0x40404,0x80808,0x101010,0x202020,0x404040,0x808080,
-                        0x1010101,0x2020202,0x4040404,0x8080808,0x10101010,0x20202020,0x40404040,0x80808080,
-                        0x101010101,0x202020202,0x404040404,0x808080808,0x1010101010,0x2020202020,0x4040404040,0x8080808080,
-                        0x10101010101,0x20202020202,0x40404040404,0x80808080808,0x101010101010,0x202020202020,0x404040404040,0x808080808080,
-                        0x1010101010101,0x2020202020202,0x4040404040404,0x8080808080808,0x10101010101010,0x20202020202020,0x40404040404040,0x80808080808080,
-                }
-        };
-
         static constexpr int32_t MG_PAWN_DOUBLED_VALUE = -13;
         static constexpr int32_t EG_PAWN_DOUBLED_VALUE = -20;
 
@@ -349,18 +442,22 @@ class NewEvaluator : public Evaluator {
         static constexpr int32_t MG_PAWN_PASSED_RANK_ADVANCED_MULTIPLIER = 20;
         static constexpr int32_t EG_PAWN_PASSED_RANK_ADVANCED_MULTIPLIER = 45;
 
+        // Von anderen Bauern beschütze Freibauern sind noch besser
+        static constexpr int32_t MG_PASSED_PAWN_PROTECTION_VALUE = 30;
+        static constexpr int32_t EG_PASSED_PAWN_PROTECTION_VALUE = 60;
+
         // Bonus für jedes Feld, dass von einer Figur angegriffen wird.
         // Felder, auf denen eigene Figuren stehen oder von generischen Bauern angegriffen werden, werden ausgenommen.
         static constexpr int32_t MG_PAWN_MOBILITY_VALUE = 0;
         static constexpr int32_t EG_PAWN_MOBILITY_VALUE = 0;
         static constexpr int32_t MG_KNIGHT_MOBILITY_VALUE = 2;
         static constexpr int32_t EG_KNIGHT_MOBILITY_VALUE = 1;
-        static constexpr int32_t MG_BISHOP_MOBILITY_VALUE = 6;
-        static constexpr int32_t EG_BISHOP_MOBILITY_VALUE = 4;
-        static constexpr int32_t MG_ROOK_MOBILITY_VALUE = 5;
-        static constexpr int32_t EG_ROOK_MOBILITY_VALUE = 3;
-        static constexpr int32_t MG_QUEEN_MOBILITY_VALUE = 2;
-        static constexpr int32_t EG_QUEEN_MOBILITY_VALUE = 1;
+        static constexpr int32_t MG_BISHOP_MOBILITY_VALUE = 5;
+        static constexpr int32_t EG_BISHOP_MOBILITY_VALUE = 3;
+        static constexpr int32_t MG_ROOK_MOBILITY_VALUE = 4;
+        static constexpr int32_t EG_ROOK_MOBILITY_VALUE = 2;
+        static constexpr int32_t MG_QUEEN_MOBILITY_VALUE = 0;
+        static constexpr int32_t EG_QUEEN_MOBILITY_VALUE = 0;
 
         // Bestrafung für Figuren, die En Prise(ungeschützt) sind
         static constexpr int32_t MG_PIECE_EN_PRISE_VALUE = -6;
@@ -484,149 +581,153 @@ class NewEvaluator : public Evaluator {
 
         /**
          * @brief Die PSQT aus der Sicht der weißen Figuren für das Midgame.
+         * 
+         * Sehr ähnlich wie https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function.
          */
         static constexpr int16_t MG_PSQT[7][64] = {
                 // Empty
                 {},
                 // Pawn
                 {
-                        0, 0, 0, 0, 0, 0, 0, 0,
-                        8, 16, 16, -31, -31, 16, 16, 8,
-                        8, -8, -16, 0, 0, -16, -8, 8,
-                        0, 0, 0, 31, 31, 0, 0, 0,
-                        8, 8, 16, 31, 31, 16, 8, 8,
-                        16, 16, 31, 23, 23, 31, 16, 16,
-                        75, 75, 75, 75, 75, 75, 75, 75,
-                        0, 0, 0, 0, 0, 0, 0, 0
+                          0,   0,   0,   0,   0,   0,  0,   0,
+                        -35,  -1, -20, -23, -15,  24, 38, -22,
+                        -26,  -4,  -4, -10,   3,   3, 33, -12,
+                        -27,  -2,  -5,  12,  17,   6, 10, -25,
+                        -14,  13,   6,  21,  23,  12, 17, -23,
+                         -6,   7,  26,  31,  65,  56, 25, -20,
+                         98, 134,  61,  95,  68, 126, 34, -11,
+                          0,   0,   0,   0,   0,   0,  0,   0,
                 },
                 // Knight
                 {
-                        -46, -31, -15, -15, -15, -15, -31, -46,
-                        -46, -15, 0, 8, 8, 0, -15, -46,
-                        -31, 8, 23, 31, 31, 23, 8, -31,
-                        -31, 0, 31, 38, 38, 31, 0, -31,
-                        -31, 8, 31, 38, 38, 31, 8, -31,
-                        -31, 0, 23, 31, 31, 23, 0, -31,
-                        -46, -15, 0, 0, 0, 0, -15, -46,
-                        -46, -31, -15, -15, -15, -15, -31, -46
+                        -105, -21, -58, -33, -17, -28, -19,  -23,
+                         -29, -53, -12,  -3,  -1,  18, -14,  -19,
+                          23,  -9,  12,  10,  19,  17,  25,  -16,
+                          -8,  21,  19,  28,  13,  16,   4,  -13,
+                          22,  18,  69,  37,  53,  19,  17,  -9,
+                          44,  73, 129,  84,  65,  37,  60,  -47,
+                         -17,   7,  62,  23,  36,  72, -41,  -73,
+                        -107, -15, -97,  61, -49, -34, -89, -167,
                 },
                 // Bishop
                 {
-                        -31, -15, -15, -15, -15, -15, -15, -31,
-                        -15, 8, 0, 0, 0, 0, 8, -15,
-                        -15, 23, 23, 23, 23, 23, 23, -15,
-                        -15, 0, 23, 23, 23, 23, 0, -15,
-                        -15, 8, 8, 23, 23, 8, 8, -15,
-                        -15, 0, 8, 23, 23, 8, 0, -15,
-                        -15, 0, 0, 0, 0, 0, 0, -15,
-                        -31, -15, -15, -15, -15, -15, -15, -31
+                        -33,  -3, -14, -21, -13, -12, -39, -21,
+                          4,  15,  16,   0,   7,  21,  33,   1,
+                          0,  15,  15,  15,  14,  27,  18,  10,
+                         -6,  13,  13,  26,  34,  12,  10,   4,
+                         -4,   5,  19,  50,  37,  37,   7,  -2,
+                        -16,  37,  43,  40,  35,  50,  37,  -2,
+                        -26,  16, -18, -13,  30,  59,  18, -47,
+                        -29,   4, -82, -37, -25, -42,   7,  -8,
                 },
                 // Rook
                 {
-                        0, 0, 0, 16, 16, 0, 0, 0,
-                        8, 16, 16, 16, 16, 16, 16, 8,
-                        -8, 0, 0, 0, 0, 0, 0, -8,
-                        -8, 0, 0, 0, 0, 0, 0, -8,
-                        -8, 0, 0, 0, 0, 0, 0, -8,
-                        -8, 0, 0, 0, 0, 0, 0, -8,
-                        46, 46, 46, 46, 46, 46, 46, 46,
-                        46, 46, 46, 46, 46, 46, 46, 46
+                        -19, -13,   1,  17, 16,  7, -37, -26,
+                        -44, -16, -20,  -9, -1, 11,  -6, -71,
+                        -45, -25, -16, -17,  3,  0,  -5, -33,
+                        -36, -26, -12,  -1,  9, -7,   6, -23,
+                        -24, -11,   7,  26, 24, 35,  -8, -20,
+                         -5,  19,  26,  36, 17, 45,  61,  16,
+                         27,  32,  58,  62, 80, 67,  26,  44,
+                         32,  42,  32,  51, 63,  9,  31,  43,
                 },
                 // Queen
                 {
-                        -30, -15, -15, 10, -7, -15, -15, -30,
-                        -15, 0, 3, 2, 2, 3, 0, -15,
-                        -15, 3, 5, 4, 4, 5, 3, -15,
-                        -7, 2, 4, 5, 5, 4, 2, -7,
-                        0, 2, 4, 5, 5, 4, 2, -7,
-                        -15, 3, 4, 4, 4, 4, 3, -15,
-                        -15, 0, 0, 0, 0, 0, 0, -15,
-                        -30, -15, -15, -7, -7, -15, -15, -30
+                         -1, -18,  -9,  10, -15, -25, -31, -50,
+                        -35,  -8,  11,   2,   8,  15,  -3,   1,
+                        -14,   2, -11,  -2,  -5,   2,  14,   5,
+                         -9, -26,  -9, -10,  -2,  -4,   3,  -3,
+                        -27, -27, -16, -16,  -1,  17,  -2,   1,
+                        -13, -17,   7,   8,  29,  56,  47,  57,
+                        -24, -39,  -5,   1, -16,  57,  28,  54,
+                        -28,   0,  29,  12,  59,  44,  43,  45,
                 },
                 // King
                 {
-                        30, 45, 5, 0, 0, 5, 45, 30,
-                        15, 30, 0, -15, -15, 0, 30, 15,
-                        -15, -30, -30, -30, -30, -30, -30, -15,
-                        -30, -45, -45, -60, -60, -45, -45, -30,
-                        -45, -60, -60, -75, -75, -60, -60, -45,
-                        -45, -60, -60, -75, -75, -60, -60, -45,
-                        -45, -60, -60, -75, -75, -60, -60, -45,
-                        -45, -60, -60, -75, -75, -60, -60, -45
+                        -15,  36,  12, -54,   8, -28,  24,  14,
+                          1,   7,  -8, -64, -43, -16,   9,   8,
+                        -14, -14, -22, -46, -44, -30, -15, -27,
+                        -49,  -1, -27, -39, -46, -44, -33, -51,
+                        -17, -20, -12, -27, -30, -25, -14, -36,
+                         -9,  24,   2, -16, -20,   6,  22, -22,
+                         29,  -1, -20,  -7,  -8,  -4, -38, -29,
+                        -65,  23,  16, -15, -56, -34,   2,  13,
                 }
         };
 
         /**
          * @brief Die PSQT aus der Sicht der weißen Figuren für das Endgame.
+         *
+         * Sehr ähnlich wie https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function.
          */
         static constexpr int16_t EG_PSQT[7][64] = {
                 // Empty
                 {},
                 // Pawn
                 {
-                        0, 0, 0, 0, 0, 0, 0, 0,
-                        -30, -30, -30, -30, -30, -30, -30, -30,
-                        -15, -15, -15, -15, -15, -15, -15, -15,
-                        0, 0, 0, 0, 0, 0, 0, 0,
-                        22, 22, 22, 22, 22, 22, 22, 22,
-                        52, 52, 52, 52, 52, 52, 52, 52,
-                        75, 75, 75, 75, 75, 75, 75, 75,
-                        0, 0, 0, 0, 0, 0, 0, 0
+                          0,   0,   0,   0,   0,   0,   0,   0,
+                         13,   8,   8,  10,  13,   0,   2,  -7,
+                          4,   7,  -6,   1,   0,  -5,  -1,  -8,
+                         13,   9,  -3,  -7,  -7,  -8,   3,  -1,
+                         32,  24,  13,   5,  -2,   4,  17,  17,
+                         94, 100,  85,  67,  56,  53,  82,  84,
+                        178, 173, 158, 134, 147, 132, 165, 187,
+                          0,   0,   0,   0,   0,   0,   0,   0,
                 },
                 // Knight
                 {
-                        -37, -30, -22, -22, -22, -22, -30, -37,
-                        -30, -15, 0, 3, 3, 0, -15, -30,
-                        -22, 3, 7, 10, 10, 7, 3, -22,
-                        -22, 0, 10, 15, 15, 10, 0, -22,
-                        -22, 3, 10, 15, 15, 10, 3, -22,
-                        -22, 0, 7, 10, 10, 7, 0, -22,
-                        -30, -15, 0, 3, 3, 0, -15, -30,
-                        -37, -30, -22, -22, -22, -22, -30, -37
+                        -29, -51, -23, -15, -22, -18, -50, -64,
+                        -42, -20, -10,  -5,  -2, -20, -23, -44,
+                        -23,  -3,  -1,  15,  10,  -3, -20, -22,
+                        -18,  -6,  16,  25,  16,  17,   4, -18,
+                        -17,   3,  22,  22,  22,  11,   8, -18,
+                        -24, -20,  10,   9,  -1,  -9, -19, -41,
+                        -25,  -8, -25,  -2,  -9, -25, -24, -52,
+                        -58, -38, -13, -28, -31, -27, -63, -99,
                 },
                 // Bishop
                 {
-                        -15, -7, -7, -7, -7, -7, -7, -15,
-                        -7, 3, 0, 0, 0, 0, 3, -7,
-                        -7, 7, 7, 7, 7, 7, 7, -7,
-                        -7, 0, 7, 7, 7, 7, 0, -7,
-                        -7, 3, 3, 7, 7, 3, 3, -7,
-                        -7, 0, 3, 7, 7, 3, 0, -7,
-                        -7, 0, 0, 0, 0, 0, 0, -7,
-                        -15, -7, -7, -7, -7, -7, -7, -15
+                        -23,  -9, -23,  -5, -9, -16,  -5, -17,
+                        -14, -18,  -7,  -1,  4,  -9, -15, -27,
+                        -12,  -3,   8,  10, 13,   3,  -7, -15,
+                         -6,   3,  13,  19,  7,  10,  -3,  -9,
+                         -3,   9,  12,   9, 14,  10,   3,   2,
+                          2,  -8,   0,  -1, -2,   6,   0,   4,
+                         -8,  -4,   7, -12, -3, -13,  -4, -14,
+                        -14, -21, -11,  -8, -7,  -9, -17, -24,
                 },
                 // Rook
                 {
-                        -15, -7, -3, 0, 0, -3, -7, -15,
-                        -7, -3, 0, 3, 3, 0, -3, -7,
-                        -3, 0, 3, 7, 7, 3, 0, -3,
-                        0, 3, 7, 15, 15, 7, 3, 0,
-                        0, 3, 7, 15, 15, 7, 3, 0,
-                        -3, 0, 3, 7, 7, 3, 0, -3,
-                        -7, -3, 0, 3, 3, 0, -3, -7,
-                        -15, -7, -3, 0, 0, -3, -7, -15
+                        -9,   2,   3,  -1,  -5, -13,   4, -20,
+                        -6, -6,   0,   2,  -9,  -9, -11,  -3,
+                        -4,   0,  -5,  -1,  -7, -12,  -8, -16,
+                         3,   5,   8,   4,  -5,  -6,  -8, -11,
+                         4,   3,  13,   1,   2,   1,  -1,   2,
+                         7,   7,   7,   5,   4,  -3,  -5,  -3,
+                        11,  13,  13,  11,  -3,   3,   8,   3,
+                        13,  10,  18,  15,  12,  12,   8,   5,
                 },
                 // Queen
                 {
-                        -15, -7, -5, 0, 0, -5, -7, -15,
-                        -7, 0, 2, 5, 5, 2, 0, -7,
-                        -5, 2, 5, 7, 7, 5, 2, -5,
-                        0, 5, 7, 10, 10, 7, 5, 0,
-                        0, 5, 7, 10, 10, 7, 5, 0,
-                        -5, 2, 5, 7, 7, 5, 2, -5,
-                        -7, 0, 2, 5, 5, 2, 0, -7,
-                        -15, -7, -5, 0, 0, -5, -7, -15
+                        -33, -28, -22, -43,  -5, -32, -20, -41,
+                        -22, -23, -30, -16, -16, -23, -36, -32,
+                        -16, -27,  15,   6,   9,  17,  10,   5,
+                        -18,  28,  19,  47,  31,  34,  39,  23,
+                          3,  22,  24,  45,  57,  40,  57,  36,
+                        -20,   6,   9,  49,  47,  35,  19,   9,
+                        -17,  20,  32,  41,  58,  25,  30,   0,
+                         -9,  22,  22,  27,  27,  19,  10,  20,
                 },
                 // King
                 {
-                        -75, -45, -45, -30, -30, -45, -45, -75,
-                        -45, -15, -15, 0, 0, -15, -15, -45,
-                        -45, -15, 20, 30, 30, 20, -15, -45,
-                        -30, 0, 30, 40, 40, 30, 0, -30,
-                        -30, 0, 30, 40, 40, 30, 0, -30,
-                        -45, -15, 20, 30, 30, 20, -15, -45,
-                        -45, -15, -15, 0, 0, -15, -15, -45,
-                        -75, -45, -45, -30, -30, -45, -45, -75
+                        -53, -34, -21, -11, -28, -14, -24, -43,
+                        -27, -11,   4,  13,  14,   4,  -5, -17,
+                        -19,  -3,  11,  21,  23,  16,   7,  -9,
+                        -18,  -4,  21,  24,  27,  23,   9, -11,
+                         -8,  22,  24,  27,  26,  33,  26,   3,
+                         10,  17,  23,  15,  20,  45,  44,  13,
+                        -12,  17,  14,  17,  17,  38,  23,  11,
+                        -74, -35, -18, -18, -11,  15,   4, -17,
                 }
         };
 

@@ -27,11 +27,11 @@ const std::vector<std::string> Tournament::openings = {
 };
 
 const std::vector<int32_t> Tournament::timeControls = {
-    100, 200, 300, 500
+    100, 200, 300, 500, 1000
 };
 
 const std::vector<int32_t> Tournament::numGames = {
-    1, 1, 0, 0
+    15, 8, 5, 4, 2
 };
 
 int32_t Tournament::runGame(Board& board, SearchTree& st1, SearchTree& st2, int32_t time) {

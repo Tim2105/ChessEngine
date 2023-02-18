@@ -74,7 +74,7 @@ struct PawnBitboards {
 template <>
 struct std::hash<PawnBitboards> {
     std::size_t operator()(const PawnBitboards& pwns) const {
-        return std::hash<Bitboard>()(pwns.whitePawns) | std::hash<Bitboard>()(pwns.blackPawns);
+        return std::hash<Bitboard>()(pwns.whitePawns) ^ std::hash<Bitboard>()(pwns.blackPawns);
     }
 };
 
