@@ -4,8 +4,7 @@
 #include "core/utils/MoveNotations.h"
 #include <iomanip>
 #include <random>
-#include "core/engine/BoardEvaluator.h"
-#include "core/engine/NewEvaluator.h"
+#include "core/engine/StaticEvaluator.h"
 #include "test/Tournament.h"
 
 #ifdef _WIN32
@@ -58,31 +57,22 @@ int main() {
     #endif
 
     Board board;
-
-    BoardEvaluator evaluator(board);
-    NewEvaluator newEvaluator(board);
-
-    SearchTree st(newEvaluator);
-
-    // SearchTree st1(evaluator);
-    // SearchTree st2(newEvaluator);
-
-    // Tournament t(st1, st2, "OldEngine", "NewEngine");
-    // t.run();
+    StaticEvaluator evaluator(board);
+    SearchTree st(evaluator);
     
+    Move move;
     while(board.generateLegalMoves().size() > 0 && !evaluator.isDraw()) {
-        std::cout << std::endl << "Thinking..." << std::endl;
-        st.search(5000);
-        Move move = st.getPrincipalVariation()[0];
-
-        std::cout << "Depth: " << st.getLastSearchDepth() << " Computer move: " << toFigurineAlgebraicNotation(move, board) << std::endl << std::endl;
+        move = getUserMove(board);
         board.makeMove(move);
-        
+
         if(board.generateLegalMoves().size() == 0 || evaluator.isDraw()) {
             break;
         }
 
-        move = getUserMove(board);
+        std::cout << std::endl << "Thinking..." << std::endl;
+        st.search(5000);
+        move = st.getPrincipalVariation()[0];
+        std::cout << std::endl << "Depth: " << st.getLastSearchDepth() << " Computer move: " << toFigurineAlgebraicNotation(move, board) << std::endl << std::endl;
         board.makeMove(move);
     }
 

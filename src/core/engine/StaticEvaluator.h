@@ -12,7 +12,7 @@
  * @brief Die Klasse BoardEvaluator ist für die statische Bewertung eines Spielfeldes zuständig.
  * Parameter können in den Dateien "EvaluationDefinitions.h" und "EvaluationDefinitions.cpp" angepasst werden.
  */
-class NewEvaluator : public Evaluator {
+class StaticEvaluator : public Evaluator {
 
     private:
         // Eine Hash-Tabelle, in der die Bewertung von Stellungen gespeichert wird,
@@ -186,17 +186,17 @@ class NewEvaluator : public Evaluator {
         inline int32_t evalEGRuleOfTheSquare(const Bitboard& ownPassedPawns, int32_t otherKingSquare, int32_t side, bool canMoveNext);
 
     public:
-        NewEvaluator() = delete;
+        StaticEvaluator() = delete;
 
-        NewEvaluator(Board& b) : Evaluator(b) {};
+        StaticEvaluator(Board& b) : Evaluator(b) {};
 
-        ~NewEvaluator() override = default;
+        ~StaticEvaluator() override = default;
 
-        NewEvaluator(const NewEvaluator& other) = delete;
-        NewEvaluator& operator=(const NewEvaluator& other) = delete;
+        StaticEvaluator(const StaticEvaluator& other) = delete;
+        StaticEvaluator& operator=(const StaticEvaluator& other) = delete;
 
-        NewEvaluator(NewEvaluator&& other);
-        NewEvaluator& operator=(NewEvaluator&& other);
+        StaticEvaluator(StaticEvaluator&& other);
+        StaticEvaluator& operator=(StaticEvaluator&& other);
 
         /**
          * @brief Führt eine statische Bewertung für das Midgame der
@@ -406,8 +406,8 @@ class NewEvaluator : public Evaluator {
         static constexpr int32_t EG_PAWN_DOUBLED_VALUE = -20;
 
         // Bestrafung für einen Bauern, der keine Nachbarn hat(keine Bauern in einer Nachbarspalte)
-        static constexpr int32_t MG_PAWN_ISOLATED_VALUE = -14;
-        static constexpr int32_t EG_PAWN_ISOLATED_VALUE = -8;
+        static constexpr int32_t MG_PAWN_ISOLATED_VALUE = -8;
+        static constexpr int32_t EG_PAWN_ISOLATED_VALUE = -16;
 
         // Bonus für jeden Freibauern(passed pawn)
         static constexpr Bitboard sentryMasks[2][64] = {
@@ -447,17 +447,17 @@ class NewEvaluator : public Evaluator {
         static constexpr int32_t EG_PASSED_PAWN_PROTECTION_VALUE = 60;
 
         // Bonus für jedes Feld, dass von einer Figur angegriffen wird.
-        // Felder, auf denen eigene Figuren stehen oder von generischen Bauern angegriffen werden, werden ausgenommen.
+        // Felder, die von generischen Bauern angegriffen werden, werden ausgenommen.
         static constexpr int32_t MG_PAWN_MOBILITY_VALUE = 0;
         static constexpr int32_t EG_PAWN_MOBILITY_VALUE = 0;
-        static constexpr int32_t MG_KNIGHT_MOBILITY_VALUE = 2;
+        static constexpr int32_t MG_KNIGHT_MOBILITY_VALUE = 3;
         static constexpr int32_t EG_KNIGHT_MOBILITY_VALUE = 1;
-        static constexpr int32_t MG_BISHOP_MOBILITY_VALUE = 5;
-        static constexpr int32_t EG_BISHOP_MOBILITY_VALUE = 3;
-        static constexpr int32_t MG_ROOK_MOBILITY_VALUE = 4;
-        static constexpr int32_t EG_ROOK_MOBILITY_VALUE = 2;
-        static constexpr int32_t MG_QUEEN_MOBILITY_VALUE = 0;
-        static constexpr int32_t EG_QUEEN_MOBILITY_VALUE = 0;
+        static constexpr int32_t MG_BISHOP_MOBILITY_VALUE = 6;
+        static constexpr int32_t EG_BISHOP_MOBILITY_VALUE = 4;
+        static constexpr int32_t MG_ROOK_MOBILITY_VALUE = 5;
+        static constexpr int32_t EG_ROOK_MOBILITY_VALUE = 3;
+        static constexpr int32_t MG_QUEEN_MOBILITY_VALUE = 1;
+        static constexpr int32_t EG_QUEEN_MOBILITY_VALUE = 1;
 
         // Bestrafung für Figuren, die En Prise(ungeschützt) sind
         static constexpr int32_t MG_PIECE_EN_PRISE_VALUE = -6;
@@ -593,9 +593,9 @@ class NewEvaluator : public Evaluator {
                         -35,  -1, -20, -23, -15,  24, 38, -22,
                         -26,  -4,  -4, -10,   3,   3, 33, -12,
                         -27,  -2,  -5,  12,  17,   6, 10, -25,
-                        -14,  13,   6,  21,  23,  12, 17, -23,
-                         -6,   7,  26,  31,  65,  56, 25, -20,
-                         98, 134,  61,  95,  68, 126, 34, -11,
+                        -14,   2,  -8,   9,  14,   0, 17, -23,
+                         -6,   7, -10,   4,   5,  -5, 25, -20,
+                          3,  14,  12,  17,  22,  31, 16, -11,
                           0,   0,   0,   0,   0,   0,  0,   0,
                 },
                 // Knight

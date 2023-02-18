@@ -31,7 +31,7 @@ const std::vector<int32_t> Tournament::timeControls = {
 };
 
 const std::vector<int32_t> Tournament::numGames = {
-    15, 8, 5, 4, 2
+    30, 20, 15, 10, 3
 };
 
 int32_t Tournament::runGame(Board& board, SearchTree& st1, SearchTree& st2, int32_t time) {

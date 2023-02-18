@@ -73,7 +73,17 @@ int16_t SearchTree::search(uint32_t searchTime) {
         currentMaxDepth = depth;
 
         score = rootSearch(depth, score);
-        
+
+        std::cout << "Depth: " << depth / ONE_PLY << " Nodes: " << nodesSearched << std::endl;
+
+        for(Variation v : variations) {
+            std::cout << v.score << " -";
+            for(std::string s : variationToFigurineAlgebraicNotation(v.moves, *board)) {
+                std::cout << " " << s;
+            }
+            std::cout << std::endl;
+        }
+    
         if(searching) {
             lastScore = score;
         }
