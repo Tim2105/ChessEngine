@@ -1,24 +1,16 @@
-#include "core/engine/SearchTree.h"
+#include "core/engine/SingleThreadedSearchTree.h"
 #include <thread>
 #include <algorithm>
 #include <cmath>
 #include "core/utils/MoveNotations.h"
 #include "core/chess/MailboxDefinitions.h"
 
-SearchTree::SearchTree(Evaluator& e, uint32_t numVariations) : evaluator(e), board(&(e.getBoard())), numVariations(numVariations) {
-    currentMaxDepth = 0;
-    currentAge = board->getPly();
-    nodesSearched = 0;
-
-    searching = false;
-}
-
-void SearchTree::searchTimer(uint32_t searchTime) {
+void SingleThreadedSearchTree::searchTimer(uint32_t searchTime) {
     std::this_thread::sleep_for(std::chrono::milliseconds(searchTime));
     searching = false;
 }
 
-void SearchTree::clearRelativeHistory() {
+void SingleThreadedSearchTree::clearRelativeHistory() {
     for(int i = 0; i < 2; i++) {
         for(int j = 0; j < 64; j++) {
             for(int k = 0; k < 64; k++) {
@@ -28,33 +20,27 @@ void SearchTree::clearRelativeHistory() {
     }
 }
 
-void SearchTree::clearPvTable() {
+void SingleThreadedSearchTree::clearPvTable() {
     for(int i = 0; i < 64; i++) {
         pvTable[i].clear();
     }
 }
 
-void SearchTree::clearKillerMoves() {
+void SingleThreadedSearchTree::clearKillerMoves() {
     for(int i = 0; i < 256; i++) {
         killerMoves[i][0] = Move();
         killerMoves[i][1] = Move();
     }
 }
 
-void SearchTree::shiftKillerMoves() {
+void SingleThreadedSearchTree::shiftKillerMoves() {
     for(int i = 1; i < 256; i++) {
         killerMoves[i - 1][0] = killerMoves[i][0];
         killerMoves[i - 1][1] = killerMoves[i][1];
     }
 }
 
-void SearchTree::clearVariations() {
-    variationMutex.lock();
-    variations.clear();
-    variationMutex.unlock();
-}
-
-int16_t SearchTree::search(uint32_t searchTime) {
+void SingleThreadedSearchTree::search(uint32_t searchTime) {
     searching = true;
     currentMaxDepth = 0;
     currentAge = board->getPly();
@@ -64,10 +50,9 @@ int16_t SearchTree::search(uint32_t searchTime) {
     clearKillerMoves();
     clearVariations();
 
-    std::thread timer(std::bind(&SearchTree::searchTimer, this, searchTime));
+    timerThread = std::thread(std::bind(&SingleThreadedSearchTree::searchTimer, this, searchTime));
 
     int16_t score = evaluator.evaluate();
-    int16_t lastScore = score;
 
     for(int16_t depth = ONE_PLY; searching; depth += ONE_PLY) {
         currentMaxDepth = depth;
@@ -83,18 +68,18 @@ int16_t SearchTree::search(uint32_t searchTime) {
             }
             std::cout << std::endl;
         }
-    
-        if(searching) {
-            lastScore = score;
-        }
     }
 
-    timer.join();
-
-    return lastScore;
+    if(timerThread.joinable())
+        timerThread.join();
 }
 
-void SearchTree::sortMovesAtRoot(Array<Move, 256>& moves, int32_t moveEvalFunc) {
+void SingleThreadedSearchTree::stop() {
+    timerThread.~thread();
+    searching = false;
+}
+
+void SingleThreadedSearchTree::sortMovesAtRoot(Array<Move, 256>& moves, int32_t moveEvalFunc) {
     Array<MoveScorePair, 256> msp;
     
     std::vector<Move> bestMovesFromLastDepth;
@@ -165,7 +150,7 @@ void SearchTree::sortMovesAtRoot(Array<Move, 256>& moves, int32_t moveEvalFunc) 
         moves.push_back(pair.move);
 }
 
-void SearchTree::sortMoves(Array<Move, 256>& moves, int16_t ply, int32_t moveEvalFunc) {
+void SingleThreadedSearchTree::sortMoves(Array<Move, 256>& moves, int16_t ply, int32_t moveEvalFunc) {
     Array<MoveScorePair, 256> msp;
 
     Move hashMove;
@@ -240,7 +225,7 @@ void SearchTree::sortMoves(Array<Move, 256>& moves, int16_t ply, int32_t moveEva
         moves.push_back(pair.move);
 }
 
-void SearchTree::sortAndCutMoves(Array<Move, 256>& moves, int32_t minScore, int32_t moveEvalFunc) {
+void SingleThreadedSearchTree::sortAndCutMoves(Array<Move, 256>& moves, int32_t minScore, int32_t moveEvalFunc) {
     Array<MoveScorePair, 256> msp;
 
     for(Move move : moves) {
@@ -271,7 +256,7 @@ void SearchTree::sortAndCutMoves(Array<Move, 256>& moves, int32_t minScore, int3
         moves.push_back(msPair.move);
 }
 
-void SearchTree::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t minScore, int32_t moveEvalFunc) {
+void SingleThreadedSearchTree::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t minScore, int32_t moveEvalFunc) {
     Array<MoveScorePair, 256> msp;
 
     TranspositionTableEntry ttEntry;
@@ -346,7 +331,7 @@ void SearchTree::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t m
         moves.push_back(pair.move);
 }
 
-int16_t SearchTree::rootSearch(int16_t depth, int16_t expectedScore) {
+int16_t SingleThreadedSearchTree::rootSearch(int16_t depth, int16_t expectedScore) {
     int32_t aspAlphaReduction = ASP_WINDOW, numAlphaReduction = 1;
     int32_t aspBetaReduction = ASP_WINDOW, numBetaReduction = 1;
 
@@ -390,7 +375,7 @@ int16_t SearchTree::rootSearch(int16_t depth, int16_t expectedScore) {
     return variations.front().score;
 }
 
-int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
+int16_t SingleThreadedSearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
     clearPvTable();
     moveScoreCache.clear();
     seeCache.clear();
@@ -510,15 +495,13 @@ int16_t SearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
                     [Mailbox::mailbox[bestMove.getDestination()]] += 1 << std::min(depth / ONE_PLY, 18);
                 
     if(worstVariationScore > oldAlpha) {
-        variationMutex.lock();
-        variations = newVariations;
-        variationMutex.unlock();
+        setVariations(newVariations);
     }
 
     return worstVariationScore;
 }
 
-int16_t SearchTree::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta) {
+int16_t SingleThreadedSearchTree::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta) {
     if(!searching)
         return 0;
 
@@ -645,7 +628,7 @@ int16_t SearchTree::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
     return bestScore;
 }
 
-int16_t SearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, bool nullMoveAllowed) {
+int16_t SingleThreadedSearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, bool nullMoveAllowed) {
     if(!searching)
         return 0;
 
@@ -791,7 +774,7 @@ int16_t SearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t 
     return bestScore;
 }
 
-int16_t SearchTree::determineExtension(Move& m, bool isThreat, bool isCheckEvasion) {
+int16_t SingleThreadedSearchTree::determineExtension(Move& m, bool isThreat, bool isCheckEvasion) {
     int16_t extension = 0;
 
     int32_t movedPieceType = TYPEOF(board->pieceAt(m.getDestination()));
@@ -832,7 +815,7 @@ int16_t SearchTree::determineExtension(Move& m, bool isThreat, bool isCheckEvasi
     return extension;
 }
 
-int16_t SearchTree::determineReduction(int16_t depth, int32_t moveCount, bool isCheckEvasion) {
+int16_t SingleThreadedSearchTree::determineReduction(int16_t depth, int32_t moveCount, bool isCheckEvasion) {
     int16_t reduction = 0;
 
     bool isCheck = board->isCheck();
@@ -845,7 +828,7 @@ int16_t SearchTree::determineReduction(int16_t depth, int32_t moveCount, bool is
     return reduction;
 }
 
-int16_t SearchTree::quiescence(int16_t alpha, int16_t beta, int32_t captureSquare) {
+int16_t SingleThreadedSearchTree::quiescence(int16_t alpha, int16_t beta, int32_t captureSquare) {
     if(!searching)
         return 0;
 
