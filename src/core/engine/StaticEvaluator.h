@@ -458,11 +458,11 @@ class StaticEvaluator : public Evaluator {
         // Felder, die von generischen Bauern angegriffen werden, werden ausgenommen.
         static constexpr int32_t MG_PAWN_MOBILITY_VALUE = 0;
         static constexpr int32_t EG_PAWN_MOBILITY_VALUE = 0;
-        static constexpr int32_t MG_KNIGHT_MOBILITY_VALUE = 3;
+        static constexpr int32_t MG_KNIGHT_MOBILITY_VALUE = 2;
         static constexpr int32_t EG_KNIGHT_MOBILITY_VALUE = 1;
-        static constexpr int32_t MG_BISHOP_MOBILITY_VALUE = 6;
-        static constexpr int32_t EG_BISHOP_MOBILITY_VALUE = 4;
-        static constexpr int32_t MG_ROOK_MOBILITY_VALUE = 5;
+        static constexpr int32_t MG_BISHOP_MOBILITY_VALUE = 4;
+        static constexpr int32_t EG_BISHOP_MOBILITY_VALUE = 2;
+        static constexpr int32_t MG_ROOK_MOBILITY_VALUE = 4;
         static constexpr int32_t EG_ROOK_MOBILITY_VALUE = 3;
         static constexpr int32_t MG_QUEEN_MOBILITY_VALUE = 1;
         static constexpr int32_t EG_QUEEN_MOBILITY_VALUE = 1;
