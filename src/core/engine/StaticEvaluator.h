@@ -90,6 +90,11 @@ class StaticEvaluator : public Evaluator {
         inline int32_t evalMGRooks(const Bitboard& ownRooks, const Bitboard& ownPawns, const Bitboard& otherPawns, int32_t side);
 
         /**
+         * @brief Die Methode evalMGQueens bewertet die Stärke der Damen der beiden Spieler im Mittelspiel.
+         */
+        inline int32_t evalMGQueens(const Bitboard& ownQueens, const Bitboard& ownKnights, const Bitboard& ownBishops, int32_t side);
+
+        /**
          * @brief Die Methode evalMGPieces bewertet die Stärke der Figuren der beiden Spieler im Endspiel.
          */
         int32_t evalEGPieces();
@@ -295,6 +300,9 @@ class StaticEvaluator : public Evaluator {
 
         // Bonus für Türme die gegnerische Freibauern von hinten decken(nur Endgame)
         static constexpr int32_t EG_ROOK_BLOCKING_PASSED_PAWN_VALUE = 40;
+
+        // Bestrafung für entwickelte Dame, wenn die eigenen Leichtfiguren noch nicht entwickelt sind
+        static constexpr int32_t MG_DEVELOPED_QUEEN_VALUE = -25;
 
         /**
          * @brief König und Bauern Endspiel
@@ -589,20 +597,20 @@ class StaticEvaluator : public Evaluator {
                 {},
                 // Pawn
                 {
-                          0,   0,   0,   0,   0,  0,  0,   0,
-                         -8,  14,  -6, -12, -21, 19, 31,  -6,
-                         -4,   2,   0,  -6, -10,  5, 18,  -2,
-                         -5,   0,   5,  24,  32,  9,  8,  -5,
-                          2,   1,  -7,  26,  34,  3,  4,  -2,
-                          4,   3, -12,  -2,  -2,  0,  9,  10,
-                          8,  14,  12,  17,  22, 31, 16,  11,
-                          0,   0,   0,   0,   0,  0,  0,   0,
+                          0,  0,   0,   0,   0,   0,   0,   0,
+                        -35, -1, -20, -15, -23,  24,  38, -22,
+                        -26, -4,  -4,   3, -10,   3,  33, -12,
+                        -27, -2,  -5,  17,  12,   6,  10, -25,
+                        -14, 13,   6,  23,  21,  12,  17, -23,
+                        -6,   7,  13,  15,  15,  27,  12, -10,
+                        49,  67,  30,  47,  34,  63,  17,  -6,
+                         0,   0,   0,   0,   0,   0,   0,   0,
                 },
                 // Knight
                 {
                         -105, -21, -58, -33, -17, -28, -19,  -23,
                          -29, -53, -12,  -3,  -1,  18, -14,  -19,
-                          23,  -9,  12,  10,  19,  17,  25,  -16,
+                          11,  -9,  12,  10,  19,  17,  25,  -16,
                           -8,  21,  19,  28,  13,  16,   4,  -13,
                           22,  18,  69,  37,  53,  19,  17,  -9,
                           44,  73, 129,  84,  65,  37,  60,  -47,
@@ -633,7 +641,7 @@ class StaticEvaluator : public Evaluator {
                 },
                 // Queen
                 {
-                        -10, -28,  -9,  13, -15, -25, -41, -60,
+                        -10, -28,  -9,  10, -15, -25, -41, -60,
                         -45, -18,  11,   2,   8,  15, -13,  -9,
                         -24,  -8, -11,  -2,  -5,   2,   4,  -5,
                         -19, -36,  -9, -10,  -2,  -4,  -7, -13,

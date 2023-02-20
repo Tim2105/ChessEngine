@@ -216,6 +216,9 @@ int32_t StaticEvaluator::evalMGPieces() {
     Bitboard ownRooks = b->getPieceBitboard(side | ROOK);
     Bitboard otherRooks = b->getPieceBitboard(otherSide | ROOK);
 
+    Bitboard ownQueens = b->getPieceBitboard(side | QUEEN);
+    Bitboard otherQueens = b->getPieceBitboard(otherSide | QUEEN);
+
     score += evalMGKnights(ownKnights, pawns);
     score -= evalMGKnights(otherKnights, pawns);
 
@@ -224,6 +227,9 @@ int32_t StaticEvaluator::evalMGPieces() {
 
     score += evalMGRooks(ownRooks, ownPawns, otherPawns, side);
     score -= evalMGRooks(otherRooks, otherPawns, ownPawns, otherSide);
+
+    score += evalMGQueens(ownQueens, ownKnights, ownBishops, side);
+    score -= evalMGQueens(otherQueens, otherKnights, otherBishops, otherSide);
 
     return score;
 }
@@ -360,6 +366,48 @@ inline int32_t StaticEvaluator::evalEGRooks(const Bitboard& ownRooks, const Bitb
     }
 
     score += ownRooks.getNumberOfSetBits() * ROOK_CAPTURED_PAWN_VALUE * (16 - (ownPawns | otherPawns).getNumberOfSetBits());
+
+    return score;
+}
+
+inline int32_t StaticEvaluator::evalMGQueens(const Bitboard& ownQueens, const Bitboard& ownKnights, const Bitboard& ownBishops, int32_t side) {
+    if(ownQueens.getNumberOfSetBits() != 1)
+        return 0;
+    
+    int32_t score = 0;
+
+    int32_t sq = ownQueens.getFirstSetBit();
+    int32_t rank = sq / 8;
+
+    if(side == WHITE && rank == RANK_1)
+        return 0;
+    
+    if(side == BLACK && rank == RANK_8)
+        return 0;
+
+    int32_t knightSq1 = Mailbox::mailbox[B1];
+    int32_t knightSq2 = Mailbox::mailbox[G1];
+    int32_t bishopSq1 = Mailbox::mailbox[C1];
+    int32_t bishopSq2 = Mailbox::mailbox[F1];
+
+    if(side == BLACK) {
+        knightSq1 = Mailbox::mailbox[B8];
+        knightSq2 = Mailbox::mailbox[G8];
+        bishopSq1 = Mailbox::mailbox[C8];
+        bishopSq2 = Mailbox::mailbox[F8];
+    }
+
+    if(ownKnights.getBit(knightSq1))
+        score += MG_DEVELOPED_QUEEN_VALUE;
+    
+    if(ownKnights.getBit(knightSq2))
+        score += MG_DEVELOPED_QUEEN_VALUE;
+
+    if(ownBishops.getBit(bishopSq1))
+        score += MG_DEVELOPED_QUEEN_VALUE;
+
+    if(ownBishops.getBit(bishopSq2))
+        score += MG_DEVELOPED_QUEEN_VALUE;
 
     return score;
 }

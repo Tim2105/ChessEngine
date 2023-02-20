@@ -64,17 +64,17 @@ int main() {
     
     Move move;
     while(board.generateLegalMoves().size() > 0 && !evaluator.isDraw()) {
-        move = getUserMove(board);
+        std::cout << std::endl << "Thinking..." << std::endl;
+        st.search(5000);
+        move = st.getPrincipalVariation()[0];
+        std::cout << std::endl << "Depth: " << st.getLastSearchDepth() << " Computer move: " << toFigurineAlgebraicNotation(move, board) << std::endl << std::endl;
         board.makeMove(move);
 
         if(board.generateLegalMoves().size() == 0 || evaluator.isDraw()) {
             break;
         }
 
-        std::cout << std::endl << "Thinking..." << std::endl;
-        st.search(5000);
-        move = st.getPrincipalVariation()[0];
-        std::cout << std::endl << "Depth: " << st.getLastSearchDepth() << " Computer move: " << toFigurineAlgebraicNotation(move, board) << std::endl << std::endl;
+        move = getUserMove(board);
         board.makeMove(move);
     }
 
