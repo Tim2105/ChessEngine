@@ -1,16 +1,16 @@
-#include "core/engine/SingleThreadedSearchTree.h"
+#include "core/engine/NewSingleThreadedSearchTree.h"
 #include <thread>
 #include <algorithm>
 #include <cmath>
 #include "core/utils/MoveNotations.h"
 #include "core/chess/MailboxDefinitions.h"
 
-void SingleThreadedSearchTree::searchTimer(uint32_t searchTime) {
+void NewSingleThreadedSearchTree::searchTimer(uint32_t searchTime) {
     std::this_thread::sleep_for(std::chrono::milliseconds(searchTime));
     searching = false;
 }
 
-void SingleThreadedSearchTree::clearRelativeHistory() {
+void NewSingleThreadedSearchTree::clearRelativeHistory() {
     for(int i = 0; i < 2; i++) {
         for(int j = 0; j < 64; j++) {
             for(int k = 0; k < 64; k++) {
@@ -20,27 +20,27 @@ void SingleThreadedSearchTree::clearRelativeHistory() {
     }
 }
 
-void SingleThreadedSearchTree::clearPvTable() {
+void NewSingleThreadedSearchTree::clearPvTable() {
     for(int i = 0; i < 64; i++) {
         pvTable[i].clear();
     }
 }
 
-void SingleThreadedSearchTree::clearKillerMoves() {
+void NewSingleThreadedSearchTree::clearKillerMoves() {
     for(int i = 0; i < 256; i++) {
         killerMoves[i][0] = Move();
         killerMoves[i][1] = Move();
     }
 }
 
-void SingleThreadedSearchTree::shiftKillerMoves() {
+void NewSingleThreadedSearchTree::shiftKillerMoves() {
     for(int i = 1; i < 256; i++) {
         killerMoves[i - 1][0] = killerMoves[i][0];
         killerMoves[i - 1][1] = killerMoves[i][1];
     }
 }
 
-void SingleThreadedSearchTree::search(uint32_t searchTime) {
+void NewSingleThreadedSearchTree::search(uint32_t searchTime) {
     searching = true;
     currentMaxDepth = 0;
     currentAge = board->getPly();
@@ -50,7 +50,7 @@ void SingleThreadedSearchTree::search(uint32_t searchTime) {
     clearKillerMoves();
     clearVariations();
 
-    timerThread = std::thread(std::bind(&SingleThreadedSearchTree::searchTimer, this, searchTime));
+    timerThread = std::thread(std::bind(&NewSingleThreadedSearchTree::searchTimer, this, searchTime));
 
     auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
@@ -78,12 +78,12 @@ void SingleThreadedSearchTree::search(uint32_t searchTime) {
         timerThread.join();
 }
 
-void SingleThreadedSearchTree::stop() {
+void NewSingleThreadedSearchTree::stop() {
     timerThread.~thread();
     searching = false;
 }
 
-void SingleThreadedSearchTree::sortMovesAtRoot(Array<Move, 256>& moves, int32_t moveEvalFunc) {
+void NewSingleThreadedSearchTree::sortMovesAtRoot(Array<Move, 256>& moves, int32_t moveEvalFunc) {
     Array<MoveScorePair, 256> msp;
     
     std::vector<Move> bestMovesFromLastDepth;
@@ -154,7 +154,7 @@ void SingleThreadedSearchTree::sortMovesAtRoot(Array<Move, 256>& moves, int32_t 
         moves.push_back(pair.move);
 }
 
-void SingleThreadedSearchTree::sortMoves(Array<Move, 256>& moves, int16_t ply, int32_t moveEvalFunc) {
+void NewSingleThreadedSearchTree::sortMoves(Array<Move, 256>& moves, int16_t ply, int32_t moveEvalFunc) {
     Array<MoveScorePair, 256> msp;
 
     Move hashMove;
@@ -229,7 +229,7 @@ void SingleThreadedSearchTree::sortMoves(Array<Move, 256>& moves, int16_t ply, i
         moves.push_back(pair.move);
 }
 
-void SingleThreadedSearchTree::sortAndCutMoves(Array<Move, 256>& moves, int32_t minScore, int32_t moveEvalFunc) {
+void NewSingleThreadedSearchTree::sortAndCutMoves(Array<Move, 256>& moves, int32_t minScore, int32_t moveEvalFunc) {
     Array<MoveScorePair, 256> msp;
 
     for(Move move : moves) {
@@ -260,7 +260,7 @@ void SingleThreadedSearchTree::sortAndCutMoves(Array<Move, 256>& moves, int32_t 
         moves.push_back(msPair.move);
 }
 
-void SingleThreadedSearchTree::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t minScore, int32_t moveEvalFunc) {
+void NewSingleThreadedSearchTree::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t minScore, int32_t moveEvalFunc) {
     Array<MoveScorePair, 256> msp;
 
     TranspositionTableEntry ttEntry;
@@ -335,7 +335,7 @@ void SingleThreadedSearchTree::sortAndCutMoves(Array<Move, 256>& moves, int16_t 
         moves.push_back(pair.move);
 }
 
-int16_t SingleThreadedSearchTree::rootSearch(int16_t depth, int16_t expectedScore) {
+int16_t NewSingleThreadedSearchTree::rootSearch(int16_t depth, int16_t expectedScore) {
     int32_t aspAlphaReduction = ASP_WINDOW, numAlphaReduction = 1;
     int32_t aspBetaReduction = ASP_WINDOW, numBetaReduction = 1;
 
@@ -379,7 +379,7 @@ int16_t SingleThreadedSearchTree::rootSearch(int16_t depth, int16_t expectedScor
     return variations.front().score;
 }
 
-int16_t SingleThreadedSearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
+int16_t NewSingleThreadedSearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
     clearPvTable();
     moveScoreCache.clear();
     seeCache.clear();
@@ -405,7 +405,7 @@ int16_t SingleThreadedSearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int
 
         board->makeMove(move);
 
-        int16_t extension = determineExtension(move, false, isCheckEvasion);
+        int16_t extension = determineExtension(move, false, false, isCheckEvasion);
         int16_t nwReduction = determineReduction(depth, moveNumber, isCheckEvasion);
 
         int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
@@ -505,7 +505,7 @@ int16_t SingleThreadedSearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int
     return worstVariationScore;
 }
 
-int16_t SingleThreadedSearchTree::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta) {
+int16_t NewSingleThreadedSearchTree::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta) {
     if(!searching)
         return 0;
 
@@ -552,7 +552,7 @@ int16_t SingleThreadedSearchTree::pvSearch(int16_t depth, int16_t ply, int16_t a
 
         board->makeMove(move);
 
-        int16_t extension = determineExtension(move, false, isCheckEvasion);
+        int16_t extension = determineExtension(move, false, false, isCheckEvasion);
         int16_t nwReduction = determineReduction(depth, moveNumber, isCheckEvasion);
 
         int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
@@ -632,7 +632,7 @@ int16_t SingleThreadedSearchTree::pvSearch(int16_t depth, int16_t ply, int16_t a
     return bestScore;
 }
 
-int16_t SingleThreadedSearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, bool nullMoveAllowed) {
+int16_t NewSingleThreadedSearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, bool nullMoveAllowed) {
     if(!searching)
         return 0;
 
@@ -674,32 +674,42 @@ int16_t SingleThreadedSearchTree::nwSearch(int16_t depth, int16_t ply, int16_t a
 
     int32_t moveNumber = 1;
     bool isCheckEvasion = board->isCheck();
-    bool isThreat = false;
+    bool isThreat = false, isMateThreat = false;
 
     // Null move pruning
-    if(nullMoveAllowed && !isCheckEvasion && depth >= 4 * ONE_PLY) {
-        // int32_t side = board->getSideToMove();
-        // Bitboard minorOrMajorPieces = board->getPieceBitboard(side | KNIGHT) |
-        //                               board->getPieceBitboard(side | BISHOP) |
-        //                               board->getPieceBitboard(side | ROOK) |
-        //                               board->getPieceBitboard(side | QUEEN);
+    if(nullMoveAllowed && !isCheckEvasion && (depth >= 4 * ONE_PLY)) {
+        int32_t side = board->getSideToMove();
+        Bitboard minorOrMajorPieces;
 
-        // // Nullzug nur durchführen, wenn wir mindestens eine Leichtfigur haben          
-        // if(minorOrMajorPieces) {
-        //     Move nullMove = Move::nullMove();
-        //     board->makeMove(nullMove);
+        if(side == WHITE)
+            minorOrMajorPieces = board->getWhiteOccupiedBitboard() & ~board->getPieceBitboard(WHITE | PAWN);
+        else
+            minorOrMajorPieces = board->getBlackOccupiedBitboard() & ~board->getPieceBitboard(BLACK | PAWN);
 
-        //     int16_t nullMoveScore = -nwSearch(depth - 3 * ONE_PLY, ply + 1, -beta, -beta + 1, false);
+        // Nullzug nur durchführen, wenn wir mindestens eine Leichtfigur haben          
+        if(minorOrMajorPieces) {
+            Move nullMove = Move::nullMove();
+            board->makeMove(nullMove);
 
-        //     board->undoMove();
+            int16_t depthReduction = 3 * ONE_PLY;
 
-        //     if(nullMoveScore >= beta) {
-        //         return nullMoveScore;
-        //     }
+            if(depth >= 8 * ONE_PLY)
+                depthReduction += ONE_PLY;
 
-        //     if(nullMoveScore < (alpha - THREAT_MARGIN))
-        //         isThreat = true;
-        // }
+            int16_t nullMoveScore = -nwSearch(depth - depthReduction, ply + 1, -beta, -alpha, false);
+
+            board->undoMove();
+
+            if(nullMoveScore >= beta) {
+                return nullMoveScore;
+            }
+
+            if(nullMoveScore < (alpha - THREAT_MARGIN))
+                isThreat = true;
+
+            if(IS_MATE_SCORE(nullMoveScore))
+                isMateThreat = true;
+        }
     }
 
     sortMoves(moves, ply, SEE);
@@ -712,18 +722,13 @@ int16_t SingleThreadedSearchTree::nwSearch(int16_t depth, int16_t ply, int16_t a
 
         board->makeMove(move);
 
-        int16_t extension = determineExtension(move, isThreat, isCheckEvasion);
+        int16_t extension = determineExtension(move, isThreat, isMateThreat, isCheckEvasion);
         int16_t nwReduction = determineReduction(depth, moveNumber, isCheckEvasion);
 
         int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
         nwDepthDelta = std::min(nwDepthDelta, (int16_t)(-ONE_PLY));
 
         int16_t score = -nwSearch(depth + nwDepthDelta, ply + 1, -beta, -alpha);
-
-        // Wenn eine stark reduzierte Suche eine Bewertung > alpha liefert, dann
-        // wird eine vollständige Suche durchgeführt.
-        if(nwDepthDelta < -ONE_PLY && score > alpha)
-            score = -nwSearch(depth - ONE_PLY, ply + 1, -beta, -alpha);
 
         board->undoMove();
 
@@ -778,7 +783,7 @@ int16_t SingleThreadedSearchTree::nwSearch(int16_t depth, int16_t ply, int16_t a
     return bestScore;
 }
 
-int16_t SingleThreadedSearchTree::determineExtension(Move& m, bool isThreat, bool isCheckEvasion) {
+int16_t NewSingleThreadedSearchTree::determineExtension(Move& m, bool isThreat, bool isMateThreat, bool isCheckEvasion) {
     int16_t extension = 0;
 
     int32_t movedPieceType = TYPEOF(board->pieceAt(m.getDestination()));
@@ -789,7 +794,7 @@ int16_t SingleThreadedSearchTree::determineExtension(Move& m, bool isThreat, boo
 
     // Schach
     if(isCheck || isCheckEvasion)
-        extension += ONE_PLY * 2;
+        extension += 3 * ONE_PLY;
     
     // Schlagzug oder Bauernumwandlung
     if(!m.isQuiet()) {
@@ -816,23 +821,27 @@ int16_t SingleThreadedSearchTree::determineExtension(Move& m, bool isThreat, boo
     if(isThreat)
         extension += ONE_PLY;
     
+    // Wenn Mattgefahr besteht
+    if(isMateThreat)
+        extension += 2 * ONE_PLY;
+    
     return extension;
 }
 
-int16_t SingleThreadedSearchTree::determineReduction(int16_t depth, int32_t moveCount, bool isCheckEvasion) {
+int16_t NewSingleThreadedSearchTree::determineReduction(int16_t depth, int32_t moveCount, bool isCheckEvasion) {
     int16_t reduction = 0;
 
     bool isCheck = board->isCheck();
     
-    if(moveCount <= 3 || isCheck || isCheckEvasion)
+    if(moveCount <= 4 || isCheck || isCheckEvasion)
         return 0;
 
-    reduction += (int16_t)(sqrt(depth) + sqrt(moveCount - 1) * ONE_PLY);
+    reduction += (int16_t)(log(depth / ONE_PLY + 1) * log(moveCount) * ONE_PLY);
     
     return reduction;
 }
 
-int16_t SingleThreadedSearchTree::quiescence(int16_t alpha, int16_t beta, int32_t captureSquare) {
+int16_t NewSingleThreadedSearchTree::quiescence(int16_t alpha, int16_t beta, int32_t captureSquare) {
     if(!searching)
         return 0;
 
