@@ -27,8 +27,6 @@
 #define MVVLVA 0
 #define SEE 1
 
-#define QUIESCENCE_SCORE_CUTOFF (-10)
-
 #define ASP_WINDOW 25
 #define ASP_STEP_FACTOR 4
 #define ASP_MAX_DEPTH 2
@@ -87,13 +85,15 @@ class NewSingleThreadedSearchTree : public SearchTree {
 
         void searchTimer(uint32_t searchTime);
 
-        void sortMovesAtRoot(Array<Move, 256>& moves, int32_t moveEvalFunc);
+        inline int32_t scoreMove(Move& move, int16_t ply);
 
-        void sortMoves(Array<Move, 256>& moves, int16_t ply, int32_t moveEvalFunc);
+        void sortMovesAtRoot(Array<Move, 256>& moves);
 
-        void sortAndCutMoves(Array<Move, 256>& moves, int32_t minScore, int32_t moveEvalFunc);
+        void sortMoves(Array<Move, 256>& moves, int16_t ply);
 
-        void sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t minScore, int32_t moveEvalFunc);
+        void sortAndCutMovesForQuiescence(Array<Move, 256>& moves, int32_t minScore, int32_t moveEvalFunc);
+
+        void sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t minScore);
 
         int16_t rootSearch(int16_t depth, int16_t expectedScore);
 
@@ -103,11 +103,11 @@ class NewSingleThreadedSearchTree : public SearchTree {
 
         int16_t nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, bool nullMoveAllowed = true);
 
-        int16_t quiescence(int16_t alpha, int16_t beta, int32_t captureSquare);
+        int16_t quiescence(int16_t alpha, int16_t beta);
 
-        int16_t determineExtension(Move& m, bool isThreat, bool isMateThreat, bool isCheckEvasion = false);
+        inline int16_t determineExtension(bool isThreat, bool isMateThreat, bool isCheckEvasion = false);
 
-        int16_t determineReduction(int16_t depth, int32_t moveCount, bool isCheckEvasion = false);
+        inline int16_t determineReduction(int16_t depth, int32_t moveCount, bool isCheckEvasion = false);
 
     public:
         NewSingleThreadedSearchTree() = delete;
@@ -141,8 +141,9 @@ class NewSingleThreadedSearchTree : public SearchTree {
         }
 
     private:
+        static constexpr int32_t DEFAULT_CAPTURE_MOVE_SCORE = 100;
 
-        static constexpr int32_t DEFAULT_CAPTURE_MOVE_SCORE = 0;
+        static constexpr int32_t NEUTRAL_SEE_SCORE = 0;
 
         // Für die Gefahrenerkennung in der Nullzugusche
         static constexpr int16_t THREAT_MARGIN = 200;
@@ -156,11 +157,11 @@ class NewSingleThreadedSearchTree : public SearchTree {
                 // Pawn
                 {
                           0,  0,   0,   0,   0,   0,   0,   0,
-                        -35, -1, -20, -15, -23,  24,  38, -22,
-                        -26, -4,  -4,   3, -10,   3,  33, -12,
-                        -27, -2,  -5,  17,  12,   6,  10, -25,
-                        -14, 13,   6,  23,  21,  12,  17, -23,
-                        -6,   7,  13,  15,  15,  27,  12, -10,
+                        -35, -1, -20, -23, -15,  24,  38, -22,
+                        -26, -4,  -4, -10,   3,   3,  33, -12,
+                        -27, -2,  -5,  12,  17,   6,  10, -25,
+                        -14, 13,   6,   5,   6,  12,  17, -23,
+                        -6,   7,  13,  -4,  -8,  27,  12, -10,
                         49,  67,  30,  47,  34,  63,  17,  -6,
                          0,   0,   0,   0,   0,   0,   0,   0,
                 },

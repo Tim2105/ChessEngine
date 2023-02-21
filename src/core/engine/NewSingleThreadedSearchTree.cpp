@@ -83,7 +83,54 @@ void NewSingleThreadedSearchTree::stop() {
     searching = false;
 }
 
-void NewSingleThreadedSearchTree::sortMovesAtRoot(Array<Move, 256>& moves, int32_t moveEvalFunc) {
+inline int32_t NewSingleThreadedSearchTree::scoreMove(Move& move, int16_t ply) {
+    int32_t moveScore = 0;
+    
+    if(!move.isQuiet()) {
+        int32_t seeScore = evaluator.evaluateMoveSEE(move);
+        seeCache.put(move, seeScore);
+        moveScore += seeScore + DEFAULT_CAPTURE_MOVE_SCORE;
+    } else {
+        if(killerMoves[ply][0] == move)
+            moveScore += 80;
+        else if(killerMoves[ply][1] == move)
+            moveScore += 70;  
+        else if(ply >= 2) {
+            if(killerMoves[ply - 2][0] == move)
+                moveScore += 60;
+            else if(killerMoves[ply - 2][1] == move)
+                moveScore += 50;
+        }
+    }
+
+    int32_t movedPieceType = TYPEOF(board->pieceAt(move.getOrigin()));
+    int32_t side = board->getSideToMove();
+    int32_t psqtOrigin64 = Mailbox::mailbox[move.getOrigin()];
+    int32_t psqtDestination64 = Mailbox::mailbox[move.getDestination()];
+
+    if(side == BLACK) {
+        int32_t rank = psqtOrigin64 / 8;
+        int32_t file = psqtOrigin64 % 8;
+
+        psqtOrigin64 = (RANK_8 - rank) * 8 + file;
+
+        rank = psqtDestination64 / 8;
+        file = psqtDestination64 % 8;
+
+        psqtDestination64 = (RANK_8 - rank) * 8 + file;
+    }
+
+    moveScore += MOVE_ORDERING_PSQT[movedPieceType][psqtDestination64] - MOVE_ORDERING_PSQT[movedPieceType][psqtOrigin64];
+
+    moveScore += std::clamp(relativeHistory[board->getSideToMove() / COLOR_MASK]
+                        [Mailbox::mailbox[move.getOrigin()]]
+                        [Mailbox::mailbox[move.getDestination()]] / ((currentMaxDepth / ONE_PLY) * (currentMaxDepth / ONE_PLY)),
+                        -99, 99);
+
+    return moveScore;
+}
+
+void NewSingleThreadedSearchTree::sortMovesAtRoot(Array<Move, 256>& moves) {
     Array<MoveScorePair, 256> msp;
     
     std::vector<Move> bestMovesFromLastDepth;
@@ -96,51 +143,10 @@ void NewSingleThreadedSearchTree::sortMovesAtRoot(Array<Move, 256>& moves, int32
         int32_t moveScore = 0;
 
         size_t index = std::find(bestMovesFromLastDepth.begin(), bestMovesFromLastDepth.end(), move) - bestMovesFromLastDepth.begin();
-        if(index < bestMovesFromLastDepth.size()) {
+        if(index < bestMovesFromLastDepth.size())
             moveScore += 30000 - index;
-        } else if(move.isCapture() || move.isPromotion()) {
-            switch(moveEvalFunc) {
-                case MVVLVA:
-                    moveScore += evaluator.evaluateMoveMVVLVA(move) + DEFAULT_CAPTURE_MOVE_SCORE;
-                    break;
-                case SEE:
-                    int32_t seeScore = evaluator.evaluateMoveSEE(move) + DEFAULT_CAPTURE_MOVE_SCORE;
-                    seeCache.put(move, seeScore);
-                    moveScore += seeScore;
-                    break;
-            }
-        } else if(move.isQuiet()) {
-            int32_t moveScore = 0;
-
-            if(killerMoves[0][0] == move)
-                moveScore += 80;
-            else if(killerMoves[0][1] == move)
-                moveScore += 70;
-        }
-
-        int32_t movedPieceType = TYPEOF(board->pieceAt(move.getOrigin()));
-        int32_t side = board->getSideToMove();
-        int32_t psqtOrigin64 = Mailbox::mailbox[move.getOrigin()];
-        int32_t psqtDestination64 = Mailbox::mailbox[move.getDestination()];
-
-        if(side == BLACK) {
-            int32_t rank = psqtOrigin64 / 8;
-            int32_t file = psqtOrigin64 % 8;
-
-            psqtOrigin64 = (RANK_8 - rank) * 8 + file;
-
-            rank = psqtDestination64 / 8;
-            file = psqtDestination64 % 8;
-
-            psqtDestination64 = (RANK_8 - rank) * 8 + file;
-        }
-
-        moveScore += MOVE_ORDERING_PSQT[movedPieceType][psqtDestination64] - MOVE_ORDERING_PSQT[movedPieceType][psqtOrigin64];
-
-        moveScore += std::clamp(relativeHistory[board->getSideToMove() / COLOR_MASK]
-                            [Mailbox::mailbox[move.getOrigin()]]
-                            [Mailbox::mailbox[move.getDestination()]] / (1 << (currentMaxDepth / ONE_PLY)),
-                            -99, 49);
+        else
+            moveScore += scoreMove(move, 0);
 
         moveScoreCache.put(move, moveScore);
         msp.push_back({move, moveScore});
@@ -154,82 +160,11 @@ void NewSingleThreadedSearchTree::sortMovesAtRoot(Array<Move, 256>& moves, int32
         moves.push_back(pair.move);
 }
 
-void NewSingleThreadedSearchTree::sortMoves(Array<Move, 256>& moves, int16_t ply, int32_t moveEvalFunc) {
-    Array<MoveScorePair, 256> msp;
-
-    Move hashMove;
-
-    TranspositionTableEntry ttEntry;
-    transpositionTable.probe(board->getHashValue(), ttEntry);
-
-    for(Move move : moves) {
-        int32_t moveScore = 0;
-
-        if(move == ttEntry.hashMove) {
-            moveScore += 30000;
-        } else if(move.isCapture() || move.isPromotion()) {
-            switch(moveEvalFunc) {
-                case MVVLVA:
-                    moveScore += evaluator.evaluateMoveMVVLVA(move) + DEFAULT_CAPTURE_MOVE_SCORE;
-                    break;
-                case SEE:
-                    int32_t seeScore = evaluator.evaluateMoveSEE(move) + DEFAULT_CAPTURE_MOVE_SCORE;
-                    seeCache.put(move, seeScore);
-                    moveScore += seeScore;
-                    break;
-            }
-        } else if(move.isQuiet()) {
-            int32_t moveScore = 0;
-
-            if(killerMoves[ply][0] == move)
-                moveScore += 80;
-            else if(killerMoves[ply][1] == move)
-                moveScore += 70;  
-            else if(ply >= 2) {
-                if(killerMoves[ply - 2][0] == move)
-                    moveScore += 60;
-                else if(killerMoves[ply - 2][1] == move)
-                    moveScore += 50;
-            }
-        }
-
-        int32_t movedPieceType = TYPEOF(board->pieceAt(move.getOrigin()));
-        int32_t side = board->getSideToMove();
-        int32_t psqtOrigin64 = Mailbox::mailbox[move.getOrigin()];
-        int32_t psqtDestination64 = Mailbox::mailbox[move.getDestination()];
-
-        if(side == BLACK) {
-            int32_t rank = psqtOrigin64 / 8;
-            int32_t file = psqtOrigin64 % 8;
-
-            psqtOrigin64 = (RANK_8 - rank) * 8 + file;
-
-            rank = psqtDestination64 / 8;
-            file = psqtDestination64 % 8;
-
-            psqtDestination64 = (RANK_8 - rank) * 8 + file;
-        }
-
-        moveScore += MOVE_ORDERING_PSQT[movedPieceType][psqtDestination64] - MOVE_ORDERING_PSQT[movedPieceType][psqtOrigin64];
-
-        moveScore += std::clamp(relativeHistory[board->getSideToMove() / COLOR_MASK]
-                            [Mailbox::mailbox[move.getOrigin()]]
-                            [Mailbox::mailbox[move.getDestination()]] / (1 << (currentMaxDepth / ONE_PLY)),
-                            -99, 49);
-
-        moveScoreCache.put(move, moveScore);
-        msp.push_back({move, moveScore});
-    }
-
-    std::sort(msp.begin(), msp.end(), std::greater<MoveScorePair>());
-
-    moves.clear();
-
-    for(MoveScorePair pair : msp)
-        moves.push_back(pair.move);
+void NewSingleThreadedSearchTree::sortMoves(Array<Move, 256>& moves, int16_t ply) {
+    sortAndCutMoves(moves, ply, MIN_SCORE);
 }
 
-void NewSingleThreadedSearchTree::sortAndCutMoves(Array<Move, 256>& moves, int32_t minScore, int32_t moveEvalFunc) {
+void NewSingleThreadedSearchTree::sortAndCutMovesForQuiescence(Array<Move, 256>& moves, int32_t minScore, int32_t moveEvalFunc) {
     Array<MoveScorePair, 256> msp;
 
     for(Move move : moves) {
@@ -260,7 +195,7 @@ void NewSingleThreadedSearchTree::sortAndCutMoves(Array<Move, 256>& moves, int32
         moves.push_back(msPair.move);
 }
 
-void NewSingleThreadedSearchTree::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t minScore, int32_t moveEvalFunc) {
+void NewSingleThreadedSearchTree::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t minScore) {
     Array<MoveScorePair, 256> msp;
 
     TranspositionTableEntry ttEntry;
@@ -269,58 +204,11 @@ void NewSingleThreadedSearchTree::sortAndCutMoves(Array<Move, 256>& moves, int16
     for(Move move : moves) {
         int32_t moveScore = 0;
 
-        if(move == ttEntry.hashMove) {
+        if(move == ttEntry.hashMove)
             moveScore += 30000;
-        }  else if(move.isCapture() || move.isPromotion()) {
-            switch(moveEvalFunc) {
-                case MVVLVA:
-                    moveScore += evaluator.evaluateMoveMVVLVA(move) + DEFAULT_CAPTURE_MOVE_SCORE;
-                    break;
-                case SEE:
-                    int32_t seeScore = evaluator.evaluateMoveSEE(move) + DEFAULT_CAPTURE_MOVE_SCORE;
-                    seeCache.put(move, seeScore);
-                    moveScore += seeScore;
-                    break;
-            }
-        } else if(move.isQuiet()) {
-            int32_t moveScore = 0;
+        else
+            moveScore += scoreMove(move, ply);
 
-            if(killerMoves[ply][0] == move)
-                moveScore += 80;
-            else if(killerMoves[ply][1] == move)
-                moveScore += 70;  
-            else if(ply >= 2) {
-                if(killerMoves[ply - 2][0] == move)
-                    moveScore += 60;
-                else if(killerMoves[ply - 2][1] == move)
-                    moveScore += 50;
-            }
-        }
-
-        int32_t movedPieceType = TYPEOF(board->pieceAt(move.getOrigin()));
-        int32_t side = board->getSideToMove();
-        int32_t psqtOrigin64 = Mailbox::mailbox[move.getOrigin()];
-        int32_t psqtDestination64 = Mailbox::mailbox[move.getDestination()];
-
-        if(side == BLACK) {
-            int32_t rank = psqtOrigin64 / 8;
-            int32_t file = psqtOrigin64 % 8;
-
-            psqtOrigin64 = (RANK_8 - rank) * 8 + file;
-
-            rank = psqtDestination64 / 8;
-            file = psqtDestination64 % 8;
-
-            psqtDestination64 = (RANK_8 - rank) * 8 + file;
-        }
-
-        moveScore += MOVE_ORDERING_PSQT[movedPieceType][psqtDestination64] - MOVE_ORDERING_PSQT[movedPieceType][psqtOrigin64];
-
-        moveScore += std::clamp(relativeHistory[board->getSideToMove() / COLOR_MASK]
-                            [Mailbox::mailbox[move.getOrigin()]]
-                            [Mailbox::mailbox[move.getDestination()]] / (1 << (currentMaxDepth / ONE_PLY)),
-                            -99, 49);
-                                    
         if(moveScore >= minScore) {
             moveScoreCache.put(move, moveScore);
             msp.push_back({move, moveScore});
@@ -395,7 +283,7 @@ int16_t NewSingleThreadedSearchTree::pvSearchRoot(int16_t depth, int16_t alpha, 
     bool isCheckEvasion = board->isCheck();
 
     Array<Move, 256> moves = board->generateLegalMoves();
-    sortMovesAtRoot(moves, SEE);
+    sortMovesAtRoot(moves);
 
     for(Move move : moves) {
         if(!searching)
@@ -405,10 +293,11 @@ int16_t NewSingleThreadedSearchTree::pvSearchRoot(int16_t depth, int16_t alpha, 
 
         board->makeMove(move);
 
-        int16_t extension = determineExtension(move, false, false, isCheckEvasion);
+        int16_t extension = determineExtension(false, false, isCheckEvasion);
         int16_t nwReduction = determineReduction(depth, moveNumber, isCheckEvasion);
 
         int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
+        
         int16_t minReduction = -ONE_PLY;
 
         nwDepthDelta = std::min(nwDepthDelta, minReduction);
@@ -428,7 +317,7 @@ int16_t NewSingleThreadedSearchTree::pvSearchRoot(int16_t depth, int16_t alpha, 
         
         relativeHistory[board->getSideToMove() / COLOR_MASK]
                            [Mailbox::mailbox[move.getOrigin()]]
-                           [Mailbox::mailbox[move.getDestination()]] -= std::min(depth / ONE_PLY, 20);
+                           [Mailbox::mailbox[move.getDestination()]] -= depth / ONE_PLY;
         
 
         if(score >= beta) {
@@ -445,7 +334,7 @@ int16_t NewSingleThreadedSearchTree::pvSearchRoot(int16_t depth, int16_t alpha, 
 
             relativeHistory[board->getSideToMove() / COLOR_MASK]
                            [Mailbox::mailbox[move.getOrigin()]]
-                           [Mailbox::mailbox[move.getDestination()]] += 1 << std::min(depth / ONE_PLY, 20);
+                           [Mailbox::mailbox[move.getDestination()]] += (depth / ONE_PLY) * (depth / ONE_PLY);
 
             return score;
         }
@@ -498,7 +387,7 @@ int16_t NewSingleThreadedSearchTree::pvSearchRoot(int16_t depth, int16_t alpha, 
 
     relativeHistory[board->getSideToMove() / COLOR_MASK]
                     [Mailbox::mailbox[bestMove.getOrigin()]]
-                    [Mailbox::mailbox[bestMove.getDestination()]] += 1 << std::min(depth / ONE_PLY, 20);
+                    [Mailbox::mailbox[bestMove.getDestination()]] += (depth / ONE_PLY) * (depth / ONE_PLY);
                 
     if(worstVariationScore > oldAlpha) {
         setVariations(newVariations);
@@ -517,9 +406,7 @@ int16_t NewSingleThreadedSearchTree::pvSearch(int16_t depth, int16_t ply, int16_
     }
 
     if(depth <= 0) {
-        int32_t lastMovedSquare = board->getLastMove().getDestination();
-        int16_t score = quiescence(alpha, beta, lastMovedSquare);
-        return score;
+        return quiescence(alpha, beta);
     }
 
     pvTable[ply + 1].clear();
@@ -581,7 +468,7 @@ int16_t NewSingleThreadedSearchTree::pvSearch(int16_t depth, int16_t ply, int16_
         }
     }
 
-    sortMoves(moves, ply, SEE);
+    sortMoves(moves, ply);
 
     for(Move move : moves) {
         if(!searching)
@@ -591,25 +478,32 @@ int16_t NewSingleThreadedSearchTree::pvSearch(int16_t depth, int16_t ply, int16_
 
         board->makeMove(move);
 
-        int16_t extension = determineExtension(move, isThreat, isMateThreat, isCheckEvasion);
+        int16_t extension = determineExtension(isThreat, isMateThreat, isCheckEvasion);
         int16_t nwReduction = determineReduction(depth, moveNumber, isCheckEvasion);
 
+        int16_t pvExtension = extension / 4;
         int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
 
+        int16_t maxExtension = 0;
         int16_t minReduction = -ONE_PLY;
-        if(isThreat)
-            minReduction += ONE_SIXTH_PLY;
-        if(isMateThreat)
-            minReduction += ONE_THIRD_PLY;
 
+        if(isThreat) {
+            maxExtension = ONE_HALF_PLY;
+
+            if(isMateThreat) {
+                maxExtension = TWO_THIRDS_PLY;
+            }
+        }
+
+        pvExtension = std::min(pvExtension, maxExtension);
         nwDepthDelta = std::min(nwDepthDelta, minReduction);
 
         if(searchPv) {
-            score = -pvSearch(depth - ONE_PLY, ply + 1, -beta, -alpha);
+            score = -pvSearch(depth + pvExtension - ONE_PLY, ply + 1, -beta, -alpha);
         } else {
             score = -nwSearch(depth + nwDepthDelta, ply + 1, -alpha - 1, -alpha);
             if(score > alpha)
-                score = -pvSearch(depth - ONE_PLY, ply + 1, -beta, -alpha);
+                score = -pvSearch(depth + pvExtension - ONE_PLY, ply + 1, -beta, -alpha);
         }
 
         board->undoMove();
@@ -619,7 +513,7 @@ int16_t NewSingleThreadedSearchTree::pvSearch(int16_t depth, int16_t ply, int16_
         
         relativeHistory[board->getSideToMove() / COLOR_MASK]
                            [Mailbox::mailbox[move.getOrigin()]]
-                           [Mailbox::mailbox[move.getDestination()]] -= std::min(depth / ONE_PLY, 20);
+                           [Mailbox::mailbox[move.getDestination()]] -= depth / ONE_PLY;
         
 
         if(score >= beta) {
@@ -640,7 +534,7 @@ int16_t NewSingleThreadedSearchTree::pvSearch(int16_t depth, int16_t ply, int16_
 
             relativeHistory[board->getSideToMove() / COLOR_MASK]
                            [Mailbox::mailbox[move.getOrigin()]]
-                           [Mailbox::mailbox[move.getDestination()]] += 1 << std::min(depth / ONE_PLY, 20);
+                           [Mailbox::mailbox[move.getDestination()]] += (depth / ONE_PLY) * (depth / ONE_PLY);
 
             return score;
         }
@@ -673,7 +567,7 @@ int16_t NewSingleThreadedSearchTree::pvSearch(int16_t depth, int16_t ply, int16_
 
     relativeHistory[board->getSideToMove() / COLOR_MASK]
                     [Mailbox::mailbox[bestMove.getOrigin()]]
-                    [Mailbox::mailbox[bestMove.getDestination()]] += 1 << std::min(depth / ONE_PLY, 20);
+                    [Mailbox::mailbox[bestMove.getDestination()]] += (depth / ONE_PLY) * (depth / ONE_PLY);
 
     return bestScore;
 }
@@ -686,9 +580,7 @@ int16_t NewSingleThreadedSearchTree::nwSearch(int16_t depth, int16_t ply, int16_
         return 0;
 
     if(depth <= 0) {
-        int32_t lastMovedSquare = board->getLastMove().getDestination();
-        int16_t score = quiescence(alpha, beta, lastMovedSquare);
-        return score;
+        return quiescence(alpha, beta);
     }
 
     TranspositionTableEntry ttEntry;
@@ -758,7 +650,7 @@ int16_t NewSingleThreadedSearchTree::nwSearch(int16_t depth, int16_t ply, int16_
         }
     }
 
-    sortMoves(moves, ply, SEE);
+    sortMoves(moves, ply);
 
     for(Move move : moves) {
         if(!searching)
@@ -768,16 +660,11 @@ int16_t NewSingleThreadedSearchTree::nwSearch(int16_t depth, int16_t ply, int16_
 
         board->makeMove(move);
 
-        int16_t extension = determineExtension(move, isThreat, isMateThreat, isCheckEvasion);
+        int16_t extension = determineExtension(isThreat, isMateThreat, isCheckEvasion);
         int16_t nwReduction = determineReduction(depth, moveNumber, isCheckEvasion);
 
         int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
-
         int16_t minReduction = -ONE_PLY;
-        if(isThreat)
-            minReduction += ONE_SIXTH_PLY;
-        if(isMateThreat)
-            minReduction += ONE_THIRD_PLY;
 
         nwDepthDelta = std::min(nwDepthDelta, minReduction);
 
@@ -790,7 +677,7 @@ int16_t NewSingleThreadedSearchTree::nwSearch(int16_t depth, int16_t ply, int16_
         
         relativeHistory[board->getSideToMove() / COLOR_MASK]
                         [Mailbox::mailbox[move.getOrigin()]]
-                        [Mailbox::mailbox[move.getDestination()]] -= std::min(depth / ONE_PLY, 20);
+                        [Mailbox::mailbox[move.getDestination()]] -= depth / ONE_PLY;
 
         if(score >= beta) {
             bool tableHit = transpositionTable.probe(board->getHashValue(), ttEntry);
@@ -810,7 +697,7 @@ int16_t NewSingleThreadedSearchTree::nwSearch(int16_t depth, int16_t ply, int16_
 
             relativeHistory[board->getSideToMove() / COLOR_MASK]
                            [Mailbox::mailbox[move.getOrigin()]]
-                           [Mailbox::mailbox[move.getDestination()]] += 1 << std::min(depth / ONE_PLY, 20);
+                           [Mailbox::mailbox[move.getDestination()]] += (depth / ONE_PLY) * (depth / ONE_PLY);
 
             return score;
         }
@@ -831,13 +718,15 @@ int16_t NewSingleThreadedSearchTree::nwSearch(int16_t depth, int16_t ply, int16_
     
     relativeHistory[board->getSideToMove() / COLOR_MASK]
                 [Mailbox::mailbox[bestMove.getOrigin()]]
-                [Mailbox::mailbox[bestMove.getDestination()]] += 1 << std::min(depth / ONE_PLY, 20);
+                [Mailbox::mailbox[bestMove.getDestination()]] += (depth / ONE_PLY) * (depth / ONE_PLY);
 
     return bestScore;
 }
 
-int16_t NewSingleThreadedSearchTree::determineExtension(Move& m, bool isThreat, bool isMateThreat, bool isCheckEvasion) {
+inline int16_t NewSingleThreadedSearchTree::determineExtension(bool isThreat, bool isMateThreat, bool isCheckEvasion) {
     int16_t extension = 0;
+
+    Move m = board->getLastMove();
 
     int32_t movedPieceType = TYPEOF(board->pieceAt(m.getDestination()));
 
@@ -846,18 +735,30 @@ int16_t NewSingleThreadedSearchTree::determineExtension(Move& m, bool isThreat, 
     // Erweiterungen
 
     // Schach
-    if(isCheck || isCheckEvasion)
+    if(isCheckEvasion)
         extension += 3 * ONE_PLY;
+    
+    if(isCheck)
+        extension += ONE_PLY;
     
     // Schlagzug oder Bauernumwandlung
     if(!m.isQuiet()) {
         int32_t seeScore = MIN_SCORE;
         bool seeCacheHit = seeCache.probe(m, seeScore);
 
-        if(!seeCacheHit || seeScore >= 0)
-            extension += ONE_PLY; // Höhere Erweiterung wenn der Schlagzug eine gute SEE-Bewertung hat
+        if(!seeCacheHit || seeScore >= NEUTRAL_SEE_SCORE)
+            extension += ONE_PLY; // Erweiterung wenn der Schlagzug eine gute/neutrale SEE-Bewertung hat
         else
-            extension += ONE_HALF_PLY;
+            extension += ONE_HALF_PLY; // Geringere Erweiterung wenn der Schlagzug eine schlechte SEE-Bewertung hat
+    } else {
+        // History-Erweiterungen
+        int historyExtension = (int16_t)(relativeHistory[(board->getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
+                            [Mailbox::mailbox[board->getLastMove().getOrigin()]]
+                            [Mailbox::mailbox[board->getLastMove().getDestination()]] / ((currentMaxDepth / ONE_PLY) * (currentMaxDepth / ONE_PLY)));
+                        
+        historyExtension = std::max(historyExtension, 0);
+
+        extension += historyExtension;
     }
 
     // Freibauerzüge
@@ -876,37 +777,42 @@ int16_t NewSingleThreadedSearchTree::determineExtension(Move& m, bool isThreat, 
     
     // Wenn Mattgefahr besteht
     if(isMateThreat)
-        extension += 2 * ONE_PLY;
+        extension += 3 * ONE_PLY;
     
     return extension;
 }
 
-int16_t NewSingleThreadedSearchTree::determineReduction(int16_t depth, int32_t moveCount, bool isCheckEvasion) {
+inline int16_t NewSingleThreadedSearchTree::determineReduction(int16_t depth, int32_t moveCount, bool isCheckEvasion) {
     int16_t reduction = 0;
 
     bool isCheck = board->isCheck();
+
+    int32_t unreducedMoves = 2;
+
+    if(depth <= 3 * ONE_PLY)
+        unreducedMoves = 6;
     
-    if(moveCount <= 3 || isCheck || isCheckEvasion)
+    if(moveCount <= unreducedMoves || isCheckEvasion)
         return 0;
 
-    reduction += (int16_t)((sqrt(depth / ONE_PLY + 1) + sqrt(moveCount)) * ONE_PLY);
+    reduction += (int16_t)((sqrt(depth / ONE_PLY + 1) + sqrt(moveCount - unreducedMoves)) * ONE_PLY);
 
-    Move lastMove = board->getLastMove();
+    // History-Reduktionen
+    int16_t historyReduction = (int16_t)(-relativeHistory[(board->getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
+                            [Mailbox::mailbox[board->getLastMove().getOrigin()]]
+                            [Mailbox::mailbox[board->getLastMove().getDestination()]] / ((currentMaxDepth / ONE_PLY) * (currentMaxDepth / ONE_PLY)));
 
-    if(!lastMove.isQuiet()) {
-        int32_t seeScore = MIN_SCORE;
-        bool seeCacheHit = seeCache.probe(lastMove, seeScore);
+    historyReduction = std::max(historyReduction, (int16_t)0);
 
-        if(!seeCacheHit || seeScore >= 0)
-            reduction -= ONE_PLY;
-        else
-            reduction -= ONE_HALF_PLY;
-    }
+    reduction += historyReduction;
+
+    if(isCheck)
+        reduction /= 2;
     
     return reduction;
 }
 
-int16_t NewSingleThreadedSearchTree::quiescence(int16_t alpha, int16_t beta, int32_t captureSquare) {
+int16_t NewSingleThreadedSearchTree::quiescence(int16_t alpha, int16_t beta) {
     if(!searching)
         return 0;
 
@@ -929,12 +835,12 @@ int16_t NewSingleThreadedSearchTree::quiescence(int16_t alpha, int16_t beta, int
         if(moves.size() == 0)
             return -MATE_SCORE;
 
-        sortAndCutMoves(moves, MIN_SCORE, MVVLVA);
+        sortAndCutMovesForQuiescence(moves, MIN_SCORE, MVVLVA);
     }
     else {
         moves = board->generateLegalCaptures();
 
-        sortAndCutMoves(moves, QUIESCENCE_SCORE_CUTOFF, SEE);
+        sortAndCutMovesForQuiescence(moves, NEUTRAL_SEE_SCORE, SEE);
     }
     
     for(Move move : moves) {
@@ -945,7 +851,7 @@ int16_t NewSingleThreadedSearchTree::quiescence(int16_t alpha, int16_t beta, int
 
         board->makeMove(move);
 
-        score = -quiescence(-beta, -alpha, captureSquare);
+        score = -quiescence(-beta, -alpha);
 
         board->undoMove();
 

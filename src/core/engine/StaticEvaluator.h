@@ -302,7 +302,7 @@ class StaticEvaluator : public Evaluator {
         static constexpr int32_t EG_ROOK_BLOCKING_PASSED_PAWN_VALUE = 40;
 
         // Bestrafung für entwickelte Dame, wenn die eigenen Leichtfiguren noch nicht entwickelt sind
-        static constexpr int32_t MG_DEVELOPED_QUEEN_VALUE = -25;
+        static constexpr int32_t MG_DEVELOPED_QUEEN_VALUE = -21;
 
         /**
          * @brief König und Bauern Endspiel
@@ -598,11 +598,11 @@ class StaticEvaluator : public Evaluator {
                 // Pawn
                 {
                           0,  0,   0,   0,   0,   0,   0,   0,
-                        -35, -1, -20, -15, -23,  24,  38, -22,
-                        -26, -4,  -4,   3, -10,   3,  33, -12,
-                        -27, -2,  -5,  17,  12,   6,  10, -25,
-                        -14, 13,   6,  23,  21,  12,  17, -23,
-                        -6,   7,  13,  15,  15,  27,  12, -10,
+                        -35, -1, -20, -23, -15,  24,  38, -22,
+                        -26, -4,  -4, -10,   3,   3,  33, -12,
+                        -27, -2,  -5,  12,  17,   6,  10, -25,
+                        -14, 13,   6,   5,   6,  12,  17, -23,
+                        -6,   7,  13,  -4,  -8,  27,  12, -10,
                         49,  67,  30,  47,  34,  63,  17,  -6,
                          0,   0,   0,   0,   0,   0,   0,   0,
                 },
