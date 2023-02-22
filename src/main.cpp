@@ -56,27 +56,27 @@ int main() {
         SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &cfi);
     #endif
 
-    Board board;
+    Board board("r1bqk2r/pp2bppp/2n1pn2/2pp4/3P1B2/2PBPN2/PP3PPP/RN1QK2R w KQkq - 0 1");
     StaticEvaluator evaluator(board);
-    NewSingleThreadedSearchTree st(evaluator, 2);
+    NewSingleThreadedSearchTree st(evaluator, 1);
 
-    // st.search(40000);
+    st.search(20000);
     
-    Move move;
-    while(board.generateLegalMoves().size() > 0 && !evaluator.isDraw()) {
-        move = getUserMove(board);
-        board.makeMove(move);
+    // Move move;
+    // while(board.generateLegalMoves().size() > 0 && !evaluator.isDraw()) {
+    //     move = getUserMove(board);
+    //     board.makeMove(move);
 
-        if(board.generateLegalMoves().size() == 0 || evaluator.isDraw()) {
-            break;
-        }
+    //     if(board.generateLegalMoves().size() == 0 || evaluator.isDraw()) {
+    //         break;
+    //     }
 
-        std::cout << std::endl << "Thinking..." << std::endl;
-        st.search(5000);
-        move = st.getPrincipalVariation()[0];
-        std::cout << std::endl << "Depth: " << st.getLastSearchDepth() << " Computer move: " << toFigurineAlgebraicNotation(move, board) << std::endl << std::endl;
-        board.makeMove(move);
-    }
+    //     std::cout << std::endl << "Thinking..." << std::endl;
+    //     st.search(5000);
+    //     move = st.getPrincipalVariation()[0];
+    //     std::cout << std::endl << "Depth: " << st.getLastSearchDepth() << " Computer move: " << toFigurineAlgebraicNotation(move, board) << std::endl << std::endl;
+    //     board.makeMove(move);
+    // }
 
     return 0;
 }

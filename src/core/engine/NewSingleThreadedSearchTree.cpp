@@ -89,7 +89,8 @@ void NewSingleThreadedSearchTree::search(uint32_t searchTime, bool dontBlock) {
     clearKillerMoves();
     clearVariations();
 
-    timerThread = std::thread(std::bind(&NewSingleThreadedSearchTree::searchTimer, this, searchTime));
+    if(searchTime > 0)
+        timerThread = std::thread(std::bind(&NewSingleThreadedSearchTree::searchTimer, this, searchTime));
 
     searchThread = std::thread(std::bind(&NewSingleThreadedSearchTree::runSearch, this));
 
@@ -543,7 +544,7 @@ int16_t NewSingleThreadedSearchTree::pvSearch(int16_t depth, int16_t ply, int16_
         }
 
         if(searchBoard.isCheck() || isCheckEvasion) {
-            maxExtension = TWO_THIRDS_PLY;
+            maxExtension = ONE_HALF_PLY;
         }
 
         pvExtension = std::min(pvExtension, maxExtension);
@@ -648,20 +649,7 @@ int16_t NewSingleThreadedSearchTree::nwSearch(int16_t depth, int16_t ply, int16_
             }
         }
     }
-    
-    int16_t bestScore = MIN_SCORE;
-    Move bestMove;
-    
-    Array<Move, 256> moves = searchBoard.generateLegalMoves();
 
-    if(moves.size() == 0) {
-        if(searchBoard.isCheck())
-            return -MATE_SCORE + ply;
-        else
-            return 0;
-    }
-
-    int32_t moveNumber = 1;
     bool isCheckEvasion = searchBoard.isCheck();
     bool isThreat = false, isMateThreat = false;
 
@@ -700,8 +688,22 @@ int16_t NewSingleThreadedSearchTree::nwSearch(int16_t depth, int16_t ply, int16_
                 isMateThreat = true;
         }
     }
+    
+    Array<Move, 256> moves = searchBoard.generateLegalMoves();
+
+    if(moves.size() == 0) {
+        if(searchBoard.isCheck())
+            return -MATE_SCORE + ply;
+        else
+            return 0;
+    }
 
     sortMoves(moves, ply);
+
+    int16_t bestScore = MIN_SCORE;
+    Move bestMove;
+
+    int32_t moveNumber = 1;
 
     for(Move move : moves) {
         nodesSearched++;
@@ -782,7 +784,7 @@ inline int16_t NewSingleThreadedSearchTree::determineExtension(bool isThreat, bo
 
     // Schach
     if(isCheckEvasion || isCheck)
-        extension += 3 * ONE_PLY;
+        extension += 2 * ONE_PLY;
     
     // Schlagzug oder Bauernumwandlung
     if(!m.isQuiet()) {
@@ -832,7 +834,7 @@ inline int16_t NewSingleThreadedSearchTree::determineReduction(int16_t depth, in
 
     int32_t unreducedMoves = 2;
 
-    if(depth <= 3 * ONE_PLY || isMateLine())
+    if(depth <= 3 * ONE_PLY || isMateLine() || isCheckEvasion)
         unreducedMoves = 6;
     
     if(moveCount <= unreducedMoves)
@@ -852,7 +854,7 @@ inline int16_t NewSingleThreadedSearchTree::determineReduction(int16_t depth, in
     if(isMateLine())
         reduction /= 4;
 
-    if(isCheck || isCheckEvasion)
+    if(isCheck)
         reduction /= 2;
     
     return reduction;
