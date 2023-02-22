@@ -121,7 +121,7 @@ class SingleThreadedSearchTree : public SearchTree {
 
         ~SingleThreadedSearchTree() = default;
 
-        virtual void search(uint32_t searchTime) override;
+        virtual void search(uint32_t searchTime, bool dontBlock = false) override;
 
         virtual void stop() override;
 

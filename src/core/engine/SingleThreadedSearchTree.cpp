@@ -40,7 +40,7 @@ void SingleThreadedSearchTree::shiftKillerMoves() {
     }
 }
 
-void SingleThreadedSearchTree::search(uint32_t searchTime) {
+void SingleThreadedSearchTree::search(uint32_t searchTime, bool dontBlock) {
     searching = true;
     currentMaxDepth = 0;
     currentAge = board->getPly();
@@ -74,7 +74,7 @@ void SingleThreadedSearchTree::search(uint32_t searchTime) {
         }
     }
 
-    if(timerThread.joinable())
+    if(timerThread.joinable() && !dontBlock)
         timerThread.join();
 }
 

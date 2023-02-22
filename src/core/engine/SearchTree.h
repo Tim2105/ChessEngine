@@ -62,7 +62,7 @@ class SearchTree {
 
         virtual ~SearchTree() {};
 
-        virtual void search(uint32_t time) = 0;
+        virtual void search(uint32_t time, bool dontBlock = false) = 0;
         virtual void stop() = 0;
 
         inline void setBoard(Board& board) {

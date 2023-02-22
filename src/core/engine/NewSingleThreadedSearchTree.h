@@ -38,6 +38,8 @@
 #define TWO_THIRDS_PLY 4
 #define FIVE_SIXTHS_PLY 5
 
+#define MAX_PLY 256
+
 struct MoveScorePair {
     Move move;
     int32_t score;
@@ -60,20 +62,24 @@ struct std::less<MoveScorePair> {
 class NewSingleThreadedSearchTree : public SearchTree {
     private:
         TranspositionTable<2097152, 4> transpositionTable;
+        Board searchBoard;
 
         int16_t currentMaxDepth;
         uint16_t currentAge;
         uint32_t nodesSearched;
 
         std::thread timerThread;
+        std::thread searchThread;
         std::atomic_bool searching;
 
         Array<Move, 64> pvTable[64];
-        Move killerMoves[256][2];
+        Move killerMoves[MAX_PLY][2];
         int32_t relativeHistory[2][64][64];
 
         HashTable<Move, int32_t, 128, 4> seeCache;
         HashTable<Move, int32_t, 128, 4> moveScoreCache;
+
+        int16_t mateDistance;
 
         void clearRelativeHistory();
 
@@ -84,6 +90,8 @@ class NewSingleThreadedSearchTree : public SearchTree {
         void shiftKillerMoves();
 
         void searchTimer(uint32_t searchTime);
+
+        void runSearch();
 
         inline int32_t scoreMove(Move& move, int16_t ply);
 
@@ -109,6 +117,8 @@ class NewSingleThreadedSearchTree : public SearchTree {
 
         inline int16_t determineReduction(int16_t depth, int32_t moveCount, bool isCheckEvasion = false);
 
+        constexpr bool isMateLine() { return mateDistance != MAX_PLY; }
+
     public:
         NewSingleThreadedSearchTree() = delete;
 
@@ -121,7 +131,7 @@ class NewSingleThreadedSearchTree : public SearchTree {
 
         ~NewSingleThreadedSearchTree() = default;
 
-        virtual void search(uint32_t searchTime) override;
+        virtual void search(uint32_t searchTime, bool dontBlock = false) override;
 
         virtual void stop() override;
 
