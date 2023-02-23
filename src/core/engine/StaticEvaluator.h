@@ -257,7 +257,7 @@ class StaticEvaluator : public Evaluator {
 
         static constexpr int16_t MG_PIECE_VALUE[7] = {
             0, // Empty
-            100, // Pawn
+            120, // Pawn
             400, // Knight
             410, // Bishop
             600, // Rook
@@ -267,11 +267,11 @@ class StaticEvaluator : public Evaluator {
 
         static constexpr int16_t EG_PIECE_VALUE[7] = {
             0, // Empty
-            150, // Pawn
+            175, // Pawn
             400, // Knight
             410, // Bishop
             600, // Rook
-            1200, // Queen
+            1300, // Queen
             0 // King
         };
 

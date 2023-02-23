@@ -54,7 +54,7 @@ void NewSingleThreadedSearchTree::runSearch() {
 
     int16_t score = evaluator.evaluate();
 
-    for(int16_t depth = ONE_PLY; searching; depth += ONE_PLY) {
+    for(int16_t depth = ONE_PLY; searching && depth < (MAX_PLY * ONE_PLY); depth += ONE_PLY) {
         currentMaxDepth = depth;
 
         score = rootSearch(depth, score);
@@ -73,6 +73,13 @@ void NewSingleThreadedSearchTree::runSearch() {
             }
         }
     }
+
+    if(searching) {
+        // Wenn die Suche vorzeitig beendet wurde weil die maximale Tiefe erreicht wurde, dann wurde die letzte durchsuchte Tiefe vervollständigt
+        currentMaxDepth += ONE_PLY;
+    }
+
+    searching = false;
 }
 
 void NewSingleThreadedSearchTree::search(uint32_t searchTime, bool dontBlock) {
@@ -336,15 +343,21 @@ int16_t NewSingleThreadedSearchTree::pvSearchRoot(int16_t depth, int16_t alpha, 
             }
         }
 
-        if(!isMateVariation && (worstVariationScore != MIN_SCORE && IS_MATE_SCORE(worstVariationScore)))
-            matePly = MATE_SCORE - std::abs(worstVariationScore);
+        if(variations.size() > 0 && !isMateVariation) {
+            int16_t bestVariationScore = variations.front().score;
+
+            if(bestVariationScore < 0 && IS_MATE_SCORE(bestVariationScore))
+                matePly = MATE_SCORE - std::abs(bestVariationScore);
+            else if(worstVariationScore > 0 && newVariations.size() >= numVariations && IS_MATE_SCORE(worstVariationScore))
+                matePly = MATE_SCORE - std::abs(worstVariationScore);
+        }
 
         mateDistance = matePly;
 
         searchBoard.makeMove(move);
 
         int16_t extension = determineExtension(false, false, isCheckEvasion);
-        int16_t nwReduction = determineReduction(depth, moveNumber, isCheckEvasion);
+        int16_t nwReduction = determineReduction(depth, 0, moveNumber, isCheckEvasion);
 
         int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
         
@@ -450,14 +463,18 @@ int16_t NewSingleThreadedSearchTree::pvSearch(int16_t depth, int16_t ply, int16_
     if(!searching)
         return 0;
 
-    if(evaluator.isDraw() || mateDistance < ply) {
+    if(evaluator.isDraw()) {
         pvTable[ply].clear();
         return 0;
     }
 
-    if(depth <= 0) {
-        return quiescence(alpha, beta);
+    if(mateDistance < ply) {
+        pvTable[ply].clear();
+        return MIN_SCORE + 1;
     }
+
+    if(depth <= 0)
+        return quiescence(alpha, beta);
 
     pvTable[ply + 1].clear();
 
@@ -483,7 +500,7 @@ int16_t NewSingleThreadedSearchTree::pvSearch(int16_t depth, int16_t ply, int16_
     bool isThreat = false, isMateThreat = false;
 
     // Null move pruning
-    if(nullMoveAllowed && !isCheckEvasion && (depth >= 4 * ONE_PLY)) {
+    if(nullMoveAllowed && !isCheckEvasion && (depth >= 4 * ONE_PLY) && !isMateLine()) {
         int32_t side = searchBoard.getSideToMove();
         Bitboard minorOrMajorPieces;
 
@@ -526,7 +543,7 @@ int16_t NewSingleThreadedSearchTree::pvSearch(int16_t depth, int16_t ply, int16_
         searchBoard.makeMove(move);
 
         int16_t extension = determineExtension(isThreat, isMateThreat, isCheckEvasion);
-        int16_t nwReduction = determineReduction(depth, moveNumber, isCheckEvasion);
+        int16_t nwReduction = determineReduction(depth, ply, moveNumber, isCheckEvasion);
 
         int16_t pvExtension = extension / 4;
         int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
@@ -535,10 +552,10 @@ int16_t NewSingleThreadedSearchTree::pvSearch(int16_t depth, int16_t ply, int16_
         int16_t minReduction = -ONE_PLY;
 
         if(isThreat) {
-            maxExtension = ONE_HALF_PLY;
+            maxExtension = ONE_THIRD_PLY;
 
             if(isMateThreat) {
-                maxExtension = TWO_THIRDS_PLY;
+                maxExtension = ONE_HALF_PLY;
             }
         }
 
@@ -627,12 +644,14 @@ int16_t NewSingleThreadedSearchTree::nwSearch(int16_t depth, int16_t ply, int16_
     if(!searching)
         return 0;
 
-    if(evaluator.isDraw() || mateDistance < ply)
+    if(evaluator.isDraw())
         return 0;
 
-    if(depth <= 0) {
+    if(mateDistance < ply)
+        return MIN_SCORE + 1;
+
+    if(depth <= 0)
         return quiescence(alpha, beta);
-    }
 
     TranspositionTableEntry ttEntry;
     bool tableHit = transpositionTable.probe(searchBoard.getHashValue(), ttEntry);
@@ -653,7 +672,7 @@ int16_t NewSingleThreadedSearchTree::nwSearch(int16_t depth, int16_t ply, int16_
     bool isThreat = false, isMateThreat = false;
 
     // Null move pruning
-    if(nullMoveAllowed && !isCheckEvasion && (depth >= 4 * ONE_PLY)) {
+    if(nullMoveAllowed && !isCheckEvasion && (depth >= 4 * ONE_PLY) && !isMateLine()) {
         int32_t side = searchBoard.getSideToMove();
         Bitboard minorOrMajorPieces;
 
@@ -710,7 +729,7 @@ int16_t NewSingleThreadedSearchTree::nwSearch(int16_t depth, int16_t ply, int16_
         searchBoard.makeMove(move);
 
         int16_t extension = determineExtension(isThreat, isMateThreat, isCheckEvasion);
-        int16_t nwReduction = determineReduction(depth, moveNumber, isCheckEvasion);
+        int16_t nwReduction = determineReduction(depth, ply, moveNumber, isCheckEvasion);
 
         int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
         int16_t minReduction = -ONE_PLY;
@@ -783,7 +802,7 @@ inline int16_t NewSingleThreadedSearchTree::determineExtension(bool isThreat, bo
 
     // Schach
     if(isCheckEvasion || isCheck)
-        extension += 2 * ONE_PLY;
+        extension += ONE_PLY;
     
     // Schlagzug oder Bauernumwandlung
     if(!m.isQuiet()) {
@@ -820,13 +839,14 @@ inline int16_t NewSingleThreadedSearchTree::determineExtension(bool isThreat, bo
         extension += ONE_PLY;
     
     // Wenn Mattgefahr besteht
-    if(isMateThreat)
-        extension += 4 * ONE_PLY;
+    if(isMateThreat) {
+        extension += ONE_PLY + ONE_HALF_PLY;
+    }
     
     return extension;
 }
 
-inline int16_t NewSingleThreadedSearchTree::determineReduction(int16_t depth, int32_t moveCount, bool isCheckEvasion) {
+inline int16_t NewSingleThreadedSearchTree::determineReduction(int16_t depth, int16_t ply, int32_t moveCount, bool isCheckEvasion) {
     int16_t reduction = 0;
 
     bool isCheck = searchBoard.isCheck();
@@ -850,8 +870,19 @@ inline int16_t NewSingleThreadedSearchTree::determineReduction(int16_t depth, in
 
     reduction += historyReduction;
 
-    if(isCheck)
-        reduction /= 2;
+    if(isMateLine()) {
+        int16_t maxSearchPly = (int16_t)(currentMaxDepth / ONE_PLY);
+
+        if(maxSearchPly > mateDistance + ply) {
+            reduction -= (maxSearchPly - mateDistance - ply) * ONE_PLY;
+            reduction = std::max(reduction, (int16_t)0);
+        }
+    }
+
+    if(isCheck) {
+        reduction -= ONE_PLY;
+        reduction = std::max(reduction, (int16_t)0);
+    }
     
     return reduction;
 }
@@ -877,7 +908,7 @@ int16_t NewSingleThreadedSearchTree::quiescence(int16_t alpha, int16_t beta) {
     if(searchBoard.isCheck()) {
         moves = searchBoard.generateLegalMoves();
         if(moves.size() == 0)
-            return -MATE_SCORE;
+            return -MATE_SCORE + MAX_PLY;
 
         sortAndCutMovesForQuiescence(moves, MIN_SCORE, MVVLVA);
     }

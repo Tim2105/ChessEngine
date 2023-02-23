@@ -12,7 +12,7 @@
 #define MAX_SCORE 32000
 
 #define MATE_SCORE 21000
-#define IS_MATE_SCORE(x) ((x) > MATE_SCORE - 1000)
+#define IS_MATE_SCORE(x) (std::abs(x) > MATE_SCORE - 1000)
 
 struct Variation {
     std::vector<Move> moves;

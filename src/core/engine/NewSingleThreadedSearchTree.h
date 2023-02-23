@@ -115,7 +115,7 @@ class NewSingleThreadedSearchTree : public SearchTree {
 
         inline int16_t determineExtension(bool isThreat, bool isMateThreat, bool isCheckEvasion = false);
 
-        inline int16_t determineReduction(int16_t depth, int32_t moveCount, bool isCheckEvasion = false);
+        inline int16_t determineReduction(int16_t depth, int16_t ply, int32_t moveCount, bool isCheckEvasion = false);
 
         constexpr bool isMateLine() { return mateDistance != MAX_PLY; }
 
