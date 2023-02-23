@@ -56,9 +56,9 @@ int main() {
         SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &cfi);
     #endif
 
-    Board board("r1bqk2r/pp2bppp/2n1pn2/2pp4/3P1B2/2PBPN2/PP3PPP/RN1QK2R w KQkq - 0 1");
+    Board board("6k1/8/5p2/8/3pp1pp/4n3/2p4K/2N5 b - - 0 1");
     StaticEvaluator evaluator(board);
-    NewSingleThreadedSearchTree st(evaluator, 1);
+    NewSingleThreadedSearchTree st(evaluator, 3);
 
     st.search(20000);
     

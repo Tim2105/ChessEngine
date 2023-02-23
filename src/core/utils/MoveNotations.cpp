@@ -83,6 +83,18 @@ std::string toAlgebraicNotation(const Move& move, Board& board, const std::strin
                 result += pieceSymbols[KNIGHT];
         }
 
+        // Überprüfe ob der Zug den Gegner in Schach oder Schachmatt setzt
+        board.makeMove(move);
+
+        if(board.isCheck()) {
+            if(board.generateLegalMoves().size() == 0)
+                result += '#'; // Schachmatt
+            else
+                result += '+'; // Schach
+        }
+
+        board.undoMove();
+
         return result;
     }
 

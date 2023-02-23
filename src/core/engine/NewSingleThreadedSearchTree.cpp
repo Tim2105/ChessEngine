@@ -126,14 +126,14 @@ inline int32_t NewSingleThreadedSearchTree::scoreMove(Move& move, int16_t ply) {
         moveScore += seeScore + DEFAULT_CAPTURE_MOVE_SCORE;
     } else {
         if(killerMoves[ply][0] == move)
-            moveScore += 80;
+            moveScore += DEFAULT_CAPTURE_MOVE_SCORE + 80;
         else if(killerMoves[ply][1] == move)
-            moveScore += 70;  
+            moveScore += DEFAULT_CAPTURE_MOVE_SCORE + 70;  
         else if(ply >= 2) {
             if(killerMoves[ply - 2][0] == move)
-                moveScore += 60;
+                moveScore += DEFAULT_CAPTURE_MOVE_SCORE + 60;
             else if(killerMoves[ply - 2][1] == move)
-                moveScore += 50;
+                moveScore += DEFAULT_CAPTURE_MOVE_SCORE + 50;
         }
     }
 
@@ -156,10 +156,9 @@ inline int32_t NewSingleThreadedSearchTree::scoreMove(Move& move, int16_t ply) {
 
     moveScore += MOVE_ORDERING_PSQT[movedPieceType][psqtDestination64] - MOVE_ORDERING_PSQT[movedPieceType][psqtOrigin64];
 
-    moveScore += std::clamp(relativeHistory[searchBoard.getSideToMove() / COLOR_MASK]
+    moveScore += relativeHistory[searchBoard.getSideToMove() / COLOR_MASK]
                         [Mailbox::mailbox[move.getOrigin()]]
-                        [Mailbox::mailbox[move.getDestination()]] / ((currentMaxDepth / ONE_PLY) * (currentMaxDepth / ONE_PLY)),
-                        -99, 99);
+                        [Mailbox::mailbox[move.getDestination()]] / ((currentMaxDepth / ONE_PLY) * (currentMaxDepth / ONE_PLY));
 
     return moveScore;
 }
@@ -834,7 +833,7 @@ inline int16_t NewSingleThreadedSearchTree::determineReduction(int16_t depth, in
 
     int32_t unreducedMoves = 2;
 
-    if(depth <= 3 * ONE_PLY || isMateLine() || isCheckEvasion)
+    if(depth <= 3 * ONE_PLY || isCheckEvasion)
         unreducedMoves = 6;
     
     if(moveCount <= unreducedMoves)
@@ -850,9 +849,6 @@ inline int16_t NewSingleThreadedSearchTree::determineReduction(int16_t depth, in
     historyReduction = std::max(historyReduction, (int16_t)0);
 
     reduction += historyReduction;
-
-    if(isMateLine())
-        reduction /= 4;
 
     if(isCheck)
         reduction /= 2;
