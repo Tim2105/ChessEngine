@@ -1,6 +1,6 @@
 #include <iostream>
 #include <chrono>
-#include "core/engine/NewSingleThreadedSearchTree.h"
+#include "core/engine/SingleThreadedSearchTree.h"
 #include "core/utils/MoveNotations.h"
 #include <iomanip>
 #include <random>
@@ -58,7 +58,7 @@ int main() {
 
     Board board;
     StaticEvaluator evaluator(board);
-    NewSingleThreadedSearchTree st(evaluator);
+    SingleThreadedSearchTree st(evaluator);
 
     // st.search(20000);
     

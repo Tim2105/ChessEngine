@@ -27,8 +27,6 @@
 #define MVVLVA 0
 #define SEE 1
 
-#define QUIESCENCE_SCORE_CUTOFF (-10)
-
 #define ASP_WINDOW 25
 #define ASP_STEP_FACTOR 4
 #define ASP_MAX_DEPTH 2
@@ -40,42 +38,29 @@
 #define TWO_THIRDS_PLY 4
 #define FIVE_SIXTHS_PLY 5
 
-struct MoveScorePair {
-    Move move;
-    int32_t score;
-};
-
-template<>
-struct std::greater<MoveScorePair> {
-    bool operator()(const MoveScorePair& lhs, const MoveScorePair& rhs) {
-        return lhs.score > rhs.score;
-    }
-};
-
-template<>
-struct std::less<MoveScorePair> {
-    bool operator()(const MoveScorePair& lhs, const MoveScorePair& rhs) {
-        return lhs.score < rhs.score;
-    }
-};
+#define MAX_PLY 256
 
 class SingleThreadedSearchTree : public SearchTree {
     private:
         TranspositionTable<2097152, 4> transpositionTable;
+        Board searchBoard;
 
         int16_t currentMaxDepth;
         uint16_t currentAge;
         uint32_t nodesSearched;
 
         std::thread timerThread;
+        std::thread searchThread;
         std::atomic_bool searching;
 
         Array<Move, 64> pvTable[64];
-        Move killerMoves[256][2];
+        Move killerMoves[MAX_PLY][2];
         int32_t relativeHistory[2][64][64];
 
         HashTable<Move, int32_t, 128, 4> seeCache;
         HashTable<Move, int32_t, 128, 4> moveScoreCache;
+
+        int16_t mateDistance;
 
         void clearRelativeHistory();
 
@@ -87,27 +72,33 @@ class SingleThreadedSearchTree : public SearchTree {
 
         void searchTimer(uint32_t searchTime);
 
-        void sortMovesAtRoot(Array<Move, 256>& moves, int32_t moveEvalFunc);
+        void runSearch();
 
-        void sortMoves(Array<Move, 256>& moves, int16_t ply, int32_t moveEvalFunc);
+        inline int32_t scoreMove(Move& move, int16_t ply);
 
-        void sortAndCutMoves(Array<Move, 256>& moves, int32_t minScore, int32_t moveEvalFunc);
+        void sortMovesAtRoot(Array<Move, 256>& moves);
 
-        void sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t minScore, int32_t moveEvalFunc);
+        void sortMoves(Array<Move, 256>& moves, int16_t ply);
+
+        void sortAndCutMovesForQuiescence(Array<Move, 256>& moves, int32_t minScore, int32_t moveEvalFunc);
+
+        void sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t minScore);
 
         int16_t rootSearch(int16_t depth, int16_t expectedScore);
 
         int16_t pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta);
 
-        int16_t pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta);
+        int16_t pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, bool nullMoveAllowed = true);
 
         int16_t nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, bool nullMoveAllowed = true);
 
-        int16_t quiescence(int16_t alpha, int16_t beta, int32_t captureSquare);
+        int16_t quiescence(int16_t alpha, int16_t beta);
 
-        int16_t determineExtension(Move& m, bool isThreat, bool isCheckEvasion = false);
+        inline int16_t determineExtension(bool isThreat, bool isMateThreat, bool isCheckEvasion = false);
 
-        int16_t determineReduction(int16_t depth, int32_t moveCount, bool isCheckEvasion = false);
+        inline int16_t determineReduction(int16_t depth, int16_t ply, int32_t moveCount, bool isCheckEvasion = false);
+
+        constexpr bool isMateLine() { return mateDistance != MAX_PLY; }
 
     public:
         SingleThreadedSearchTree() = delete;
@@ -141,6 +132,9 @@ class SingleThreadedSearchTree : public SearchTree {
         }
 
     private:
+        static constexpr int32_t DEFAULT_CAPTURE_MOVE_SCORE = 100;
+
+        static constexpr int32_t NEUTRAL_SEE_SCORE = 0;
 
         // Für die Gefahrenerkennung in der Nullzugusche
         static constexpr int16_t THREAT_MARGIN = 200;
@@ -153,69 +147,69 @@ class SingleThreadedSearchTree : public SearchTree {
                 {},
                 // Pawn
                 {
-                        0, 0, 0, 0, 0, 0, 0, 0,
-                        0, 0, 0, -10, -10, 0, 0, 0,
-                        0, 0, 0, 5, 5, 0, 0, 0,
-                        5, 5, 10, 20, 20, 10, 5, 5,
-                        10, 10, 10, 20, 20, 10, 10, 10,
-                        20, 20, 20, 30, 30, 30, 20, 20,
-                        30, 30, 30, 40, 40, 30, 30, 30,
-                        90, 90, 90, 90, 90, 90, 90, 90
+                          0,  0,   0,   0,   0,   0,   0,   0,
+                        -35, -1, -20, -23, -15,  24,  38, -22,
+                        -26, -4,  -4, -10,   3,   3,  33, -12,
+                        -27, -2,  -5,  12,  17,   6,  10, -25,
+                        -14, 13,   6,   5,   6,  12,  17, -23,
+                        -6,   7,  13,  -4,  -8,  27,  12, -10,
+                        49,  67,  30,  47,  34,  63,  17,  -6,
+                         0,   0,   0,   0,   0,   0,   0,   0,
                 },
                 // Knight
                 {
-                        -5, -10, 0, 0, 0, 0, -10, -5,
-                        -5, 0, 0, 0, 0, 0, 0, -5,
-                        -5, 5, 20, 10, 10, 20, 5, -5,
-                        -5, 10, 20, 30, 30, 20, 10, -5,
-                        -5, 10, 20, 30, 30, 20, 10, -5,
-                        -5, 5, 20, 20, 20, 20, 5, -5,
-                        -5, 0, 0, 10, 10, 0, 0, -5,
-                        -5, 0, 0, 0, 0, 0, 0, -5
+                        -105, -21, -58, -33, -17, -28, -19,  -23,
+                         -29, -53, -12,  -3,  -1,  18, -14,  -19,
+                          11,  -9,  12,  10,  19,  17,  25,  -16,
+                          -8,  21,  19,  28,  13,  16,   4,  -13,
+                          22,  18,  69,  37,  53,  19,  17,  -9,
+                          44,  73, 129,  84,  65,  37,  60,  -47,
+                         -17,   7,  62,  23,  36,  72, -41,  -73,
+                        -107, -15, -97,  61, -49, -34, -89, -167,
                 },
                 // Bishop
                 {
-                        0, 0, -10, 0, 0, -10, 0, 0,
-                        0, 30, 0, 0, 0, 0, 30, 0,
-                        0, 10, 0, 0, 0, 0, 10, 0,
-                        0, 0, 10, 20, 20, 10, 0, 0,
-                        0, 0, 10, 20, 20, 10, 0, 0,
-                        0, 0, 0, 10, 10, 0, 0, 0,
-                        0, 0, 0, 0, 0, 0, 0, 0,
-                        0, 0, 0, 0, 0, 0, 0, 0
+                        -33,  -3, -14, -21, -13, -12, -39, -21,
+                          4,  15,  16,   0,   7,  21,  33,   1,
+                          0,  15,  15,  15,  14,  27,  18,  10,
+                         -6,  13,  13,  26,  34,  12,  10,   4,
+                         -4,   5,  19,  50,  37,  37,   7,  -2,
+                        -16,  37,  43,  40,  35,  50,  37,  -2,
+                        -26,  16, -18, -13,  30,  59,  18, -47,
+                        -29,   4, -82, -37, -25, -42,   7,  -8,
                 },
                 // Rook
                 {
-                        0, 0, 0, 20, 20, 0, 0, 0,
-                        0, 0, 10, 20, 20, 10, 0, 0,
-                        0, 0, 10, 20, 20, 10, 0, 0,
-                        0, 0, 10, 20, 20, 10, 0, 0,
-                        0, 0, 10, 20, 20, 10, 0, 0,
-                        0, 0, 10, 20, 20, 10, 0, 0,
-                        50, 50, 50, 50, 50, 50, 50, 50,
-                        50, 50, 50, 50, 50, 50, 50, 50
+                        -19, -13,   1,  17, 16,  7, -37, -26,
+                        -44, -16, -20,  -9, -1, 11,  -6, -71,
+                        -45, -25, -16, -17,  3,  0,  -5, -33,
+                        -36, -26, -12,  -1,  9, -7,   6, -23,
+                        -24, -11,   7,  26, 24, 35,  -8, -20,
+                         -5,  19,  26,  36, 17, 45,  61,  16,
+                         27,  32,  58,  62, 80, 67,  26,  44,
+                         32,  42,  32,  51, 63,  9,  31,  43,
                 },
                 // Queen
                 {
-                        -20, -10, -5, 0, 0, -5, -10, -20,
-                        -10, 0, 5, 10, 10, 5, 0, -10,
-                        -5, 5, 10, 15, 15, 10, 5, -5,
-                        0, 10, 15, 20, 20, 15, 10, 0,
-                        0, 10, 15, 20, 20, 15, 10, 0,
-                        -5, 5, 10, 15, 15, 10, 5, -5,
-                        -10, 0, 5, 10, 10, 5, 0, -10,
-                        -20, -10, -5, 0, 0, -5, -10, -20
+                        -10, -28,  -9,  10, -15, -25, -41, -60,
+                        -45, -18,  11,   2,   8,  15, -13,  -9,
+                        -24,  -8, -11,  -2,  -5,   2,   4,  -5,
+                        -19, -36,  -9, -10,  -2,  -4,  -7, -13,
+                        -37, -37, -16, -16,  -1,  17, -12, -91,
+                        -23, -27,   7,   8,  29,  56,  37,  47,
+                        -34, -49,  -5,   1, -16,  57,  18,  44,
+                        -38, -10,  29,  12,  59,  44,  33,  35,
                 },
                 // King
                 {
-                        0, 0, 5, 0, -15, 0, 10, 0,
-                        0, 5, 5, -5, -5, 0, 5, 0,
-                        0, 0, 5, 10, 10, 5, 0, 0,
-                        0, 5, 10, 20, 20, 10, 5, 0,
-                        0, 5, 10, 20, 20, 10, 5, 0,
-                        0, 5, 5, 10, 10, 5, 5, 0,
-                        0, 0, 5, 5, 5, 5, 0, 0,
-                        0, 0, 0, 0, 0, 0, 0, 0
+                        -15,  36,  12, -54,   8, -28,  24,  14,
+                          1,   7,  -8, -64, -43, -16,   9,   8,
+                        -14, -14, -22, -46, -44, -30, -15, -27,
+                        -49,  -1, -27, -39, -46, -44, -33, -51,
+                        -17, -20, -12, -27, -30, -25, -14, -36,
+                         -9,  24,   2, -16, -20,   6,  22, -22,
+                         29,  -1, -20,  -7,  -8,  -4, -38, -29,
+                        -65,  23,  16, -15, -56, -34,   2,  13,
                 }
         };
 

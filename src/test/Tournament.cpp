@@ -23,7 +23,7 @@ const std::vector<std::string> Tournament::openings = {
     "1.e4 e5 2.Nc3", "Vienna Game",
     "1.d4 d5 2.c4 c6", "Slav Defense",
     "1.d4 Nf6 2.c4 e6 3.g3", "Catalan Opening",
-    "1.d4 Nf6 2.c4 c5 3.d5 e6 4.Nc3 exd5 5.cxd5 d6", "Benoni Defense: Modern Variation",
+    "1.d4 Nf6 2.c4 c5 3.d5 e6 4.Nc3 exd5 5.cxd5 d6", "Benoni Defense; Modern Variation",
 };
 
 const std::vector<int32_t> Tournament::timeControls = {
@@ -31,7 +31,7 @@ const std::vector<int32_t> Tournament::timeControls = {
 };
 
 const std::vector<int32_t> Tournament::numGames = {
-    30, 20, 15, 10, 3
+    20, 15, 12, 10, 5
 };
 
 int32_t Tournament::runGame(Board& board, SearchTree& st1, SearchTree& st2, int32_t time) {
