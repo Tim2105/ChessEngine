@@ -60,14 +60,17 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE getLegalMoves() {
         delete[] legalMoves;
     }
 
-    std::string moves = "{";
+    std::string moves = "[";
 
     for(Move move : board.generateLegalMoves()) {
-        moves += "\"" + move.toString() + "\":\"" + toFigurineAlgebraicNotation(move, board) + "\",";
+        moves += "\"" + toFigurineAlgebraicNotation(move, board) + "\",";
     }
 
-    moves.pop_back();
-    moves += "}";
+
+    if(moves.length() > 1)
+        moves.pop_back();
+    
+    moves += "]";
 
     legalMoves = new char[moves.length() + 1];
     strcpy(legalMoves, moves.c_str());
@@ -86,7 +89,12 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE getVariationAnalysis() {
 
     analysis += "\"depth\":\"" + std::to_string(st.getLastSearchDepth()) + "\",";
 
-    analysis += "\"score\":\"" + std::to_string(st.getBestMoveScore()) + "\",";
+    int16_t score = st.getBestMoveScore();
+
+    if(board.getSideToMove() == BLACK)
+        score *= -1;
+
+    analysis += "\"score\":\"" + std::to_string(score) + "\",";
 
     analysis += "\"nodes\":\"" + std::to_string(st.getNodesSearched()) + "\",";
 
@@ -100,7 +108,12 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE getVariationAnalysis() {
     for(Variation v : variations) {
         analysis += "{";
 
-        analysis += "\"score\":\"" + std::to_string(v.score) + "\",";
+        int16_t score = v.score;
+
+        if(board.getSideToMove() == BLACK)
+            score *= -1;
+
+        analysis += "\"score\":\"" + std::to_string(score) + "\",";
 
         analysis += "\"moves\":\"";
 
@@ -113,7 +126,10 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE getVariationAnalysis() {
         analysis += "},";
     }
 
-    analysis.pop_back();
+    if(variations.size() > 0)
+        analysis.pop_back();
+
+    analysis += "]";
     analysis += "}";
 
     variationAnalysis = new char[analysis.length() + 1];
