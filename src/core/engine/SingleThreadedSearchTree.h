@@ -110,7 +110,15 @@ class SingleThreadedSearchTree : public SearchTree {
             searching = false;
         }
 
-        ~SingleThreadedSearchTree() = default;
+        ~SingleThreadedSearchTree() {
+            searching = false;
+            if(searchThread.joinable()) {
+                searchThread.join();
+            }
+            if(timerThread.joinable()) {
+                 timerThread.join();
+            }
+        }
 
         virtual void search(uint32_t searchTime, bool dontBlock = false) override;
 

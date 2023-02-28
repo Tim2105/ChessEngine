@@ -84,6 +84,10 @@ class SearchTree {
         virtual void search(uint32_t time, bool dontBlock = false) = 0;
         virtual void stop() = 0;
 
+        inline void setNumVariations(uint32_t numVariations) {
+            this->numVariations = numVariations;
+        }
+
         inline void setBoard(Board& board) {
             this->board = &board;
             evaluator.setBoard(board);

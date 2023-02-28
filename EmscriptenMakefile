@@ -1,0 +1,58 @@
+# Eine Makefile, die Dateien aus dem Verzeichnis "src" in WASM kompiliert und
+# das Ergebnis in das Verzeichnis "bin" legt.
+
+# Shell für die Ausführung von Befehlen setzen
+ifeq ($(OS),Windows_NT)
+	SHELL = cmd.exe
+else
+	SHELL = /bin/bash
+endif
+
+# Rekursives Wildcard
+rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
+
+# Compiler
+CC = em++
+
+# Compilerflags
+CFLAGS = -Wall -Wextra -std=c++20 -O3 -pthread -Isrc
+
+#Linkerflags
+LDFLAGS = -s EXPORT_ES6=1 -s EXPORT_NAME="ChessModule" \
+			-s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2 -s STACK_SIZE=1MB \
+			-s ASSERTIONS=1 -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap']" \
+			-msse4.1
+
+$(info Compiling with $(CC) $(CFLAGS))
+
+# Quelldateien
+SRC = $(call rwildcard,src/,*.cpp)
+
+# Objektdateien
+# Werden in den Ordner bin/obj erstellt
+OBJ = $(SRC:src/%.cpp=bin/obj/%.o)
+
+# Ausführbare Datei
+# Wird in den Ordner bin erstellt
+EXEC = bin/main.js bin/main.wasm
+
+# Erstellt die Ausführbare Datei
+$(EXEC): $(OBJ)
+	@$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+# Erstellt die Objektdateien
+# Fehlende Ordner werden erstellt
+bin/obj/%.o: src/%.cpp
+	$(info Compiling $<)
+	@if not exist "$(subst /,\,$(@D))" mkdir $(subst /,\,$(@D))
+	@$(CC) $(CFLAGS) -c -o $@ $<
+
+
+# Löscht alle erstellten Dateien
+clean:
+	@rmdir /s /q bin
+
+
+# Führt die Ausführbare Datei aus
+run: $(EXEC)
+	@$(EXEC)

@@ -1,3 +1,4 @@
+#ifndef __EMSCRIPTEN__
 #include <iostream>
 #include <chrono>
 #include "core/engine/SingleThreadedSearchTree.h"
@@ -80,3 +81,5 @@ int main() {
 
     return 0;
 }
+
+#endif

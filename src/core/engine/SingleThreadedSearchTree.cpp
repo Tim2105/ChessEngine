@@ -50,28 +50,12 @@ void SingleThreadedSearchTree::shiftKillerMoves() {
 }
 
 void SingleThreadedSearchTree::runSearch() {
-    auto nowMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-
     int16_t score = evaluator.evaluate();
 
     for(int16_t depth = ONE_PLY; searching && depth < (MAX_PLY * ONE_PLY); depth += ONE_PLY) {
         currentMaxDepth = depth;
 
         score = rootSearch(depth, score);
-
-        auto endMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-
-        if(searching) {
-            std::cout << "(" << endMs - nowMs << "ms)" << "Depth: " << depth / ONE_PLY << " Nodes: " << nodesSearched << std::endl;
-
-            for(Variation v : variations) {
-                std::cout << v.score << " -";
-                for(std::string s : variationToFigurineAlgebraicNotation(v.moves, searchBoard)) {
-                    std::cout << " " << s;
-                }
-                std::cout << std::endl;
-            }
-        }
     }
 
     if(searching) {
@@ -83,6 +67,9 @@ void SingleThreadedSearchTree::runSearch() {
 }
 
 void SingleThreadedSearchTree::search(uint32_t searchTime, bool dontBlock) {
+    if(searching)
+        stop();
+
     searching = true;
     currentMaxDepth = 0;
     currentAge = board->getPly();
