@@ -61,23 +61,23 @@ int main() {
     StaticEvaluator evaluator(board);
     SingleThreadedSearchTree st(evaluator);
 
-    // st.search(20000);
+    st.search(20000);
     
-    Move move;
-    while(board.generateLegalMoves().size() > 0 && !evaluator.isDraw()) {
-        move = getUserMove(board);
-        board.makeMove(move);
+    // Move move;
+    // while(board.generateLegalMoves().size() > 0 && !evaluator.isDraw()) {
+    //     move = getUserMove(board);
+    //     board.makeMove(move);
 
-        if(board.generateLegalMoves().size() == 0 || evaluator.isDraw()) {
-            break;
-        }
+    //     if(board.generateLegalMoves().size() == 0 || evaluator.isDraw()) {
+    //         break;
+    //     }
 
-        std::cout << std::endl << "Thinking..." << std::endl;
-        st.search(5000);
-        move = st.getPrincipalVariation()[0];
-        std::cout << std::endl << "Depth: " << st.getLastSearchDepth() << " Computer move: " << toFigurineAlgebraicNotation(move, board) << std::endl << std::endl;
-        board.makeMove(move);
-    }
+    //     std::cout << std::endl << "Thinking..." << std::endl;
+    //     st.search(10000);
+    //     move = st.getBestMove();
+    //     std::cout << std::endl << "Depth: " << st.getLastSearchDepth() << " Computer move: " << toFigurineAlgebraicNotation(move, board) << std::endl << std::endl;
+    //     board.makeMove(move);
+    // }
 
     return 0;
 }

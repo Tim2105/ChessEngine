@@ -52,10 +52,23 @@ void SingleThreadedSearchTree::shiftKillerMoves() {
 void SingleThreadedSearchTree::runSearch() {
     int16_t score = evaluator.evaluate();
 
+    auto start = std::chrono::system_clock::now();
+
     for(int16_t depth = ONE_PLY; searching && depth < (MAX_PLY * ONE_PLY); depth += ONE_PLY) {
         currentMaxDepth = depth;
 
         score = rootSearch(depth, score);
+
+        auto end = std::chrono::system_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+        std::cout << "info depth " << depth / ONE_PLY << " score cp " << score << " time " << elapsed << " nodes " << nodesSearched << " pv ";
+
+        for(std::string move : variationToFigurineAlgebraicNotation(getPrincipalVariation(), searchBoard)) {
+            std::cout << move << " ";
+        }
+
+        std::cout << std::endl;
     }
 
     if(searching) {
@@ -711,10 +724,10 @@ int16_t SingleThreadedSearchTree::nwSearch(int16_t depth, int16_t ply, int16_t a
 
         int16_t score = -nwSearch(depth + nwDepthDelta, ply + 1, -beta, -alpha);
 
-        // Wenn eine stark reduzierte Suche eine Bewertung > alpha liefert, dann
-        // wird eine weniger reduzierte Suche durchgeführt.
+        // Wenn eine reduzierte Suche eine Bewertung > alpha liefert, dann
+        // wird eine nicht reduzierte Suche durchgeführt.
         if(nwDepthDelta < -(ONE_PLY * 2) && score > alpha)
-            score = -nwSearch(depth - ONE_PLY * 2, ply + 1, -beta, -alpha);
+            score = -nwSearch(depth - (ONE_PLY * 2), ply + 1, -beta, -alpha);
 
         searchBoard.undoMove();
 
@@ -780,7 +793,7 @@ inline int16_t SingleThreadedSearchTree::determineExtension(bool isThreat, bool 
 
     // Schach
     if(isCheckEvasion || isCheck)
-        extension += ONE_PLY * 2;
+        extension += ONE_PLY * 3;
     
     // Schlagzug oder Bauernumwandlung
     if(!m.isQuiet()) {
@@ -788,9 +801,9 @@ inline int16_t SingleThreadedSearchTree::determineExtension(bool isThreat, bool 
         bool seeCacheHit = seeCache.probe(m, seeScore);
 
         if(!seeCacheHit || seeScore >= NEUTRAL_SEE_SCORE)
-            extension += ONE_PLY; // Erweiterung wenn der Schlagzug eine gute/neutrale SEE-Bewertung hat
+            extension += ONE_PLY * 2; // Erweiterung wenn der Schlagzug eine gute/neutrale SEE-Bewertung hat
         else
-            extension += ONE_HALF_PLY; // Geringere Erweiterung wenn der Schlagzug eine schlechte SEE-Bewertung hat
+            extension += TWO_THIRDS_PLY; // Geringere Erweiterung wenn der Schlagzug eine schlechte SEE-Bewertung hat
     }
 
     // Freibauerzüge
@@ -809,7 +822,7 @@ inline int16_t SingleThreadedSearchTree::determineExtension(bool isThreat, bool 
     }
 
     if(isMateThreat) {
-        extension += ONE_PLY;
+        extension += ONE_PLY * 2;
     }
     
     return extension;
