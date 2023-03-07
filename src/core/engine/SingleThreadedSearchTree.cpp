@@ -52,23 +52,23 @@ void SingleThreadedSearchTree::shiftKillerMoves() {
 void SingleThreadedSearchTree::runSearch() {
     int16_t score = evaluator.evaluate();
 
-    auto start = std::chrono::system_clock::now();
+    // auto start = std::chrono::system_clock::now();
 
     for(int16_t depth = ONE_PLY; searching && depth < (MAX_PLY * ONE_PLY); depth += ONE_PLY) {
         currentMaxDepth = depth;
 
         score = rootSearch(depth, score);
 
-        auto end = std::chrono::system_clock::now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        // auto end = std::chrono::system_clock::now();
+        // auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-        std::cout << "info depth " << depth / ONE_PLY << " score cp " << score << " time " << elapsed << " nodes " << nodesSearched << " pv ";
+        // std::cout << "info depth " << depth / ONE_PLY << " score cp " << score << " time " << elapsed << " nodes " << nodesSearched << " pv ";
 
-        for(std::string move : variationToFigurineAlgebraicNotation(getPrincipalVariation(), searchBoard)) {
-            std::cout << move << " ";
-        }
+        // for(std::string move : variationToFigurineAlgebraicNotation(getPrincipalVariation(), searchBoard)) {
+        //     std::cout << move << " ";
+        // }
 
-        std::cout << std::endl;
+        // std::cout << std::endl;
     }
 
     if(searching) {
