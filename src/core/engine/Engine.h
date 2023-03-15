@@ -1,5 +1,5 @@
-#ifndef SEARCH_TREE_H
-#define SEARCH_TREE_H
+#ifndef ENGINE_H
+#define ENGINE_H
 
 #include "core/chess/Board.h"
 #include "core/engine/Evaluator.h"
@@ -52,7 +52,7 @@ struct std::less<MoveScorePair> {
     }
 };
 
-class SearchTree {
+class Engine {
 
     protected:
         Board* board;
@@ -75,11 +75,11 @@ class SearchTree {
         }
 
     public:
-        SearchTree(Evaluator& evaluator, uint32_t numVariations = 1) : board(&(evaluator.getBoard())),
+        Engine(Evaluator& evaluator, uint32_t numVariations = 1) : board(&(evaluator.getBoard())),
                                                                        evaluator(evaluator),
                                                                        numVariations(numVariations) {};
 
-        virtual ~SearchTree() {};
+        virtual ~Engine() {};
 
         virtual void search(uint32_t time, bool dontBlock = false) = 0;
         virtual void stop() = 0;

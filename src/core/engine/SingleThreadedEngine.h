@@ -1,5 +1,5 @@
-#ifndef SINGLE_THREADED_SEARCH_TREE_H
-#define SINGLE_THREADED_SEARCH_TREE_H
+#ifndef SINGLE_THREADED_ENGINE_H
+#define SINGLE_THREADED_ENGINE_H
 
 #include <stdint.h>
 #include "core/chess/Move.h"
@@ -12,7 +12,7 @@
 #include "core/chess/Board.h"
 #include <vector>
 #include "core/engine/Evaluator.h"
-#include "core/engine/SearchTree.h"
+#include "core/engine/Engine.h"
 
 #define EXACT_NODE 1
 #define CUT_NODE 2
@@ -40,7 +40,7 @@
 
 #define MAX_PLY 256
 
-class SingleThreadedSearchTree : public SearchTree {
+class SingleThreadedEngine : public Engine {
     private:
         TranspositionTable<2097152, 4> transpositionTable;
         Board searchBoard;
@@ -101,16 +101,16 @@ class SingleThreadedSearchTree : public SearchTree {
         constexpr bool isMateLine() { return mateDistance != MAX_PLY; }
 
     public:
-        SingleThreadedSearchTree() = delete;
+        SingleThreadedEngine() = delete;
 
-        SingleThreadedSearchTree(Evaluator& e, uint32_t numVariations = 1) : SearchTree(e, numVariations) {
+        SingleThreadedEngine(Evaluator& e, uint32_t numVariations = 1) : Engine(e, numVariations) {
             currentMaxDepth = 0;
             currentAge = board->getPly();
             nodesSearched = 0;
             searching = false;
         }
 
-        ~SingleThreadedSearchTree() {
+        ~SingleThreadedEngine() {
             searching = false;
             if(searchThread.joinable()) {
                 searchThread.join();

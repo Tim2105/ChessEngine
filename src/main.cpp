@@ -1,7 +1,7 @@
 #ifndef __EMSCRIPTEN__
 #include <iostream>
 #include <chrono>
-#include "core/engine/SingleThreadedSearchTree.h"
+#include "core/engine/SingleThreadedEngine.h"
 #include "core/utils/MoveNotations.h"
 #include <iomanip>
 #include <random>
@@ -58,8 +58,9 @@ int main() {
     #endif
 
     Board board;
+
     StaticEvaluator evaluator(board);
-    SingleThreadedSearchTree st(evaluator);
+    SingleThreadedEngine st(evaluator);
 
     st.search(20000);
     

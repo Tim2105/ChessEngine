@@ -1,11 +1,11 @@
-#include "core/engine/SingleThreadedSearchTree.h"
+#include "core/engine/SingleThreadedEngine.h"
 #include <thread>
 #include <algorithm>
 #include <cmath>
 #include "core/utils/MoveNotations.h"
 #include "core/chess/MailboxDefinitions.h"
 
-void SingleThreadedSearchTree::searchTimer(uint32_t searchTime) {
+void SingleThreadedEngine::searchTimer(uint32_t searchTime) {
     auto start = std::chrono::system_clock::now();
 
     while(searching) {
@@ -19,7 +19,7 @@ void SingleThreadedSearchTree::searchTimer(uint32_t searchTime) {
     }
 }
 
-void SingleThreadedSearchTree::clearRelativeHistory() {
+void SingleThreadedEngine::clearRelativeHistory() {
     for(int i = 0; i < 2; i++) {
         for(int j = 0; j < 64; j++) {
             for(int k = 0; k < 64; k++) {
@@ -29,27 +29,27 @@ void SingleThreadedSearchTree::clearRelativeHistory() {
     }
 }
 
-void SingleThreadedSearchTree::clearPvTable() {
+void SingleThreadedEngine::clearPvTable() {
     for(int i = 0; i < 64; i++) {
         pvTable[i].clear();
     }
 }
 
-void SingleThreadedSearchTree::clearKillerMoves() {
+void SingleThreadedEngine::clearKillerMoves() {
     for(int i = 0; i < 256; i++) {
         killerMoves[i][0] = Move();
         killerMoves[i][1] = Move();
     }
 }
 
-void SingleThreadedSearchTree::shiftKillerMoves() {
+void SingleThreadedEngine::shiftKillerMoves() {
     for(int i = 1; i < 256; i++) {
         killerMoves[i - 1][0] = killerMoves[i][0];
         killerMoves[i - 1][1] = killerMoves[i][1];
     }
 }
 
-void SingleThreadedSearchTree::runSearch() {
+void SingleThreadedEngine::runSearch() {
     int16_t score = evaluator.evaluate();
 
     auto start = std::chrono::system_clock::now();
@@ -79,7 +79,7 @@ void SingleThreadedSearchTree::runSearch() {
     searching = false;
 }
 
-void SingleThreadedSearchTree::search(uint32_t searchTime, bool dontBlock) {
+void SingleThreadedEngine::search(uint32_t searchTime, bool dontBlock) {
     if(searching)
         stop();
 
@@ -97,9 +97,9 @@ void SingleThreadedSearchTree::search(uint32_t searchTime, bool dontBlock) {
     clearVariations();
 
     if(searchTime > 0)
-        timerThread = std::thread(std::bind(&SingleThreadedSearchTree::searchTimer, this, searchTime));
+        timerThread = std::thread(std::bind(&SingleThreadedEngine::searchTimer, this, searchTime));
 
-    searchThread = std::thread(std::bind(&SingleThreadedSearchTree::runSearch, this));
+    searchThread = std::thread(std::bind(&SingleThreadedEngine::runSearch, this));
 
     if(!dontBlock) {
         if(timerThread.joinable())
@@ -112,7 +112,7 @@ void SingleThreadedSearchTree::search(uint32_t searchTime, bool dontBlock) {
     }
 }
 
-void SingleThreadedSearchTree::stop() {
+void SingleThreadedEngine::stop() {
     searching = false;
 
     if(timerThread.joinable())
@@ -124,7 +124,7 @@ void SingleThreadedSearchTree::stop() {
     evaluator.setBoard(*board);
 }
 
-inline int32_t SingleThreadedSearchTree::scoreMove(Move& move, int16_t ply) {
+inline int32_t SingleThreadedEngine::scoreMove(Move& move, int16_t ply) {
     int32_t moveScore = 0;
     
     if(!move.isQuiet()) {
@@ -171,7 +171,7 @@ inline int32_t SingleThreadedSearchTree::scoreMove(Move& move, int16_t ply) {
     return moveScore;
 }
 
-void SingleThreadedSearchTree::sortMovesAtRoot(Array<Move, 256>& moves) {
+void SingleThreadedEngine::sortMovesAtRoot(Array<Move, 256>& moves) {
     Array<MoveScorePair, 256> msp;
     
     std::vector<Move> bestMovesFromLastDepth;
@@ -201,11 +201,11 @@ void SingleThreadedSearchTree::sortMovesAtRoot(Array<Move, 256>& moves) {
         moves.push_back(pair.move);
 }
 
-void SingleThreadedSearchTree::sortMoves(Array<Move, 256>& moves, int16_t ply) {
+void SingleThreadedEngine::sortMoves(Array<Move, 256>& moves, int16_t ply) {
     sortAndCutMoves(moves, ply, MIN_SCORE);
 }
 
-void SingleThreadedSearchTree::sortAndCutMovesForQuiescence(Array<Move, 256>& moves, int32_t minScore, int32_t moveEvalFunc) {
+void SingleThreadedEngine::sortAndCutMovesForQuiescence(Array<Move, 256>& moves, int32_t minScore, int32_t moveEvalFunc) {
     Array<MoveScorePair, 256> msp;
 
     for(Move move : moves) {
@@ -236,7 +236,7 @@ void SingleThreadedSearchTree::sortAndCutMovesForQuiescence(Array<Move, 256>& mo
         moves.push_back(msPair.move);
 }
 
-void SingleThreadedSearchTree::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t minScore) {
+void SingleThreadedEngine::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t minScore) {
     Array<MoveScorePair, 256> msp;
 
     TranspositionTableEntry ttEntry;
@@ -264,7 +264,7 @@ void SingleThreadedSearchTree::sortAndCutMoves(Array<Move, 256>& moves, int16_t 
         moves.push_back(pair.move);
 }
 
-int16_t SingleThreadedSearchTree::rootSearch(int16_t depth, int16_t expectedScore) {
+int16_t SingleThreadedEngine::rootSearch(int16_t depth, int16_t expectedScore) {
     int32_t aspAlphaReduction = ASP_WINDOW, numAlphaReduction = 1;
     int32_t aspBetaReduction = ASP_WINDOW, numBetaReduction = 1;
 
@@ -308,7 +308,7 @@ int16_t SingleThreadedSearchTree::rootSearch(int16_t depth, int16_t expectedScor
     return variations.front().score;
 }
 
-int16_t SingleThreadedSearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
+int16_t SingleThreadedEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
     if(!searching)
         return 0;
 
@@ -460,7 +460,7 @@ int16_t SingleThreadedSearchTree::pvSearchRoot(int16_t depth, int16_t alpha, int
     return worstVariationScore;
 }
 
-int16_t SingleThreadedSearchTree::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, bool nullMoveAllowed) {
+int16_t SingleThreadedEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, bool nullMoveAllowed) {
     if(!searching)
         return 0;
 
@@ -626,7 +626,7 @@ int16_t SingleThreadedSearchTree::pvSearch(int16_t depth, int16_t ply, int16_t a
     return bestScore;
 }
 
-int16_t SingleThreadedSearchTree::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, bool nullMoveAllowed) {
+int16_t SingleThreadedEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, bool nullMoveAllowed) {
     if(!searching)
         return 0;
 
@@ -782,7 +782,7 @@ int16_t SingleThreadedSearchTree::nwSearch(int16_t depth, int16_t ply, int16_t a
     return bestScore;
 }
 
-inline int16_t SingleThreadedSearchTree::determineExtension(bool isThreat, bool isMateThreat, bool isCheckEvasion) {
+inline int16_t SingleThreadedEngine::determineExtension(bool isThreat, bool isMateThreat, bool isCheckEvasion) {
     int16_t extension = 0;
 
     Move m = searchBoard.getLastMove();
@@ -828,7 +828,7 @@ inline int16_t SingleThreadedSearchTree::determineExtension(bool isThreat, bool 
     return extension;
 }
 
-inline int16_t SingleThreadedSearchTree::determineReduction(int16_t depth, int16_t ply, int32_t moveCount, bool isCheckEvasion) {
+inline int16_t SingleThreadedEngine::determineReduction(int16_t depth, int16_t ply, int32_t moveCount, bool isCheckEvasion) {
     int16_t reduction = 0;
 
     bool isCheck = searchBoard.isCheck();
@@ -852,7 +852,7 @@ inline int16_t SingleThreadedSearchTree::determineReduction(int16_t depth, int16
     return reduction;
 }
 
-int16_t SingleThreadedSearchTree::quiescence(int16_t alpha, int16_t beta) {
+int16_t SingleThreadedEngine::quiescence(int16_t alpha, int16_t beta) {
     if(!searching)
         return 0;
 
