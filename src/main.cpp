@@ -64,17 +64,10 @@ int main() {
 
     // st.search(20000);
 
-    int32_t computerTime = 30000;
+    int32_t computerTime = 300000;
     
     Move move;
     while(board.generateLegalMoves().size() > 0 && !evaluator.isDraw()) {
-        move = getUserMove(board);
-        board.makeMove(move);
-
-        if(board.generateLegalMoves().size() == 0 || evaluator.isDraw()) {
-            break;
-        }
-
         std::cout << std::endl << "Thinking..." << std::endl;
         auto start = std::chrono::high_resolution_clock::now();
         st.search(computerTime, true);
@@ -88,6 +81,13 @@ int main() {
 
         move = st.getBestMove();
         std::cout << std::endl << "Depth: " << st.getLastSearchDepth() << " Computer move: " << toFigurineAlgebraicNotation(move, board) << std::endl << std::endl;
+        board.makeMove(move);
+
+        if(board.generateLegalMoves().size() == 0 || evaluator.isDraw()) {
+            break;
+        }
+
+        move = getUserMove(board);
         board.makeMove(move);
     }
 
