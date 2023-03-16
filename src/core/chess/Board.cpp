@@ -104,6 +104,7 @@ Board::Board(std::string fen) {
                 case 'R': piece = WHITE_ROOK; break;
                 case 'Q': piece = WHITE_QUEEN; break;
                 case 'K': piece = WHITE_KING; break;
+                default: throw std::invalid_argument("Invalid FEN string: " + std::to_string(c) + " is not a valid piece character");
             }
             int square = FR2SQ(file, rank);
             pieces[square] = piece;
@@ -111,9 +112,24 @@ Board::Board(std::string fen) {
             file++;
         }
     }
+
+    // Überprüfe, zwei Könige vorhanden sind und keine Bauern auf der 1. oder 8. Reihe stehen
+    if(pieceList[WHITE_KING].size() != 1 || pieceList[BLACK_KING].size() != 1)
+        throw std::invalid_argument("Invalid FEN string: There must be exactly one white and one black king");
+    
+    for(int32_t square : pieceList[WHITE_PAWN])
+        if(SQ2R(square) == RANK_1 || SQ2R(square) == RANK_8)
+            throw std::invalid_argument("Invalid FEN string: There must not be any white pawns on the first or eighth rank");
+    
+    for(int32_t square : pieceList[BLACK_PAWN])
+        if(SQ2R(square) == RANK_1 || SQ2R(square) == RANK_8)
+            throw std::invalid_argument("Invalid FEN string: There must not be any black pawns on the first or eighth rank");
     
     fen = fen.substr(indexNextSection + 1);
     indexNextSection = fen.find(' ');
+
+    if(fen[0] != 'w' && fen[0] != 'b')
+        throw std::invalid_argument("Invalid FEN string: " + std::to_string(fen[0]) + " is not a valid side character");
 
     // Zugfarbe auslesen
     side = fen[0] == 'w' ? WHITE : BLACK;
@@ -129,6 +145,8 @@ Board::Board(std::string fen) {
             case 'Q': castlingPermission |= WHITE_QUEENSIDE_CASTLE; break;
             case 'k': castlingPermission |= BLACK_KINGSIDE_CASTLE; break;
             case 'q': castlingPermission |= BLACK_QUEENSIDE_CASTLE; break;
+            case '-': break;
+            default: throw std::invalid_argument("Invalid FEN string: " + std::to_string(c) + " is not a valid castling character");
         }
     }
     fen = fen.substr(indexNextSection + 1);
@@ -140,6 +158,14 @@ Board::Board(std::string fen) {
         int file = fenEnPassant[0] - 'a';
         int rank = fenEnPassant[1] - '1';
         enPassantSquare = FR2SQ(file, rank);
+
+        if(Mailbox::mailbox[enPassantSquare] == NO_SQ)
+            throw std::invalid_argument("Invalid FEN string: En Passant square is not on the board");
+
+        if(side == WHITE && rank != RANK_6)
+            throw std::invalid_argument("Invalid FEN string: En Passant square is not on rank 6");
+        else if(side == BLACK && rank != RANK_3)
+            throw std::invalid_argument("Invalid FEN string: En Passant square is not on rank 3");
     }
     else {
         enPassantSquare = NO_SQ;
@@ -149,10 +175,16 @@ Board::Board(std::string fen) {
 
     // Status der 50-Züge-Regel auslesen
     fiftyMoveRule = std::stoi(fen.substr(0, indexNextSection));
+    if(fiftyMoveRule < 0)
+        throw std::invalid_argument("Invalid FEN string: Fifty move rule is negative");
+
     fen = fen.substr(indexNextSection + 1);
 
     // Anzahl der bereits gespielten Züge auslesen
     int plyAdd = side == WHITE ? 0 : 1;
+    if(std::stoi(fen) < 0)
+        throw std::invalid_argument("Invalid FEN string: Number of played moves is negative");
+
     ply = (std::stoi(fen) - 1) * 2 + plyAdd;
 
     generateBitboards();

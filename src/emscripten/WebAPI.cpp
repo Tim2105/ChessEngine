@@ -6,7 +6,17 @@
 #include <string>
 
 extern "C" void EMSCRIPTEN_KEEPALIVE setBoard(const char* fen) {
-    board = Board(fen);
+    try {board = Board(fen);}
+    catch(std::exception& e) {
+        board = Board();
+
+        if(errorMsg != nullptr) {
+            delete[] errorMsg;
+        }
+
+        errorMsg = new char[strlen(e.what()) + 1];
+        strcpy(errorMsg, e.what());
+    }
 }
 
 extern "C" void EMSCRIPTEN_KEEPALIVE initGame() {
@@ -16,15 +26,18 @@ extern "C" void EMSCRIPTEN_KEEPALIVE initGame() {
     isAnalysis = false;
 }
 
-extern "C" void EMSCRIPTEN_KEEPALIVE initAnalysis() {
+extern "C" void EMSCRIPTEN_KEEPALIVE initAnalysis(int32_t lines) {
+    if(lines < 1)
+        lines = 1;
+
     st.setBoard(board);
-    st.setNumVariations(4);
+    st.setNumVariations(lines);
     
     isAnalysis = true;
 }
 
 extern "C" void EMSCRIPTEN_KEEPALIVE search(int32_t time) {
-    st.search(time, isAnalysis);
+    st.search(time, !isAnalysis, isAnalysis);
 }
 
 extern "C" void EMSCRIPTEN_KEEPALIVE stop() {
@@ -60,17 +73,25 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE getLegalMoves() {
         delete[] legalMoves;
     }
 
-    std::string moves = "[";
+    std::string moves = "{";
 
     for(Move move : board.generateLegalMoves()) {
-        moves += "\"" + toFigurineAlgebraicNotation(move, board) + "\",";
-    }
+        moves += "\"" + toStandardAlgebraicNotation(move, board) + "\":";
 
+        moves += "{";
+
+        moves += "\"from\":\"" + move.toString().substr(0, 2) + "\",";
+        moves += "\"to\":\"" + move.toString().substr(2, 2) + "\"";
+
+        moves += "}";
+
+        moves += ",";
+    }
 
     if(moves.length() > 1)
         moves.pop_back();
     
-    moves += "]";
+    moves += "}";
 
     legalMoves = new char[moves.length() + 1];
     strcpy(legalMoves, moves.c_str());
@@ -136,6 +157,15 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE getVariationAnalysis() {
     strcpy(variationAnalysis, analysis.c_str());
 
     return variationAnalysis;
+}
+
+extern "C" char* EMSCRIPTEN_KEEPALIVE getErrorMsg() {
+    if(errorMsg == nullptr) {
+        errorMsg = new char[1];
+        errorMsg[0] = '\0';
+    }
+
+    return errorMsg;
 }
 
 #endif
