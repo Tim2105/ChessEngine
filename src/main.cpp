@@ -63,6 +63,8 @@ int main() {
     SingleThreadedEngine st(evaluator);
 
     st.search(20000);
+
+    // int32_t computerTime = 300000;
     
     // Move move;
     // while(board.generateLegalMoves().size() > 0 && !evaluator.isDraw()) {
@@ -74,7 +76,16 @@ int main() {
     //     }
 
     //     std::cout << std::endl << "Thinking..." << std::endl;
-    //     st.search(10000);
+    //     auto start = std::chrono::high_resolution_clock::now();
+    //     st.search(computerTime, true);
+    //     auto end = std::chrono::high_resolution_clock::now();
+
+    //     int32_t timeSpent = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    //     computerTime -= timeSpent;
+
+    //     std::cout << "Remaining time: " << computerTime << " ms" << std::endl;
+
     //     move = st.getBestMove();
     //     std::cout << std::endl << "Depth: " << st.getLastSearchDepth() << " Computer move: " << toFigurineAlgebraicNotation(move, board) << std::endl << std::endl;
     //     board.makeMove(move);

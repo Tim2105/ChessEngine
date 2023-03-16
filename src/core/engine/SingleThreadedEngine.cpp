@@ -42,14 +42,9 @@ void SingleThreadedEngine::clearKillerMoves() {
     }
 }
 
-void SingleThreadedEngine::shiftKillerMoves() {
-    for(int i = 1; i < 256; i++) {
-        killerMoves[i - 1][0] = killerMoves[i][0];
-        killerMoves[i - 1][1] = killerMoves[i][1];
-    }
-}
+void SingleThreadedEngine::runSearch(bool timeControl, uint32_t minTime, uint32_t maxTime) {
+    std::vector<Variation> principalVariationHistory;
 
-void SingleThreadedEngine::runSearch() {
     int16_t score = evaluator.evaluate();
 
     auto start = std::chrono::system_clock::now();
@@ -69,6 +64,14 @@ void SingleThreadedEngine::runSearch() {
         }
 
         std::cout << std::endl;
+
+        principalVariationHistory.push_back({
+                getPrincipalVariation(),
+                getBestMoveScore()
+        });
+
+        if(timeControl && !extendSearchUnderTimeControl(principalVariationHistory, minTime, maxTime, elapsed))
+            break;
     }
 
     if(searching) {
@@ -79,7 +82,69 @@ void SingleThreadedEngine::runSearch() {
     searching = false;
 }
 
-void SingleThreadedEngine::search(uint32_t searchTime, bool dontBlock) {
+bool SingleThreadedEngine::extendSearchUnderTimeControl(std::vector<Variation> pvHistory, uint32_t minTime, uint32_t maxTime, uint32_t timeSpent) {
+    // Wenn die Suche weniger als 5 Durchläufe durchgeführt hat, dann wird die Suche nicht unterbrochen
+    if(pvHistory.size() < 5)
+        return true;
+
+    // Wenn die Suche die minimale Zeit noch nicht erreicht hat, dann wird die Suche nicht unterbrochen
+    if(timeSpent < minTime)
+        return true;
+
+    // Wenn die Suche die maximale Zeit erreicht hat, dann wird die Suche unterbrochen
+    if(timeSpent >= maxTime)
+        return false;
+    
+    // Berechne die Standardabweichung der Bewertungen der letzten 5 Durchläufe
+    double scoreStandardDeviation = 0;
+
+    for(size_t i = pvHistory.size() - 5; i < pvHistory.size(); i++) {
+        scoreStandardDeviation += pow(pvHistory[i].score - pvHistory[pvHistory.size() - 1].score, 2);
+    }
+
+    scoreStandardDeviation = sqrt(scoreStandardDeviation / 5);
+
+    // Wenn die Standardabweichung der Bewertungen der letzten 5 Durchläufe kleiner als 10 ist, dann wird die Suche unterbrochen
+    if(scoreStandardDeviation < 10.0)
+        return false;
+
+    // Bestimme, wie häufig der momentane beste Zug auch in den letzten 4 Durchläufen der Suche der beste Zug war
+    int32_t bestMoveChanges = 0;
+
+    for(size_t i = pvHistory.size() - 5; i < pvHistory.size() - 1; i++) {
+        if(pvHistory[i].moves[0] != pvHistory[pvHistory.size() - 1].moves[0])
+            bestMoveChanges++;
+    }
+
+    // Bestimme, ob es sich lohnt die Suche zu verlängern
+
+    // Berechne anhand der Zeit, wie viel Spielraum bei der Standardabweichung erlaubt ist
+    double timeFactor = (double) timeSpent / (double) maxTime;
+    
+    // Wenn sich der beste Zug in den letzten 5 Durchläufen mindestens 3 mal geändert hat, dann wird die Suche verlängert
+    if(bestMoveChanges >= 3)
+        return true;
+
+    // Wenn sich  der beste Zug in den letzten 5 Durchläufen mindestens 2 mal geändert hat, dann wird die Suche verlängert,
+    // wenn die Standardabweichung der Bewertungen der letzten 5 Durchläufe größer als 30 ist
+    if(bestMoveChanges >= 2 && scoreStandardDeviation > 30.0 * (timeFactor + 0.5))
+        return true;
+
+    // Wenn sich  der beste Zug in den letzten 5 Durchläufen mindestens 1 mal geändert hat, dann wird die Suche verlängert,
+    // wenn die Standardabweichung der Bewertungen der letzten 5 Durchläufe größer als 45 ist
+    if(bestMoveChanges >= 1 && scoreStandardDeviation > 45.0 * (timeFactor + 0.5))
+        return true;
+
+    // Wenn sich  der beste Zug in den letzten 5 Durchläufen nicht geändert hat, dann wird die Suche verlängert,
+    // wenn die Standardabweichung der Bewertungen der letzten 5 Durchläufe größer als 60 ist
+    if(bestMoveChanges == 0 && scoreStandardDeviation > 60.0 * (timeFactor + 0.5))
+        return true;
+
+    // Ansonsten wird die Suche nicht verlängert
+    return false;
+}
+
+void SingleThreadedEngine::search(uint32_t searchTime, bool treatAsTimeControl, bool dontBlock) {
     if(searching)
         stop();
 
@@ -96,10 +161,24 @@ void SingleThreadedEngine::search(uint32_t searchTime, bool dontBlock) {
     clearKillerMoves();
     clearVariations();
 
-    if(searchTime > 0)
-        timerThread = std::thread(std::bind(&SingleThreadedEngine::searchTimer, this, searchTime));
+    if(treatAsTimeControl) {
+        int32_t numLegalMoves = searchBoard.generateLegalMoves().size();
 
-    searchThread = std::thread(std::bind(&SingleThreadedEngine::runSearch, this));
+        uint32_t minTime = searchTime * 0.05 * exp(-0.05 * std::max(40 - numLegalMoves, 0)) + 30;
+        uint32_t maxTime = searchTime * 0.33;
+
+        if(maxTime < minTime)
+            maxTime = minTime;
+
+        timerThread = std::thread(std::bind(&SingleThreadedEngine::searchTimer, this, maxTime));
+
+        searchThread = std::thread(std::bind(&SingleThreadedEngine::runSearch, this, true, minTime, maxTime));
+    } else {
+        if(searchTime > 0)
+            timerThread = std::thread(std::bind(&SingleThreadedEngine::searchTimer, this, searchTime));
+
+        searchThread = std::thread(std::bind(&SingleThreadedEngine::runSearch, this, false, 0, 0));
+    }
 
     if(!dontBlock) {
         if(timerThread.joinable())
