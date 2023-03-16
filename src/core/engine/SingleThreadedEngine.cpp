@@ -104,10 +104,6 @@ bool SingleThreadedEngine::extendSearchUnderTimeControl(std::vector<Variation> p
 
     scoreStandardDeviation = sqrt(scoreStandardDeviation / 5);
 
-    // Wenn die Standardabweichung der Bewertungen der letzten 5 Durchläufe kleiner als 10 ist, dann wird die Suche unterbrochen
-    if(scoreStandardDeviation < 10.0)
-        return false;
-
     // Bestimme, wie häufig der momentane beste Zug auch in den letzten 4 Durchläufen der Suche der beste Zug war
     int32_t bestMoveChanges = 0;
 
@@ -119,25 +115,25 @@ bool SingleThreadedEngine::extendSearchUnderTimeControl(std::vector<Variation> p
     // Bestimme, ob es sich lohnt die Suche zu verlängern
 
     // Berechne anhand der Zeit, wie viel Spielraum bei der Standardabweichung erlaubt ist
-    double timeFactor = (double) timeSpent / (double) maxTime;
+    double timeFactor = ((double) timeSpent - (double) minTime) / ((double) maxTime - (double) minTime);
     
-    // Wenn sich der beste Zug in den letzten 5 Durchläufen mindestens 3 mal geändert hat, dann wird die Suche verlängert
-    if(bestMoveChanges >= 3)
+    // Wenn sich der beste Zug in den letzten 5 Durchläufen mindestens 4 mal geändert hat, dann wird die Suche verlängert
+    if(bestMoveChanges >= 4)
         return true;
 
-    // Wenn sich  der beste Zug in den letzten 5 Durchläufen mindestens 2 mal geändert hat, dann wird die Suche verlängert,
+    // Wenn sich der beste Zug in den letzten 5 Durchläufen mindestens 3 mal geändert hat, dann wird die Suche verlängert,
     // wenn die Standardabweichung der Bewertungen der letzten 5 Durchläufe größer als 30 ist
-    if(bestMoveChanges >= 2 && scoreStandardDeviation > 30.0 * (timeFactor + 0.5))
+    if(bestMoveChanges >= 3 && scoreStandardDeviation > 30.0 * (timeFactor + 0.5))
         return true;
 
-    // Wenn sich  der beste Zug in den letzten 5 Durchläufen mindestens 1 mal geändert hat, dann wird die Suche verlängert,
+    // Wenn sich der beste Zug in den letzten 5 Durchläufen mindestens 2 mal geändert hat, dann wird die Suche verlängert,
     // wenn die Standardabweichung der Bewertungen der letzten 5 Durchläufe größer als 45 ist
-    if(bestMoveChanges >= 1 && scoreStandardDeviation > 45.0 * (timeFactor + 0.5))
+    if(bestMoveChanges >= 2 && scoreStandardDeviation > 45.0 * (timeFactor + 0.5))
         return true;
 
-    // Wenn sich  der beste Zug in den letzten 5 Durchläufen nicht geändert hat, dann wird die Suche verlängert,
+    // Wenn sich der beste Zug in den letzten 5 Durchläufen mindestens 1 mal geändert hat, dann wird die Suche verlängert,
     // wenn die Standardabweichung der Bewertungen der letzten 5 Durchläufe größer als 60 ist
-    if(bestMoveChanges == 0 && scoreStandardDeviation > 60.0 * (timeFactor + 0.5))
+    if(bestMoveChanges >= 1 && scoreStandardDeviation > 60.0 * (timeFactor + 0.5))
         return true;
 
     // Ansonsten wird die Suche nicht verlängert
@@ -164,11 +160,14 @@ void SingleThreadedEngine::search(uint32_t searchTime, bool treatAsTimeControl, 
     if(treatAsTimeControl) {
         int32_t numLegalMoves = searchBoard.generateLegalMoves().size();
 
-        uint32_t minTime = searchTime * 0.05 * exp(-0.05 * std::max(40 - numLegalMoves, 0)) + 30;
-        uint32_t maxTime = searchTime * 0.33;
+        double oneFourthiethOfSearchTime = (double) searchTime / 40.0;
+        uint32_t minTime = oneFourthiethOfSearchTime - oneFourthiethOfSearchTime * exp(-0.08  *(numLegalMoves - 1)) + 30.0;
+        uint32_t maxTime = searchTime * 0.25;
 
         if(maxTime < minTime)
-            maxTime = minTime;
+            minTime = maxTime;
+
+        std::cout << "Min time: " << minTime << "ms, max time: " << maxTime << "ms" << std::endl;
 
         timerThread = std::thread(std::bind(&SingleThreadedEngine::searchTimer, this, maxTime));
 

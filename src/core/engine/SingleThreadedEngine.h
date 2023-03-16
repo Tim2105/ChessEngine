@@ -27,10 +27,6 @@
 #define MVVLVA 0
 #define SEE 1
 
-#define ASP_WINDOW 25
-#define ASP_STEP_FACTOR 4
-#define ASP_MAX_DEPTH 2
-
 #define ONE_PLY 6
 #define ONE_SIXTH_PLY 1
 #define ONE_THIRD_PLY 2
@@ -140,6 +136,10 @@ class SingleThreadedEngine : public Engine {
         }
 
     private:
+        static constexpr int32_t ASP_WINDOW = 15;
+        static constexpr int32_t ASP_STEP_FACTOR = 4;
+        static constexpr int32_t ASP_MAX_DEPTH = 3;
+
         static constexpr int32_t DEFAULT_CAPTURE_MOVE_SCORE = 100;
 
         static constexpr int32_t NEUTRAL_SEE_SCORE = 0;
