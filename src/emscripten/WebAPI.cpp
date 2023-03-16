@@ -9,7 +9,7 @@ extern "C" void EMSCRIPTEN_KEEPALIVE setBoard(const char* fen) {
     try {board = Board(fen);}
     catch(std::exception& e) {
         board = Board();
-
+        
         if(errorMsg != nullptr) {
             delete[] errorMsg;
         }
@@ -166,6 +166,13 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE getErrorMsg() {
     }
 
     return errorMsg;
+}
+
+extern "C" void EMSCRIPTEN_KEEPALIVE clearErrorMsg() {
+    if(errorMsg != nullptr) {
+        delete[] errorMsg;
+        errorMsg = nullptr;
+    }
 }
 
 #endif

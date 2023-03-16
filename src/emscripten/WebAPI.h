@@ -37,5 +37,7 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE getVariationAnalysis();
 
 extern "C" char* EMSCRIPTEN_KEEPALIVE getErrorMsg();
 
+extern "C" void EMSCRIPTEN_KEEPALIVE clearErrorMsg();
+
 #endif
 #endif
