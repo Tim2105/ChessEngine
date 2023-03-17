@@ -14,7 +14,7 @@ void SingleThreadedEngine::searchTimer(uint32_t searchTime) {
         auto end = std::chrono::system_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-        if(elapsed >= searchTime && searchTime > 0)
+        if(elapsed >= searchTime && searchTime > 0 && variations.size() > 0)
             searching = false;
     }
 }
@@ -57,13 +57,13 @@ void SingleThreadedEngine::runSearch(bool timeControl, uint32_t minTime, uint32_
         auto end = std::chrono::system_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-        std::cout << "info depth " << depth / ONE_PLY << " score cp " << score << " time " << elapsed << " nodes " << nodesSearched << " pv ";
+        // std::cout << "info depth " << depth / ONE_PLY << " score cp " << score << " time " << elapsed << " nodes " << nodesSearched << " pv ";
 
-        for(std::string move : variationToFigurineAlgebraicNotation(getPrincipalVariation(), searchBoard)) {
-            std::cout << move << " ";
-        }
+        // for(std::string move : variationToFigurineAlgebraicNotation(getPrincipalVariation(), searchBoard)) {
+        //     std::cout << move << " ";
+        // }
 
-        std::cout << std::endl;
+        // std::cout << std::endl;
 
         principalVariationHistory.push_back({
                 getPrincipalVariation(),
@@ -166,9 +166,9 @@ void SingleThreadedEngine::search(uint32_t searchTime, bool treatAsTimeControl, 
     if(treatAsTimeControl) {
         int32_t numLegalMoves = searchBoard.generateLegalMoves().size();
 
-        double oneFourthiethOfSearchTime = (double) searchTime / 40.0;
-        uint32_t minTime = oneFourthiethOfSearchTime - oneFourthiethOfSearchTime * exp(-0.08  *(numLegalMoves - 1)) + 30.0;
-        uint32_t maxTime = searchTime * 0.25;
+        double oneHundredthOfSearchTime = (double) searchTime / 100.0;
+        uint32_t minTime = oneHundredthOfSearchTime - oneHundredthOfSearchTime * exp(-0.05  *(numLegalMoves - 1));
+        uint32_t maxTime = searchTime * 0.2;
 
         if(maxTime < minTime)
             minTime = maxTime;
