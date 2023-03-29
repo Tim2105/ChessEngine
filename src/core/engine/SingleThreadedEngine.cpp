@@ -167,7 +167,7 @@ void SingleThreadedEngine::search(uint32_t searchTime, bool treatAsTimeControl, 
         int32_t numLegalMoves = searchBoard.generateLegalMoves().size();
 
         double oneHundredthOfSearchTime = (double) searchTime / 100.0;
-        uint32_t minTime = oneHundredthOfSearchTime - oneHundredthOfSearchTime * exp(-0.05  *(numLegalMoves - 1));
+        uint32_t minTime = oneHundredthOfSearchTime - oneHundredthOfSearchTime * pow(10, -0.03  *(numLegalMoves - 1));
         uint32_t maxTime = searchTime * 0.2;
 
         if(maxTime < minTime)
