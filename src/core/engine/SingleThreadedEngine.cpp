@@ -168,7 +168,7 @@ void SingleThreadedEngine::search(uint32_t searchTime, bool treatAsTimeControl, 
 
         double oneHundredthOfSearchTime = (double) searchTime / 100.0;
         uint32_t minTime = oneHundredthOfSearchTime - oneHundredthOfSearchTime * pow(10, -0.03  *(numLegalMoves - 1));
-        uint32_t maxTime = searchTime * 0.2;
+        uint32_t maxTime = std::max(searchTime * 0.2 - 20.0, 0.0);
 
         if(maxTime < minTime)
             minTime = maxTime;

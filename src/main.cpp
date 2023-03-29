@@ -64,7 +64,7 @@ int main() {
 
     // st.search(20000);
 
-    int32_t computerTime = 20000;
+    int32_t computerTime = 10000;
     
     Move move;
     while(board.generateLegalMoves().size() > 0 && !evaluator.isDraw()) {
