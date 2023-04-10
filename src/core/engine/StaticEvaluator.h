@@ -1,5 +1,5 @@
-#ifndef NEW_EVALUATOR_H
-#define NEW_EVALUATOR_H
+#ifndef STATIC_EVALUATOR_H
+#define STATIC_EVALUATOR_H
 
 #include "core/chess/Board.h"
 #include "core/engine/Evaluator.h"

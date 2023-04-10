@@ -36,6 +36,8 @@
 
 #define MAX_PLY 256
 
+#define NULL_MOVE_R_VALUE 3
+
 class SingleThreadedEngine : public Engine {
     private:
         TranspositionTable<2097152, 4> transpositionTable;
@@ -84,9 +86,9 @@ class SingleThreadedEngine : public Engine {
 
         int16_t pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta);
 
-        int16_t pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, bool nullMoveAllowed = true);
+        int16_t pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, int32_t nullMoveCooldown);
 
-        int16_t nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, bool nullMoveAllowed = true);
+        int16_t nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, int32_t nullMoveCooldown);
 
         int16_t quiescence(int16_t alpha, int16_t beta);
 

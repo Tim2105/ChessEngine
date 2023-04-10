@@ -166,12 +166,11 @@ void SingleThreadedEngine::search(uint32_t searchTime, bool treatAsTimeControl, 
     if(treatAsTimeControl) {
         int32_t numLegalMoves = searchBoard.generateLegalMoves().size();
 
-        double oneHundredthOfSearchTime = (double) searchTime / 100.0;
-        uint32_t minTime = oneHundredthOfSearchTime - oneHundredthOfSearchTime * pow(10, -0.03  *(numLegalMoves - 1));
-        uint32_t maxTime = std::max(searchTime * 0.2 - 20.0, 0.0);
+        double oneFiftiethOfSearchTime = searchTime * 0.02;
+        double oneSixthOfSearchTime = searchTime * 0.1667;
 
-        if(maxTime < minTime)
-            minTime = maxTime;
+        uint32_t minTime = oneFiftiethOfSearchTime - oneFiftiethOfSearchTime * exp(-0.08  *(numLegalMoves - 1));
+        uint32_t maxTime = oneSixthOfSearchTime - oneSixthOfSearchTime * exp(-0.08  *(numLegalMoves - 1));
 
         std::cout << "Min time: " << minTime << "ms, max time: " << maxTime << "ms" << std::endl;
 
@@ -451,11 +450,11 @@ int16_t SingleThreadedEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t
         nwDepthDelta = std::min(nwDepthDelta, minReduction);
 
         if(pvNodes > 0) {
-            score = -pvSearch(depth - ONE_PLY, 1, -beta, -alpha);
+            score = -pvSearch(depth - ONE_PLY, 1, -beta, -alpha, 1);
         } else {
-            score = -nwSearch(depth + nwDepthDelta, 1, -alpha - 1, -alpha);
+            score = -nwSearch(depth + nwDepthDelta, 1, -alpha - 1, -alpha, 1);
             if(score > worstVariationScore)
-                score = -pvSearch(depth - ONE_PLY, 1, -beta, -alpha);
+                score = -pvSearch(depth - ONE_PLY, 1, -beta, -alpha, 1);
         }
 
         searchBoard.undoMove();
@@ -544,7 +543,7 @@ int16_t SingleThreadedEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t
     return worstVariationScore;
 }
 
-int16_t SingleThreadedEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, bool nullMoveAllowed) {
+int16_t SingleThreadedEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, int32_t nullMoveCooldown) {
     if(!searching)
         return 0;
 
@@ -582,43 +581,6 @@ int16_t SingleThreadedEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha
 
     int32_t moveNumber = 1;
     bool isCheckEvasion = searchBoard.isCheck();
-    bool isThreat = false, isMateThreat = false;
-
-    // Null move pruning
-    if(nullMoveAllowed && !isCheckEvasion && (depth >= 4 * ONE_PLY) && !isMateLine()) {
-        int32_t side = searchBoard.getSideToMove();
-        Bitboard minorOrMajorPieces;
-
-        if(side == WHITE)
-            minorOrMajorPieces = searchBoard.getWhiteOccupiedBitboard() & ~searchBoard.getPieceBitboard(WHITE | PAWN);
-        else
-            minorOrMajorPieces = searchBoard.getBlackOccupiedBitboard() & ~searchBoard.getPieceBitboard(BLACK | PAWN);
-
-        // Nullzug nur durchführen, wenn wir mindestens eine Leichtfigur haben          
-        if(minorOrMajorPieces) {
-            Move nullMove = Move::nullMove();
-            searchBoard.makeMove(nullMove);
-
-            int16_t depthReduction = 3 * ONE_PLY;
-
-            if(depth >= 8 * ONE_PLY)
-                depthReduction += ONE_PLY;
-
-            int16_t nullMoveScore = -nwSearch(depth - depthReduction, ply + 1, -beta, -alpha, false);
-
-            searchBoard.undoMove();
-
-            if(nullMoveScore >= beta) {
-                return nullMoveScore;
-            }
-
-            if(nullMoveScore < (alpha - THREAT_MARGIN))
-                isThreat = true;
-
-            if(IS_MATE_SCORE(nullMoveScore))
-                isMateThreat = true;
-        }
-    }
 
     sortMoves(moves, ply);
 
@@ -627,7 +589,7 @@ int16_t SingleThreadedEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha
 
         searchBoard.makeMove(move);
 
-        int16_t extension = determineExtension(isThreat, isMateThreat, isCheckEvasion);
+        int16_t extension = determineExtension(false, false, isCheckEvasion);
         int16_t nwReduction = determineReduction(depth, ply, moveNumber, isCheckEvasion);
 
         int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
@@ -637,11 +599,11 @@ int16_t SingleThreadedEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha
         nwDepthDelta = std::min(nwDepthDelta, minReduction);
 
         if(searchPv) {
-            score = -pvSearch(depth - ONE_PLY, ply + 1, -beta, -alpha);
+            score = -pvSearch(depth - ONE_PLY, ply + 1, -beta, -alpha, nullMoveCooldown - 1);
         } else {
-            score = -nwSearch(depth + nwDepthDelta, ply + 1, -alpha - 1, -alpha);
+            score = -nwSearch(depth + nwDepthDelta, ply + 1, -alpha - 1, -alpha, nullMoveCooldown - 1);
             if(score > alpha)
-                score = -pvSearch(depth - ONE_PLY, ply + 1, -beta, -alpha);
+                score = -pvSearch(depth - ONE_PLY, ply + 1, -beta, -alpha, nullMoveCooldown - 1);
         }
 
         searchBoard.undoMove();
@@ -710,7 +672,7 @@ int16_t SingleThreadedEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha
     return bestScore;
 }
 
-int16_t SingleThreadedEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, bool nullMoveAllowed) {
+int16_t SingleThreadedEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, int32_t nullMoveCooldown) {
     if(!searching)
         return 0;
 
@@ -742,7 +704,7 @@ int16_t SingleThreadedEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha
     bool isThreat = false, isMateThreat = false;
 
     // Null move pruning
-    if(nullMoveAllowed && !isCheckEvasion && (depth >= 4 * ONE_PLY) && !isMateLine()) {
+    if(nullMoveCooldown <= 0 && !isCheckEvasion && !isMateLine()) {
         int32_t side = searchBoard.getSideToMove();
         Bitboard minorOrMajorPieces;
 
@@ -751,7 +713,7 @@ int16_t SingleThreadedEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha
         else
             minorOrMajorPieces = searchBoard.getBlackOccupiedBitboard() & ~searchBoard.getPieceBitboard(BLACK | PAWN);
 
-        // Nullzug nur durchführen, wenn wir mindestens eine Leichtfigur haben          
+        // Nullzug nur durchführen, wenn wir mindestens eine Leichtfigur haben
         if(minorOrMajorPieces) {
             Move nullMove = Move::nullMove();
             searchBoard.makeMove(nullMove);
@@ -761,7 +723,7 @@ int16_t SingleThreadedEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha
             if(depth >= 8 * ONE_PLY)
                 depthReduction += ONE_PLY;
 
-            int16_t nullMoveScore = -nwSearch(depth - depthReduction, ply + 1, -beta, -alpha, false);
+            int16_t nullMoveScore = -nwSearch(depth - depthReduction, ply + 1, -beta, -alpha, NULL_MOVE_R_VALUE);
 
             searchBoard.undoMove();
 
@@ -806,12 +768,12 @@ int16_t SingleThreadedEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha
 
         nwDepthDelta = std::min(nwDepthDelta, minReduction);
 
-        int16_t score = -nwSearch(depth + nwDepthDelta, ply + 1, -beta, -alpha);
+        int16_t score = -nwSearch(depth + nwDepthDelta, ply + 1, -beta, -alpha, nullMoveCooldown - 1);
 
         // Wenn eine reduzierte Suche eine Bewertung > alpha liefert, dann
         // wird eine nicht reduzierte Suche durchgeführt.
         if(nwDepthDelta < -(ONE_PLY * 2) && score > alpha)
-            score = -nwSearch(depth - (ONE_PLY * 2), ply + 1, -beta, -alpha);
+            score = -nwSearch(depth - (ONE_PLY * 2), ply + 1, -beta, -alpha, nullMoveCooldown - 1);
 
         searchBoard.undoMove();
 
@@ -922,7 +884,7 @@ inline int16_t SingleThreadedEngine::determineReduction(int16_t depth, int16_t p
     if(moveCount <= unreducedMoves || isCheck || isCheckEvasion)
         return 0;
 
-    reduction += (int16_t)(sqrt(depth) + sqrt(std::max(moveCount - unreducedMoves, 0)) * ONE_PLY);
+    reduction += (int16_t)(sqrt(depth) + sqrt(std::max(moveCount - unreducedMoves, 0) * ONE_PLY));
 
     if(isMateLine()) {
         int16_t maxSearchPly = (int16_t)(currentMaxDepth / ONE_PLY);

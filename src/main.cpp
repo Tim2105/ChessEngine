@@ -62,7 +62,7 @@ int main() {
     StaticEvaluator evaluator(board);
     SingleThreadedEngine st(evaluator);
 
-    // st.search(20000);
+    // st.search(40000);
 
     int32_t computerTime = 10000;
     
@@ -82,7 +82,7 @@ int main() {
         move = st.getBestMove();
         std::cout << std::endl << "Depth: " << st.getLastSearchDepth() << " Computer move: " << toFigurineAlgebraicNotation(move, board) << std::endl << std::endl;
         board.makeMove(move);
-
+        
         if(board.generateLegalMoves().size() == 0 || evaluator.isDraw()) {
             break;
         }
@@ -90,6 +90,17 @@ int main() {
         move = getUserMove(board);
         board.makeMove(move);
     }
+
+    // Board board;
+
+    // StaticEvaluator evaluator(board);
+    // StaticEvaluator evaluator2(board);
+
+    // NewSingleThreadedEngine st(evaluator);
+    // SingleThreadedEngine st2(evaluator2);
+
+    // Tournament tournament(st, st2, "New Engine", "Old Engine");
+    // tournament.run();
 
     return 0;
 }
