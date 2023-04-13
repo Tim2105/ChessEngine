@@ -19,6 +19,19 @@ extern "C" void EMSCRIPTEN_KEEPALIVE setBoard(const char* fen) {
     }
 }
 
+extern "C" char* EMSCRIPTEN_KEEPALIVE getFen() {
+    if(fen != nullptr) {
+        delete[] fen;
+    }
+
+    std::string fenStr = board.fenString();
+
+    fen = new char[fenStr.length() + 1];
+    strcpy(fen, fenStr.c_str());
+
+    return fen;
+}
+
 extern "C" void EMSCRIPTEN_KEEPALIVE initGame() {
     st.setBoard(board);
     st.setNumVariations(1);
@@ -36,8 +49,12 @@ extern "C" void EMSCRIPTEN_KEEPALIVE initAnalysis(int32_t lines) {
     isAnalysis = true;
 }
 
-extern "C" void EMSCRIPTEN_KEEPALIVE search(int32_t time) {
-    st.search(time, !isAnalysis, isAnalysis);
+extern "C" void EMSCRIPTEN_KEEPALIVE search(int32_t time, const char* callback) {
+    std::function<void()> callbackFunc = [callback]() {
+        emscripten_run_script(callback);
+    };
+
+    st.search(time, callbackFunc, !isAnalysis, true);
 }
 
 extern "C" void EMSCRIPTEN_KEEPALIVE stop() {

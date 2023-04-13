@@ -33,7 +33,7 @@ OBJ = $(SRC:src/%.cpp=bin/obj/%.o)
 
 # Ausführbare Datei
 # Wird in den Ordner bin erstellt
-EXEC = bin/main.js bin/main.wasm
+EXEC = bin/chess.js bin/chess.wasm
 
 # Erstellt die Ausführbare Datei
 $(EXEC): $(OBJ)

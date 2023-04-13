@@ -6,6 +6,7 @@
 
 #include <atomic>
 #include <mutex>
+#include <functional>
 #include <stdint.h>
 
 #define MIN_SCORE -32000
@@ -82,6 +83,7 @@ class Engine {
         virtual ~Engine() {};
 
         virtual void search(uint32_t time, bool treatAsTimeControl = false, bool dontBlock = false) = 0;
+        virtual void search(uint32_t time, std::function<void()> callback, bool treatAsTimeControl, bool dontBlock) = 0;
         virtual void stop() = 0;
 
         inline void setNumVariations(uint32_t numVariations) {

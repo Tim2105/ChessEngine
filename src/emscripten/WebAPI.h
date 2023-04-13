@@ -11,6 +11,7 @@ Board board;
 StaticEvaluator evaluator(board);
 SingleThreadedEngine st(evaluator);
 
+char* fen = nullptr;
 char* legalMoves = nullptr;
 char* variationAnalysis = nullptr;
 char* errorMsg = nullptr;
@@ -19,11 +20,13 @@ bool isAnalysis = false;
 
 extern "C" void EMSCRIPTEN_KEEPALIVE setBoard(const char* fen);
 
+extern "C" char* EMSCRIPTEN_KEEPALIVE getFen();
+
 extern "C" void EMSCRIPTEN_KEEPALIVE initGame();
 
 extern "C" void EMSCRIPTEN_KEEPALIVE initAnalysis(int32_t lines);
 
-extern "C" void EMSCRIPTEN_KEEPALIVE search(int32_t time);
+extern "C" void EMSCRIPTEN_KEEPALIVE search(int32_t time, const char* callback);
 
 extern "C" void EMSCRIPTEN_KEEPALIVE stop();
 

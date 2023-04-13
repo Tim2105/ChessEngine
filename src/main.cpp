@@ -62,34 +62,32 @@ int main() {
     StaticEvaluator evaluator(board);
     SingleThreadedEngine st(evaluator);
 
-    // st.search(40000);
-
-    int32_t computerTime = 10000;
+    // int32_t computerTime = 10000;
     
-    Move move;
-    while(board.generateLegalMoves().size() > 0 && !evaluator.isDraw()) {
-        std::cout << std::endl << "Thinking..." << std::endl;
-        auto start = std::chrono::high_resolution_clock::now();
-        st.search(computerTime, true);
-        auto end = std::chrono::high_resolution_clock::now();
+    // Move move;
+    // while(board.generateLegalMoves().size() > 0 && !evaluator.isDraw()) {
+    //     std::cout << std::endl << "Thinking..." << std::endl;
+    //     auto start = std::chrono::high_resolution_clock::now();
+    //     st.search(computerTime, true);
+    //     auto end = std::chrono::high_resolution_clock::now();
 
-        int32_t timeSpent = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    //     int32_t timeSpent = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-        computerTime -= timeSpent;
+    //     computerTime -= timeSpent;
 
-        std::cout << "Remaining time: " << computerTime << " ms" << std::endl;
+    //     std::cout << "Remaining time: " << computerTime << " ms" << std::endl;
 
-        move = st.getBestMove();
-        std::cout << std::endl << "Depth: " << st.getLastSearchDepth() << " Computer move: " << toFigurineAlgebraicNotation(move, board) << std::endl << std::endl;
-        board.makeMove(move);
+    //     move = st.getBestMove();
+    //     std::cout << std::endl << "Depth: " << st.getLastSearchDepth() << " Computer move: " << toFigurineAlgebraicNotation(move, board) << std::endl << std::endl;
+    //     board.makeMove(move);
         
-        if(board.generateLegalMoves().size() == 0 || evaluator.isDraw()) {
-            break;
-        }
+    //     if(board.generateLegalMoves().size() == 0 || evaluator.isDraw()) {
+    //         break;
+    //     }
 
-        move = getUserMove(board);
-        board.makeMove(move);
-    }
+    //     move = getUserMove(board);
+    //     board.makeMove(move);
+    // }
 
     // Board board;
 

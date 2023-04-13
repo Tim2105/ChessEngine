@@ -68,7 +68,7 @@ class SingleThreadedEngine : public Engine {
 
         void searchTimer(uint32_t searchTime);
 
-        void runSearch(bool timeControl = false, uint32_t minTime = 0, uint32_t maxTime = 0);
+        void runSearch(const std::function<void()> callback, bool timeControl = false, uint32_t minTime = 0, uint32_t maxTime = 0);
 
         bool extendSearchUnderTimeControl(std::vector<Variation> pvHistory, uint32_t minTime, uint32_t maxTime, uint32_t timeSpent);
 
@@ -119,6 +119,7 @@ class SingleThreadedEngine : public Engine {
         }
 
         virtual void search(uint32_t searchTime, bool treatAsTimeControl = false, bool dontBlock = false) override;
+        virtual void search(uint32_t time, std::function<void()> callback, bool treatAsTimeControl, bool dontBlock) override;
 
         virtual void stop() override;
 

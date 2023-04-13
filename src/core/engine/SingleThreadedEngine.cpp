@@ -42,7 +42,7 @@ void SingleThreadedEngine::clearKillerMoves() {
     }
 }
 
-void SingleThreadedEngine::runSearch(bool timeControl, uint32_t minTime, uint32_t maxTime) {
+void SingleThreadedEngine::runSearch(const std::function<void()> callback, bool timeControl, uint32_t minTime, uint32_t maxTime) {
     std::vector<Variation> principalVariationHistory;
 
     int16_t score = evaluator.evaluate();
@@ -80,6 +80,8 @@ void SingleThreadedEngine::runSearch(bool timeControl, uint32_t minTime, uint32_
     }
 
     searching = false;
+
+    callback();
 }
 
 bool SingleThreadedEngine::extendSearchUnderTimeControl(std::vector<Variation> pvHistory, uint32_t minTime, uint32_t maxTime, uint32_t timeSpent) {
@@ -147,6 +149,10 @@ bool SingleThreadedEngine::extendSearchUnderTimeControl(std::vector<Variation> p
 }
 
 void SingleThreadedEngine::search(uint32_t searchTime, bool treatAsTimeControl, bool dontBlock) {
+    search(searchTime, []() {}, treatAsTimeControl, dontBlock);
+}
+
+void SingleThreadedEngine::search(uint32_t searchTime, std::function<void()> callback, bool treatAsTimeControl, bool dontBlock) {
     if(searching)
         stop();
 
@@ -176,12 +182,12 @@ void SingleThreadedEngine::search(uint32_t searchTime, bool treatAsTimeControl, 
 
         timerThread = std::thread(std::bind(&SingleThreadedEngine::searchTimer, this, maxTime));
 
-        searchThread = std::thread(std::bind(&SingleThreadedEngine::runSearch, this, true, minTime, maxTime));
+        searchThread = std::thread(std::bind(&SingleThreadedEngine::runSearch, this, callback, true, minTime, maxTime));
     } else {
         if(searchTime > 0)
             timerThread = std::thread(std::bind(&SingleThreadedEngine::searchTimer, this, searchTime));
 
-        searchThread = std::thread(std::bind(&SingleThreadedEngine::runSearch, this, false, 0, 0));
+        searchThread = std::thread(std::bind(&SingleThreadedEngine::runSearch, this, callback, false, 0, 0));
     }
 
     if(!dontBlock) {
