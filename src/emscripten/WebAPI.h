@@ -7,40 +7,43 @@
 
 #include <emscripten.h>
 
-Board board;
-StaticEvaluator evaluator(board);
-SingleThreadedEngine st(evaluator);
+extern Board board;
+extern StaticEvaluator evaluator;
+extern SingleThreadedEngine st;
 
-char* fen = nullptr;
-char* legalMoves = nullptr;
-char* variationAnalysis = nullptr;
-char* errorMsg = nullptr;
+extern char* fen;
+extern char* legalMoves;
+extern char* variationAnalysis;
+extern char* errorMsg;
 
-bool isAnalysis = false;
+extern bool isAnalysis;
+extern bool searchRunning;
 
-extern "C" void EMSCRIPTEN_KEEPALIVE setBoard(const char* fen);
+EMSCRIPTEN_KEEPALIVE extern "C" void setBoard(const char* fen);
 
-extern "C" char* EMSCRIPTEN_KEEPALIVE getFen();
+EMSCRIPTEN_KEEPALIVE extern "C" char* getFen();
 
-extern "C" void EMSCRIPTEN_KEEPALIVE initGame();
+EMSCRIPTEN_KEEPALIVE extern "C" void initGame();
 
-extern "C" void EMSCRIPTEN_KEEPALIVE initAnalysis(int32_t lines);
+EMSCRIPTEN_KEEPALIVE extern "C" void initAnalysis(int32_t lines);
 
-extern "C" void EMSCRIPTEN_KEEPALIVE search(int32_t time, const char* callback);
+EMSCRIPTEN_KEEPALIVE extern "C" void search(int32_t time);
 
-extern "C" void EMSCRIPTEN_KEEPALIVE stop();
+EMSCRIPTEN_KEEPALIVE extern "C" void stop();
 
-extern "C" bool EMSCRIPTEN_KEEPALIVE makeMove(const char* move);
+EMSCRIPTEN_KEEPALIVE extern "C" bool isSearchRunning();
 
-extern "C" void EMSCRIPTEN_KEEPALIVE undoMove();
+EMSCRIPTEN_KEEPALIVE extern "C" bool makeMove(const char* move);
 
-extern "C" char* EMSCRIPTEN_KEEPALIVE getLegalMoves();
+EMSCRIPTEN_KEEPALIVE extern "C" void undoMove();
 
-extern "C" char* EMSCRIPTEN_KEEPALIVE getVariationAnalysis();
+EMSCRIPTEN_KEEPALIVE extern "C" char* getLegalMoves();
 
-extern "C" char* EMSCRIPTEN_KEEPALIVE getErrorMsg();
+EMSCRIPTEN_KEEPALIVE extern "C" char* getVariationAnalysis();
 
-extern "C" void EMSCRIPTEN_KEEPALIVE clearErrorMsg();
+EMSCRIPTEN_KEEPALIVE extern "C" char* getErrorMsg();
+
+EMSCRIPTEN_KEEPALIVE extern "C" void clearErrorMsg();
 
 #endif
 #endif

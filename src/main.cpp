@@ -7,6 +7,7 @@
 #include <random>
 #include "core/engine/StaticEvaluator.h"
 #include "test/Tournament.h"
+#include "emscripten/WebAPI.h"
 
 #ifdef _WIN32
     #include <windows.h>

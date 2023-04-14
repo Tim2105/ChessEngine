@@ -153,8 +153,7 @@ void SingleThreadedEngine::search(uint32_t searchTime, bool treatAsTimeControl, 
 }
 
 void SingleThreadedEngine::search(uint32_t searchTime, std::function<void()> callback, bool treatAsTimeControl, bool dontBlock) {
-    if(searching)
-        stop();
+    stop();
 
     searching = true;
     currentMaxDepth = 0;
@@ -178,8 +177,6 @@ void SingleThreadedEngine::search(uint32_t searchTime, std::function<void()> cal
         uint32_t minTime = oneFiftiethOfSearchTime - oneFiftiethOfSearchTime * exp(-0.08  *(numLegalMoves - 1));
         uint32_t maxTime = oneSixthOfSearchTime - oneSixthOfSearchTime * exp(-0.08  *(numLegalMoves - 1));
 
-        std::cout << "Min time: " << minTime << "ms, max time: " << maxTime << "ms" << std::endl;
-
         timerThread = std::thread(std::bind(&SingleThreadedEngine::searchTimer, this, maxTime));
 
         searchThread = std::thread(std::bind(&SingleThreadedEngine::runSearch, this, callback, true, minTime, maxTime));
@@ -202,6 +199,8 @@ void SingleThreadedEngine::search(uint32_t searchTime, std::function<void()> cal
 }
 
 void SingleThreadedEngine::stop() {
+    bool wasSearching = searching;
+
     searching = false;
 
     if(timerThread.joinable())
@@ -210,7 +209,8 @@ void SingleThreadedEngine::stop() {
     if(searchThread.joinable())
         searchThread.join();
 
-    evaluator.setBoard(*board);
+    if(wasSearching)
+        evaluator.setBoard(*board);
 }
 
 inline int32_t SingleThreadedEngine::scoreMove(Move& move, int16_t ply) {

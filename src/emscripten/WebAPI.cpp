@@ -1,11 +1,22 @@
 #ifdef __EMSCRIPTEN__
 #include "emscripten/WebAPI.h"
-
 #include "core/utils/MoveNotations.h"
 
 #include <string>
 
-extern "C" void EMSCRIPTEN_KEEPALIVE setBoard(const char* fen) {
+Board board = Board();
+StaticEvaluator evaluator(board);
+SingleThreadedEngine st(evaluator);
+
+char* fen = nullptr;
+char* legalMoves = nullptr;
+char* variationAnalysis = nullptr;
+char* errorMsg = nullptr;
+
+bool isAnalysis = false;
+bool searchRunning = false;
+
+void setBoard(const char* fen) {
     try {board = Board(fen);}
     catch(std::exception& e) {
         board = Board();
@@ -19,7 +30,7 @@ extern "C" void EMSCRIPTEN_KEEPALIVE setBoard(const char* fen) {
     }
 }
 
-extern "C" char* EMSCRIPTEN_KEEPALIVE getFen() {
+char* getFen() {
     if(fen != nullptr) {
         delete[] fen;
     }
@@ -32,14 +43,14 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE getFen() {
     return fen;
 }
 
-extern "C" void EMSCRIPTEN_KEEPALIVE initGame() {
+void initGame() {
     st.setBoard(board);
     st.setNumVariations(1);
 
     isAnalysis = false;
 }
 
-extern "C" void EMSCRIPTEN_KEEPALIVE initAnalysis(int32_t lines) {
+void initAnalysis(int32_t lines) {
     if(lines < 1)
         lines = 1;
 
@@ -49,19 +60,27 @@ extern "C" void EMSCRIPTEN_KEEPALIVE initAnalysis(int32_t lines) {
     isAnalysis = true;
 }
 
-extern "C" void EMSCRIPTEN_KEEPALIVE search(int32_t time, const char* callback) {
-    std::function<void()> callbackFunc = [callback]() {
-        emscripten_run_script(callback);
+void search(int32_t time) {
+    bool* searchRunningPtr = &searchRunning;
+
+    auto callbackFunc = [searchRunningPtr]() {
+        *searchRunningPtr = false;
     };
+
+    searchRunning = true;
 
     st.search(time, callbackFunc, !isAnalysis, true);
 }
 
-extern "C" void EMSCRIPTEN_KEEPALIVE stop() {
+void stop() {
     st.stop();
 }
 
-extern "C" bool EMSCRIPTEN_KEEPALIVE makeMove(const char* moveStr) {
+bool isSearchRunning() {
+    return searchRunning;
+}
+
+bool makeMove(const char* moveStr) {
     std::string moveAsStr = std::string(moveStr);
 
     Move move;
@@ -81,11 +100,11 @@ extern "C" bool EMSCRIPTEN_KEEPALIVE makeMove(const char* moveStr) {
     return false;
 }
 
-extern "C" void EMSCRIPTEN_KEEPALIVE undoMove() {
+void undoMove() {
     board.undoMove();
 }
 
-extern "C" char* EMSCRIPTEN_KEEPALIVE getLegalMoves() {
+char* getLegalMoves() {
     if(legalMoves != nullptr) {
         delete[] legalMoves;
     }
@@ -116,7 +135,7 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE getLegalMoves() {
     return legalMoves;
 }
 
-extern "C" char* EMSCRIPTEN_KEEPALIVE getVariationAnalysis() {
+char* getVariationAnalysis() {
     if(variationAnalysis != nullptr) {
         delete[] variationAnalysis;
     }
@@ -176,7 +195,7 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE getVariationAnalysis() {
     return variationAnalysis;
 }
 
-extern "C" char* EMSCRIPTEN_KEEPALIVE getErrorMsg() {
+char* getErrorMsg() {
     if(errorMsg == nullptr) {
         errorMsg = new char[1];
         errorMsg[0] = '\0';
@@ -185,7 +204,7 @@ extern "C" char* EMSCRIPTEN_KEEPALIVE getErrorMsg() {
     return errorMsg;
 }
 
-extern "C" void EMSCRIPTEN_KEEPALIVE clearErrorMsg() {
+void clearErrorMsg() {
     if(errorMsg != nullptr) {
         delete[] errorMsg;
         errorMsg = nullptr;
