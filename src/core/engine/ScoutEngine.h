@@ -1,5 +1,5 @@
-#ifndef SINGLE_THREADED_ENGINE_H
-#define SINGLE_THREADED_ENGINE_H
+#ifndef SCOUT_ENGINE_H
+#define SCOUT_ENGINE_H
 
 #include <stdint.h>
 #include "core/chess/Move.h"
@@ -38,7 +38,7 @@
 
 #define NULL_MOVE_R_VALUE 3
 
-class SingleThreadedEngine : public Engine {
+class ScoutEngine : public Engine {
     private:
         TranspositionTable<2097152, 4> transpositionTable;
         Board searchBoard;
@@ -53,6 +53,7 @@ class SingleThreadedEngine : public Engine {
 
         Array<Move, 64> pvTable[64];
         Move killerMoves[MAX_PLY][2];
+        Move counterMoves[15][64];
         int32_t relativeHistory[2][64][64];
 
         HashTable<Move, int32_t, 128, 4> seeCache;
@@ -99,16 +100,16 @@ class SingleThreadedEngine : public Engine {
         constexpr bool isMateLine() { return mateDistance != MAX_PLY; }
 
     public:
-        SingleThreadedEngine() = delete;
+        ScoutEngine() = delete;
 
-        SingleThreadedEngine(Evaluator& e, uint32_t numVariations = 1) : Engine(e, numVariations) {
+        ScoutEngine(Evaluator& e, uint32_t numVariations = 1) : Engine(e, numVariations) {
             currentMaxDepth = 0;
             currentAge = board->getPly();
             nodesSearched = 0;
             searching = false;
         }
 
-        ~SingleThreadedEngine() {
+        ~ScoutEngine() {
             searching = false;
             if(searchThread.joinable()) {
                 searchThread.join();
@@ -252,6 +253,18 @@ class SingleThreadedEngine : public Engine {
                         0x3030303030303,0x7070707070707,0xE0E0E0E0E0E0E,0x1C1C1C1C1C1C1C,0x38383838383838,0x70707070707070,0xE0E0E0E0E0E0E0,0xC0C0C0C0C0C0C0,
                 }
         };
+
+        /**
+         * @brief Array für die Zeiteinteilung anhand der Anzahl der legalen Züge.
+         */
+        static constexpr double timeFactor[40] = {
+                0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4,
+                0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4,
+                0.42, 0.44, 0.46, 0.48, 0.5, 0.52, 0.54, 0.56, 0.58, 0.6,
+                0.64, 0.68, 0.72, 0.76, 0.8, 0.84, 0.88, 0.92, 0.96, 1.0
+        };
+
+        static constexpr int32_t timeFactorArraySize = sizeof(timeFactor) / sizeof(timeFactor[0]);
 };
 
 #endif

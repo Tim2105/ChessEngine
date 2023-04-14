@@ -6,7 +6,7 @@
 
 Board board = Board();
 StaticEvaluator evaluator(board);
-SingleThreadedEngine st(evaluator);
+ScoutEngine st(evaluator);
 
 char* fen = nullptr;
 char* legalMoves = nullptr;

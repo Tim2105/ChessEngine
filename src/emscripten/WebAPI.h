@@ -2,14 +2,14 @@
 #ifndef WEB_API_H
 #define WEB_API_H
 
-#include "core/engine/SingleThreadedEngine.h"
+#include "core/engine/ScoutEngine.h"
 #include "core/engine/StaticEvaluator.h"
 
 #include <emscripten.h>
 
 extern Board board;
 extern StaticEvaluator evaluator;
-extern SingleThreadedEngine st;
+extern ScoutEngine st;
 
 extern char* fen;
 extern char* legalMoves;

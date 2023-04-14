@@ -1,7 +1,7 @@
 #ifndef __EMSCRIPTEN__
 #include <iostream>
 #include <chrono>
-#include "core/engine/SingleThreadedEngine.h"
+#include "core/engine/ScoutEngine.h"
 #include "core/utils/MoveNotations.h"
 #include <iomanip>
 #include <random>
@@ -61,45 +61,34 @@ int main() {
     Board board;
 
     StaticEvaluator evaluator(board);
-    SingleThreadedEngine st(evaluator);
+    ScoutEngine st(evaluator);
 
-    // int32_t computerTime = 10000;
+    int32_t computerTime = 300000;
     
-    // Move move;
-    // while(board.generateLegalMoves().size() > 0 && !evaluator.isDraw()) {
-    //     std::cout << std::endl << "Thinking..." << std::endl;
-    //     auto start = std::chrono::high_resolution_clock::now();
-    //     st.search(computerTime, true);
-    //     auto end = std::chrono::high_resolution_clock::now();
+    Move move;
+    while(board.generateLegalMoves().size() > 0 && !evaluator.isDraw()) {
+        std::cout << std::endl << "Thinking..." << std::endl;
+        auto start = std::chrono::high_resolution_clock::now();
+        st.search(computerTime, true);
+        auto end = std::chrono::high_resolution_clock::now();
 
-    //     int32_t timeSpent = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        int32_t timeSpent = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-    //     computerTime -= timeSpent;
+        computerTime -= timeSpent;
 
-    //     std::cout << "Remaining time: " << computerTime << " ms" << std::endl;
+        std::cout << "Remaining time: " << computerTime << " ms" << std::endl;
 
-    //     move = st.getBestMove();
-    //     std::cout << std::endl << "Depth: " << st.getLastSearchDepth() << " Computer move: " << toFigurineAlgebraicNotation(move, board) << std::endl << std::endl;
-    //     board.makeMove(move);
+        move = st.getBestMove();
+        std::cout << std::endl << "Depth: " << st.getLastSearchDepth() << " Computer move: " << toFigurineAlgebraicNotation(move, board) << std::endl << std::endl;
+        board.makeMove(move);
         
-    //     if(board.generateLegalMoves().size() == 0 || evaluator.isDraw()) {
-    //         break;
-    //     }
+        if(board.generateLegalMoves().size() == 0 || evaluator.isDraw()) {
+            break;
+        }
 
-    //     move = getUserMove(board);
-    //     board.makeMove(move);
-    // }
-
-    // Board board;
-
-    // StaticEvaluator evaluator(board);
-    // StaticEvaluator evaluator2(board);
-
-    // NewSingleThreadedEngine st(evaluator);
-    // SingleThreadedEngine st2(evaluator2);
-
-    // Tournament tournament(st, st2, "New Engine", "Old Engine");
-    // tournament.run();
+        move = getUserMove(board);
+        board.makeMove(move);
+    }
 
     return 0;
 }

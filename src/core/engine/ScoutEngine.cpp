@@ -1,11 +1,11 @@
-#include "core/engine/SingleThreadedEngine.h"
+#include "core/engine/ScoutEngine.h"
 #include <thread>
 #include <algorithm>
 #include <cmath>
 #include "core/utils/MoveNotations.h"
 #include "core/chess/MailboxDefinitions.h"
 
-void SingleThreadedEngine::searchTimer(uint32_t searchTime) {
+void ScoutEngine::searchTimer(uint32_t searchTime) {
     auto start = std::chrono::system_clock::now();
 
     while(searching) {
@@ -19,7 +19,7 @@ void SingleThreadedEngine::searchTimer(uint32_t searchTime) {
     }
 }
 
-void SingleThreadedEngine::clearRelativeHistory() {
+void ScoutEngine::clearRelativeHistory() {
     for(int i = 0; i < 2; i++) {
         for(int j = 0; j < 64; j++) {
             for(int k = 0; k < 64; k++) {
@@ -29,20 +29,20 @@ void SingleThreadedEngine::clearRelativeHistory() {
     }
 }
 
-void SingleThreadedEngine::clearPvTable() {
+void ScoutEngine::clearPvTable() {
     for(int i = 0; i < 64; i++) {
         pvTable[i].clear();
     }
 }
 
-void SingleThreadedEngine::clearKillerMoves() {
+void ScoutEngine::clearKillerMoves() {
     for(int i = 0; i < 256; i++) {
         killerMoves[i][0] = Move();
         killerMoves[i][1] = Move();
     }
 }
 
-void SingleThreadedEngine::runSearch(const std::function<void()> callback, bool timeControl, uint32_t minTime, uint32_t maxTime) {
+void ScoutEngine::runSearch(const std::function<void()> callback, bool timeControl, uint32_t minTime, uint32_t maxTime) {
     std::vector<Variation> principalVariationHistory;
 
     int16_t score = evaluator.evaluate();
@@ -84,7 +84,7 @@ void SingleThreadedEngine::runSearch(const std::function<void()> callback, bool 
     callback();
 }
 
-bool SingleThreadedEngine::extendSearchUnderTimeControl(std::vector<Variation> pvHistory, uint32_t minTime, uint32_t maxTime, uint32_t timeSpent) {
+bool ScoutEngine::extendSearchUnderTimeControl(std::vector<Variation> pvHistory, uint32_t minTime, uint32_t maxTime, uint32_t timeSpent) {
     // Wenn die Suche weniger als 5 Durchläufe durchgeführt hat, dann wird die Suche nicht unterbrochen
     if(pvHistory.size() < 5)
         return true;
@@ -148,11 +148,11 @@ bool SingleThreadedEngine::extendSearchUnderTimeControl(std::vector<Variation> p
     return false;
 }
 
-void SingleThreadedEngine::search(uint32_t searchTime, bool treatAsTimeControl, bool dontBlock) {
+void ScoutEngine::search(uint32_t searchTime, bool treatAsTimeControl, bool dontBlock) {
     search(searchTime, []() {}, treatAsTimeControl, dontBlock);
 }
 
-void SingleThreadedEngine::search(uint32_t searchTime, std::function<void()> callback, bool treatAsTimeControl, bool dontBlock) {
+void ScoutEngine::search(uint32_t searchTime, std::function<void()> callback, bool treatAsTimeControl, bool dontBlock) {
     stop();
 
     searching = true;
@@ -171,20 +171,33 @@ void SingleThreadedEngine::search(uint32_t searchTime, std::function<void()> cal
     if(treatAsTimeControl) {
         int32_t numLegalMoves = searchBoard.generateLegalMoves().size();
 
-        double oneFiftiethOfSearchTime = searchTime * 0.02;
-        double oneSixthOfSearchTime = searchTime * 0.1667;
+        double oneThirtiethOfSearchTime = searchTime * 0.0333;
+        double oneFourthOfSearchTime = searchTime * 0.25;
 
-        uint32_t minTime = oneFiftiethOfSearchTime - oneFiftiethOfSearchTime * exp(-0.08  *(numLegalMoves - 1));
-        uint32_t maxTime = oneSixthOfSearchTime - oneSixthOfSearchTime * exp(-0.08  *(numLegalMoves - 1));
+        uint32_t minTime = oneThirtiethOfSearchTime - oneThirtiethOfSearchTime * exp(-0.05  * (numLegalMoves - 1));
+        uint32_t maxTime = oneFourthOfSearchTime - oneFourthOfSearchTime * exp(-0.05  * (numLegalMoves - 1));
 
-        timerThread = std::thread(std::bind(&SingleThreadedEngine::searchTimer, this, maxTime));
+        int32_t timeFacArrayIndex = std::min(numLegalMoves, timeFactorArraySize) - 1;
 
-        searchThread = std::thread(std::bind(&SingleThreadedEngine::runSearch, this, callback, true, minTime, maxTime));
+        minTime *= timeFactor[timeFacArrayIndex];
+        maxTime *= timeFactor[timeFacArrayIndex];
+
+        // Puffer von 30 ms für das Starten und Stoppen der Threads einberechnen
+        maxTime = std::max(0u, maxTime - 30);
+
+        if(minTime > maxTime)
+            minTime = maxTime;
+
+        std::cout << "Min time: " << minTime << " ms | Max time: " << maxTime << " ms" << std::endl;
+
+        timerThread = std::thread(std::bind(&ScoutEngine::searchTimer, this, maxTime));
+
+        searchThread = std::thread(std::bind(&ScoutEngine::runSearch, this, callback, true, minTime, maxTime));
     } else {
         if(searchTime > 0)
-            timerThread = std::thread(std::bind(&SingleThreadedEngine::searchTimer, this, searchTime));
+            timerThread = std::thread(std::bind(&ScoutEngine::searchTimer, this, searchTime));
 
-        searchThread = std::thread(std::bind(&SingleThreadedEngine::runSearch, this, callback, false, 0, 0));
+        searchThread = std::thread(std::bind(&ScoutEngine::runSearch, this, callback, false, 0, 0));
     }
 
     if(!dontBlock) {
@@ -198,7 +211,7 @@ void SingleThreadedEngine::search(uint32_t searchTime, std::function<void()> cal
     }
 }
 
-void SingleThreadedEngine::stop() {
+void ScoutEngine::stop() {
     bool wasSearching = searching;
 
     searching = false;
@@ -213,7 +226,7 @@ void SingleThreadedEngine::stop() {
         evaluator.setBoard(*board);
 }
 
-inline int32_t SingleThreadedEngine::scoreMove(Move& move, int16_t ply) {
+inline int32_t ScoutEngine::scoreMove(Move& move, int16_t ply) {
     int32_t moveScore = 0;
     
     if(!move.isQuiet()) {
@@ -231,6 +244,11 @@ inline int32_t SingleThreadedEngine::scoreMove(Move& move, int16_t ply) {
             else if(killerMoves[ply - 2][1] == move)
                 moveScore += 50;
         }
+
+        Move lastMove = searchBoard.getLastMove();
+        if(lastMove.exists() && counterMoves[searchBoard.pieceAt(lastMove.getOrigin())]
+                                            [Mailbox::mailbox[lastMove.getDestination()]] == move)
+            moveScore += 40;
     }
 
     int32_t movedPieceType = TYPEOF(searchBoard.pieceAt(move.getOrigin()));
@@ -260,7 +278,7 @@ inline int32_t SingleThreadedEngine::scoreMove(Move& move, int16_t ply) {
     return moveScore;
 }
 
-void SingleThreadedEngine::sortMovesAtRoot(Array<Move, 256>& moves) {
+void ScoutEngine::sortMovesAtRoot(Array<Move, 256>& moves) {
     Array<MoveScorePair, 256> msp;
     
     std::vector<Move> bestMovesFromLastDepth;
@@ -290,11 +308,11 @@ void SingleThreadedEngine::sortMovesAtRoot(Array<Move, 256>& moves) {
         moves.push_back(pair.move);
 }
 
-void SingleThreadedEngine::sortMoves(Array<Move, 256>& moves, int16_t ply) {
+void ScoutEngine::sortMoves(Array<Move, 256>& moves, int16_t ply) {
     sortAndCutMoves(moves, ply, MIN_SCORE);
 }
 
-void SingleThreadedEngine::sortAndCutMovesForQuiescence(Array<Move, 256>& moves, int32_t minScore, int32_t moveEvalFunc) {
+void ScoutEngine::sortAndCutMovesForQuiescence(Array<Move, 256>& moves, int32_t minScore, int32_t moveEvalFunc) {
     Array<MoveScorePair, 256> msp;
 
     for(Move move : moves) {
@@ -325,7 +343,7 @@ void SingleThreadedEngine::sortAndCutMovesForQuiescence(Array<Move, 256>& moves,
         moves.push_back(msPair.move);
 }
 
-void SingleThreadedEngine::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t minScore) {
+void ScoutEngine::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t minScore) {
     Array<MoveScorePair, 256> msp;
 
     TranspositionTableEntry ttEntry;
@@ -353,7 +371,7 @@ void SingleThreadedEngine::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply,
         moves.push_back(pair.move);
 }
 
-int16_t SingleThreadedEngine::rootSearch(int16_t depth, int16_t expectedScore) {
+int16_t ScoutEngine::rootSearch(int16_t depth, int16_t expectedScore) {
     int32_t aspAlphaReduction = ASP_WINDOW, numAlphaReduction = 1;
     int32_t aspBetaReduction = ASP_WINDOW, numBetaReduction = 1;
 
@@ -397,7 +415,7 @@ int16_t SingleThreadedEngine::rootSearch(int16_t depth, int16_t expectedScore) {
     return variations.front().score;
 }
 
-int16_t SingleThreadedEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
+int16_t ScoutEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
     if(!searching)
         return 0;
 
@@ -483,6 +501,11 @@ int16_t SingleThreadedEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t
                     killerMoves[0][1] = killerMoves[0][0];
                     killerMoves[0][0] = move;
                 }
+
+                Move lastMove = searchBoard.getLastMove();
+                if(lastMove.exists())
+                    counterMoves[searchBoard.pieceAt(lastMove.getDestination())]
+                                [Mailbox::mailbox[lastMove.getOrigin()]] = move;
             }
 
             relativeHistory[searchBoard.getSideToMove() / COLOR_MASK]
@@ -549,7 +572,7 @@ int16_t SingleThreadedEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t
     return worstVariationScore;
 }
 
-int16_t SingleThreadedEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, int32_t nullMoveCooldown) {
+int16_t ScoutEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, int32_t nullMoveCooldown) {
     if(!searching)
         return 0;
 
@@ -636,6 +659,11 @@ int16_t SingleThreadedEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha
                     killerMoves[ply][1] = killerMoves[ply][0];
                     killerMoves[ply][0] = move;
                 }
+
+                Move lastMove = searchBoard.getLastMove();
+                if(lastMove.exists())
+                    counterMoves[searchBoard.pieceAt(lastMove.getDestination())]
+                                [Mailbox::mailbox[lastMove.getOrigin()]] = move;
             }
 
             relativeHistory[searchBoard.getSideToMove() / COLOR_MASK]
@@ -678,7 +706,7 @@ int16_t SingleThreadedEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha
     return bestScore;
 }
 
-int16_t SingleThreadedEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, int32_t nullMoveCooldown) {
+int16_t ScoutEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, int32_t nullMoveCooldown) {
     if(!searching)
         return 0;
 
@@ -778,8 +806,8 @@ int16_t SingleThreadedEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha
 
         // Wenn eine reduzierte Suche eine Bewertung > alpha liefert, dann
         // wird eine nicht reduzierte Suche durchgeführt.
-        if(nwDepthDelta < -(ONE_PLY * 2) && score > alpha)
-            score = -nwSearch(depth - (ONE_PLY * 2), ply + 1, -beta, -alpha, nullMoveCooldown - 1);
+        if(nwDepthDelta < -ONE_PLY && score > alpha)
+            score = -nwSearch(depth - ONE_PLY, ply + 1, -beta, -alpha, nullMoveCooldown - 1);
 
         searchBoard.undoMove();
 
@@ -804,6 +832,11 @@ int16_t SingleThreadedEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha
                     killerMoves[ply][1] = killerMoves[ply][0];
                     killerMoves[ply][0] = move;
                 }
+
+                Move lastMove = searchBoard.getLastMove();
+                if(lastMove.exists())
+                    counterMoves[searchBoard.pieceAt(lastMove.getDestination())]
+                                [Mailbox::mailbox[lastMove.getOrigin()]] = move;
             }
 
             relativeHistory[searchBoard.getSideToMove() / COLOR_MASK]
@@ -834,7 +867,7 @@ int16_t SingleThreadedEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha
     return bestScore;
 }
 
-inline int16_t SingleThreadedEngine::determineExtension(bool isThreat, bool isMateThreat, bool isCheckEvasion) {
+inline int16_t ScoutEngine::determineExtension(bool isThreat, bool isMateThreat, bool isCheckEvasion) {
     int16_t extension = 0;
 
     Move m = searchBoard.getLastMove();
@@ -880,12 +913,12 @@ inline int16_t SingleThreadedEngine::determineExtension(bool isThreat, bool isMa
     return extension;
 }
 
-inline int16_t SingleThreadedEngine::determineReduction(int16_t depth, int16_t ply, int32_t moveCount, bool isCheckEvasion) {
+inline int16_t ScoutEngine::determineReduction(int16_t depth, int16_t ply, int32_t moveCount, bool isCheckEvasion) {
     int16_t reduction = 0;
 
     bool isCheck = searchBoard.isCheck();
 
-    int32_t unreducedMoves = 2;
+    int32_t unreducedMoves = 1;
     
     if(moveCount <= unreducedMoves || isCheck || isCheckEvasion)
         return 0;
@@ -904,7 +937,7 @@ inline int16_t SingleThreadedEngine::determineReduction(int16_t depth, int16_t p
     return reduction;
 }
 
-int16_t SingleThreadedEngine::quiescence(int16_t alpha, int16_t beta) {
+int16_t ScoutEngine::quiescence(int16_t alpha, int16_t beta) {
     if(!searching)
         return 0;
 
