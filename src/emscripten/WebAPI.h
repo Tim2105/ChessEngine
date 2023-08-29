@@ -6,9 +6,12 @@
 #include "core/engine/StaticEvaluator.h"
 
 #include <emscripten.h>
+#include <wasm_simd128.h>
+#include <xmmintrin.h>
 
 extern Board board;
 extern StaticEvaluator evaluator;
+extern StaticEvaluator engineEvaluator;
 extern ScoutEngine st;
 
 extern char* fen;
@@ -31,9 +34,15 @@ EMSCRIPTEN_KEEPALIVE extern "C" void search(int32_t time);
 
 EMSCRIPTEN_KEEPALIVE extern "C" void stop();
 
+EMSCRIPTEN_KEEPALIVE extern "C" bool isCheckmate();
+
+EMSCRIPTEN_KEEPALIVE extern "C" bool isDraw();
+
 EMSCRIPTEN_KEEPALIVE extern "C" bool isSearchRunning();
 
 EMSCRIPTEN_KEEPALIVE extern "C" bool makeMove(const char* move);
+
+EMSCRIPTEN_KEEPALIVE extern "C" void makeMoveNoCheck(const char* move);
 
 EMSCRIPTEN_KEEPALIVE extern "C" void undoMove();
 

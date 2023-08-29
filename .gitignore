@@ -2,3 +2,4 @@ bin/*
 MovegenTestCases/*
 BenchmarkData/*
 pgn/*
+*.txt

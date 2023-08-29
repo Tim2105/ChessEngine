@@ -5,14 +5,20 @@
 #include "core/chess/Move.h"
 #include "core/utils/tables/TranspositionTable.h"
 #include "core/utils/tables/HashTable.h"
-#include <thread>
-#include <atomic>
 #include <chrono>
-#include <mutex>
 #include "core/chess/Board.h"
 #include <vector>
 #include "core/engine/Evaluator.h"
-#include "core/engine/Engine.h"
+#include "core/utils/Variation.h"
+#include <atomic>
+
+#define _DEBUG_ 1
+
+#define MIN_SCORE -32000
+#define MAX_SCORE 32000
+
+#define MATE_SCORE 21000
+#define IS_MATE_SCORE(x) (std::abs(x) > MATE_SCORE - 1000)
 
 #define EXACT_NODE 1
 #define CUT_NODE 2
@@ -38,18 +44,28 @@
 
 #define NULL_MOVE_R_VALUE 3
 
-class ScoutEngine : public Engine {
+#define CHECKUP_INTERVAL_MICROSECONDS 2000
+
+class ScoutEngine {
     private:
+        Board* board;
+        Evaluator& evaluator;
+
         TranspositionTable<2097152, 4> transpositionTable;
         Board searchBoard;
+        std::atomic_bool searchRunning = false;
 
         int16_t currentMaxDepth;
         uint16_t currentAge;
         uint32_t nodesSearched;
 
-        std::thread timerThread;
-        std::thread searchThread;
-        std::atomic_bool searching;
+        std::chrono::system_clock::time_point startTime;
+        std::chrono::system_clock::time_point endTime;
+        std::chrono::system_clock::time_point lastCheckupTime;
+        std::chrono::microseconds checkupInterval;
+
+        std::vector<Variation> variations;
+        uint32_t numVariations = 0;
 
         Array<Move, 64> pvTable[64];
         Move killerMoves[MAX_PLY][2];
@@ -57,7 +73,6 @@ class ScoutEngine : public Engine {
         int32_t relativeHistory[2][64][64];
 
         HashTable<Move, int32_t, 128, 4> seeCache;
-        HashTable<Move, int32_t, 128, 4> moveScoreCache;
 
         int16_t mateDistance;
 
@@ -67,9 +82,7 @@ class ScoutEngine : public Engine {
 
         void clearKillerMoves();
 
-        void searchTimer(uint32_t searchTime);
-
-        void runSearch(const std::function<void()> callback, bool timeControl = false, uint32_t minTime = 0, uint32_t maxTime = 0);
+        void runSearch(bool timeControl = false, uint32_t minTime = 0, uint32_t maxTime = 0);
 
         bool extendSearchUnderTimeControl(std::vector<Variation> pvHistory, uint32_t minTime, uint32_t maxTime, uint32_t timeSpent);
 
@@ -99,36 +112,44 @@ class ScoutEngine : public Engine {
 
         constexpr bool isMateLine() { return mateDistance != MAX_PLY; }
 
+        inline bool isCheckupTime() {
+            return std::chrono::system_clock::now() >= lastCheckupTime + checkupInterval;
+        }
+
+        inline void checkup() {
+            lastCheckupTime = std::chrono::system_clock::now();
+
+            if(lastCheckupTime >= endTime)
+                searchRunning = false;
+        }
+
     public:
         ScoutEngine() = delete;
 
-        ScoutEngine(Evaluator& e, uint32_t numVariations = 1) : Engine(e, numVariations) {
+        ScoutEngine(Evaluator& e, uint32_t numVariations = 1) : board(&(e.getBoard())),
+                                                                evaluator(e),
+                                                                numVariations(numVariations) {
             currentMaxDepth = 0;
             currentAge = board->getPly();
             nodesSearched = 0;
-            searching = false;
+            mateDistance = MAX_PLY;
+            searchRunning = false;
+            checkupInterval = std::chrono::microseconds(CHECKUP_INTERVAL_MICROSECONDS);
         }
 
-        ~ScoutEngine() {
-            searching = false;
-            if(searchThread.joinable()) {
-                searchThread.join();
-            }
-            if(timerThread.joinable()) {
-                 timerThread.join();
-            }
-        }
+        ~ScoutEngine() {}
 
-        virtual void search(uint32_t searchTime, bool treatAsTimeControl = false, bool dontBlock = false) override;
-        virtual void search(uint32_t time, std::function<void()> callback, bool treatAsTimeControl, bool dontBlock) override;
+        void search(uint32_t searchTime, bool treatAsTimeControl = false);
 
-        virtual void stop() override;
+        void stop();
 
         constexpr int16_t getLastSearchDepth() { return currentMaxDepth / ONE_PLY - 1; }
 
         constexpr uint32_t getNodesSearched() { return nodesSearched; }
 
         inline void setBoard(Board& b) {
+            if(searchRunning) return;
+
             board = &b;
             evaluator.setBoard(b);
 
@@ -136,7 +157,26 @@ class ScoutEngine : public Engine {
             clearRelativeHistory();
             clearPvTable();
             clearKillerMoves();
-            clearVariations();
+            variations.clear();
+        }
+
+        inline void setNumVariations(uint32_t numVariations) {
+            this->numVariations = numVariations;
+        }
+
+        inline Move getBestMove() {
+            return variations.empty() ? Move() : variations[0].moves[0];
+        }
+
+        inline int16_t getBestMoveScore() {
+            return variations.empty() ? 0 : variations[0].score;
+        }
+
+        inline std::vector<Variation> getVariations() {
+            return variations;
+        }
+        inline std::vector<Move> getPrincipalVariation() {
+            return variations.empty() ? std::vector<Move>() : variations[0].moves;
         }
 
     private:

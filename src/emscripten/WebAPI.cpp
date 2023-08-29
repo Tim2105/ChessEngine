@@ -6,11 +6,12 @@
 
 Board board = Board();
 StaticEvaluator evaluator(board);
-ScoutEngine st(evaluator);
+StaticEvaluator engineEvaluator(board);
+ScoutEngine st(engineEvaluator);
 
-char* fen = nullptr;
-char* legalMoves = nullptr;
-char* variationAnalysis = nullptr;
+char* fen = new char[128];
+char* legalMoves = new char[2048];
+char* variationAnalysis = new char[2048];
 char* errorMsg = nullptr;
 
 bool isAnalysis = false;
@@ -31,13 +32,7 @@ void setBoard(const char* fen) {
 }
 
 char* getFen() {
-    if(fen != nullptr) {
-        delete[] fen;
-    }
-
     std::string fenStr = board.fenString();
-
-    fen = new char[fenStr.length() + 1];
     strcpy(fen, fenStr.c_str());
 
     return fen;
@@ -76,6 +71,14 @@ void stop() {
     st.stop();
 }
 
+bool isCheckmate() {
+    return board.isCheck() && board.generateLegalMoves().size() == 0;
+}
+
+bool isDraw() {
+    return evaluator.isDraw() || (board.generateLegalMoves().size() == 0 && !board.isCheck());
+}
+
 bool isSearchRunning() {
     return searchRunning;
 }
@@ -105,10 +108,6 @@ void undoMove() {
 }
 
 char* getLegalMoves() {
-    if(legalMoves != nullptr) {
-        delete[] legalMoves;
-    }
-
     std::string moves = "{";
 
     for(Move move : board.generateLegalMoves()) {
@@ -129,17 +128,12 @@ char* getLegalMoves() {
     
     moves += "}";
 
-    legalMoves = new char[moves.length() + 1];
     strcpy(legalMoves, moves.c_str());
 
     return legalMoves;
 }
 
 char* getVariationAnalysis() {
-    if(variationAnalysis != nullptr) {
-        delete[] variationAnalysis;
-    }
-
     std::vector<Variation> variations = st.getVariations();
 
     std::string analysis = "{";
@@ -189,7 +183,6 @@ char* getVariationAnalysis() {
     analysis += "]";
     analysis += "}";
 
-    variationAnalysis = new char[analysis.length() + 1];
     strcpy(variationAnalysis, analysis.c_str());
 
     return variationAnalysis;

@@ -1,23 +1,8 @@
 #include "core/engine/ScoutEngine.h"
-#include <thread>
 #include <algorithm>
 #include <cmath>
 #include "core/utils/MoveNotations.h"
 #include "core/chess/MailboxDefinitions.h"
-
-void ScoutEngine::searchTimer(uint32_t searchTime) {
-    auto start = std::chrono::system_clock::now();
-
-    while(searching) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
-        auto end = std::chrono::system_clock::now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-
-        if(elapsed >= searchTime && searchTime > 0 && variations.size() > 0)
-            searching = false;
-    }
-}
 
 void ScoutEngine::clearRelativeHistory() {
     for(int i = 0; i < 2; i++) {
@@ -42,14 +27,16 @@ void ScoutEngine::clearKillerMoves() {
     }
 }
 
-void ScoutEngine::runSearch(const std::function<void()> callback, bool timeControl, uint32_t minTime, uint32_t maxTime) {
+void ScoutEngine::runSearch(bool timeControl, uint32_t minTime, uint32_t maxTime) {
+    searchRunning = true;
+
     std::vector<Variation> principalVariationHistory;
 
     int16_t score = evaluator.evaluate();
 
     auto start = std::chrono::system_clock::now();
 
-    for(int16_t depth = ONE_PLY; searching && depth < (MAX_PLY * ONE_PLY); depth += ONE_PLY) {
+    for(int16_t depth = ONE_PLY; searchRunning && depth < (MAX_PLY * ONE_PLY); depth += ONE_PLY) {
         currentMaxDepth = depth;
 
         score = rootSearch(depth, score);
@@ -57,13 +44,29 @@ void ScoutEngine::runSearch(const std::function<void()> callback, bool timeContr
         auto end = std::chrono::system_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-        // std::cout << "info depth " << depth / ONE_PLY << " score cp " << score << " time " << elapsed << " nodes " << nodesSearched << " pv ";
+        if(_DEBUG_) {
+            std::cout << "info depth " << depth / ONE_PLY << " score cp " << score << " time " << elapsed << " nodes " << nodesSearched << " pv ";
 
-        // for(std::string move : variationToFigurineAlgebraicNotation(getPrincipalVariation(), searchBoard)) {
-        //     std::cout << move << " ";
-        // }
+            for(std::string move : variationToFigurineAlgebraicNotation(getPrincipalVariation(), searchBoard)) {
+                std::cout << move << " ";
+            }
 
-        // std::cout << std::endl;
+            std::cout << std::endl;
+
+            if(numVariations > 1) {
+                for(size_t i = 1; i < variations.size(); i++) {
+                    std::cout << "info multipv " << i + 1 << " score cp " << variations[i].score;
+
+                    for(std::string move : variationToFigurineAlgebraicNotation(variations[i].moves, searchBoard)) {
+                        std::cout << " " << move;
+                    }
+
+                    std::cout << std::endl;
+                }
+            }
+
+            std::cout << std::endl << std::endl;
+        }
 
         principalVariationHistory.push_back({
                 getPrincipalVariation(),
@@ -74,14 +77,12 @@ void ScoutEngine::runSearch(const std::function<void()> callback, bool timeContr
             break;
     }
 
-    if(searching) {
+    if(searchRunning) {
         // Wenn die Suche vorzeitig beendet wurde weil die maximale Tiefe erreicht wurde, dann wurde die letzte durchsuchte Tiefe vervollständigt
         currentMaxDepth += ONE_PLY;
     }
 
-    searching = false;
-
-    callback();
+    searchRunning = false;
 }
 
 bool ScoutEngine::extendSearchUnderTimeControl(std::vector<Variation> pvHistory, uint32_t minTime, uint32_t maxTime, uint32_t timeSpent) {
@@ -148,14 +149,10 @@ bool ScoutEngine::extendSearchUnderTimeControl(std::vector<Variation> pvHistory,
     return false;
 }
 
-void ScoutEngine::search(uint32_t searchTime, bool treatAsTimeControl, bool dontBlock) {
-    search(searchTime, []() {}, treatAsTimeControl, dontBlock);
-}
-
-void ScoutEngine::search(uint32_t searchTime, std::function<void()> callback, bool treatAsTimeControl, bool dontBlock) {
+void ScoutEngine::search(uint32_t searchTime, bool treatAsTimeControl) {
     stop();
 
-    searching = true;
+    searchRunning = true;
     currentMaxDepth = 0;
     currentAge = board->getPly();
     nodesSearched = 0;
@@ -166,7 +163,9 @@ void ScoutEngine::search(uint32_t searchTime, std::function<void()> callback, bo
 
     clearRelativeHistory();
     clearKillerMoves();
-    clearVariations();
+    variations.clear();
+
+    startTime = std::chrono::system_clock::now();
 
     if(treatAsTimeControl) {
         int32_t numLegalMoves = searchBoard.generateLegalMoves().size();
@@ -174,8 +173,8 @@ void ScoutEngine::search(uint32_t searchTime, std::function<void()> callback, bo
         double oneThirtiethOfSearchTime = searchTime * 0.0333;
         double oneFourthOfSearchTime = searchTime * 0.25;
 
-        uint32_t minTime = oneThirtiethOfSearchTime - oneThirtiethOfSearchTime * exp(-0.05  * (numLegalMoves - 1));
-        uint32_t maxTime = oneFourthOfSearchTime - oneFourthOfSearchTime * exp(-0.05  * (numLegalMoves - 1));
+        uint64_t minTime = oneThirtiethOfSearchTime - oneThirtiethOfSearchTime * exp(-0.05  * (numLegalMoves - 1));
+        uint64_t maxTime = oneFourthOfSearchTime - oneFourthOfSearchTime * exp(-0.05  * (numLegalMoves - 1));
 
         int32_t timeFacArrayIndex = std::min(numLegalMoves, timeFactorArraySize) - 1;
 
@@ -183,47 +182,25 @@ void ScoutEngine::search(uint32_t searchTime, std::function<void()> callback, bo
         maxTime *= timeFactor[timeFacArrayIndex];
 
         // Puffer von 30 ms für das Starten und Stoppen der Threads einberechnen
-        maxTime = std::max(0u, maxTime - 30);
+        maxTime = std::max(0ull, maxTime - 30);
 
         if(minTime > maxTime)
             minTime = maxTime;
 
-        std::cout << "Min time: " << minTime << " ms | Max time: " << maxTime << " ms" << std::endl;
-
-        timerThread = std::thread(std::bind(&ScoutEngine::searchTimer, this, maxTime));
-
-        searchThread = std::thread(std::bind(&ScoutEngine::runSearch, this, callback, true, minTime, maxTime));
+        endTime = startTime + std::chrono::milliseconds(maxTime);
+        runSearch(true, minTime, maxTime);
     } else {
         if(searchTime > 0)
-            timerThread = std::thread(std::bind(&ScoutEngine::searchTimer, this, searchTime));
+            endTime = startTime + std::chrono::milliseconds(searchTime);
+        else
+            endTime = std::chrono::time_point<std::chrono::system_clock>::max();
 
-        searchThread = std::thread(std::bind(&ScoutEngine::runSearch, this, callback, false, 0, 0));
-    }
-
-    if(!dontBlock) {
-        if(timerThread.joinable())
-            timerThread.join();
-
-        if(searchThread.joinable())
-            searchThread.join();
-
-        evaluator.setBoard(*board);
+        runSearch(false, 0, 0);
     }
 }
 
 void ScoutEngine::stop() {
-    bool wasSearching = searching;
-
-    searching = false;
-
-    if(timerThread.joinable())
-        timerThread.join();
-
-    if(searchThread.joinable())
-        searchThread.join();
-
-    if(wasSearching)
-        evaluator.setBoard(*board);
+    searchRunning = false;
 }
 
 inline int32_t ScoutEngine::scoreMove(Move& move, int16_t ply) {
@@ -296,7 +273,6 @@ void ScoutEngine::sortMovesAtRoot(Array<Move, 256>& moves) {
         else
             moveScore += scoreMove(move, 0);
 
-        moveScoreCache.put(move, moveScore);
         msp.push_back({move, moveScore});
     }
 
@@ -324,15 +300,12 @@ void ScoutEngine::sortAndCutMovesForQuiescence(Array<Move, 256>& moves, int32_t 
                 break;
             case SEE:
                 int32_t seeScore = evaluator.evaluateMoveSEE(move) + DEFAULT_CAPTURE_MOVE_SCORE;
-                seeCache.put(move, seeScore);
                 moveScore += seeScore;
                 break;
         }
 
-        if(moveScore >= minScore) {
-            moveScoreCache.put(move, moveScore);
+        if(moveScore >= minScore)
             msp.push_back({move, moveScore});
-        }
     }
 
     std::sort(msp.begin(), msp.end(), std::greater<MoveScorePair>());
@@ -357,10 +330,8 @@ void ScoutEngine::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t 
         else
             moveScore += scoreMove(move, ply);
 
-        if(moveScore >= minScore) {
-            moveScoreCache.put(move, moveScore);
+        if(moveScore >= minScore)
             msp.push_back({move, moveScore});
-        }
     }
 
     std::sort(msp.begin(), msp.end(), std::greater<MoveScorePair>());
@@ -416,11 +387,16 @@ int16_t ScoutEngine::rootSearch(int16_t depth, int16_t expectedScore) {
 }
 
 int16_t ScoutEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
-    if(!searching)
+    if(isCheckupTime()) {
+        checkup();
+    }
+
+    if(!searchRunning)
         return 0;
 
+    nodesSearched++;
+
     clearPvTable();
-    moveScoreCache.clear();
     seeCache.clear();
 
     int32_t pvNodes = numVariations;
@@ -437,8 +413,6 @@ int16_t ScoutEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
     sortMovesAtRoot(moves);
 
     for(Move move : moves) {
-        nodesSearched++;
-
         int16_t matePly = MAX_PLY;
         bool isMateVariation = false;
 
@@ -483,7 +457,11 @@ int16_t ScoutEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
 
         searchBoard.undoMove();
 
-        if(!searching)
+        if(isCheckupTime()) {
+            checkup();
+        }
+
+        if(!searchRunning)
             return 0;
         
         relativeHistory[searchBoard.getSideToMove() / COLOR_MASK]
@@ -566,15 +544,21 @@ int16_t ScoutEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
                     [Mailbox::mailbox[bestMove.getDestination()]] += (currentMaxDepth / ONE_PLY) * (currentMaxDepth / ONE_PLY);
                 
     if(worstVariationScore > oldAlpha) {
-        setVariations(newVariations);
+        variations = newVariations;
     }
 
     return worstVariationScore;
 }
 
 int16_t ScoutEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, int32_t nullMoveCooldown) {
-    if(!searching)
+    if(isCheckupTime()) {
+        checkup();
+    }
+    
+    if(!searchRunning)
         return 0;
+
+    nodesSearched++;
 
     if(evaluator.isDraw()) {
         pvTable[ply].clear();
@@ -614,8 +598,6 @@ int16_t ScoutEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t
     sortMoves(moves, ply);
 
     for(Move move : moves) {
-        nodesSearched++;
-
         searchBoard.makeMove(move);
 
         int16_t extension = determineExtension(false, false, isCheckEvasion);
@@ -637,7 +619,11 @@ int16_t ScoutEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t
 
         searchBoard.undoMove();
 
-        if(!searching)
+        if(isCheckupTime()) {
+            checkup();
+        }
+
+        if(!searchRunning)
             return 0;
         
         relativeHistory[searchBoard.getSideToMove() / COLOR_MASK]
@@ -707,8 +693,14 @@ int16_t ScoutEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t
 }
 
 int16_t ScoutEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, int32_t nullMoveCooldown) {
-    if(!searching)
+    if(isCheckupTime()) {
+        checkup();
+    }
+
+    if(!searchRunning)
         return 0;
+
+    nodesSearched++;
 
     if(evaluator.isDraw())
         return 0;
@@ -790,8 +782,6 @@ int16_t ScoutEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t
     int32_t moveNumber = 1;
 
     for(Move move : moves) {
-        nodesSearched++;
-
         searchBoard.makeMove(move);
 
         int16_t extension = determineExtension(isThreat, isMateThreat, isCheckEvasion);
@@ -811,7 +801,11 @@ int16_t ScoutEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t
 
         searchBoard.undoMove();
 
-        if(!searching)
+        if(isCheckupTime()) {
+            checkup();
+        }
+
+        if(!searchRunning)
             return 0;
         
         relativeHistory[searchBoard.getSideToMove() / COLOR_MASK]
@@ -938,8 +932,14 @@ inline int16_t ScoutEngine::determineReduction(int16_t depth, int16_t ply, int32
 }
 
 int16_t ScoutEngine::quiescence(int16_t alpha, int16_t beta) {
-    if(!searching)
+    if(isCheckupTime()) {
+        checkup();
+    }
+
+    if(!searchRunning)
         return 0;
+
+    nodesSearched++;
 
     int16_t staticEvaluationScore = (int16_t)evaluator.evaluate();
 
@@ -969,15 +969,17 @@ int16_t ScoutEngine::quiescence(int16_t alpha, int16_t beta) {
     }
     
     for(Move move : moves) {
-        nodesSearched++;
-
         searchBoard.makeMove(move);
 
         score = -quiescence(-beta, -alpha);
 
         searchBoard.undoMove();
 
-        if(!searching)
+        if(isCheckupTime()) {
+            checkup();
+        }
+
+        if(!searchRunning)
             return 0;
 
         if(score >= beta)

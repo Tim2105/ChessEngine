@@ -15,12 +15,10 @@ rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 CC = em++
 
 # Compilerflags
-CFLAGS = -Wall -Wextra -std=c++20 -O3 -pthread -Isrc -msimd128 -msse4.2 -flto -fwasm-exceptions
+CFLAGS = -Wall -Wextra -std=c++20 -O3 -pthread -Isrc -msimd128 -msse4.2 -flto -fwasm-exceptions -mnontrapping-fptoint
 
 #Linkerflags
-LDFLAGS = -s EXPORT_ES6=1 -s EXPORT_NAME="ChessModule" \
-			-s USE_PTHREADS=1 -s PTHREAD_POOL_SIZE=2 -s STACK_SIZE=1MB \
-			-s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap']" \
+LDFLAGS = -s STACK_SIZE=1MB -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap']" \
 
 $(info Compiling with $(CC) $(CFLAGS))
 

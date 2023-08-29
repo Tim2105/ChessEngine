@@ -8,12 +8,13 @@
 #include "core/engine/StaticEvaluator.h"
 #include "test/Tournament.h"
 #include "emscripten/WebAPI.h"
+#include "core/chess/MailboxDefinitions.h"
+#include <fstream>
 
 #ifdef _WIN32
     #include <windows.h>
     #include <cwchar>
 #endif
-
 
 void perft(Board& board, int depth, int& count) {
     if(depth <= 1) {
@@ -59,36 +60,10 @@ int main() {
     #endif
 
     Board board;
-
     StaticEvaluator evaluator(board);
-    ScoutEngine st(evaluator);
+    ScoutEngine engine(evaluator, 5);
 
-    int32_t computerTime = 300000;
-    
-    Move move;
-    while(board.generateLegalMoves().size() > 0 && !evaluator.isDraw()) {
-        std::cout << std::endl << "Thinking..." << std::endl;
-        auto start = std::chrono::high_resolution_clock::now();
-        st.search(computerTime, true);
-        auto end = std::chrono::high_resolution_clock::now();
-
-        int32_t timeSpent = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-
-        computerTime -= timeSpent;
-
-        std::cout << "Remaining time: " << computerTime << " ms" << std::endl;
-
-        move = st.getBestMove();
-        std::cout << std::endl << "Depth: " << st.getLastSearchDepth() << " Computer move: " << toFigurineAlgebraicNotation(move, board) << std::endl << std::endl;
-        board.makeMove(move);
-        
-        if(board.generateLegalMoves().size() == 0 || evaluator.isDraw()) {
-            break;
-        }
-
-        move = getUserMove(board);
-        board.makeMove(move);
-    }
+    engine.search(20000);
 
     return 0;
 }
