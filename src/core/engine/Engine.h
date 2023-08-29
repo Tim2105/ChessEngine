@@ -1,5 +1,5 @@
-#ifndef SCOUT_ENGINE_H
-#define SCOUT_ENGINE_H
+#ifndef CHESS_ENGINE_H
+#define CHESS_ENGINE_H
 
 #include <stdint.h>
 #include "core/chess/Move.h"
@@ -11,8 +11,9 @@
 #include "core/engine/Evaluator.h"
 #include "core/utils/Variation.h"
 #include <atomic>
+#include "core/utils/SearchDetails.h"
 
-#define _DEBUG_ 1
+#define _DEBUG_ 0
 
 #define MIN_SCORE -32000
 #define MAX_SCORE 32000
@@ -46,7 +47,7 @@
 
 #define CHECKUP_INTERVAL_MICROSECONDS 2000
 
-class ScoutEngine {
+class Engine {
     private:
         Board* board;
         Evaluator& evaluator;
@@ -124,9 +125,9 @@ class ScoutEngine {
         }
 
     public:
-        ScoutEngine() = delete;
+        Engine() = delete;
 
-        ScoutEngine(Evaluator& e, uint32_t numVariations = 1) : board(&(e.getBoard())),
+        Engine(Evaluator& e, uint32_t numVariations = 1) : board(&(e.getBoard())),
                                                                 evaluator(e),
                                                                 numVariations(numVariations) {
             currentMaxDepth = 0;
@@ -137,7 +138,7 @@ class ScoutEngine {
             checkupInterval = std::chrono::microseconds(CHECKUP_INTERVAL_MICROSECONDS);
         }
 
-        ~ScoutEngine() {}
+        ~Engine() {}
 
         void search(uint32_t searchTime, bool treatAsTimeControl = false);
 
@@ -175,8 +176,19 @@ class ScoutEngine {
         inline std::vector<Variation> getVariations() {
             return variations;
         }
+
         inline std::vector<Move> getPrincipalVariation() {
             return variations.empty() ? std::vector<Move>() : variations[0].moves;
+        }
+
+        inline SearchDetails getSearchDetails() {
+            SearchDetails details;
+            details.variations = variations;
+            details.nodesSearched = nodesSearched;
+            details.timeTaken = std::chrono::duration_cast<std::chrono::milliseconds>(lastCheckupTime - startTime);
+            details.depth = currentMaxDepth / ONE_PLY - 1;
+
+            return details;
         }
 
     private:

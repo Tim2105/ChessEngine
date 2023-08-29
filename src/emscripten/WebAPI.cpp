@@ -7,7 +7,7 @@
 Board board = Board();
 StaticEvaluator evaluator(board);
 StaticEvaluator engineEvaluator(board);
-ScoutEngine st(engineEvaluator);
+Engine st(engineEvaluator);
 
 char* fen = new char[128];
 char* legalMoves = new char[2048];

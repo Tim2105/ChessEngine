@@ -34,7 +34,7 @@ const std::vector<int32_t> Tournament::numGames = {
     20, 15, 12, 10, 5
 };
 
-int32_t Tournament::runGame(Board& board, ScoutEngine& st1, ScoutEngine& st2, int32_t time) {
+int32_t Tournament::runGame(Board& board, Engine& st1, Engine& st2, int32_t time) {
     // Übergebe beiden Engines das Spielfeld
     st1.setBoard(board);
     st2.setBoard(board);
@@ -77,7 +77,7 @@ int32_t Tournament::runGame(Board& board, ScoutEngine& st1, ScoutEngine& st2, in
     }
 
     // Auswertung
-    if(evaluator.isDraw()) {
+    if(evaluator.isDraw() || (board.generateLegalMoves().size() == 0 && !board.isCheck())) {
         return 0;
     }
     else if(playingEngine == 1) {

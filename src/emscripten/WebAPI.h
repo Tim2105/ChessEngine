@@ -12,7 +12,7 @@
 extern Board board;
 extern StaticEvaluator evaluator;
 extern StaticEvaluator engineEvaluator;
-extern ScoutEngine st;
+extern Engine st;
 
 extern char* fen;
 extern char* legalMoves;

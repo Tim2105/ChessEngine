@@ -1,7 +1,7 @@
 #ifndef __EMSCRIPTEN__
 #include <iostream>
 #include <chrono>
-#include "core/engine/ScoutEngine.h"
+#include "core/engine/Engine.h"
 #include "core/utils/MoveNotations.h"
 #include <iomanip>
 #include <random>
@@ -59,11 +59,41 @@ int main() {
         SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &cfi);
     #endif
 
-    Board board;
+    Board board("4rrk1/1p1n2pp/p3p3/q2p4/1b1P2Q1/2N5/PPPB2PP/4RRK1 w - - 0 1");
     StaticEvaluator evaluator(board);
-    ScoutEngine engine(evaluator, 5);
+    Engine engine(evaluator);
 
-    engine.search(20000);
+    // engine.search(20000);
+
+    uint32_t remainingTime = 30000;
+
+    while(!evaluator.isDraw() && board.generateLegalMoves().size() != 0) {
+        std::cout << "Thinking..." << std::endl;
+
+        std::chrono::time_point start = std::chrono::high_resolution_clock::now();
+        engine.search(remainingTime, true);
+        std::chrono::time_point end = std::chrono::high_resolution_clock::now();
+
+        remainingTime -= std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+        SearchDetails details = engine.getSearchDetails();
+
+        std::cout << "score " << details.getBestMoveScore() << " depth " << details.depth << " kps " << details.kiloNodesPerSecond() << " pv ";
+
+        for(std::string s : variationToFigurineAlgebraicNotation(engine.getPrincipalVariation(), board))
+            std::cout << s << " ";
+
+        std::cout << std::endl;
+        std::cout << "Remaining time: " << remainingTime << std::endl;
+
+        board.makeMove(engine.getBestMove());
+
+        if(evaluator.isDraw() || board.generateLegalMoves().size() == 0)
+            break;
+
+        Move m = getUserMove(board);
+        board.makeMove(m);
+    }
 
     return 0;
 }

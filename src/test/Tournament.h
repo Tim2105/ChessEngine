@@ -2,7 +2,7 @@
 #define TOURNAMENT_H
 
 #include "core/chess/Board.h"
-#include "core/engine/ScoutEngine.h"
+#include "core/engine/Engine.h"
 
 #include <vector>
 #include <string>
@@ -26,8 +26,8 @@ class TournamentEvaluator : public Evaluator {
 class Tournament {
 
     private:
-        ScoutEngine& st1;
-        ScoutEngine& st2;
+        Engine& st1;
+        Engine& st2;
         std::string engineName1;
         std::string engineName2;
 
@@ -35,14 +35,13 @@ class Tournament {
         static const std::vector<int32_t> timeControls;
         static const std::vector<int32_t> numGames;
 
-        int32_t runGame(Board& board, ScoutEngine& st1, ScoutEngine& st2, int32_t time);
+        int32_t runGame(Board& board, Engine& st1, Engine& st2, int32_t time);
 
     public:
-        Tournament(ScoutEngine& st1, ScoutEngine& st2, std::string engineName1, std::string engineName2) : st1(st1), st2(st2), engineName1(engineName1), engineName2(engineName2) {};
+        Tournament(Engine& st1, Engine& st2, std::string engineName1, std::string engineName2) : st1(st1), st2(st2), engineName1(engineName1), engineName2(engineName2) {};
         ~Tournament() = default;
 
         void run();
-
 };
 
 #endif
