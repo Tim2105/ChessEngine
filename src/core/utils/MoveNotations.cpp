@@ -7,12 +7,12 @@
  */
 const std::string pieceFigurineSymbols[7] = {
     " ", // Empty
-    "♙ ", // Pawn
-    "♘ ", // Knight
-    "♗ ", // Bishop
-    "♖ ", // Rook
-    "♕ ", // Queen
-    "♔ "  // King
+    "♙", // Pawn
+    "♘", // Knight
+    "♗", // Bishop
+    "♖", // Rook
+    "♕", // Queen
+    "♔"  // King
 };
 
 /**

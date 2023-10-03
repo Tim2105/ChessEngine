@@ -13,7 +13,7 @@ inline std::string visualizeBoardWithFigurines(const Board& board, bool flipped 
         " ", "♟", "♞", "♝", "♜", "♛", "♚"
     };
 
-    return visualizeBoard(board, pieceSymbols, 2, flipped);
+    return visualizeBoard(board, pieceSymbols, 1, flipped);
 }
 
 inline std::string visualizeBoardWithLetters(const Board& board, bool flipped = false) {

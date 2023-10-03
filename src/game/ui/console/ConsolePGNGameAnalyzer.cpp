@@ -1,10 +1,10 @@
 #include "core/utils/MoveNotations.h"
 #include "game/ui/console/BoardVisualizer.h"
 #include "game/ui/console/ConsolePGNGameAnalyzer.h"
+#include "game/ui/console/PortabilityHelper.h"
 
 #include <chrono>
 #include <cmath>
-#include <conio.h>
 #include <iomanip>
 #include <sstream>
 
@@ -49,13 +49,58 @@ void ConsolePGNGameAnalyzer::output() {
         else {
             int32_t scoreAbs = std::abs(boardStateAnalyses[currentMoveIndex].score);
 
-            int32_t mateIn = (MATE_SCORE - scoreAbs) / 2 + 1;
+            int32_t mateIn = (MATE_SCORE - scoreAbs + 1) / 2;
 
             if(boardStateAnalyses[currentMoveIndex].score > 0)
                 scoreStr = "M" + std::to_string(mateIn);
             else
                 scoreStr = "-M" + std::to_string(mateIn);
         }
+
+        Move nextMove = moves[currentMoveIndex];
+        std::cout << "Next move: " << toFigurineAlgebraicNotation(nextMove, board) << " ";
+
+        if(currentMoveIndex < moves.size() - 1) {
+            int32_t nextMoveScore = 0;
+            if(currentMoveIndex < boardStateAnalyses.size() - 1)
+                nextMoveScore = boardStateAnalyses[currentMoveIndex + 1].score;
+
+            Move bestMove = boardStateAnalyses[currentMoveIndex].variations[0].moves[0];
+
+            int32_t currentScore = boardStateAnalyses[currentMoveIndex].score;
+
+            int32_t side = board.getSideToMove();
+
+            if(side == WHITE) {
+                if(nextMove == bestMove)
+                    std::cout << " (Best)";
+                else {
+                    if(currentScore - nextMoveScore > BLUNDER_SCORE_DIFF)
+                        std::cout << " (Blunder)";
+                    else if(currentScore - nextMoveScore > MISTAKE_SCORE_DIFF)
+                        std::cout << " (Mistake)";
+                    else if(currentScore - nextMoveScore > OK_SCORE_DIFF)
+                        std::cout << " (Inaccuracy)";
+                    else
+                        std::cout << " (Good)";
+                }
+            } else {
+                if(nextMove == bestMove)
+                    std::cout << " (Best)";
+                else {
+                    if(nextMoveScore - currentScore > BLUNDER_SCORE_DIFF)
+                        std::cout << " (Blunder)";
+                    else if(nextMoveScore - currentScore > MISTAKE_SCORE_DIFF)
+                        std::cout << " (Mistake)";
+                    else if(nextMoveScore - currentScore > OK_SCORE_DIFF)
+                        std::cout << " (Inaccuracy)";
+                    else
+                        std::cout << " (Good)";
+                }
+            } 
+        }
+
+        std::cout << std::endl << std::endl;
 
         std::cout << "Score: " << scoreStr << std::endl;
         std::cout << std::endl;
@@ -90,27 +135,22 @@ void ConsolePGNGameAnalyzer::output() {
 
         std::cout << visualizeBoardWithFigurines(board);
 
-        std::cout << std::string(5, '\n');
+        std::cout << std::endl;
         
-        int input = getch();
+        int input = getchArrowKey();
 
         if(input == 'q')
             break;
 
-        if(input == 0) {
-            input = getch();
 
-            if(input == 75) {
-                if(currentMoveIndex > 0) {
-                    currentMoveIndex--;
-                    board.undoMove();
-                }
-            } else if(input == 77) {
-                if(currentMoveIndex < moves.size() - 1)
-                    board.makeMove(moves[currentMoveIndex++]);
-                else
-                    break;
-            } 
+        if(input == KEY_ARROW_LEFT) {
+            if(currentMoveIndex > 0) {
+                currentMoveIndex--;
+                board.undoMove();
+            }
+        } else if(input == KEY_ARROW_RIGHT) {
+            if(currentMoveIndex < moves.size() - 1)
+                board.makeMove(moves[currentMoveIndex++]);
         }
     }
 }

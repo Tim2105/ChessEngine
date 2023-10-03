@@ -17,8 +17,6 @@ void Game::start() {
         else
             move = blackPlayer.getMove();
 
-        std::cout << "Move played: " << toFigurineAlgebraicNotation(move, board) << std::endl;
-
         board.makeMove(move);
 
         outputGameState();

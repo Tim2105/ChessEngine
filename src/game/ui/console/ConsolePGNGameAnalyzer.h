@@ -6,6 +6,11 @@
 #include <iostream>
 
 class ConsolePGNGameAnalyzer : public PGNGameAnalyzer {
+    private:
+        static constexpr int32_t OK_SCORE_DIFF = 20;
+        static constexpr int32_t MISTAKE_SCORE_DIFF = 100;
+        static constexpr int32_t BLUNDER_SCORE_DIFF = 300;
+
     public:
         ConsolePGNGameAnalyzer(std::string pgn, Engine& engine, uint32_t searchTime) : PGNGameAnalyzer(pgn, engine, searchTime) {};
 
