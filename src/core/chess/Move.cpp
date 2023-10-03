@@ -1,4 +1,5 @@
 #include "core/chess/Move.h"
+
 #include <string>
 
 std::ostream& operator<<(std::ostream &os, const Move &m) {

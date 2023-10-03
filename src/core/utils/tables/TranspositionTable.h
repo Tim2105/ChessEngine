@@ -1,9 +1,10 @@
 #ifndef TRANSPOSITION_TABLE_H
 #define TRANSPOSITION_TABLE_H
 
-#include <stdint.h>
 #include "core/chess/Move.h"
+
 #include <cstring>
+#include <stdint.h>
 #include <functional>
 
 struct TranspositionTableEntry {

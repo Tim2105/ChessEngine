@@ -1,9 +1,10 @@
 #ifndef MOVE_NOTATIONS_H
 #define MOVE_NOTATIONS_H
 
-#include <string>
 #include "core/chess/Board.h"
+
 #include <ostream>
+#include <string>
 
 /**
  * @brief Symbole für die Figuren. Die Indizes entsprechen den Werten der Piece-Enum-Klasse.

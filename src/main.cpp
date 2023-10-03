@@ -2,6 +2,7 @@
 #include <iostream>
 #include <chrono>
 #include "core/engine/Engine.h"
+#include "core/engine/MinimaxEngine.h"
 #include "core/utils/MoveNotations.h"
 #include <iomanip>
 #include <random>
@@ -59,15 +60,19 @@ int main() {
         SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &cfi);
     #endif
 
-    Board board("4rrk1/1p1n2pp/p3p3/q2p4/1b1P2Q1/2N5/PPPB2PP/4RRK1 w - - 0 1");
+    Board board;
     StaticEvaluator evaluator(board);
-    Engine engine(evaluator);
+    MinimaxEngine engine(evaluator);
 
-    // engine.search(20000);
-
-    uint32_t remainingTime = 30000;
+    uint32_t remainingTime = 60000;
 
     while(!evaluator.isDraw() && board.generateLegalMoves().size() != 0) {
+        Move m = getUserMove(board);
+        board.makeMove(m);
+
+        if(evaluator.isDraw() || board.generateLegalMoves().size() == 0)
+            break;
+
         std::cout << "Thinking..." << std::endl;
 
         std::chrono::time_point start = std::chrono::high_resolution_clock::now();
@@ -87,12 +92,6 @@ int main() {
         std::cout << "Remaining time: " << remainingTime << std::endl;
 
         board.makeMove(engine.getBestMove());
-
-        if(evaluator.isDraw() || board.generateLegalMoves().size() == 0)
-            break;
-
-        Move m = getUserMove(board);
-        board.makeMove(m);
     }
 
     return 0;

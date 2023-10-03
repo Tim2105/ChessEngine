@@ -2,8 +2,9 @@
 #define EVALUATION_DEFINITIONS_H
 
 #include "core/utils/Bitboard.h"
-#include <stdint.h>
+
 #include <functional>
+#include <stdint.h>
 
 struct Score {
     int32_t mg;

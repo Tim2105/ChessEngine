@@ -1,10 +1,11 @@
 #ifndef SEARCH_DETAILS_H
 #define SEARCH_DETAILS_H
 
-#include <vector>
-#include <stdint.h>
-#include "core/utils/Variation.h"
+#include "core/engine/Variation.h"
+
 #include <chrono>
+#include <stdint.h>
+#include <vector>
 
 struct SearchDetails {
     std::vector<Variation> variations;

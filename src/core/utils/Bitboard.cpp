@@ -1,5 +1,5 @@
-#include "core/utils/Bitboard.h"
 #include "core/chess/BoardDefinitions.h"
+#include "core/utils/Bitboard.h"
 
 Bitboard pawnAttacks[2][64] = {
     // White

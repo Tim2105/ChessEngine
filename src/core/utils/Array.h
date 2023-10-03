@@ -1,9 +1,9 @@
 #ifndef ARRAY_H
 #define ARRAY_H
 
-#include <stdint.h>
-#include <initializer_list>
 #include <cstring> // memcpy & memmove
+#include <initializer_list>
+#include <stdint.h>
 #include <vector>
 
 /**

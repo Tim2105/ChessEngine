@@ -5,6 +5,7 @@
 #include "core/chess/BoardDefinitions.h"
 #include "core/chess/Move.h"
 #include "core/utils/Array.h"
+#include "core/utils/Bitboard.h"
 
 class Board;
 

@@ -1,7 +1,8 @@
-#include "core/engine/StaticEvaluator.h"
 #include "core/chess/BoardDefinitions.h"
-#include <algorithm>
 #include "core/chess/MailboxDefinitions.h"
+#include "core/engine/StaticEvaluator.h"
+
+#include <algorithm>
 
 StaticEvaluator::StaticEvaluator(StaticEvaluator&& other) : Evaluator(*(other.b)) {
     this->evaluationTable = std::move(other.evaluationTable);
@@ -718,6 +719,9 @@ int32_t StaticEvaluator::evalMGKingAttackZone(int32_t side) {
     int32_t queenThreats = (b->getPieceAttackBitboard(otherSide | QUEEN) & kingAttackZone).getNumberOfSetBits();
     attackCounter += queenThreats * MG_KING_SAFETY_QUEEN_THREAT_VALUE;
         
+    if(attackCounter >= kingSafetyTableSize)
+        attackCounter = kingSafetyTableSize - 1;
+
     score -= kingSafetyTable[attackCounter];
 
     return score;

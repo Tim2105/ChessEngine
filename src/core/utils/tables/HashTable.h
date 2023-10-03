@@ -2,8 +2,9 @@
 #define HASH_TABLE_H
 
 #include "core/utils/Array.h"
-#include <stdint.h>
+
 #include <functional>
+#include <stdint.h>
 
 /**
  * @brief Hash-Tabelle mit statischer Größe. Für Geschwindigkeit optimiert.

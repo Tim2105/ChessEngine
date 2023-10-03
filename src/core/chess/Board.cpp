@@ -1,8 +1,9 @@
-#include "Board.h"
-#include <stdio.h>
-#include "core/chess/ZobristDefinitions.h"
+#include "core/chess/Board.h"
 #include "core/chess/MailboxDefinitions.h"
+#include "core/chess/ZobristDefinitions.h"
 #include "core/utils/MoveNotations.h"
+
+#include <stdio.h>
 
 Board::Board() {
     side = WHITE;

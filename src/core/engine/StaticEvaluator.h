@@ -2,8 +2,8 @@
 #define STATIC_EVALUATOR_H
 
 #include "core/chess/Board.h"
-#include "core/engine/Evaluator.h"
 #include "core/engine/EvaluationDefinitons.h"
+#include "core/engine/Evaluator.h"
 #include "core/utils/Bitboard.h"
 #include "core/utils/tables/HashTable.h"
 #include "core/utils/tables/HeapHashTable.h"
@@ -261,7 +261,7 @@ class StaticEvaluator : public Evaluator {
             400, // Knight
             410, // Bishop
             600, // Rook
-            1200, // Queen
+            1100, // Queen
             0 // King
         };
 
@@ -271,7 +271,7 @@ class StaticEvaluator : public Evaluator {
             400, // Knight
             410, // Bishop
             600, // Rook
-            1300, // Queen
+            1250, // Queen
             0 // King
         };
 
@@ -279,30 +279,30 @@ class StaticEvaluator : public Evaluator {
         static constexpr int32_t KNIGHT_PAWN_VALUE = 2;
 
         // Türme sind mehr Wert, wenn weniger Bauern auf dem Feld sind
-        static constexpr int32_t ROOK_CAPTURED_PAWN_VALUE = 7;
+        static constexpr int32_t ROOK_CAPTURED_PAWN_VALUE = 4;
 
         // Bonus für das Läuferpaar
-        static constexpr int32_t MG_BISHOP_PAIR_VALUE = 50;
-        static constexpr int32_t EG_BISHOP_PAIR_VALUE = 50;
+        static constexpr int32_t MG_BISHOP_PAIR_VALUE = 40;
+        static constexpr int32_t EG_BISHOP_PAIR_VALUE = 40;
 
         // Bonus für Farbdominanz mit einem Läufer
-        static constexpr int32_t MG_BISHOP_COLOR_DOMINANCE_VALUE = 50;
+        static constexpr int32_t MG_BISHOP_COLOR_DOMINANCE_VALUE = 70;
 
         // Bonus für Türme auf offenen/halboffenen Linien
-        static constexpr int32_t MG_ROOK_SEMI_OPEN_FILE_VALUE = 30;
-        static constexpr int32_t MG_ROOK_OPEN_FILE_VALUE = 45;
+        static constexpr int32_t MG_ROOK_SEMI_OPEN_FILE_VALUE = 20;
+        static constexpr int32_t MG_ROOK_OPEN_FILE_VALUE = 35;
 
-        static constexpr int32_t EG_ROOK_SEMI_OPEN_FILE_VALUE = 40;
-        static constexpr int32_t EG_ROOK_OPEN_FILE_VALUE = 40;
+        static constexpr int32_t EG_ROOK_SEMI_OPEN_FILE_VALUE = 15;
+        static constexpr int32_t EG_ROOK_OPEN_FILE_VALUE = 15;
 
         // Bonus für Türme die eigene Freibauern von hinten decken(nur Endgame)
-        static constexpr int32_t EG_ROOK_SUPPORTING_PASSED_PAWN_VALUE = 50;
+        static constexpr int32_t EG_ROOK_SUPPORTING_PASSED_PAWN_VALUE = 35;
 
         // Bonus für Türme die gegnerische Freibauern von hinten decken(nur Endgame)
-        static constexpr int32_t EG_ROOK_BLOCKING_PASSED_PAWN_VALUE = 40;
+        static constexpr int32_t EG_ROOK_BLOCKING_PASSED_PAWN_VALUE = 35;
 
         // Bestrafung für entwickelte Dame, wenn die eigenen Leichtfiguren noch nicht entwickelt sind
-        static constexpr int32_t MG_DEVELOPED_QUEEN_VALUE = -21;
+        static constexpr int32_t MG_DEVELOPED_QUEEN_VALUE = -36;
 
         /**
          * @brief König und Bauern Endspiel
@@ -377,8 +377,8 @@ class StaticEvaluator : public Evaluator {
                 0x200000000000000,0x500000000000000,0xA00000000000000,0x1400000000000000,0x2800000000000000,0x5000000000000000,0xA000000000000000,0x4000000000000000,
         };
 
-        static constexpr int32_t MG_PAWN_CONNECTED_VALUE = 3;
-        static constexpr int32_t EG_PAWN_CONNECTED_VALUE = 1;
+        static constexpr int32_t MG_PAWN_CONNECTED_VALUE = 9;
+        static constexpr int32_t EG_PAWN_CONNECTED_VALUE = 5;
 
         // Bonus für jeden Bauern, der mindestens einen anderen Bauern deckt
         static constexpr Bitboard pawnChainMasks[2][64] = {
@@ -406,16 +406,16 @@ class StaticEvaluator : public Evaluator {
                 }
         };
 
-        static constexpr int32_t MG_PAWN_CHAIN_VALUE = 16;
-        static constexpr int32_t EG_PAWN_CHAIN_VALUE = 12;
+        static constexpr int32_t MG_PAWN_CHAIN_VALUE = 10;
+        static constexpr int32_t EG_PAWN_CHAIN_VALUE = 5;
 
         // Bestrafung für zwei oder mehrere Bauern in einer Spalte (doppelte Bauern)
-        static constexpr int32_t MG_PAWN_DOUBLED_VALUE = -13;
-        static constexpr int32_t EG_PAWN_DOUBLED_VALUE = -20;
+        static constexpr int32_t MG_PAWN_DOUBLED_VALUE = -16;
+        static constexpr int32_t EG_PAWN_DOUBLED_VALUE = -30;
 
         // Bestrafung für einen Bauern, der keine Nachbarn hat(keine Bauern in einer Nachbarspalte)
-        static constexpr int32_t MG_PAWN_ISOLATED_VALUE = -8;
-        static constexpr int32_t EG_PAWN_ISOLATED_VALUE = -16;
+        static constexpr int32_t MG_PAWN_ISOLATED_VALUE = -21;
+        static constexpr int32_t EG_PAWN_ISOLATED_VALUE = -39;
 
         // Bonus für jeden Freibauern(passed pawn)
         static constexpr Bitboard sentryMasks[2][64] = {
@@ -443,16 +443,16 @@ class StaticEvaluator : public Evaluator {
                 }
         };
 
-        static constexpr int32_t MG_PAWN_PASSED_BASE_VALUE = 10;
-        static constexpr int32_t EG_PAWN_PASSED_BASE_VALUE = 30;
+        static constexpr int32_t MG_PAWN_PASSED_BASE_VALUE = 7;
+        static constexpr int32_t EG_PAWN_PASSED_BASE_VALUE = 18;
 
         // Wird mit der Anzahl der fortgeschrittenen Felder multipliziert
-        static constexpr int32_t MG_PAWN_PASSED_RANK_ADVANCED_MULTIPLIER = 20;
-        static constexpr int32_t EG_PAWN_PASSED_RANK_ADVANCED_MULTIPLIER = 45;
+        static constexpr int32_t MG_PAWN_PASSED_RANK_ADVANCED_MULTIPLIER = 2;
+        static constexpr int32_t EG_PAWN_PASSED_RANK_ADVANCED_MULTIPLIER = 12;
 
-        // Von anderen Bauern beschütze Freibauern sind noch besser
-        static constexpr int32_t MG_PASSED_PAWN_PROTECTION_VALUE = 30;
-        static constexpr int32_t EG_PASSED_PAWN_PROTECTION_VALUE = 60;
+        // Zusätzlicher Bonus für jeden Freibauern, der von einem anderen Bauern gedeckt wird
+        static constexpr int32_t MG_PASSED_PAWN_PROTECTION_VALUE = 20;
+        static constexpr int32_t EG_PASSED_PAWN_PROTECTION_VALUE = 55;
 
         // Bonus für jedes Feld, dass von einer Figur angegriffen wird.
         // Felder, die von generischen Bauern angegriffen werden, werden ausgenommen.
@@ -497,6 +497,7 @@ class StaticEvaluator : public Evaluator {
                 }
         };
 
+        // Gewährt eine Punktzahl, je stärker der gegnerische König angegriffen wird
         static constexpr int16_t kingSafetyTable[100] = {
                 0,  0,   1,   2,   3,   5,   7,   9,  12,  15,
                 18,  22,  26,  30,  35,  39,  44,  50,  56,  62,
@@ -509,7 +510,10 @@ class StaticEvaluator : public Evaluator {
                 500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
                 500, 500, 500, 500, 500, 500, 500, 500, 500, 500
         };
+        static constexpr int32_t kingSafetyTableSize = sizeof(kingSafetyTable) / sizeof(kingSafetyTable[0]);
 
+        // Für jedes Feld in der gegnerischen Königszone, die von Leicht- oder Schwerfiguren angegriffen werden,
+        // wird der Wert der entsprechenden Figur auf eine Summe addiert, die als Index für das obige Array dient.
         static constexpr int32_t MG_KING_SAFETY_KNIGHT_THREAT_VALUE = 2;
         static constexpr int32_t MG_KING_SAFETY_BISHOP_THREAT_VALUE = 2;
         static constexpr int32_t MG_KING_SAFETY_ROOK_THREAT_VALUE = 3;
@@ -597,69 +601,69 @@ class StaticEvaluator : public Evaluator {
                 {},
                 // Pawn
                 {
-                          0,  0,   0,   0,   0,   0,   0,   0,
-                        -35, -1, -20, -23, -15,  24,  38, -22,
-                        -30, -4,  -4, -10,   3,   3,  33, -18,
-                        -27, -2,  -5,  12,  17,   6,  10, -25,
-                        -14, 13,   6,   5,   6,  12,  17, -23,
-                        -6,   7,  13,  -4,  -8,  27,  12, -10,
-                        49,  67,  30,  47,  34,  63,  17,  -6,
-                         0,   0,   0,   0,   0,   0,   0,   0,
+                        0, 0, 0, 0, 0, 0, 0, 0,
+                        -18, 0, -10, -12, -7, 12, 19, -11,
+                        -15, -2, -2, -5, 1, 1, 17, -9,
+                        -14, -1, -2, 6, 8, 3, 5, -13,
+                        -7, 6, 3, 3, 3, 6, 8, -12,
+                        -3, 4, 6, -2, -4, 13, 6, -5,
+                        24, 33, 15, 24, 17, 31, 8, -3,
+                        0, 0, 0, 0, 0, 0, 0, 0,
                 },
                 // Knight
                 {
-                        -105, -21, -58, -33, -17, -28, -19,  -23,
-                         -29, -53, -12,  -3,  -1,  18, -14,  -19,
-                          11,  -9,  12,  10,  19,  17,  25,  -16,
-                          -8,  21,  19,  28,  13,  16,   4,  -13,
-                          22,  18,  69,  37,  53,  19,  17,  -9,
-                          44,  73, 129,  84,  65,  37,  60,  -47,
-                         -17,   7,  62,  23,  36,  72, -41,  -73,
-                        -107, -15, -97,  61, -49, -34, -89, -167,
+                        -52, -10, -29, -17, -8, -14, -10, -12,
+                        -15, -27, -6, -2, -1, 9, -7, -10,
+                        5, -5, 6, 5, 9, 8, 12, -8,
+                        -4, 10, 10, 14, 7, 8, 2, -7,
+                        11, 9, 34, 18, 27, 9, 9, -5,
+                        22, 36, 64, 42, 32, 18, 30, -24,
+                        -8, 4, 31, 12, 18, 36, -20, -37,
+                        -54, -7, -49, 30, -24, -17, -45, -83,
                 },
                 // Bishop
                 {
-                        -33,  -3, -14, -21, -13, -12, -39, -21,
-                          4,  15,  16,   0,   7,  21,  33,   1,
-                          0,  15,  15,  15,  14,  27,  18,  10,
-                         -6,  13,  13,  26,  34,  12,  10,   4,
-                         -4,   5,  19,  50,  37,  37,   7,  -2,
-                        -16,  37,  43,  40,  35,  50,  37,  -2,
-                        -26,  16, -18, -13,  30,  59,  18, -47,
-                        -29,   4, -82, -37, -25, -42,   7,  -8,
+                        -16, -1, -7, -10, -6, -6, -20, -10,
+                        2, 7, 8, 0, 3, 10, 16, 0,
+                        0, 7, 7, 7, 7, 13, 9, 5,
+                        -3, 6, 6, 13, 17, 6, 5, 2,
+                        -2, 2, 10, 25, 18, 18, 3, -1,
+                        -8, 18, 21, 20, 17, 25, 18, -1,
+                        -13, 8, -9, -6, 15, 29, 9, -24,
+                        -15, 2, -41, -19, -13, -21, 3, -4,
                 },
                 // Rook
                 {
-                        -19, -13,   1,  17, 16,  7, -37, -26,
-                        -44, -16, -20,  -9, -1, 11,  -6, -71,
-                        -45, -25, -16, -17,  3,  0,  -5, -33,
-                        -36, -26, -12,  -1,  9, -7,   6, -23,
-                        -24, -11,   7,  26, 24, 35,  -8, -20,
-                         -5,  19,  26,  36, 17, 45,  61,  16,
-                         27,  32,  58,  62, 80, 67,  26,  44,
-                         32,  42,  32,  51, 63,  9,  31,  43,
+                        -9, -7, 0, 8, 8, 3, -18, -13,
+                        -22, -8, -10, -4, 0, 5, -3, -36,
+                        -22, -13, -8, -8, 1, 0, -2, -17,
+                        -18, -13, -6, 0, 4, -3, 3, -12,
+                        -12, -6, 4, 13, 12, 17, -4, -10,
+                        -2, 9, 13, 18, 8, 23, 30, 8,
+                        13, 16, 29, 31, 40, 33, 13, 22,
+                        16, 21, 16, 26, 32, 4, 15, 21,
                 },
                 // Queen
                 {
-                        -10, -28,  -9,  10, -15, -25, -41, -60,
-                        -45, -18,  11,   2,   8,  15, -13,  -9,
-                        -24,  -8, -11,  -2,  -5,   2,   4,  -5,
-                        -19, -36,  -9, -10,  -2,  -4,  -7, -13,
-                        -37, -37, -16, -16,  -1,  17, -12, -91,
-                        -23, -27,   7,   8,  29,  56,  37,  47,
-                        -34, -49,  -5,   1, -16,  57,  18,  44,
-                        -38, -10,  29,  12,  59,  44,  33,  35,
+                        -5, -14, -5, 5, -8, -13, -21, -30,
+                        -22, -9, 5, 1, 4, 7, -6, -5,
+                        -12, -4, -5, -1, -3, 1, 2, -3,
+                        -10, -18, -5, -5, -1, -2, -4, -7,
+                        -19, -19, -8, -8, 0, 8, -6, -46,
+                        -11, -13, 3, 4, 14, 28, 18, 24,
+                        -17, -25, -3, 1, -8, 28, 9, 22,
+                        -19, -5, 14, 6, 29, 22, 17, 18,
                 },
                 // King
                 {
-                        -15,  36,  12, -54,   8, -28,  24,  14,
-                          1,   7,  -8, -64, -43, -16,   9,   8,
-                        -14, -14, -22, -46, -44, -30, -15, -27,
-                        -49,  -1, -27, -39, -46, -44, -33, -51,
-                        -17, -20, -12, -27, -30, -25, -14, -36,
-                         -9,  24,   2, -16, -20,   6,  22, -22,
-                         29,  -1, -20,  -7,  -8,  -4, -38, -29,
-                        -65,  23,  16, -15, -56, -34,   2,  13,
+                        -7, 18, 6, -27, 4, -14, 12, 7,
+                        0, 4, -4, -32, -21, -8, 5, 4,
+                        -7, -7, -11, -23, -22, -15, -7, -14,
+                        -24, 0, -13, -20, -23, -22, -17, -26,
+                        -9, -10, -6, -14, -15, -12, -7, -18,
+                        -5, 12, 1, -8, -10, 3, 11, -11,
+                        14, 0, -10, -4, -4, -2, -19, -15,
+                        -33, 11, 8, -8, -28, -17, 1, 6,
                 }
         };
 
@@ -673,71 +677,72 @@ class StaticEvaluator : public Evaluator {
                 {},
                 // Pawn
                 {
-                          0,   0,   0,   0,   0,   0,   0,   0,
-                         13,   8,   8,  10,  13,   0,   2,  -7,
-                          4,   7,  -6,   1,   0,  -5,  -1,  -8,
-                         13,   9,  -3,  -7,  -7,  -8,   3,  -1,
-                         32,  24,  13,   5,  -2,   4,  17,  17,
-                         94, 100,  85,  67,  56,  53,  82,  84,
-                        178, 173, 158, 134, 147, 132, 165, 187,
-                          0,   0,   0,   0,   0,   0,   0,   0,
+                        0, 0, 0, 0, 0, 0, 0, 0,
+                        6, 4, 4, 5, 6, 0, 1, -4,
+                        2, 4, -3, 0, 0, -2, 0, -4,
+                        6, 4, -2, -4, -4, -4, 2, -1,
+                        16, 12, 6, 2, -1, 2, 9, 9,
+                        47, 50, 43, 34, 28, 27, 41, 42,
+                        89, 87, 79, 67, 74, 66, 82, 93,
+                        0, 0, 0, 0, 0, 0, 0, 0,
                 },
                 // Knight
                 {
-                        -29, -51, -23, -15, -22, -18, -50, -64,
-                        -42, -20, -10,  -5,  -2, -20, -23, -44,
-                        -23,  -3,  -1,  15,  10,  -3, -20, -22,
-                        -18,  -6,  16,  25,  16,  17,   4, -18,
-                        -17,   3,  22,  22,  22,  11,   8, -18,
-                        -24, -20,  10,   9,  -1,  -9, -19, -41,
-                        -25,  -8, -25,  -2,  -9, -25, -24, -52,
-                        -58, -38, -13, -28, -31, -27, -63, -99,
+                        -15, -26, -12, -8, -11, -9, -25, -32,
+                        -21, -10, -5, -3, -1, -10, -12, -22,
+                        -11, -2, -1, 7, 5, -2, -10, -11,
+                        -9, -3, 8, 12, 8, 8, 2, -9,
+                        -9, 2, 11, 11, 11, 6, 4, -9,
+                        -12, -10, 5, 4, 0, -4, -10, -20,
+                        -12, -4, -12, -1, -5, -12, -12, -26,
+                        -29, -19, -7, -14, -15, -13, -32, -50,
                 },
                 // Bishop
                 {
-                        -23,  -9, -23,  -5, -9, -16,  -5, -17,
-                        -14, -18,  -7,  -1,  4,  -9, -15, -27,
-                        -12,  -3,   8,  10, 13,   3,  -7, -15,
-                         -6,   3,  13,  19,  7,  10,  -3,  -9,
-                         -3,   9,  12,   9, 14,  10,   3,   2,
-                          2,  -8,   0,  -1, -2,   6,   0,   4,
-                         -8,  -4,   7, -12, -3, -13,  -4, -14,
-                        -14, -21, -11,  -8, -7,  -9, -17, -24,
+                        -12, -5, -12, -3, -5, -8, -3, -9,
+                        -7, -9, -4, -1, 2, -4, -8, -13,
+                        -6, -1, 4, 5, 7, 1, -4, -8,
+                        -3, 1, 6, 10, 3, 5, -2, -5,
+                        -1, 4, 6, 4, 7, 5, 1, 1,
+                        1, -4, 0, -1, -1, 3, 0, 2,
+                        -4, -2, 3, -6, -2, -6, -2, -7,
+                        -7, -10, -6, -4, -4, -5, -8, -12,
                 },
                 // Rook
                 {
-                        -9,   2,   3,  -1,  -5, -13,   4, -20,
-                        -6, -6,   0,   2,  -9,  -9, -11,  -3,
-                        -4,   0,  -5,  -1,  -7, -12,  -8, -16,
-                         3,   5,   8,   4,  -5,  -6,  -8, -11,
-                         4,   3,  13,   1,   2,   1,  -1,   2,
-                         7,   7,   7,   5,   4,  -3,  -5,  -3,
-                        11,  13,  13,  11,  -3,   3,   8,   3,
-                        13,  10,  18,  15,  12,  12,   8,   5,
+                        -4, 1, 2, -1, -3, -7, 2, -10,
+                        -3, -3, 0, 1, -5, -5, -6, -2,
+                        -2, 0, -2, 0, -4, -6, -4, -8,
+                        1, 2, 4, 2, -3, -3, -4, -5,
+                        2, 2, 7, 0, 1, 1, -1, 1,
+                        3, 3, 3, 2, 2, -1, -2, -1,
+                        5, 6, 6, 5, -1, 1, 4, 1,
+                        6, 5, 9, 7, 6, 6, 4, 3,
                 },
                 // Queen
                 {
-                        -33, -28, -22, -43,  -5, -32, -20, -41,
-                        -22, -23, -30, -16, -16, -23, -36, -32,
-                        -16, -27,  15,   6,   9,  17,  10,   5,
-                        -18,  28,  19,  47,  31,  34,  39,  23,
-                          3,  22,  24,  45,  57,  40,  57,  36,
-                        -20,   6,   9,  49,  47,  35,  19,   9,
-                        -17,  20,  32,  41,  58,  25,  30,   0,
-                         -9,  22,  22,  27,  27,  19,  10,  20,
+                        -17, -14, -11, -21, -3, -16, -10, -20,
+                        -11, -11, -15, -8, -8, -12, -18, -16,
+                        -8, -14, 7, 3, 4, 8, 5, 2,
+                        -9, 14, 9, 23, 16, 17, 20, 12,
+                        1, 11, 12, 23, 29, 20, 29, 18,
+                        -10, 3, 4, 24, 24, 17, 9, 4,
+                        -9, 10, 16, 20, 29, 12, 15, 0,
+                        -5, 11, 11, 13, 13, 9, 5, 10,
                 },
                 // King
                 {
-                        -53, -34, -21, -11, -28, -14, -24, -43,
-                        -27, -11,   4,  13,  14,   4,  -5, -17,
-                        -19,  -3,  11,  21,  23,  16,   7,  -9,
-                        -18,  -4,  21,  24,  27,  23,   9, -11,
-                         -8,  22,  24,  27,  26,  33,  26,   3,
-                         10,  17,  23,  15,  20,  45,  44,  13,
-                        -12,  17,  14,  17,  17,  38,  23,  11,
-                        -74, -35, -18, -18, -11,  15,   4, -17,
-                }
+                        -27, -17, -11, -6, -14, -7, -12, -22,
+                        -14, -6, 2, 7, 7, 2, -2, -9,
+                        -10, -2, 5, 10, 11, 8, 4, -5,
+                        -9, -2, 10, 12, 13, 11, 4, -6,
+                        -4, 11, 12, 13, 13, 17, 13, 2,
+                        5, 9, 12, 8, 10, 22, 22, 7,
+                        -6, 9, 7, 9, 9, 19, 12, 6,
+                        -37, -18, -9, -9, -5, 7, 2, -9,
+                },
         };
+
 
         /**
          * @brief Konstanten zur Berechnung der Spielphase.

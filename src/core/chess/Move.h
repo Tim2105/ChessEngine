@@ -1,10 +1,11 @@
 #ifndef MOVE_H
 #define MOVE_H
 
-#include <stdint.h>
-#include <iostream>
 #include "core/chess/BoardDefinitions.h"
+
 #include <functional>
+#include <iostream>
+#include <stdint.h>
 
 /**
  * @brief Kapselt einen Zug.

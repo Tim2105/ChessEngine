@@ -1,10 +1,11 @@
-#include "core/engine/Engine.h"
+#include "core/chess/MailboxDefinitions.h"
+#include "core/engine/MinimaxEngine.h"
+#include "core/utils/MoveNotations.h"
+
 #include <algorithm>
 #include <cmath>
-#include "core/utils/MoveNotations.h"
-#include "core/chess/MailboxDefinitions.h"
 
-void Engine::clearRelativeHistory() {
+void MinimaxEngine::clearRelativeHistory() {
     for(int i = 0; i < 2; i++) {
         for(int j = 0; j < 64; j++) {
             for(int k = 0; k < 64; k++) {
@@ -14,20 +15,20 @@ void Engine::clearRelativeHistory() {
     }
 }
 
-void Engine::clearPvTable() {
+void MinimaxEngine::clearPvTable() {
     for(int i = 0; i < 64; i++) {
         pvTable[i].clear();
     }
 }
 
-void Engine::clearKillerMoves() {
+void MinimaxEngine::clearKillerMoves() {
     for(int i = 0; i < 256; i++) {
         killerMoves[i][0] = Move();
         killerMoves[i][1] = Move();
     }
 }
 
-void Engine::runSearch(bool timeControl, uint32_t minTime, uint32_t maxTime) {
+void MinimaxEngine::runSearch(bool timeControl, uint32_t minTime, uint32_t maxTime) {
     searchRunning = true;
 
     std::vector<Variation> principalVariationHistory;
@@ -85,7 +86,7 @@ void Engine::runSearch(bool timeControl, uint32_t minTime, uint32_t maxTime) {
     searchRunning = false;
 }
 
-bool Engine::extendSearchUnderTimeControl(std::vector<Variation> pvHistory, uint32_t minTime, uint32_t maxTime, uint32_t timeSpent) {
+bool MinimaxEngine::extendSearchUnderTimeControl(std::vector<Variation> pvHistory, uint32_t minTime, uint32_t maxTime, uint32_t timeSpent) {
     // Wenn die Suche weniger als 5 Durchläufe durchgeführt hat, dann wird die Suche nicht unterbrochen
     if(pvHistory.size() < 5)
         return true;
@@ -149,7 +150,7 @@ bool Engine::extendSearchUnderTimeControl(std::vector<Variation> pvHistory, uint
     return false;
 }
 
-void Engine::search(uint32_t searchTime, bool treatAsTimeControl) {
+void MinimaxEngine::search(uint32_t searchTime, bool treatAsTimeControl) {
     stop();
 
     searchRunning = true;
@@ -199,11 +200,11 @@ void Engine::search(uint32_t searchTime, bool treatAsTimeControl) {
     }
 }
 
-void Engine::stop() {
+void MinimaxEngine::stop() {
     searchRunning = false;
 }
 
-inline int32_t Engine::scoreMove(Move& move, int16_t ply) {
+inline int32_t MinimaxEngine::scoreMove(Move& move, int16_t ply) {
     int32_t moveScore = 0;
     
     if(!move.isQuiet()) {
@@ -255,7 +256,7 @@ inline int32_t Engine::scoreMove(Move& move, int16_t ply) {
     return moveScore;
 }
 
-void Engine::sortMovesAtRoot(Array<Move, 256>& moves) {
+void MinimaxEngine::sortMovesAtRoot(Array<Move, 256>& moves) {
     Array<MoveScorePair, 256> msp;
     
     std::vector<Move> bestMovesFromLastDepth;
@@ -284,11 +285,11 @@ void Engine::sortMovesAtRoot(Array<Move, 256>& moves) {
         moves.push_back(pair.move);
 }
 
-void Engine::sortMoves(Array<Move, 256>& moves, int16_t ply) {
+void MinimaxEngine::sortMoves(Array<Move, 256>& moves, int16_t ply) {
     sortAndCutMoves(moves, ply, MIN_SCORE);
 }
 
-void Engine::sortAndCutMovesForQuiescence(Array<Move, 256>& moves, int32_t minScore, int32_t moveEvalFunc) {
+void MinimaxEngine::sortAndCutMovesForQuiescence(Array<Move, 256>& moves, int32_t minScore, int32_t moveEvalFunc) {
     Array<MoveScorePair, 256> msp;
 
     for(Move move : moves) {
@@ -316,7 +317,7 @@ void Engine::sortAndCutMovesForQuiescence(Array<Move, 256>& moves, int32_t minSc
         moves.push_back(msPair.move);
 }
 
-void Engine::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t minScore) {
+void MinimaxEngine::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t minScore) {
     Array<MoveScorePair, 256> msp;
 
     TranspositionTableEntry ttEntry;
@@ -342,7 +343,7 @@ void Engine::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t minSc
         moves.push_back(pair.move);
 }
 
-int16_t Engine::rootSearch(int16_t depth, int16_t expectedScore) {
+int16_t MinimaxEngine::rootSearch(int16_t depth, int16_t expectedScore) {
     int32_t aspAlphaReduction = ASP_WINDOW, numAlphaReduction = 1;
     int32_t aspBetaReduction = ASP_WINDOW, numBetaReduction = 1;
 
@@ -386,7 +387,7 @@ int16_t Engine::rootSearch(int16_t depth, int16_t expectedScore) {
     return variations.front().score;
 }
 
-int16_t Engine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
+int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
     if(isCheckupTime()) {
         checkup();
     }
@@ -550,7 +551,7 @@ int16_t Engine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
     return worstVariationScore;
 }
 
-int16_t Engine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, int32_t nullMoveCooldown) {
+int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, int32_t nullMoveCooldown) {
     if(isCheckupTime()) {
         checkup();
     }
@@ -688,7 +689,7 @@ int16_t Engine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta
     return bestScore;
 }
 
-int16_t Engine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, int32_t nullMoveCooldown) {
+int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, int32_t nullMoveCooldown) {
     if(isCheckupTime()) {
         checkup();
     }
@@ -853,7 +854,7 @@ int16_t Engine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta
     return bestScore;
 }
 
-inline int16_t Engine::determineExtension(bool isThreat, bool isMateThreat, bool isCheckEvasion) {
+inline int16_t MinimaxEngine::determineExtension(bool isThreat, bool isMateThreat, bool isCheckEvasion) {
     int16_t extension = 0;
 
     Move m = searchBoard.getLastMove();
@@ -899,7 +900,7 @@ inline int16_t Engine::determineExtension(bool isThreat, bool isMateThreat, bool
     return extension;
 }
 
-inline int16_t Engine::determineReduction(int16_t depth, int16_t ply, int32_t moveCount, bool isCheckEvasion) {
+inline int16_t MinimaxEngine::determineReduction(int16_t depth, int16_t ply, int32_t moveCount, bool isCheckEvasion) {
     int16_t reduction = 0;
 
     bool isCheck = searchBoard.isCheck();
@@ -923,7 +924,7 @@ inline int16_t Engine::determineReduction(int16_t depth, int16_t ply, int32_t mo
     return reduction;
 }
 
-int16_t Engine::quiescence(int16_t alpha, int16_t beta) {
+int16_t MinimaxEngine::quiescence(int16_t alpha, int16_t beta) {
     if(isCheckupTime()) {
         checkup();
     }

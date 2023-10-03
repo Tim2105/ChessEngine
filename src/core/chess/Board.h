@@ -1,14 +1,15 @@
 #ifndef BOARD_H
 #define BOARD_H
 
-#include <vector>
-#include <stdint.h>
-#include "core/chess/Move.h"
 #include "core/chess/BoardDefinitions.h"
-#include <string>
-#include "core/utils/Bitboard.h"
+#include "core/chess/Move.h"
 #include "core/chess/Movegen.h"
 #include "core/utils/Array.h"
+#include "core/utils/Bitboard.h"
+
+#include <stdint.h>
+#include <string>
+#include <vector>
 
 /**
  * @brief Enthält alle notwendigen Informationen um einen Zug rückgängig zu machen.

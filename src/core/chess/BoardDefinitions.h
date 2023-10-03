@@ -1,6 +1,8 @@
 #ifndef DEFINITIONS_H
 #define DEFINITIONS_H
 
+#include <stdint.h>
+
 /**
  * @brief Definitionen für das Spielfeld und die Zuggeneration
  */
@@ -35,8 +37,6 @@ enum {
     BLACK_QUEEN,
     BLACK_KING
 };
-
-#include <stdint.h>
 
 constexpr int32_t KNIGHT_ATTACKS[8] = {
     -21, -19, -12, -8, 8, 12, 19, 21

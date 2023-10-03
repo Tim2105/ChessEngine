@@ -1,9 +1,9 @@
 #ifndef BITBOARD_H
 #define BITBOARD_H
 
-#include <stdint.h>
-#include <iostream>
 #include <functional>
+#include <iostream>
+#include <stdint.h>
 
 class Bitboard {
     private:

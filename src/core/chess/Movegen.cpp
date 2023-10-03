@@ -1,5 +1,5 @@
-#include "core/chess/Movegen.h"
 #include "core/chess/MailboxDefinitions.h"
+#include "core/chess/Movegen.h"
 
 void Movegen::generatePseudoLegalWhitePawnMoves(Array<Move, 256>& moves, Board& b) {
     for(int& sq : b.pieceList[WHITE_PAWN]) {
