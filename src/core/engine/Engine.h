@@ -61,6 +61,10 @@ class Engine {
             evaluator.setBoard(board);
         }
 
+        virtual inline Board& getBoard() {
+            return *board;
+        }
+
         virtual inline Move getBestMove() {
             return variations.empty() ? Move() : variations[0].moves[0];
         }

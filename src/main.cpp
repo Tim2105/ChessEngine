@@ -1,38 +1,16 @@
 #ifndef __EMSCRIPTEN__
-#include <iostream>
-#include <chrono>
-#include "core/engine/Engine.h"
-#include "core/engine/MinimaxEngine.h"
-#include "core/utils/MoveNotations.h"
-#include <iomanip>
-#include <random>
+#include "core/chess/Board.h"
 #include "core/engine/StaticEvaluator.h"
-#include "test/Tournament.h"
-#include "emscripten/WebAPI.h"
-#include "core/chess/MailboxDefinitions.h"
-#include <fstream>
-#include "test/Perft.h"
+#include "core/engine/MinimaxEngine.h"
+
+#include "game/ComputerPlayer.h"
+#include "game/TimeControlledGame.h"
+#include "game/ui/console/ConsolePlayer.h"
 
 #ifdef _WIN32
     #include <windows.h>
     #include <cwchar>
 #endif
-
-Move getUserMove(Board& board) {
-    while(true) {
-        std::string move;
-        std::cout << "Enter move: ";
-        std::cin >> move;
-
-        for(Move m : board.generateLegalMoves()) {
-            if(move == m.toString() || move == toStandardAlgebraicNotation(m, board)) {
-                return m;
-            }
-        }
-
-        std::cout << "Invalid move" << std::endl;
-    }
-}
 
 int main() {
     #ifdef _WIN32
@@ -53,35 +31,11 @@ int main() {
     StaticEvaluator evaluator(board);
     MinimaxEngine engine(evaluator);
 
-    uint32_t remainingTime = 60000;
+    ComputerPlayer computerPlayer(engine);
+    ConsolePlayer consolePlayer(board);
 
-    while(!evaluator.isDraw() && board.generateLegalMoves().size() != 0) {
-        Move m = getUserMove(board);
-        board.makeMove(m);
-
-        if(evaluator.isDraw() || board.generateLegalMoves().size() == 0)
-            break;
-
-        std::cout << "Thinking..." << std::endl;
-
-        std::chrono::time_point start = std::chrono::high_resolution_clock::now();
-        engine.search(remainingTime, true);
-        std::chrono::time_point end = std::chrono::high_resolution_clock::now();
-
-        remainingTime -= std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-
-        SearchDetails details = engine.getSearchDetails();
-
-        std::cout << "score " << details.getBestMoveScore() << " depth " << details.depth << " kps " << details.kiloNodesPerSecond() << " pv ";
-
-        for(std::string s : variationToFigurineAlgebraicNotation(engine.getPrincipalVariation(), board))
-            std::cout << s << " ";
-
-        std::cout << std::endl;
-        std::cout << "Remaining time: " << remainingTime << std::endl;
-
-        board.makeMove(engine.getBestMove());
-    }
+    TimeControlledGame game(board, computerPlayer, consolePlayer, 20000, 0);
+    game.start();
 
     return 0;
 }

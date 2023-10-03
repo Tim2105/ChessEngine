@@ -14,7 +14,7 @@ class Board;
  * 
  * 1. Man generiert alle Pseudo-Legalen Züge, führt sie aus und prüft, ob ein Pseudo-Legaler Zug des Gegners den eigenen König schlägt.
  * (Pseudo-Legale Züge sind Züge, die die Regeln der Figurenbewegung einhalten aber eventuell den eigenen König im Schach stehen lassen)
- * Diese Implementierung, wenn zwar einfach, ist sehr ineffizient.  Für jeden Pseudo-Legalen Zug müssen alle Pseudo-Legalen Züge des Gegners generiert werden.
+ * Diese Implementierung, wenn zwar einfach, ist sehr ineffizient. Für jeden Pseudo-Legalen Zug müssen alle Pseudo-Legalen Züge des Gegners generiert werden.
  * 
  * 2. Man generiert alle Pseudo-Legalen Züge, führt sie aus und überprüft ob der eigene König im Schach steht.
  * Diese Variante klingt ähnlich wie die erste Variante, ist aber effienzter.

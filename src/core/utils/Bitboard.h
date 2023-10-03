@@ -255,7 +255,7 @@ Bitboard straightAttackUntilBlocked(int32_t sq, const Bitboard target, const Bit
 int32_t getDiagonallyPinnedToSquare(int32_t sq, Bitboard ownPieces, Bitboard enemyPieces, Bitboard occupied, int32_t* pinnedSquare, int32_t* pinnedDirection);
 
 /**
- * @brief Überprüft, ob auf einem Spielfeld eine/mehrere Figuren an ein Feld geradlinig gefesselt ist.
+ * @brief Überprüft, ob auf einem Spielfeld eine/mehrere Figuren an ein Feld gradlinig gefesselt ist.
  * 
  * @param sq Das Feld in 64er Notation.
  * @param ownPieces Das Bitboard mit den eigenen Figuren(die möglicherweise gefesselt sein könnten).

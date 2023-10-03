@@ -190,7 +190,7 @@ class Board {
          * @brief Enthält eine Liste aller Figuren für jeden Figurentyp auf dem Schachbrett.
          * Speichert den Index der Position.
          * Figurenlisten haben die Größe 9,
-         * weil die ein(e) Springer/Läufer/Dame mit 8 Bauernaufwertungen 9-mal auf dem Schachbrett sein können.
+         * weil ein(e) Springer/Läufer/Dame mit 8 Bauernaufwertungen 9-mal auf dem Schachbrett sein kann.
          */
         Array<int32_t, 9> pieceList[15] = {
             {},
