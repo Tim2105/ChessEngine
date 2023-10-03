@@ -66,6 +66,7 @@
         "codecvt": "cpp",
         "locale": "cpp",
         "xlocbuf": "cpp",
-        "xlocmes": "cpp"
+        "xlocmes": "cpp",
+        "sstream": "cpp"
     }
 }

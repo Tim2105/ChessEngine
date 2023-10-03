@@ -7,7 +7,7 @@
 Move ConsolePlayer::getMove() {
     while(true) {
         std::string move;
-        std::cout << "Enter move: " << std::endl;
+        std::cout << "Enter move: ";
         std::cin >> move;
 
         for(Move m : board.generateLegalMoves()) {
@@ -16,14 +16,14 @@ Move ConsolePlayer::getMove() {
             }
         }
 
-        std::cout << "Invalid move" << std::endl;
+        std::cout << "Invalid move" << std::endl << std::endl;
     }
 }
 
 Move ConsolePlayer::getMove(uint32_t remainingTime) {
     while(true) {
         std::string move;
-        std::cout << "Enter move (" << remainingTime << "ms remaining):" << std::endl;
+        std::cout << "Enter move (" << remainingTime << "ms remaining):";
         std::cin >> move;
 
         for(Move m : board.generateLegalMoves()) {
@@ -32,6 +32,6 @@ Move ConsolePlayer::getMove(uint32_t remainingTime) {
             }
         }
 
-        std::cout << "Invalid move" << std::endl;
+        std::cout << "Invalid move" << std::endl << std::endl;
     }
 }

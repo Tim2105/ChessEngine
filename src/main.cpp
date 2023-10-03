@@ -5,7 +5,9 @@
 
 #include "game/ComputerPlayer.h"
 #include "game/TimeControlledGame.h"
+#include "game/ui/console/BoardVisualizer.h"
 #include "game/ui/console/ConsolePlayer.h"
+#include "game/ui/console/ConsoleGameStateOutput.h"
 
 #ifdef _WIN32
     #include <windows.h>
@@ -34,7 +36,9 @@ int main() {
     ComputerPlayer computerPlayer(engine);
     ConsolePlayer consolePlayer(board);
 
-    TimeControlledGame game(board, computerPlayer, consolePlayer, 20000, 0);
+    ConsoleGameStateOutput gameStateOutput(board, true);
+
+    TimeControlledGame game(board, computerPlayer, consolePlayer, gameStateOutput, 20000, 0);
     game.start();
 
     return 0;

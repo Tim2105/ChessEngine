@@ -2,7 +2,13 @@
 #include "game/Game.h"
 #include "game/Referee.h"
 
+void Game::outputGameState() {
+    gameStateOutput.outputGameState(getWhiteAdditionalInfo(), getBlackAdditionalInfo());
+}
+
 void Game::start() {
+    outputGameState();
+
     while (!isGameOver(board)) {
         Move move;
 
@@ -14,6 +20,8 @@ void Game::start() {
         std::cout << "Move played: " << toFigurineAlgebraicNotation(move, board) << std::endl;
 
         board.makeMove(move);
+
+        outputGameState();
     }
 
     std::cout << "Game over" << std::endl;
