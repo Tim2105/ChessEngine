@@ -11,24 +11,12 @@
 #include "emscripten/WebAPI.h"
 #include "core/chess/MailboxDefinitions.h"
 #include <fstream>
+#include "test/Perft.h"
 
 #ifdef _WIN32
     #include <windows.h>
     #include <cwchar>
 #endif
-
-void perft(Board& board, int depth, int& count) {
-    if(depth <= 1) {
-        count += board.generateLegalMoves().size();
-        return;
-    }
-
-    for(Move m : board.generateLegalMoves()) {
-        board.makeMove(m);
-        perft(board, depth - 1, count);
-        board.undoMove();
-    }
-}
 
 Move getUserMove(Board& board) {
     while(true) {
@@ -61,6 +49,7 @@ int main() {
     #endif
 
     Board board;
+
     StaticEvaluator evaluator(board);
     MinimaxEngine engine(evaluator);
 
