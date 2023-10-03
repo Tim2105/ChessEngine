@@ -1,0 +1,116 @@
+#include "core/utils/MoveNotations.h"
+#include "game/ui/console/BoardVisualizer.h"
+#include "game/ui/console/ConsolePGNGameAnalyzer.h"
+
+#include <chrono>
+#include <cmath>
+#include <conio.h>
+#include <iomanip>
+#include <sstream>
+
+void ConsolePGNGameAnalyzer::output() {
+    std::cout << "Analyzing game with restraint: " << searchTime / 1000.0 << "s time" << std::endl;
+    std::cout << "Analyzing moves: " << currentMoveIndex + 1 << "/" << moves.size() << std::endl;
+
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
+    while(hasNextMove()) {
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+        if(std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() > 1000) {
+            begin = end;
+            std::cout << "Analyzing moves: " << currentMoveIndex + 1 << "/" << moves.size() << std::endl;
+        }
+
+        analyzeNextMove();
+    }
+
+    board = Board();
+
+    currentMoveIndex = 0;
+
+    std::stringstream outputHeader;
+    outputHeader << std::string(100, '\n');
+    outputHeader << "Analysis complete. Showing interactive output." << std::endl << std::endl;
+    outputHeader << "Use the arrow keys to navigate through the game. Press q to quit." << std::endl;
+
+    while(true) {
+        std::cout << outputHeader.str();
+        std::cout << "Move " << currentMoveIndex + 1 << " of " << moves.size() << std::endl;
+
+        std::cout << std::endl;
+
+        std::string scoreStr;
+        if(!IS_MATE_SCORE(boardStateAnalyses[currentMoveIndex].score)) {
+            std::stringstream scoreStream;
+            scoreStream << std::fixed << std::setprecision(2) << boardStateAnalyses[currentMoveIndex].score / 100.0;
+            scoreStr = scoreStream.str();
+        }
+        else {
+            int32_t scoreAbs = std::abs(boardStateAnalyses[currentMoveIndex].score);
+
+            int32_t mateIn = (MATE_SCORE - scoreAbs) / 2 + 1;
+
+            if(boardStateAnalyses[currentMoveIndex].score > 0)
+                scoreStr = "M" + std::to_string(mateIn);
+            else
+                scoreStr = "-M" + std::to_string(mateIn);
+        }
+
+        std::cout << "Score: " << scoreStr << std::endl;
+        std::cout << std::endl;
+
+        std::cout << "Variations:" << std::endl;
+        for(uint32_t i = 0; i < boardStateAnalyses[currentMoveIndex].variations.size(); i++) {
+            std::string scoreStr;
+            if(!IS_MATE_SCORE(boardStateAnalyses[currentMoveIndex].variations[i].score)) {
+                std::stringstream scoreStream;
+                scoreStream << std::fixed << std::setprecision(2) << boardStateAnalyses[currentMoveIndex].variations[i].score / 100.0;
+                scoreStr = scoreStream.str();
+            }
+            else {
+                int32_t scoreAbs = std::abs(boardStateAnalyses[currentMoveIndex].variations[i].score);
+
+                int32_t mateIn = (MATE_SCORE - scoreAbs + 1) / 2;
+
+                if(boardStateAnalyses[currentMoveIndex].variations[i].score > 0)
+                    scoreStr = "M" + std::to_string(mateIn);
+                else
+                    scoreStr = "-M" + std::to_string(mateIn);
+            }
+
+            std::cout << std::setw(3) << i + 1 << ". Score: " << std::setw(5) << scoreStr << " - ";
+            for(std::string move : variationToFigurineAlgebraicNotation(boardStateAnalyses[currentMoveIndex].variations[i].moves, board, currentMoveIndex))
+                std::cout << move << " ";
+
+            std::cout << std::endl;
+        }
+
+        std::cout << std::string(5, '\n');
+
+        std::cout << visualizeBoardWithFigurines(board);
+
+        std::cout << std::string(5, '\n');
+        
+        int input = getch();
+
+        if(input == 'q')
+            break;
+
+        if(input == 0) {
+            input = getch();
+
+            if(input == 75) {
+                if(currentMoveIndex > 0) {
+                    currentMoveIndex--;
+                    board.undoMove();
+                }
+            } else if(input == 77) {
+                if(currentMoveIndex < moves.size() - 1)
+                    board.makeMove(moves[currentMoveIndex++]);
+                else
+                    break;
+            } 
+        }
+    }
+}

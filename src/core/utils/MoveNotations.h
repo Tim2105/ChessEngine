@@ -49,7 +49,8 @@ std::vector<std::string> variationToStandardAlgebraicNotation(const std::vector<
  * 
  * @param moves Die Variation.
  * @param board Das Spielfeld.
+ * @param customPly Die Anzahl der Halbzüge, die bereits gespielt wurden. Wird diese Zahl angegeben, wird sie als Startwert für die Nummerierung der Züge verwendet.
  */
-std::vector<std::string> variationToFigurineAlgebraicNotation(const std::vector<Move>& moves, Board& board);
+std::vector<std::string> variationToFigurineAlgebraicNotation(const std::vector<Move>& moves, Board& board, int32_t customPly = -1);
 
 #endif

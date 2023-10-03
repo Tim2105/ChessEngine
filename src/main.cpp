@@ -8,6 +8,9 @@
 #include "game/ui/console/BoardVisualizer.h"
 #include "game/ui/console/ConsolePlayer.h"
 #include "game/ui/console/ConsoleGameStateOutput.h"
+#include "game/ui/console/ConsolePGNGameAnalyzer.h"
+
+#include <fstream>
 
 #ifdef _WIN32
     #include <windows.h>
@@ -27,19 +30,6 @@ int main() {
         std::wcscpy(cfi.FaceName, L"DejaVu Sans Mono");
         SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &cfi);
     #endif
-
-    Board board;
-
-    StaticEvaluator evaluator(board);
-    MinimaxEngine engine(evaluator);
-
-    ComputerPlayer computerPlayer(engine);
-    ConsolePlayer consolePlayer(board);
-
-    ConsoleGameStateOutput gameStateOutput(board, true);
-
-    TimeControlledGame game(board, computerPlayer, consolePlayer, gameStateOutput, 20000, 0);
-    game.start();
 
     return 0;
 }

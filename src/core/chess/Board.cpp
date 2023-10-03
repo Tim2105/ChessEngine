@@ -204,6 +204,9 @@ Board Board::fromPGN(std::string pgn) {
     std::string section;
     for(char c : pgn) {
         if(c == ' ') {
+            if(section == "")
+                continue;
+            
             sections.push_back(section);
             section = "";
         }
