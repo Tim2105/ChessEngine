@@ -9,8 +9,9 @@
 #include <sstream>
 
 void ConsolePGNGameAnalyzer::output() {
-    std::cout << "Analyzing game with restraint: " << searchTime / 1000.0 << "s time" << std::endl;
-    std::cout << "Analyzing moves: " << currentMoveIndex + 1 << "/" << moves.size() << std::endl;
+    std::stringstream analysisHeader;
+    analysisHeader << "Analyzing game with restraint: " << searchTime / 1000.0 << "s time" << std::endl;
+    std::cout << analysisHeader.str() << "Analyzing moves: " << currentMoveIndex + 1 << "/" << moves.size() << std::endl;
 
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
@@ -19,7 +20,8 @@ void ConsolePGNGameAnalyzer::output() {
 
         if(std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() > 1000) {
             begin = end;
-            std::cout << "Analyzing moves: " << currentMoveIndex + 1 << "/" << moves.size() << std::endl;
+            clearScreen();
+            std::cout << analysisHeader.str() << "Analyzing moves: " << currentMoveIndex + 1 << "/" << moves.size() << std::endl;
         }
 
         analyzeNextMove();
@@ -29,12 +31,15 @@ void ConsolePGNGameAnalyzer::output() {
 
     currentMoveIndex = 0;
 
+    clearScreen();
+
     std::stringstream outputHeader;
-    outputHeader << std::string(100, '\n');
     outputHeader << "Analysis complete. Showing interactive output." << std::endl << std::endl;
     outputHeader << "Use the arrow keys to navigate through the game. Press q to quit." << std::endl;
 
     while(true) {
+        clearScreen();
+
         std::cout << outputHeader.str();
         std::cout << "Move " << currentMoveIndex + 1 << " of " << moves.size() << std::endl;
 

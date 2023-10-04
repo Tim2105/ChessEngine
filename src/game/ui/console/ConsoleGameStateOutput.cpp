@@ -1,5 +1,6 @@
 #include "game/ui/console/BoardVisualizer.h"
 #include "game/ui/console/ConsoleGameStateOutput.h"
+#include "game/ui/console/PortabilityHelper.h"
 
 #include <iostream>
 #include <sstream>
@@ -43,7 +44,7 @@ void ConsoleGameStateOutput::outputGameState(std::string whiteAdditionalInfo, st
     whiteAdditionalInfo = whiteAdditionalInfoStreamPadded.str();
     blackAdditionalInfo = blackAdditionalInfoStreamPadded.str();
 
-    std::cout << std::string(NEWLINES_TO_TOP, '\n');
+    clearScreen();
 
     if(flipBoard) {
         std::cout << whiteAdditionalInfo << std::endl << std::endl;
@@ -54,8 +55,6 @@ void ConsoleGameStateOutput::outputGameState(std::string whiteAdditionalInfo, st
         std::cout << visualizeBoardWithFigurines(board) << std::endl;
         std::cout << whiteAdditionalInfo << std::endl;
     }
-
-    std::cout << std::string(NEWLINES_TO_BOTTOM, '\n');
 
     return;
 }

@@ -62,3 +62,11 @@ int getchArrowKey() {
         }
     #endif
 }
+
+void clearScreen() {
+    #ifdef _WIN32
+        system("cls");
+    #else
+        clear();
+    #endif
+}

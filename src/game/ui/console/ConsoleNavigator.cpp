@@ -14,6 +14,8 @@
 #include <fstream>
 
 void ConsoleNavigator::startGame() {
+    clearScreen();
+
     std::cout <<  "Play as white? (y/n)" << std::endl;
     int input = ngetch();
 
@@ -46,6 +48,8 @@ void ConsoleNavigator::startGame() {
 }
 
 void ConsoleNavigator::startAnalysis() {
+    clearScreen();
+
     std::cout << "Please enter the path to the PGN file(or r for the most recently saved game):" << std::endl;
     std::string path;
     std::cin >> path;
@@ -79,6 +83,8 @@ void ConsoleNavigator::startAnalysis() {
 
 void ConsoleNavigator::navigate() {
     while(true) {
+        clearScreen();
+
         std::cout << "1. Play a game" << std::endl;
         std::cout << "2. Analyze a game" << std::endl;
         std::cout << "3. Exit" << std::endl;
@@ -93,8 +99,6 @@ void ConsoleNavigator::navigate() {
             startAnalysis();
         } else if(input == '3' || input == 27 || input == 'q') {
             break;
-        } else {
-            std::cout << "Invalid input!" << std::endl;
         }
     }
 }

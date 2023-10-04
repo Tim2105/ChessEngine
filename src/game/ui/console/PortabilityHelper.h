@@ -21,4 +21,6 @@ int ngetch();
 
 int getchArrowKey();
 
+void clearScreen();
+
 #endif
