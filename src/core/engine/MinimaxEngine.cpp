@@ -182,8 +182,8 @@ void MinimaxEngine::search(uint32_t searchTime, bool treatAsTimeControl) {
         minTime *= timeFactor[timeFacArrayIndex];
         maxTime *= timeFactor[timeFacArrayIndex];
 
-        // Puffer von 30 ms für das Starten und Stoppen der Threads einberechnen
-        maxTime = std::max(0ull, maxTime - 30);
+        // Puffer von 10 ms einberechnen
+        maxTime = std::max(0ull, maxTime - 10);
 
         if(minTime > maxTime)
             minTime = maxTime;
