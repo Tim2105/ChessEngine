@@ -8,6 +8,7 @@ class ConsoleNavigator : public Navigator {
     private:
         void startGame();
         void startAnalysis();
+        void startLiveAnalysis();
 
     public:
         ConsoleNavigator() = default;

@@ -9,6 +9,8 @@
     #include <cstdio>
     #include <termios.h>
     #include <unistd.h>
+    #include <stdio.h>
+    #include <sys/ioctl.h>
 #endif
 
 #define KEY_NONE 0
@@ -24,5 +26,7 @@ int ngetch();
 int getchArrowKey();
 
 void clearScreen();
+
+bool nkbhit();
 
 #endif

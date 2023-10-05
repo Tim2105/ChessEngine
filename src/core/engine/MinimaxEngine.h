@@ -232,7 +232,9 @@ class MinimaxEngine : public Engine {
             return std::chrono::system_clock::now() >= lastCheckupTime + checkupInterval;
         }
 
-        inline void checkup() {
+    protected:
+
+        virtual inline void checkup() {
             lastCheckupTime = std::chrono::system_clock::now();
 
             if(lastCheckupTime >= endTime)

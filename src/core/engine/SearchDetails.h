@@ -24,7 +24,7 @@ struct SearchDetails {
     }
 
     inline Move getBestMove() const {
-        return variations.empty() ? Move() : variations[0].moves[0];
+        return variations.empty() ? Move() : variations[0].moves.empty() ? Move() : variations[0].moves[0];
     }
 
     inline int16_t getBestMoveScore() const {

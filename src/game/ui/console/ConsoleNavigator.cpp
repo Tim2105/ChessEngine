@@ -1,4 +1,5 @@
 #include "game/ui/console/ConsoleGameStateOutput.h"
+#include "game/ui/console/ConsoleLiveAnalyzer.h"
 #include "game/ui/console/ConsoleNavigator.h"
 #include "game/ui/console/ConsolePGNGameAnalyzer.h"
 #include "game/ui/console/ConsolePlayer.h"
@@ -50,7 +51,7 @@ void ConsoleNavigator::startGame() {
 void ConsoleNavigator::startAnalysis() {
     clearScreen();
 
-    std::cout << "Please enter the path to the PGN file(or r for the most recently saved game):" << std::endl;
+    std::cout << "Please enter the path to the PGN file (or r for the most recently saved game):" << std::endl;
     std::string path;
     std::cin >> path;
 
@@ -81,13 +82,28 @@ void ConsoleNavigator::startAnalysis() {
     }
 }
 
+void ConsoleNavigator::startLiveAnalysis() {
+    std::cout << "Please enter the FEN of the position you want to analyse (or 'startpos' for the starting position):" << std::endl;
+
+    std::string fen;
+    std::getline(std::cin, fen);
+
+    Board board;
+    if(fen != "startpos")
+        board = Board(fen);
+
+    ConsoleLiveAnalyzer analyzer(board);
+    analyzer.start();
+}
+
 void ConsoleNavigator::navigate() {
     while(true) {
         clearScreen();
 
         std::cout << "1. Play a game" << std::endl;
         std::cout << "2. Analyze a game" << std::endl;
-        std::cout << "3. Exit" << std::endl;
+        std::cout << "3. Analyze a position" << std::endl;
+        std::cout << "4. Exit" << std::endl;
 
         std::cout << std::string(2, '\n');
 
@@ -97,7 +113,9 @@ void ConsoleNavigator::navigate() {
             startGame();
         } else if(input == '2') {
             startAnalysis();
-        } else if(input == '3' || input == 27 || input == 'q') {
+        } else if(input == '3') {
+            startLiveAnalysis();
+        } else if(input == '4' || input == 27 || input == 'q') {
             break;
         }
     }

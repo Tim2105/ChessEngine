@@ -12,11 +12,6 @@ void initializeConsole() {
         cfi.FontWeight = FW_NORMAL;
         std::wcscpy(cfi.FaceName, L"DejaVu Sans Mono");
         SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &cfi);
-    #else
-        struct termios term;
-        tcgetattr(STDIN_FILENO, &term);
-        term.c_lflag &= ~ICANON;
-        tcsetattr(STDIN_FILENO, TCSANOW, &term);
     #endif
 }
 
@@ -95,5 +90,25 @@ void clearScreen() {
         system("cls");
     #else
         printf("\033[2J\033[1;1H");
+    #endif
+}
+
+bool nkbhit() {
+    #ifdef _WIN32
+        return _kbhit();
+    #else
+        struct termios term;
+        tcgetattr(STDIN_FILENO, &term);
+        term.c_lflag &= ~ICANON;
+        tcsetattr(STDIN_FILENO, TCSANOW, &term);
+        setbuf(stdin, NULL);
+
+        int bytesWaiting;
+        ioctl(0, FIONREAD, &bytesWaiting);
+
+        term.c_lflag |= ICANON;
+        tcsetattr(STDIN_FILENO, TCSANOW, &term);
+
+        return bytesWaiting > 0;
     #endif
 }
