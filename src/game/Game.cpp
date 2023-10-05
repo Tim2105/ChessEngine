@@ -22,12 +22,16 @@ void Game::start() {
         outputGameState();
     }
 
-    std::cout << "Game over" << std::endl;
     if (isCheckmate(board)) {
-        if (board.getSideToMove() == WHITE)
-            std::cout << "Black wins" << std::endl;
-        else
-            std::cout << "White wins" << std::endl;
-    } else
-        std::cout << "Draw" << std::endl;
+        if (board.getSideToMove() == WHITE) {
+            whitePlayer.onGameEnd(BLACK_WON);
+            blackPlayer.onGameEnd(BLACK_WON);
+        } else {
+            whitePlayer.onGameEnd(WHITE_WON);
+            blackPlayer.onGameEnd(WHITE_WON);
+        }
+    } else {
+        whitePlayer.onGameEnd(DRAW);
+        blackPlayer.onGameEnd(DRAW);
+    }
 }

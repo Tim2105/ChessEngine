@@ -54,21 +54,29 @@ void TimeControlledGame::start() {
 
     outputGameState();
 
-    std::cout << "Game over" << std::endl;
     if (isCheckmate(board)) {
-        if (board.getSideToMove() == WHITE)
-            std::cout << "Black wins" << std::endl;
-        else
-            std::cout << "White wins" << std::endl;
+        if (board.getSideToMove() == WHITE) {
+            whitePlayer.onGameEnd(BLACK_WON);
+            blackPlayer.onGameEnd(BLACK_WON);
+        } else {
+            whitePlayer.onGameEnd(WHITE_WON);
+            blackPlayer.onGameEnd(WHITE_WON);
+        }
     } else {
         if(board.getSideToMove() == WHITE &&
-          (whiteTimeControlled && whiteTime == 0))
-            std::cout << "Black wins by timeout" << std::endl;
+          (whiteTimeControlled && whiteTime == 0)) {
+            whitePlayer.onGameEnd(BLACK_WON_BY_TIME);
+            blackPlayer.onGameEnd(BLACK_WON_BY_TIME);
+          }
         else if(board.getSideToMove() == BLACK &&
-          (blackTimeControlled && blackTime == 0))
-            std::cout << "White wins by timeout" << std::endl;
-        else
-            std::cout << "Draw" << std::endl;
+          (blackTimeControlled && blackTime == 0)) {
+            whitePlayer.onGameEnd(WHITE_WON_BY_TIME);
+            blackPlayer.onGameEnd(WHITE_WON_BY_TIME);
+          }
+        else {
+            whitePlayer.onGameEnd(DRAW);
+            blackPlayer.onGameEnd(DRAW);
+        }
     }
 }
 

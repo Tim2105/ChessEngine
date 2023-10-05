@@ -17,6 +17,12 @@ CC = g++
 # Compilerflags
 CFLAGS = -Wall -Wextra -Werror -std=c++20 -Ofast -Isrc -flto=auto -mavx2
 
+# Linkerflags
+LDFLAGS = 
+
+# Externe Bibliotheken
+LDLIBS = 
+
 $(info Compiling with $(CC) $(CFLAGS))
 
 # Quelldateien
@@ -32,19 +38,26 @@ EXEC = bin/main
 
 # Erstellt die Ausführbare Datei
 $(EXEC): $(OBJ)
-	@$(CC) $(CFLAGS) -o $@ $^
+	$(info Linking with $(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS))
+	@$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
+
+# mkdir -p für Windows
+MKDIR = $(if $(filter $(OS),Windows_NT),if not exist $(subst /,\,$1) mkdir $(subst /,\,$1),mkdir -p $1)
 
 # Erstellt die Objektdateien
 # Fehlende Ordner werden erstellt
 bin/obj/%.o: src/%.cpp
 	$(info Compiling $<)
-	@if not exist "$(subst /,\,$(@D))" mkdir $(subst /,\,$(@D))
+	@$(call MKDIR,$(dir $@))
 	@$(CC) $(CFLAGS) -c -o $@ $<
-
 
 # Löscht alle erstellten Dateien
 clean:
+ifeq ($(OS),Windows_NT)
 	@rmdir /s /q bin
+else
+	@rm -rf bin
+endif
 
 
 # Führt die Ausführbare Datei aus

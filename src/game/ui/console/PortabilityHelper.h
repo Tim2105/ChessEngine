@@ -6,7 +6,9 @@
     #include <windows.h>
     #include <cwchar>
 #else
-    #include <curses.h>
+    #include <cstdio>
+    #include <termios.h>
+    #include <unistd.h>
 #endif
 
 #define KEY_NONE 0

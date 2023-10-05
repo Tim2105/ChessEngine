@@ -183,7 +183,7 @@ void MinimaxEngine::search(uint32_t searchTime, bool treatAsTimeControl) {
         maxTime *= timeFactor[timeFacArrayIndex];
 
         // Puffer von 10 ms einberechnen
-        maxTime = std::max(0ull, maxTime - 10);
+        maxTime = std::max((uint64_t)0, maxTime - 10);
 
         if(minTime > maxTime)
             minTime = maxTime;

@@ -13,8 +13,10 @@ void initializeConsole() {
         std::wcscpy(cfi.FaceName, L"DejaVu Sans Mono");
         SetCurrentConsoleFontEx(GetStdHandle(STD_OUTPUT_HANDLE), FALSE, &cfi);
     #else
-        initscr();
-        keypad(stdscr, TRUE);
+        struct termios term;
+        tcgetattr(STDIN_FILENO, &term);
+        term.c_lflag &= ~ICANON;
+        tcsetattr(STDIN_FILENO, TCSANOW, &term);
     #endif
 }
 
@@ -22,7 +24,24 @@ int ngetch() {
     #ifdef _WIN32
         return _getch();
     #else
-        return getch();
+        char buf = 0;
+        struct termios old;
+        fflush(stdout);
+        if(tcgetattr(0, &old) < 0)
+            perror("tcsetattr()");
+        old.c_lflag &= ~ICANON;
+        old.c_lflag &= ~ECHO;
+        old.c_cc[VMIN] = 1;
+        old.c_cc[VTIME] = 0;
+        if(tcsetattr(0, TCSANOW, &old) < 0)
+            perror("tcsetattr ICANON");
+        if(read(0, &buf, 1) < 0)
+            perror("read()");
+        old.c_lflag |= ICANON;
+        old.c_lflag |= ECHO;
+        if(tcsetattr(0, TCSADRAIN, &old) < 0)
+            perror("tcsetattr ~ICANON");
+        return buf;
     #endif
 }
 
@@ -47,19 +66,27 @@ int getchArrowKey() {
 
         return ch;
     #else
-        int ch = getch();
-        switch(ch) {
-            case KEY_UP:
-                return KEY_ARROW_UP;
-            case KEY_DOWN:
-                return KEY_ARROW_DOWN;
-            case KEY_RIGHT:
-                return KEY_ARROW_RIGHT;
-            case KEY_LEFT:
-                return KEY_ARROW_LEFT;
-            default:
-                return ch;
+        int ch = ngetch();
+        if(ch == 27) {
+            ch = ngetch();
+            if(ch == 91) {
+                ch = ngetch();
+                switch(ch) {
+                    case 65:
+                        return KEY_ARROW_UP;
+                    case 66:
+                        return KEY_ARROW_DOWN;
+                    case 67:
+                        return KEY_ARROW_RIGHT;
+                    case 68:
+                        return KEY_ARROW_LEFT;
+                    default:
+                        return KEY_NONE;
+                }
+            }
         }
+
+        return ch;
     #endif
 }
 
@@ -67,6 +94,6 @@ void clearScreen() {
     #ifdef _WIN32
         system("cls");
     #else
-        clear();
+        printf("\033[2J\033[1;1H");
     #endif
 }

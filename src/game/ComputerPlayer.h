@@ -4,6 +4,8 @@
 #include "core/engine/Engine.h"
 #include "game/Player.h"
 
+#define UNUSED(x) (void)(x)
+
 class ComputerPlayer : public Player {
 
     private:
@@ -15,6 +17,10 @@ class ComputerPlayer : public Player {
         ~ComputerPlayer() = default;
         Move getMove() override;
         Move getMove(uint32_t remainingTime) override;
+
+        inline void onGameEnd(uint8_t result) override {
+            UNUSED(result);
+        };
 
 };
 
