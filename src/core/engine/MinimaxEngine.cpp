@@ -248,9 +248,9 @@ inline int32_t MinimaxEngine::scoreMove(Move& move, int16_t ply) {
 
     moveScore += MOVE_ORDERING_PSQT[movedPieceType][psqtDestination64] - MOVE_ORDERING_PSQT[movedPieceType][psqtOrigin64];
 
-    moveScore += std::clamp(relativeHistory[searchBoard.getSideToMove() / COLOR_MASK]
+    moveScore += std::clamp(relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
                         [Mailbox::mailbox[move.getOrigin()]]
-                        [Mailbox::mailbox[move.getDestination()]] / ((currentMaxDepth / ONE_PLY) + 1),
+                        [Mailbox::mailbox[move.getDestination()]] / (currentMaxDepth / ONE_PLY),
                         -99, 49);
 
     return moveScore;
@@ -439,7 +439,7 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
 
         searchBoard.makeMove(move);
 
-        int16_t extension = determineExtension(false, false, isCheckEvasion);
+        int16_t extension = determineExtension(isCheckEvasion);
         int16_t nwReduction = determineReduction(depth, 0, moveNumber, isCheckEvasion);
 
         int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
@@ -449,11 +449,11 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
         nwDepthDelta = std::min(nwDepthDelta, minReduction);
 
         if(pvNodes > 0) {
-            score = -pvSearch(depth - ONE_PLY, 1, -beta, -alpha, 1);
+            score = -pvSearch(depth - ONE_PLY, 1, -beta, -alpha, 0);
         } else {
-            score = -nwSearch(depth + nwDepthDelta, 1, -alpha - 1, -alpha, 1);
+            score = -nwSearch(depth + nwDepthDelta, 1, -alpha - 1, -alpha, 0);
             if(score > worstVariationScore)
-                score = -pvSearch(depth - ONE_PLY, 1, -beta, -alpha, 1);
+                score = -pvSearch(depth - ONE_PLY, 1, -beta, -alpha, 0);
         }
 
         searchBoard.undoMove();
@@ -465,7 +465,7 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
                 break;
         }
         
-        relativeHistory[searchBoard.getSideToMove() / COLOR_MASK]
+        relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
                            [Mailbox::mailbox[move.getOrigin()]]
                            [Mailbox::mailbox[move.getDestination()]] -= depth / ONE_PLY;
         
@@ -487,9 +487,9 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
                                 [Mailbox::mailbox[lastMove.getOrigin()]] = move;
             }
 
-            relativeHistory[searchBoard.getSideToMove() / COLOR_MASK]
+            relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
                            [Mailbox::mailbox[move.getOrigin()]]
-                           [Mailbox::mailbox[move.getDestination()]] += (currentMaxDepth / ONE_PLY) * (currentMaxDepth / ONE_PLY);
+                           [Mailbox::mailbox[move.getDestination()]] += std::min(1 << (depth / ONE_PLY), 1 << 24);
 
             return score;
         }
@@ -540,9 +540,9 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
         currentAge, depth, bestScore, EXACT_NODE, bestMove
     });
 
-    relativeHistory[searchBoard.getSideToMove() / COLOR_MASK]
+    relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
                     [Mailbox::mailbox[bestMove.getOrigin()]]
-                    [Mailbox::mailbox[bestMove.getDestination()]] += (currentMaxDepth / ONE_PLY) * (currentMaxDepth / ONE_PLY);
+                    [Mailbox::mailbox[bestMove.getDestination()]] += std::min(1 << (depth / ONE_PLY), 1 << 24);
                 
     if(worstVariationScore > oldAlpha) {
         variations = newVariations;
@@ -601,7 +601,7 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
     for(Move move : moves) {
         searchBoard.makeMove(move);
 
-        int16_t extension = determineExtension(false, false, isCheckEvasion);
+        int16_t extension = determineExtension(isCheckEvasion);
         int16_t nwReduction = determineReduction(depth, ply, moveNumber, isCheckEvasion);
 
         int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
@@ -623,7 +623,7 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
         if(!searchRunning)
             return 0;
         
-        relativeHistory[searchBoard.getSideToMove() / COLOR_MASK]
+        relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
                            [Mailbox::mailbox[move.getOrigin()]]
                            [Mailbox::mailbox[move.getDestination()]] -= depth / ONE_PLY;
         
@@ -649,9 +649,9 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
                                 [Mailbox::mailbox[lastMove.getOrigin()]] = move;
             }
 
-            relativeHistory[searchBoard.getSideToMove() / COLOR_MASK]
+            relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
                            [Mailbox::mailbox[move.getOrigin()]]
-                           [Mailbox::mailbox[move.getDestination()]] += (currentMaxDepth / ONE_PLY) * (currentMaxDepth / ONE_PLY);
+                           [Mailbox::mailbox[move.getDestination()]] += std::min(1 << (depth / ONE_PLY), 1 << 24);
 
             return score;
         }
@@ -682,9 +682,9 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
             currentAge, depth, bestScore, EXACT_NODE, bestMove
         });
 
-    relativeHistory[searchBoard.getSideToMove() / COLOR_MASK]
+    relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
                     [Mailbox::mailbox[bestMove.getOrigin()]]
-                    [Mailbox::mailbox[bestMove.getDestination()]] += (currentMaxDepth / ONE_PLY) * (currentMaxDepth / ONE_PLY);
+                    [Mailbox::mailbox[bestMove.getDestination()]] += std::min(1 << (depth / ONE_PLY), 1 << 24);
 
     return bestScore;
 }
@@ -708,7 +708,7 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
     if(depth <= 0)
         return quiescence(alpha, beta);
 
-    TranspositionTableEntry ttEntry;
+    TranspositionTableEntry ttEntry = {0, 0, 0, 0, Move()};
     bool tableHit = transpositionTable.probe(searchBoard.getHashValue(), ttEntry);
 
     if(tableHit) {
@@ -724,7 +724,6 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
     }
 
     bool isCheckEvasion = searchBoard.isCheck();
-    bool isThreat = false, isMateThreat = false;
 
     // Null move pruning
     if(nullMoveCooldown <= 0 && !isCheckEvasion && !isMateLine()) {
@@ -744,21 +743,14 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
             int16_t depthReduction = 3 * ONE_PLY;
 
             if(depth >= 8 * ONE_PLY)
-                depthReduction += ONE_PLY;
+                depthReduction = 4 * ONE_PLY;
 
             int16_t nullMoveScore = -nwSearch(depth - depthReduction, ply + 1, -beta, -alpha, NULL_MOVE_R_VALUE);
 
             searchBoard.undoMove();
 
-            if(nullMoveScore >= beta) {
+            if(nullMoveScore >= beta)
                 return nullMoveScore;
-            }
-
-            if(nullMoveScore < (alpha - THREAT_MARGIN))
-                isThreat = true;
-
-            if(IS_MATE_SCORE(nullMoveScore))
-                isMateThreat = true;
         }
     }
     
@@ -781,7 +773,7 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
     for(Move move : moves) {
         searchBoard.makeMove(move);
 
-        int16_t extension = determineExtension(isThreat, isMateThreat, isCheckEvasion);
+        int16_t extension = determineExtension(isCheckEvasion);
         int16_t nwReduction = determineReduction(depth, ply, moveNumber, isCheckEvasion);
 
         int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
@@ -801,7 +793,7 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
         if(!searchRunning)
             return 0;
         
-        relativeHistory[searchBoard.getSideToMove() / COLOR_MASK]
+        relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
                         [Mailbox::mailbox[move.getOrigin()]]
                         [Mailbox::mailbox[move.getDestination()]] -= depth / ONE_PLY;
 
@@ -826,9 +818,9 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
                                 [Mailbox::mailbox[lastMove.getOrigin()]] = move;
             }
 
-            relativeHistory[searchBoard.getSideToMove() / COLOR_MASK]
+            relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
                            [Mailbox::mailbox[move.getOrigin()]]
-                           [Mailbox::mailbox[move.getDestination()]] += (currentMaxDepth / ONE_PLY) * (currentMaxDepth / ONE_PLY);
+                           [Mailbox::mailbox[move.getDestination()]] += std::min(1 << (depth / ONE_PLY), 1 << 24);
 
             return score;
         }
@@ -847,14 +839,14 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
             currentAge, depth, bestScore, NW_NODE | EXACT_NODE, bestMove
         });
     
-    relativeHistory[searchBoard.getSideToMove() / COLOR_MASK]
+    relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
                 [Mailbox::mailbox[bestMove.getOrigin()]]
-                [Mailbox::mailbox[bestMove.getDestination()]] += (currentMaxDepth / ONE_PLY) * (currentMaxDepth / ONE_PLY);
+                [Mailbox::mailbox[bestMove.getDestination()]] += std::min(1 << (depth / ONE_PLY), 1 << 24);
 
     return bestScore;
 }
 
-inline int16_t MinimaxEngine::determineExtension(bool isThreat, bool isMateThreat, bool isCheckEvasion) {
+inline int16_t MinimaxEngine::determineExtension(bool isCheckEvasion) {
     int16_t extension = 0;
 
     Move m = searchBoard.getLastMove();
@@ -887,30 +879,31 @@ inline int16_t MinimaxEngine::determineExtension(bool isThreat, bool isMateThrea
             & searchBoard.getPieceBitboard(otherSide | PAWN)))
             extension += TWO_THIRDS_PLY;
     }
-
-    // Wenn Gefahr/Mattgefahr besteht
-    if(isThreat) {
-        extension += ONE_PLY;
-    }
-
-    if(isMateThreat) {
-        extension += ONE_PLY * 2;
-    }
     
     return extension;
 }
 
 inline int16_t MinimaxEngine::determineReduction(int16_t depth, int16_t ply, int32_t moveCount, bool isCheckEvasion) {
+    UNUSED(depth);
+
     int16_t reduction = 0;
 
     bool isCheck = searchBoard.isCheck();
 
-    int32_t unreducedMoves = 1;
+    int32_t unreducedMoves = 2;
     
     if(moveCount <= unreducedMoves || isCheck || isCheckEvasion)
         return 0;
 
-    reduction += (int16_t)(sqrt(depth) + sqrt(std::max(moveCount - unreducedMoves, 0) * ONE_PLY));
+    reduction += (int16_t)(log(moveCount - unreducedMoves + 1) / log(2) * ONE_PLY);
+
+    int32_t relativeHistoryScore = relativeHistory[searchBoard.getSideToMove() / COLOR_MASK]
+                                                  [Mailbox::mailbox[searchBoard.getLastMove().getOrigin()]]
+                                                  [Mailbox::mailbox[searchBoard.getLastMove().getDestination()]];
+
+    relativeHistoryScore = std::min(relativeHistoryScore, (int32_t)0);
+
+    reduction -= (int16_t)((relativeHistoryScore / 20000.0) * ONE_PLY);
 
     if(isMateLine()) {
         int16_t maxSearchPly = (int16_t)(currentMaxDepth / ONE_PLY);

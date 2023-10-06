@@ -14,6 +14,8 @@
 #include <stdint.h>
 #include <vector>
 
+#define UNUSED(x) (void)(x)
+
 #define _DEBUG_ 0
 
 #define MIN_SCORE -32000
@@ -44,7 +46,7 @@
 
 #define MAX_PLY 256
 
-#define NULL_MOVE_R_VALUE 3
+#define NULL_MOVE_R_VALUE 2
 
 #define CHECKUP_INTERVAL_MICROSECONDS 2000
 
@@ -222,7 +224,7 @@ class MinimaxEngine : public Engine {
 
         int16_t quiescence(int16_t alpha, int16_t beta);
 
-        inline int16_t determineExtension(bool isThreat, bool isMateThreat, bool isCheckEvasion = false);
+        inline int16_t determineExtension(bool isCheckEvasion = false);
 
         inline int16_t determineReduction(int16_t depth, int16_t ply, int32_t moveCount, bool isCheckEvasion = false);
 
