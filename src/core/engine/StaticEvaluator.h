@@ -195,7 +195,7 @@ class StaticEvaluator : public Evaluator {
 
         StaticEvaluator(Board& b) : Evaluator(b) {};
 
-        ~StaticEvaluator() override = default;
+        ~StaticEvaluator() {}
 
         StaticEvaluator(const StaticEvaluator& other) = delete;
         StaticEvaluator& operator=(const StaticEvaluator& other) = delete;

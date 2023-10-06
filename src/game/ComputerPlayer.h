@@ -14,7 +14,7 @@ class ComputerPlayer : public Player {
 
     public:
         ComputerPlayer(Engine& engine) : Player(engine.getBoard()), engine(engine) {};
-        ~ComputerPlayer() = default;
+        ~ComputerPlayer() {};
         Move getMove() override;
         Move getMove(uint32_t remainingTime) override;
 

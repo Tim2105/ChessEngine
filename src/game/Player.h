@@ -15,7 +15,7 @@ class Player {
 
     public:
         Player(Board& board) : board(board) {}
-        virtual ~Player() = default;
+        virtual ~Player() {}
         virtual Move getMove() = 0;
         virtual Move getMove(uint32_t remainingTime) = 0;
 

@@ -28,6 +28,8 @@ class InterruptedEngine : public MinimaxEngine {
     public:
         InterruptedEngine(Evaluator& e, std::function<void()> checkupCallback, std::function<void()> newDepthCallback, uint32_t numVariations = 1)
             : MinimaxEngine(e, numVariations), checkupCallback(checkupCallback), newDepthCallback(newDepthCallback) {}
+
+        ~InterruptedEngine() {}
 };
 
 

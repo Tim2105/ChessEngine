@@ -42,7 +42,7 @@ class Evaluator {
     public:
         Evaluator(Board& b) : b(&b) {}
 
-        virtual ~Evaluator() = default;
+        virtual ~Evaluator() {}
 
         /**
          * @brief Setzt das Spielfeld, auf dem die statische Bewertung ausgeführt werden soll.

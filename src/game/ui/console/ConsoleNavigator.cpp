@@ -95,7 +95,12 @@ void ConsoleNavigator::startLiveAnalysis() {
     if(fen != "startpos")
         board = Board(fen);
 
+    std::cout << "Created board" << std::endl;
+
     ConsoleLiveAnalyzer analyzer(board);
+
+    std::cout << "Created analyzer" << std::endl;
+
     analyzer.start();
 }
 

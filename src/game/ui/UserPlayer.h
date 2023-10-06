@@ -7,7 +7,7 @@ class UserPlayer : public Player {
 
     public:
         UserPlayer(Board& b) : Player(b) {};
-        ~UserPlayer() = default;
+        ~UserPlayer() {};
 
 };
 

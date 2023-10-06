@@ -13,6 +13,7 @@ void ConsoleLiveAnalyzer::start() {
     while(!quit) {
         if(!isGameOver(board)) {
             maxDepthReached = true;
+            std::cout << "Starting analysis " << std::endl;
             analyse();
         } else {
             SearchDetails details;

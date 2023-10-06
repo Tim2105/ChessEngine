@@ -7,7 +7,7 @@ class ConsolePlayer : public UserPlayer {
 
     public:
         ConsolePlayer(Board& b) : UserPlayer(b) {};
-        ~ConsolePlayer() = default;
+        ~ConsolePlayer() {};
         Move getMove() override;
         Move getMove(uint32_t remainingTime) override;
 

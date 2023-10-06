@@ -16,6 +16,7 @@ class ConsoleLiveAnalyzer : public LiveAnalyzer {
 
     public:
         ConsoleLiveAnalyzer(Board& b) : LiveAnalyzer(b) {};
+        ~ConsoleLiveAnalyzer() {};
 
         void start() override;
 };
