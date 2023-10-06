@@ -18,9 +18,10 @@ void LiveAnalyzer::analyse() {
     };
     
     StaticEvaluator evaluator(board);
-    engine = new InterruptedEngine(evaluator, checkupCallback, newDepthCallback, 3);
+    InterruptedEngine eng(evaluator, checkupCallback, newDepthCallback, 3);
+    engine = &eng;
 
-    engine->search(0);
+    eng.search(0);
 }
 
 void LiveAnalyzer::modifyScoreIfBlack(SearchDetails& details) {

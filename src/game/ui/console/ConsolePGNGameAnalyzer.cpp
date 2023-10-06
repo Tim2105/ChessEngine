@@ -1,5 +1,6 @@
 #include "core/utils/MoveNotations.h"
 #include "game/ui/console/BoardVisualizer.h"
+#include "game/ui/console/ConsoleLiveAnalyzer.h"
 #include "game/ui/console/ConsolePGNGameAnalyzer.h"
 #include "game/ui/console/PortabilityHelper.h"
 
@@ -37,7 +38,7 @@ void ConsolePGNGameAnalyzer::output() {
 
     std::stringstream outputHeader;
     outputHeader << "Analysis complete. Showing interactive output." << std::endl << std::endl;
-    outputHeader << "Use the arrow keys to navigate through the game. Press q to quit." << std::endl;
+    outputHeader << "Use the arrow keys to navigate through the game. Press l to enter live analysis mode. Press q to quit." << std::endl;
 
     while(true) {
         clearScreen();
@@ -160,7 +161,11 @@ void ConsolePGNGameAnalyzer::output() {
         if(input == 'q')
             break;
 
-        if(input == KEY_ARROW_LEFT) {
+        if(input == 'l') {
+            Board boardCopy = board;
+            ConsoleLiveAnalyzer liveAnalyzer(boardCopy);
+            liveAnalyzer.start();
+        } else if(input == KEY_ARROW_LEFT) {
             if(currentMoveIndex > 0) {
                 currentMoveIndex--;
                 board.undoMove();

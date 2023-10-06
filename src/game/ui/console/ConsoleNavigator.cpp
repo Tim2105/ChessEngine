@@ -85,6 +85,9 @@ void ConsoleNavigator::startAnalysis() {
 void ConsoleNavigator::startLiveAnalysis() {
     std::cout << "Please enter the FEN of the position you want to analyse (or 'startpos' for the starting position):" << std::endl;
 
+    // Clear the input buffer of any whitespace
+    std::cin >> std::ws;
+
     std::string fen;
     std::getline(std::cin, fen);
 

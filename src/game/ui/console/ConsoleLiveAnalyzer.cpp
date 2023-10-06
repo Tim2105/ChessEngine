@@ -161,7 +161,7 @@ void ConsoleLiveAnalyzer::output(SearchDetails details) {
 
     std::cout << "Score: " << scoreStr << std::endl;
     std::cout << "Depth: " << details.depth << ", Nodes: "
-        << details.nodesSearched << ", kNps: " << std::fixed << std::setprecision(2)
+        << details.nodesSearched << ", kN/s: " << std::fixed << std::setprecision(2)
         << details.kiloNodesPerSecond() << std::endl << std::endl;
 
     if(details.getBestMove() != Move()) {
