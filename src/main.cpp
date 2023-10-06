@@ -13,6 +13,8 @@
 #include "game/ui/console/ConsoleNavigator.h"
 #include "game/ui/console/PortabilityHelper.h"
 
+#include "test/Tournament.h"
+
 #include <fstream>
 
 int main() {

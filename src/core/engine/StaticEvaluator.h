@@ -257,21 +257,21 @@ class StaticEvaluator : public Evaluator {
 
         static constexpr int16_t MG_PIECE_VALUE[7] = {
             0, // Empty
-            120, // Pawn
-            400, // Knight
-            410, // Bishop
-            600, // Rook
-            1100, // Queen
+            110, // Pawn
+            350, // Knight
+            360, // Bishop
+            520, // Rook
+            980, // Queen
             0 // King
         };
 
         static constexpr int16_t EG_PIECE_VALUE[7] = {
             0, // Empty
-            175, // Pawn
-            400, // Knight
-            410, // Bishop
-            600, // Rook
-            1250, // Queen
+            150, // Pawn
+            350, // Knight
+            370, // Bishop
+            530, // Rook
+            1010, // Queen
             0 // King
         };
 
@@ -279,20 +279,20 @@ class StaticEvaluator : public Evaluator {
         static constexpr int32_t KNIGHT_PAWN_VALUE = 2;
 
         // Türme sind mehr Wert, wenn weniger Bauern auf dem Feld sind
-        static constexpr int32_t ROOK_CAPTURED_PAWN_VALUE = 4;
+        static constexpr int32_t ROOK_CAPTURED_PAWN_VALUE = 3;
 
         // Bonus für das Läuferpaar
-        static constexpr int32_t MG_BISHOP_PAIR_VALUE = 40;
-        static constexpr int32_t EG_BISHOP_PAIR_VALUE = 40;
+        static constexpr int32_t MG_BISHOP_PAIR_VALUE = 30;
+        static constexpr int32_t EG_BISHOP_PAIR_VALUE = 35;
 
         // Bonus für Farbdominanz mit einem Läufer
-        static constexpr int32_t MG_BISHOP_COLOR_DOMINANCE_VALUE = 70;
+        static constexpr int32_t MG_BISHOP_COLOR_DOMINANCE_VALUE = 50;
 
         // Bonus für Türme auf offenen/halboffenen Linien
-        static constexpr int32_t MG_ROOK_SEMI_OPEN_FILE_VALUE = 20;
-        static constexpr int32_t MG_ROOK_OPEN_FILE_VALUE = 35;
+        static constexpr int32_t MG_ROOK_SEMI_OPEN_FILE_VALUE = 15;
+        static constexpr int32_t MG_ROOK_OPEN_FILE_VALUE = 30;
 
-        static constexpr int32_t EG_ROOK_SEMI_OPEN_FILE_VALUE = 15;
+        static constexpr int32_t EG_ROOK_SEMI_OPEN_FILE_VALUE = 10;
         static constexpr int32_t EG_ROOK_OPEN_FILE_VALUE = 15;
 
         // Bonus für Türme die eigene Freibauern von hinten decken(nur Endgame)
@@ -302,7 +302,7 @@ class StaticEvaluator : public Evaluator {
         static constexpr int32_t EG_ROOK_BLOCKING_PASSED_PAWN_VALUE = 35;
 
         // Bestrafung für entwickelte Dame, wenn die eigenen Leichtfiguren noch nicht entwickelt sind
-        static constexpr int32_t MG_DEVELOPED_QUEEN_VALUE = -36;
+        static constexpr int32_t MG_DEVELOPED_QUEEN_VALUE = -22;
 
         /**
          * @brief König und Bauern Endspiel
@@ -377,8 +377,8 @@ class StaticEvaluator : public Evaluator {
                 0x200000000000000,0x500000000000000,0xA00000000000000,0x1400000000000000,0x2800000000000000,0x5000000000000000,0xA000000000000000,0x4000000000000000,
         };
 
-        static constexpr int32_t MG_PAWN_CONNECTED_VALUE = 9;
-        static constexpr int32_t EG_PAWN_CONNECTED_VALUE = 5;
+        static constexpr int32_t MG_PAWN_CONNECTED_VALUE = 5;
+        static constexpr int32_t EG_PAWN_CONNECTED_VALUE = 3;
 
         // Bonus für jeden Bauern, der mindestens einen anderen Bauern deckt
         static constexpr Bitboard pawnChainMasks[2][64] = {
@@ -410,12 +410,12 @@ class StaticEvaluator : public Evaluator {
         static constexpr int32_t EG_PAWN_CHAIN_VALUE = 5;
 
         // Bestrafung für zwei oder mehrere Bauern in einer Spalte (doppelte Bauern)
-        static constexpr int32_t MG_PAWN_DOUBLED_VALUE = -16;
-        static constexpr int32_t EG_PAWN_DOUBLED_VALUE = -30;
+        static constexpr int32_t MG_PAWN_DOUBLED_VALUE = -12;
+        static constexpr int32_t EG_PAWN_DOUBLED_VALUE = -20;
 
         // Bestrafung für einen Bauern, der keine Nachbarn hat(keine Bauern in einer Nachbarspalte)
-        static constexpr int32_t MG_PAWN_ISOLATED_VALUE = -21;
-        static constexpr int32_t EG_PAWN_ISOLATED_VALUE = -39;
+        static constexpr int32_t MG_PAWN_ISOLATED_VALUE = -12;
+        static constexpr int32_t EG_PAWN_ISOLATED_VALUE = -14;
 
         // Bonus für jeden Freibauern(passed pawn)
         static constexpr Bitboard sentryMasks[2][64] = {
@@ -448,11 +448,11 @@ class StaticEvaluator : public Evaluator {
 
         // Wird mit der Anzahl der fortgeschrittenen Felder multipliziert
         static constexpr int32_t MG_PAWN_PASSED_RANK_ADVANCED_MULTIPLIER = 2;
-        static constexpr int32_t EG_PAWN_PASSED_RANK_ADVANCED_MULTIPLIER = 12;
+        static constexpr int32_t EG_PAWN_PASSED_RANK_ADVANCED_MULTIPLIER = 9;
 
         // Zusätzlicher Bonus für jeden Freibauern, der von einem anderen Bauern gedeckt wird
-        static constexpr int32_t MG_PASSED_PAWN_PROTECTION_VALUE = 20;
-        static constexpr int32_t EG_PASSED_PAWN_PROTECTION_VALUE = 55;
+        static constexpr int32_t MG_PASSED_PAWN_PROTECTION_VALUE = 7;
+        static constexpr int32_t EG_PASSED_PAWN_PROTECTION_VALUE = 32;
 
         // Bonus für jedes Feld, dass von einer Figur angegriffen wird.
         // Felder, die von generischen Bauern angegriffen werden, werden ausgenommen.
@@ -468,8 +468,8 @@ class StaticEvaluator : public Evaluator {
         static constexpr int32_t EG_QUEEN_MOBILITY_VALUE = 1;
 
         // Bestrafung für Figuren, die En Prise(ungeschützt) sind
-        static constexpr int32_t MG_PIECE_EN_PRISE_VALUE = -6;
-        static constexpr int32_t EG_PIECE_EN_PRISE_VALUE = -3;
+        static constexpr int32_t MG_PIECE_EN_PRISE_VALUE = -2;
+        static constexpr int32_t EG_PIECE_EN_PRISE_VALUE = -1;
 
         // Angriffszone des Königs
         static constexpr Bitboard kingAttackZoneMask[2][64] = {
@@ -577,10 +577,10 @@ class StaticEvaluator : public Evaluator {
                 }
         };
 
-        static constexpr int32_t MG_PAWN_STORM_BASE_VALUE = 5;
+        static constexpr int32_t MG_PAWN_STORM_BASE_VALUE = 2;
 
         // Wird mit der Anzahl der fortgeschrittenen Felder multipliziert
-        static constexpr int32_t MG_PAWN_STORM_DISTANCE_MULTIPLIER = 20;
+        static constexpr int32_t MG_PAWN_STORM_DISTANCE_MULTIPLIER = 10;
 
         /**
          * @brief Bewertung für die Distanz zwischen den Königen.
@@ -589,7 +589,7 @@ class StaticEvaluator : public Evaluator {
          */
         static constexpr int32_t EG_KING_DISTANCE_VALUE = 20;
 
-        static constexpr int32_t EG_WINNING_MATERIAL_ADVANTAGE = 500;
+        static constexpr int32_t EG_WINNING_MATERIAL_ADVANTAGE = 400;
 
         /**
          * @brief Die PSQT aus der Sicht der weißen Figuren für das Midgame.
