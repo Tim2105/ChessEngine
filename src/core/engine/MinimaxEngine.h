@@ -50,146 +50,69 @@
 
 #define CHECKUP_INTERVAL_MICROSECONDS 2000
 
-/**
- * @brief Eine Klasse, die die Scout-Variante des Minimax-Algorithmus implementiert.
- * 
- * Im folgenden wird der Scout-Algorithmus beschrieben, der in dieser Klasse implementiert ist.
- * 
- * 1. Minimax
- * 
- * In der Minimax-Suche werden Positionsbewertungen (bspw. 1 für Sieg und 0 für Niederlage)
- * aus den Blättern eines Spielbaums auf die Wurzel zurückgeführt.
- * Dabei wird davon ausgegangen, dass der Gegner immer den, für ihn, besten Zug spielt.
- * 
- * Während Spiele wie Tic-Tac-Toe oder Vier Gewinnt mit Minimax gelöst werden können,
- * explodiert die Größe des Spielbaums bei Schach derart, dass eine vollständige Suche
- * unmöglich ist.
- * 
- * 1.1. Statische Bewertung
- * 
- * Damit der Algorithmus in akzeptabler Zeit terminiert, muss die Tiefe der Suche begrenzt werden.
- * Dadurch müssen Knoten im Spielbaum bewertet werden, die keine Blätter sind.
- * 
- * Die Bewertung eines solchen Knotens erfolgt durch eine statische Bewertungsfunktion.
- * Die statische Bewertungsfunktion verwendet Heuristiken, um den Ausgang einer Position zu schätzen.
- * Dabei sollte die Sicherheit, mit der die Bewertungsfunktion den Ausgang einer Position schätzt,
- * in der zurückgegebenen Bewertung ausgedrückt werden (bspw. 1 für eine Position die vielleicht gewonnen wird
- * und 3 für eine Position, die mit Sicherheit gewonnen wird).
- * 
- * Die statische Bewertungsfunktion darf den Spielbaum nicht erweitern, ansonsten würde der Algorithmus die,
- * vorher festgelegte, Suchtiefe überschreiten.
- * 
- * 1.2. Alpha-Beta-Pruning
- * 
- * Alpha-Beta-Pruning ist eine Technik, die es ermöglicht, Teile des Spielbaums abzuschneiden.
- * 
- * Dabei wird beim Durchlauf durch den Spielbaum ein Fenster [alpha, beta] aktualisiert,
- * dass die Bewertungen der, bisher garantierbar bestmöglichen Position, für beide Spieler enthält
- * (bspw. alpha = bestmögiche Bewertung für Weiß und beta = bestmögliche Bewertung für Schwarz).
- * Wenn ein Knoten eine Bewertung außerhalb dieses Fensters liefert, kann der Algorithmus
- * die Suche in diesem Teilbaum abbrechen, da einer der beiden Spieler eine bessere Position
- * für sich garantieren kann. Dieser Knoten kann also den Minimax-Wert der Ausgangsposition nicht beeinflussen.
- * 
- * 1.2.1. Wichtigkeit der Zugreihenfolge
- * 
- * Die Anzahl der Schnitte, die beim Durchlauf durch den Spielbaum gemacht werden können,
- * hängt von der Zugreihenfolge ab. Schnitte treten nur auf, wenn ein besserer Zug vor
- * einem schlechteren Zug untersucht wird. Der Teilbaum des schlechteren Zugs ist dann der,
- * der abgeschnitten werden kann.
- * 
- * Daher profitiert der Alpha-Beta-Algorithmus von einer (sehr laufzeitschonenden) Vorsortierung der Züge.
- * Die Qualität dieser Vorsortierung hat massive Auswirkungen auf die Effizienz des Algorithmus.
- * 
- * 1.2.2. Negamax-Variante
- * 
- * Die Negamax-Variante des Alpha-Beta-Algorithmus negiert die Bewertungen der Positionen und des Fensters,
- * sodass alle Bewertungen aus der Sicht des Spielers sind, der am Zug ist. Dadurch können Verzweigungen
- * in der Schleife vermieden werden.
- * 
- * Im Fenster [alpha, beta] stellt alpha dann die beste Bewertung, die der Spieler am Zug garantieren kann dar.
- * Beta bezeichnet dann die beste Bewertung, die der Gegner garantieren kann.
- * 
- * 1.2.2.1 Grundbegriffe
- * 
- * - alpha: Die beste Bewertung, die der Spieler am Zug garantieren kann.
- * - beta: Die beste Bewertung, die der Gegner garantieren kann.
- * - fail-high-Knoten: Ein Knoten, in dem die Bewertung > beta ist. Der Gegner kann eine, für sich, bessere Position garantieren.
- *                     Dieser Teilbaum kann abgeschnitten werden.
- * - fail-low-Knoten: Ein Knoten, in dem die Bewertung nach dem Durchlaufen aller Kinder <= alpha ist.
- *                    Der Spieler am Zug kann eine, für sich, bessere (oder gleich gute) Position garantieren.
- *                    Alle Kinder dieses Knotens mussten untersucht werden, ohne dass ein besserer Zug gefunden wurde.
- * - pv-Knoten: Ein Knoten, in dem die Bewertung innerhalb des Fensters [alpha, beta] liegt.
- *              Die Bewertung ist der genaue Minimax-Wert der Position.
- * 
- * 1.3. Der Scout-Algorithmus
- * 
- * Der Scout-Algorithmus ist eine Alpha-Beta-Suche, die annimmt, dass der erste Zug, der untersucht wird,
- * auch der Beste ist. Alle weiteren Züge werden mit einem Nullfenster [alpha, alpha + 1] (Nega-Variante) untersucht.
- * Eine Suche mit einem Nullfenster erhöht die Anzahl der Schnitte im Spielbaum, dafür ist der zurückgegebenene Wert
- * aber nicht der genaue Minimax-Wert, sondern nur eine obere Schranke.
- * 
- * Wenn die zurückgegebene Bewertung <= alpha ist, wissen wir, dass der Zug nicht besser als der bisher Beste ist.
- * Wenn die zurückgegebene Bewertung > alpha ist, müssen wir den Teilbaum mit einem normalen Suchfenster durchsuchen,
- * um den genauen Minimax-Wert zu bestimmen (der Zug könnte besser sein, wir wissen aber nicht ob, und wenn ja wie sehr).
- * 
- * Der Scout-Algorithmus ist um einige Größenordnungen effizienter als der normale Alpha-Beta-Algorithmus, wenn unsere Vorsortierung
- * sehr zuverlässig (>= 95%) den besten Zug an die erste Stelle setzt (die Reihenfolge der weiteren Züge ist dann egal).
- * 
- * 2. Iterative Tiefensuche
- * 
- * Die Iterative Tiefensuche ist eine Technik, die es ermöglicht, die Suchtiefe dynamisch an die verfügbare Zeit anzupassen.
- * 
- * Dabei wird die Suche mit einer Suchtiefe von 1 begonnen und dann iterativ bis zur maximalen Suchtiefe durchgeführt, oder
- * bis die verfügbare Zeit abgelaufen ist. Das ermöglicht es, die Suche an einem beliebigen Zeitpunkt abzubrechen und trotzdem
- * ein Ergebnis zurückzugeben.
- * 
- * Dabei können die Ergebnisse der geringeren Suchtiefen für die Zugvorsortierung der darauffolgenden Suchtiefen verwendet werden.
- * Diese Technik liefert in Kombination mit der Scout-Variante tatsächlich eine bessere Laufzeit für eine beliebige Suchtiefe,
- * als eine reguläre Alpha-Beta-Suche mit der gleichen Suchtiefe.
- * 
- * 3. Transpositionstabellen
- * 
- * Im Schach können viele Positionen über verschiedene Zugreihenfolgen erreicht werden.
- * 
- * Anstatt diese Positionen mehrfach zu bewerten, können wir das Ergebnis der ersten Bewertung
- * zwischenspeichern und bei einer erneuten Bewertung wiederverwenden.
- * 
- * Hierbei muss beachtet werden, dass Bewertungen nur wiederverwendet werden können, wenn die Suchtiefe
- * der erneuten Bewertung <= der Suchtiefe der ersten Bewertung ist.
- * 
- * Außerdem entscheidet der Knotentyp (pv, fail-high, fail-low) darüber, wie die Bewertung wiederverwendet werden kann:
- * 
- * - pv-Knoten: Die abgespeicherte Bewertung kann wiederverwendet werden, wenn die Suchtiefe der erneuten Bewertung >= der Suchtiefe der ersten Bewertung ist.
- * - fail-high-Knoten: Die abgespeicherte Bewertung kann das alpha des Knotens aktualisieren, wenn die Suchtiefe der erneuten Bewertung >= der Suchtiefe der ersten Bewertung ist.
- * - fail-low-Knoten: Die abgespeicherte Bewertung kann das beta des Knotens aktualisieren, wenn die Suchtiefe der erneuten Bewertung >= der Suchtiefe der ersten Bewertung ist.
- * 
- * Zu fail-high- und fail-low-Knoten:
- * Wenn sich alpha und beta in einem Knoten überschneiden, wird der Knoten zu einem fail-high-Knoten und der Teilbaum
- * kann abgeschnitten werden. Ansonsten muss mit dem überarbeiteten Fenster weitergesucht werden.
- * 
- * 
- * 
- */
 class MinimaxEngine : public Engine {
     private:
+
+        /**
+         * @brief Enthält Informationen über bereits untersuchte Teilbäume.
+         * 
+         * Implementiert als flüchtige Hashtabelle, die eine 64-Bit Ganzzahl als Schlüssel verwendet.
+         * 
+         * @tparam Buckets Die Anzahl der Buckets.
+         * @tparam Size Die Größe eines Buckets.
+         */
         TranspositionTable<2097152, 4> transpositionTable;
+
+        /**
+         * @brief Eine Kopie des, zu untersuchenden, Spielbretts.
+        */
         Board searchBoard;
         std::atomic_bool searchRunning = false;
 
+        /**
+         * @brief Die momentane Suchtiefe.
+        */
         int16_t currentMaxDepth;
         uint16_t currentAge;
         uint32_t nodesSearched;
 
+        /**
+         * Die Start- und Endzeit der Suche.
+         * 
+         * Außerdem werden Zeitstempel für die regulären Checkups gespeichert.
+        */
         std::chrono::system_clock::time_point startTime;
         std::chrono::system_clock::time_point endTime;
         std::chrono::system_clock::time_point lastCheckupTime;
         std::chrono::microseconds checkupInterval;
 
+        /**
+         * @brief Die Tabelle, die die besten Züge für die aktuelle Position speichert.
+         * Durch diese Tabelle können die vollständigen Variationen nachvollzogen werden.
+        */
         Array<Move, 64> pvTable[64];
+
+        /**
+         * @brief Eine Tabelle mit, bis zu zwei, Killerzügen pro Suchtiefe.
+         * 
+         * Killerzüge sind leise Züge, die in vorherigen Suchtiefen einen Beta-Schnitt verursacht haben.
+        */
         Move killerMoves[MAX_PLY][2];
+
+        /**
+         * @brief Eine Tabelle, die für jede Figur und jedes Feld einen Zug speichert, der als Antwort auf diesen Zug
+         * einen Beta-Schnitt verursacht hat oder der beste Zug war.
+        */
         Move counterMoves[15][64];
+
+        /**
+         * @brief Eine Tabelle, die für jeden Spieler, für jedes Ausgangsfeld und jedes Zielfeld die Bewertung des Zuges speichert.
+        */
         int32_t relativeHistory[2][64][64];
 
+        /**
+         * Eine flüchtige Hashtabelle, die die SEE-Bewertungen von Zügen zwischenspeichert.
+        */
         HashTable<Move, int32_t, 128, 4> seeCache;
 
         int16_t mateDistance;
@@ -296,9 +219,6 @@ class MinimaxEngine : public Engine {
         static constexpr int32_t DEFAULT_CAPTURE_MOVE_SCORE = 100;
 
         static constexpr int32_t NEUTRAL_SEE_SCORE = 0;
-
-        // Für die Gefahrenerkennung in der Nullzugusche
-        static constexpr int16_t THREAT_MARGIN = 200;
 
         /**
          * @brief Die PSQT für die Zugvorsortierung.

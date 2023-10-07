@@ -8,7 +8,7 @@
 class ConsoleGameStateOutput : public GameStateOutput {
 
     private:
-        static constexpr size_t BOARD_WIDTH = 44;
+        static constexpr size_t BOARD_WIDTH = 39;
 
         bool flipBoard = false;
 

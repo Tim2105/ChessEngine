@@ -250,7 +250,7 @@ inline int32_t MinimaxEngine::scoreMove(Move& move, int16_t ply) {
 
     moveScore += std::clamp(relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
                         [Mailbox::mailbox[move.getOrigin()]]
-                        [Mailbox::mailbox[move.getDestination()]] / (currentMaxDepth / ONE_PLY),
+                        [Mailbox::mailbox[move.getDestination()]] / ((currentMaxDepth / ONE_PLY)),
                         -99, 49);
 
     return moveScore;
@@ -449,11 +449,11 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
         nwDepthDelta = std::min(nwDepthDelta, minReduction);
 
         if(pvNodes > 0) {
-            score = -pvSearch(depth - ONE_PLY, 1, -beta, -alpha, 0);
+            score = -pvSearch(depth - ONE_PLY, 1, -beta, -alpha, NULL_MOVE_R_VALUE - 1);
         } else {
-            score = -nwSearch(depth + nwDepthDelta, 1, -alpha - 1, -alpha, 0);
+            score = -nwSearch(depth + nwDepthDelta, 1, -alpha - 1, -alpha, NULL_MOVE_R_VALUE - 1);
             if(score > worstVariationScore)
-                score = -pvSearch(depth - ONE_PLY, 1, -beta, -alpha, 0);
+                score = -pvSearch(depth - ONE_PLY, 1, -beta, -alpha, NULL_MOVE_R_VALUE - 1);
         }
 
         searchBoard.undoMove();

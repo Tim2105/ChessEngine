@@ -1,5 +1,6 @@
+#include "core/chess/Referee.h"
+
 #include "core/utils/MoveNotations.h"
-#include "game/Referee.h"
 #include "game/TimeControlledGame.h"
 #include "game/ui/console/BoardVisualizer.h"
 
@@ -7,7 +8,7 @@
 #include <iostream>
 
 void TimeControlledGame::start() {
-    while (!isGameOver(board)) {
+    while (!Referee::isGameOver(board)) {
         outputGameState();
 
         Move move;
@@ -54,7 +55,9 @@ void TimeControlledGame::start() {
 
     outputGameState();
 
-    if (isCheckmate(board)) {
+    saveGameToFile();
+
+    if (Referee::isCheckmate(board)) {
         if (board.getSideToMove() == WHITE) {
             whitePlayer.onGameEnd(BLACK_WON);
             blackPlayer.onGameEnd(BLACK_WON);

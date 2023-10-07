@@ -1,5 +1,5 @@
+#include "core/chess/Referee.h"
 #include "core/utils/MoveNotations.h"
-#include "game/Referee.h"
 #include "game/ui/console/BoardVisualizer.h"
 #include "game/ui/console/ConsoleLiveAnalyzer.h"
 #include "game/ui/console/ConsolePlayer.h"
@@ -11,9 +11,8 @@
 
 void ConsoleLiveAnalyzer::start() {
     while(!quit) {
-        if(!isGameOver(board)) {
+        if(!Referee::isGameOver(board)) {
             maxDepthReached = true;
-            std::cout << "Starting analysis " << std::endl;
             analyse();
         } else {
             SearchDetails details;
@@ -23,7 +22,7 @@ void ConsoleLiveAnalyzer::start() {
             details.variations = std::vector<Variation>();
             details.variations.push_back(Variation());
             
-            if(isDraw(board))
+            if(Referee::isDraw(board))
                 details.variations[0].score = 0;
             else if(board.getSideToMove() == WHITE)
                 details.variations[0].score = MATE_SCORE;
@@ -136,7 +135,7 @@ void ConsoleLiveAnalyzer::output(SearchDetails details) {
 
     std::string scoreStr;
     if(!IS_MATE_SCORE(details.getBestMoveScore())) {
-        if(isGameOver(board)) {
+        if(Referee::isGameOver(board)) {
             scoreStr = "1/2-1/2";
         } else {
             std::stringstream scoreStream;

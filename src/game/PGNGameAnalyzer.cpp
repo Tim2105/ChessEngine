@@ -1,5 +1,6 @@
+#include "core/chess/Referee.h"
+
 #include "game/PGNGameAnalyzer.h"
-#include "game/Referee.h"
 
 void PGNGameAnalyzer::analyzeNextMove() {
     if(!hasNextMove())
@@ -21,10 +22,10 @@ void PGNGameAnalyzer::analyzeNextMove() {
     board.makeMove(moves[currentMoveIndex++]);
 
     // If the game has ended, add the final board state analysis
-    if(isGameOver(board)) {
+    if(Referee::isGameOver(board)) {
         uint32_t score = 0;
 
-        if(isCheckmate(board)) {
+        if(Referee::isCheckmate(board)) {
             if(board.getSideToMove() == WHITE)
                 score = MATE_SCORE;
             else

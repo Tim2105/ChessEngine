@@ -10,7 +10,7 @@ class ComputerPlayer : public Player {
 
     private:
         Engine& engine;
-        static constexpr uint32_t DEFAULT_SEARCH_TIME = 1000;
+        static constexpr uint32_t DEFAULT_SEARCH_TIME = 5000;
 
     public:
         ComputerPlayer(Engine& engine) : Player(engine.getBoard()), engine(engine) {};

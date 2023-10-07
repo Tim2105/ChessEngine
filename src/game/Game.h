@@ -16,6 +16,7 @@ class Game {
         Player& blackPlayer;
 
         void outputGameState();
+        void saveGameToFile();
 
     public:
         Game(Board& board, Player& whitePlayer, Player& blackPlayer, GameStateOutput& gst) :
