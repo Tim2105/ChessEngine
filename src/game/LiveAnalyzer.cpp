@@ -3,6 +3,7 @@
 #include "game/LiveAnalyzer.h"
 
 void LiveAnalyzer::analyse() {
+    depth = 0;
     engine->search(0);
 }
 

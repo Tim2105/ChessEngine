@@ -19,10 +19,26 @@ Move ConsolePlayer::getMove(uint32_t remainingTime) {
         std::cout << "Enter move: ";
         std::cin >> move;
 
-        for(Move m : board.generateLegalMoves()) {
-            if(move == m.toString() || move == toStandardAlgebraicNotation(m, board)) {
-                return m;
+        std::vector<std::string> movesInSimpleSAN;
+        Array<Move, 256> legalMoves = board.generateLegalMoves();
+
+        for(Move m : legalMoves) {
+
+            std::string san = toStandardAlgebraicNotation(m, board);
+            std::string simpleSan = san;
+
+            if(simpleSan.back() == '+' || simpleSan.back() == '#')
+                simpleSan.pop_back();
+
+            if(simpleSan.find('x') == std::string::npos)
+                movesInSimpleSAN.push_back(simpleSan);
+            else {
+                size_t xIndex = simpleSan.find('x');
+                movesInSimpleSAN.push_back(simpleSan.substr(0, xIndex) + simpleSan.substr(xIndex + 1));
             }
+
+            if(move == san || move == m.toString() || move == movesInSimpleSAN.back())
+                return m;
         }
 
         std::cout << "Invalid move" << std::endl << std::endl;

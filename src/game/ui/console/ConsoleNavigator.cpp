@@ -73,7 +73,7 @@ void ConsoleNavigator::startAnalysis() {
 
         Board board;
         StaticEvaluator evaluator(board);
-        MinimaxEngine engine(evaluator, 5);
+        MinimaxEngine engine(evaluator, 3);
 
         ConsolePGNGameAnalyzer analyzer(pgn, engine, time * 1000);
         analyzeGame(analyzer);

@@ -1,5 +1,6 @@
 #include "core/chess/BoardDefinitions.h"
 #include "core/chess/MailboxDefinitions.h"
+#include "core/engine/PSQT.h"
 #include "core/engine/StaticEvaluator.h"
 
 #include <algorithm>

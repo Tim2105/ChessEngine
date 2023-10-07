@@ -1,5 +1,6 @@
 #include "core/chess/MailboxDefinitions.h"
 #include "core/engine/MinimaxEngine.h"
+#include "core/engine/PSQT.h"
 #include "core/utils/MoveNotations.h"
 
 #include <algorithm>
@@ -246,7 +247,7 @@ inline int32_t MinimaxEngine::scoreMove(Move& move, int16_t ply) {
         psqtDestination64 = (RANK_8 - rank) * 8 + file;
     }
 
-    moveScore += MOVE_ORDERING_PSQT[movedPieceType][psqtDestination64] - MOVE_ORDERING_PSQT[movedPieceType][psqtOrigin64];
+    moveScore += MG_PSQT[movedPieceType][psqtDestination64] - MG_PSQT[movedPieceType][psqtOrigin64];
 
     moveScore += std::clamp(relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
                         [Mailbox::mailbox[move.getOrigin()]]

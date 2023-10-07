@@ -1,16 +1,17 @@
 #ifndef LIVE_ANALYZER_H
 #define LIVE_ANALYZER_H
 
+#include "core/engine/MinimaxEngine.h"
 #include "core/engine/StaticEvaluator.h"
 
-#include "game/InterruptedEngine.h"
-
 class LiveAnalyzer {
+    private:
+        int32_t depth;
 
     protected:
         Board& board;
         StaticEvaluator evaluator;
-        InterruptedEngine* engine;
+        MinimaxEngine* engine;
 
         void analyse();
         void modifyScoreIfBlack(SearchDetails& details);
@@ -18,20 +19,22 @@ class LiveAnalyzer {
     public:
         LiveAnalyzer(Board& board) : board(board), evaluator(board) {
             std::function<void()> checkupCallback = [&]() {
-                if (shouldStop())
+                if(shouldStop())
                     engine->stop();
+                else {
+                    if(depth != engine->getLastSearchDepth()) {
+                        SearchDetails details = engine->getSearchDetails();
+                        depth = details.depth;
+
+                        // Drehe die Vorzeichen der Bewertung um, wenn der Spieler Schwarz ist
+                        modifyScoreIfBlack(details);
+
+                        output(details);
+                    }
+                }
             };
 
-            std::function<void()> newDepthCallback = [&]() {
-                SearchDetails details = engine->getSearchDetails();
-
-                // Drehe die Vorzeichen der Bewertung um, wenn der Spieler Schwarz ist
-                modifyScoreIfBlack(details);
-
-                output(details);
-            };
-
-            engine = new InterruptedEngine(evaluator, checkupCallback, newDepthCallback, 3);
+            engine = new MinimaxEngine(evaluator, 3, 10, checkupCallback);
         };
 
         virtual ~LiveAnalyzer() {
