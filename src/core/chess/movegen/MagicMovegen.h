@@ -332,12 +332,12 @@ class MagicMovegen {
         /**
          * @brief Generiert alle legalen Züge für den weißen König.
          */
-        static void generateWhiteKingCaptures(Array<Move, 256>& moves, Board& board, Bitboard attackedSquares);
+        static void generateWhiteKingCaptures(Array<Move, 256>& moves, Board& board);
 
         /**
          * @brief Generiert alle legalen Züge für den schwarzen König.
          */
-        static void generateBlackKingCaptures(Array<Move, 256>& moves, Board& board, Bitboard attackedSquares);
+        static void generateBlackKingCaptures(Array<Move, 256>& moves, Board& board);
 
 };
 

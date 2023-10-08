@@ -302,7 +302,7 @@ class StaticEvaluator : public Evaluator {
         static constexpr int32_t EG_ROOK_BLOCKING_PASSED_PAWN_VALUE = 35;
 
         // Bestrafung für entwickelte Dame, wenn die eigenen Leichtfiguren noch nicht entwickelt sind
-        static constexpr int32_t MG_DEVELOPED_QUEEN_VALUE = -22;
+        static constexpr int32_t MG_DEVELOPED_QUEEN_VALUE = -26;
 
         /**
          * @brief König und Bauern Endspiel
@@ -464,8 +464,8 @@ class StaticEvaluator : public Evaluator {
         static constexpr int32_t EG_BISHOP_MOBILITY_VALUE = 2;
         static constexpr int32_t MG_ROOK_MOBILITY_VALUE = 4;
         static constexpr int32_t EG_ROOK_MOBILITY_VALUE = 3;
-        static constexpr int32_t MG_QUEEN_MOBILITY_VALUE = 1;
-        static constexpr int32_t EG_QUEEN_MOBILITY_VALUE = 1;
+        static constexpr int32_t MG_QUEEN_MOBILITY_VALUE = 0;
+        static constexpr int32_t EG_QUEEN_MOBILITY_VALUE = 0;
 
         // Bestrafung für Figuren, die En Prise(ungeschützt) sind
         static constexpr int32_t MG_PIECE_EN_PRISE_VALUE = -2;

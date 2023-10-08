@@ -1182,8 +1182,6 @@ Array<Move, 256> Board::generateLegalCaptures() {
     Array<Move, 256> legalCaptures;
 
     if(side == WHITE) {
-        Bitboard attackedSquares = blackAttackBitboard;
-
         Bitboard attackingRays;
         int32_t numAttackers = numSquareAttackers(pieceList[WHITE_KING].front(), BLACK, allPiecesBitboard | pieceBitboard[BLACK_KING], attackingRays);
 
@@ -1197,10 +1195,8 @@ Array<Move, 256> Board::generateLegalCaptures() {
         MagicMovegen::generateWhiteBishopCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
         MagicMovegen::generateWhiteRookCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
         MagicMovegen::generateWhiteQueenCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
-        MagicMovegen::generateWhiteKingCaptures(legalCaptures, *this, attackedSquares);
+        MagicMovegen::generateWhiteKingCaptures(legalCaptures, *this);
     } else {
-        Bitboard attackedSquares = whiteAttackBitboard;
-
         Bitboard attackingRays;
         int32_t numAttackers = numSquareAttackers(pieceList[BLACK_KING].front(), WHITE, allPiecesBitboard | pieceBitboard[WHITE_KING], attackingRays);
 
@@ -1214,7 +1210,7 @@ Array<Move, 256> Board::generateLegalCaptures() {
         MagicMovegen::generateBlackBishopCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
         MagicMovegen::generateBlackRookCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
         MagicMovegen::generateBlackQueenCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
-        MagicMovegen::generateBlackKingCaptures(legalCaptures, *this, attackedSquares);
+        MagicMovegen::generateBlackKingCaptures(legalCaptures, *this);
     }
 
     return legalCaptures;

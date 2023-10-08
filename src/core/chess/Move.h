@@ -9,20 +9,31 @@
 
 /**
  * @brief Kapselt einen Zug.
- * Die Klasse Move stellt alle Informationen über einen Zug in einem 32-bit Integer dar.
- * Die Bits 11-17 repräsentieren den Ausgangspunkt des Zuges, die Bits 4-10 das Zielfeld und die Bits 0-3 Flags für Spezialzüge.
- * Das Bit 18 wird gesetzt sobald erkannt wird, dass der Zug das Spiel beendet(Schachmatt oder -Patt).
+ * Die Klasse Move stellt alle Informationen über einen Zug in einem 16-bit Integer dar.
+ * Die Bits 10-15 repräsentieren den Ausgangspunkt des Zuges, die Bits 4-9 das Zielfeld und die Bits 0-3 Flags für Spezialzüge.
+ * Die Flags sind wie folgt aufgebaut:
+ * 0: Leiser Zug
+ * 1: Doppelschritt
+ * 2: Rochade auf Königsseite
+ * 3: Rochade auf Damenseite
+ * 4: Schlagzug
+ * 5: En Passant
+ * 8: Promotion auf Springer
+ * 9: Promotion auf Läufer
+ * 10: Promotion auf Turm
+ * 11: Promotion auf Dame
+ * 
  * Im Gegensatz zur Klasse Board ist diese Klasse weniger auf Performance sondern mehr auf Speichereffizienz ausgelegt.
  */
 class Move {
 
     private:
-        uint32_t move;
+        uint16_t move;
 
     public:
         constexpr Move() : move(0) {};
         constexpr Move(uint32_t from) : move(from) {};
-        constexpr Move(int32_t origin, int32_t destination, int32_t flags) : move(origin << 11 | destination << 4 | flags) {};
+        constexpr Move(int32_t origin, int32_t destination, int32_t flags) : move(origin << 10 | destination << 4 | flags) {};
         ~Move() = default;
 
         friend std::ostream& operator<< (std::ostream& os, const Move& m);
@@ -51,12 +62,12 @@ class Move {
         /**
          * @brief Gibt den Ausgangspunkt des Zuges zurück.
          */
-        constexpr int32_t getOrigin() const { return (move >> 11) & 0x7F; }
+        constexpr int32_t getOrigin() const { return (move >> 10) & 0x3F; }
 
         /**
          * @brief Gibt das Zielfeld des Zuges zurück.
          */
-        constexpr int32_t getDestination() const { return (move >> 4) & 0x7F; }
+        constexpr int32_t getDestination() const { return (move >> 4) & 0x3F; }
 
         /**
          * @brief Überprüft ob ein Zug 'leise' ist, also keine Figur geschlagen wird und es kein Spezialzug ist.
@@ -127,16 +138,6 @@ class Move {
          * @brief Vergleicht zwei Züge.
          */
         constexpr bool operator!=(const Move& other) const { return move != other.move; }
-
-        /**
-         * @brief Vergleicht zwei Züge.
-         */
-        constexpr bool operator<(const Move& other) const { return move < other.move; }
-
-        /**
-         * @brief Vergleicht zwei Züge.
-         */
-        constexpr bool operator>(const Move& other) const { return move > other.move; }
 };
 
 template <>

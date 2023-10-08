@@ -31,7 +31,7 @@ void printPerftResults(Board& board, int depth) {
     if(depth <= 1) {
         Array<Move, 256> moves = board.generateLegalMoves();
         for(Move m : moves)
-            std::cout << std::setw(7) << toStandardAlgebraicNotation(m, board) << ": 1" << std::endl;
+            std::cout << std::setw(5) << m.toString() << ": 1" << std::endl;
 
         std::cout << "Total: " << moves.size() << std::endl;
 
@@ -48,10 +48,12 @@ void printPerftResults(Board& board, int depth) {
         board.undoMove();
 
         accumulatedNodes += nodes;
-        std::cout << std::setw(7) << toStandardAlgebraicNotation(m, board) << ": " << nodes << std::endl;
+        std::cout << std::setw(5) << m.toString() << ": " << nodes << std::endl;
     }
 
-    std::cout << "  Total: " << accumulatedNodes << std::endl;
+    std::cout << std::endl;
+    std::cout << "Total: " << accumulatedNodes << std::endl;
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::cout << "   Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "ms" << std::endl;
+    std::cout << " Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "ms" << std::endl;
+    std::cout << "  N/s: " << accumulatedNodes / std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() * 1000 << std::endl;
 }

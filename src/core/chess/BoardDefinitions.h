@@ -108,7 +108,7 @@ enum {
 #define MOVE_PROMOTION_ROOK 10
 #define MOVE_PROMOTION_QUEEN 11
 
-#define NULL_MOVE 2147483648UL // 2^31
+#define NULL_MOVE 0
 
 #define NORTH 8
 #define SOUTH -8
