@@ -18,6 +18,22 @@ class MagicsFinder {
         };
 
         /**
+         * @brief Generiert alle möglichen Züge für einen Turm auf einem bestimmten Feld
+         * mit einer bestimmten Belegung.
+         * 
+         * Diese Funktion ist nur für die Generierung der Magic-Numbers gedacht.
+        */
+        static uint64_t rookAttackMask(int32_t sq, uint64_t occupied);
+
+        /**
+         * @brief Generiert alle möglichen Züge für einen Läufer auf einem bestimmten Feld
+         * mit einer bestimmten Belegung.
+         * 
+         * Diese Funktion ist nur für die Generierung der Magic-Numbers gedacht.
+        */
+        static uint64_t bishopAttackMask(int32_t sq, uint64_t occupied);
+
+        /**
          * @brief Generiert alle möglichen Rook-Masks und speichert die in der Datei.
         */
         static void findRookMasks(std::ofstream& resultFile);
@@ -26,6 +42,14 @@ class MagicsFinder {
          * @brief Generiert alle möglichen Bishop-Masks und speichert die in der Datei.
         */
         static void findBishopMasks(std::ofstream& resultFile);
+
+        /**
+         * @brief Generiert alle möglichen Kombinationen einer Bitmaske.
+         * 
+         * @param mask Die Maske, für die die Kombinationen generiert werden sollen.
+         * @param occupancies Ein Array, in das die Kombinationen gespeichert werden sollen.
+        */
+        static void generateAllOccupancyCombinations(uint64_t mask, uint64_t* occupancies);
 
         /**
          * @brief Generiert eine Magic-Number für einen Turm auf einem bestimmten Feld.
@@ -47,6 +71,11 @@ class MagicsFinder {
          * @param shift Die Anzahl an Shifts, die die Magic-Number benötigen soll.
         */
         static uint64_t findBishopMagic(int32_t sq, int32_t shift);
+
+        /**
+         * @brief Sucht nach Magic-Numbers für Läufer auf jedem Feld
+        */
+        static void searchForBishopMagics(std::ofstream& resultFile, std::chrono::seconds time);
 };
 
 #endif

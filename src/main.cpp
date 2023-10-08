@@ -13,8 +13,9 @@
 #include "game/ui/console/ConsoleNavigator.h"
 #include "game/ui/console/PortabilityHelper.h"
 
-#include "test/Tournament.h"
 #include "test/Perft.h"
+#include "test/TestMagics.h"
+#include "test/Tournament.h"
 
 #include "core/utils/magics/Magics.h"
 #include "core/utils/magics/MagicsFinder.h"
@@ -24,11 +25,10 @@
 int main() {
     initializeConsole();
 
-    std::ofstream file("magics.txt");
-    MagicsFinder::searchForRookMagics(file, std::chrono::seconds(50));
+    Magics::initializeMagics();
 
-    // std::cout << MagicsFinder::findRookMagic(0, 12) << std::endl;
-    // std::cout << MagicsFinder::findRookMagic(1, 12) << std::endl;
+    testAllRookMagics();
+    testAllBishopMagics();
 
     return 0;
 }

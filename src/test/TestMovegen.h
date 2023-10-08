@@ -1,5 +1,5 @@
-#ifndef TEST_H	
-#define TEST_H
+#ifndef TEST_MOVEGEN_H	
+#define TEST_MOVEGEN_H
 
 #include "core/chess/Board.h"
 #include <string>

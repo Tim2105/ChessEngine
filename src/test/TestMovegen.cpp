@@ -1,4 +1,4 @@
-#include "test/Test.h"
+#include "test/TestMovegen.h"
 
 #include <iostream>
 #include <fstream>
