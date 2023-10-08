@@ -1,5 +1,6 @@
 #include "core/chess/BoardDefinitions.h"
 #include "core/utils/Bitboard.h"
+#include "core/utils/magics/Magics.h"
 
 Bitboard pawnAttacks[2][64] = {
     // White
@@ -63,79 +64,11 @@ std::ostream& operator<<(std::ostream& os, const Bitboard& bitboard) {
 }
 
 Bitboard diagonalAttackBitboard(int32_t sq, const Bitboard occupied) {
-    Bitboard attackBitboard;
-
-    // Diagonale nach oben rechts
-    for(int32_t i = sq + 9; i < 64 && i % 8 != 0; i += 9) {
-        attackBitboard.setBit(i);
-
-        if(occupied.getBit(i))
-            break;
-    }
-
-    // Diagonale nach unten links
-    for(int32_t i = sq - 9; i >= 0 && i % 8 != 7; i -= 9) {
-        attackBitboard.setBit(i);
-
-        if(occupied.getBit(i))
-            break;
-    }
-
-    // Diagonale nach unten rechts
-    for(int32_t i = sq + 7; i < 64 && i % 8 != 7; i += 7) {
-        attackBitboard.setBit(i);
-
-        if(occupied.getBit(i))
-            break;
-    }
-
-    // Diagonale nach oben links
-    for(int32_t i = sq - 7; i >= 0 && i % 8 != 0; i -= 7) {
-        attackBitboard.setBit(i);
-
-        if(occupied.getBit(i))
-            break;
-    }
-
-    return attackBitboard;
+    return Magics::lookupBishopAttacks(sq, occupied);
 }
 
 Bitboard straightAttackBitboard(int32_t sq, const Bitboard occupied) {
-    Bitboard attackBitboard;
-
-    // Vertikal nach oben
-    for(int32_t i = sq + 8; i < 64; i += 8) {
-        attackBitboard.setBit(i);
-
-        if(occupied.getBit(i))
-            break;
-    }
-
-    // Vertikal nach unten
-    for(int32_t i = sq - 8; i >= 0; i -= 8) {
-        attackBitboard.setBit(i);
-
-        if(occupied.getBit(i))
-            break;
-    }
-
-    // Horizontal nach rechts
-    for(int32_t i = sq + 1; i < 64 && i % 8 != 0; i += 1) {
-        attackBitboard.setBit(i);
-
-        if(occupied.getBit(i))
-            break;
-    }
-
-    // Horizontal nach links
-    for(int32_t i = sq - 1; i >= 0 && i % 8 != 7; i -= 1) {
-        attackBitboard.setBit(i);
-
-        if(occupied.getBit(i))
-            break;
-    }
-
-    return attackBitboard;
+    return Magics::lookupRookAttacks(sq, occupied);
 }
 
 Bitboard knightAttackBitboard(int32_t sq) {

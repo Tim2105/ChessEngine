@@ -3,7 +3,7 @@
 
 #include "core/chess/BoardDefinitions.h"
 #include "core/chess/Move.h"
-#include "core/chess/Movegen.h"
+#include "core/chess/movegen/MagicMovegen.h"
 #include "core/utils/Array.h"
 #include "core/utils/Bitboard.h"
 
@@ -47,6 +47,21 @@ class MoveHistoryEntry {
         uint64_t hashValue;
 
         /**
+         * @brief Speichert das weiße Figurenbitboard vor diesem Zug.
+        */
+        Bitboard whitePiecesBitboard;
+
+        /**
+         * @brief Speichert das schwarze Figurenbitboard vor diesem Zug.
+        */
+        Bitboard blackPiecesBitboard;
+
+        /**
+         * @brief Speichert alle individuellen Figurenbitboards vor diesem Zug.
+        */
+        Bitboard pieceBitboard[15];
+
+        /**
          * @brief Speichert das weiße Angriffsbitboard vor diesem Zug.
          */
         Bitboard whiteAttackBitboard;
@@ -69,11 +84,16 @@ class MoveHistoryEntry {
          * @param enPassantSquare Speichert die Position eines möglichen En Passant Zuges vor diesem Zug(wenn möglich).
          * @param fiftyMoveRule Der 50-Zug Counter vor diesem Zug.
          * @param hashValue Speichert den Hashwert vor diesem Zug.
+         * @param whitePiecesBitboard Speichert das weiße Figurenbitboard vor diesem Zug.
+         * @param blackPiecesBitboard Speichert das schwarze Figurenbitboard vor diesem Zug.
+         * @param pieceBitboards Speichert alle individuellen Figurenbitboards vor diesem Zug.
          * @param whiteAttackBitboard Speichert das weiße Angriffsbitboard vor diesem Zug.
          * @param blackAttackBitboard Speichert das schwarze Angriffsbitboard vor diesem Zug.
+         * @param pieceAttackBitboards Speichert die Angriffsbitboards der Figuren vor diesem Zug.
          */
-        constexpr MoveHistoryEntry(Move move, int32_t capturedPiece, int32_t castlePermission,
+        MoveHistoryEntry(Move move, int32_t capturedPiece, int32_t castlePermission,
                         int32_t enPassantSquare, int32_t fiftyMoveRule, uint64_t hashValue,
+                        Bitboard whitePiecesBitboard, Bitboard blackPiecesBitboard, Bitboard pieceBitboards[15],
                         Bitboard whiteAttackBitboard, Bitboard blackAttackBitboard, Bitboard pieceAttackBitboards[15]) {
             this->move = move;
             this->capturedPiece = capturedPiece;
@@ -81,6 +101,13 @@ class MoveHistoryEntry {
             this->enPassantSquare = enPassantSquare;
             this->fiftyMoveRule = fiftyMoveRule;
             this->hashValue = hashValue;
+            this->whitePiecesBitboard = whitePiecesBitboard;
+            this->blackPiecesBitboard = blackPiecesBitboard;
+
+            for (int i = 0; i < 15; i++) {
+                this->pieceBitboard[i] = pieceBitboards[i];
+            }
+
             this->whiteAttackBitboard = whiteAttackBitboard;
             this->blackAttackBitboard = blackAttackBitboard;
             
@@ -93,13 +120,20 @@ class MoveHistoryEntry {
          * @brief Erstellt einen neuen MoveHistoryEntry.
          * @param move Der Zug der rückgängig gemacht werden soll.
          */
-        constexpr MoveHistoryEntry(Move move) {
+        MoveHistoryEntry(Move move) {
             this->move = move;
             this->capturedPiece = EMPTY;
             this->castlingPermission = 0;
             this->enPassantSquare = 0;
             this->fiftyMoveRule = 0;
             this->hashValue = 0;
+            this->whitePiecesBitboard = 0;
+            this->blackPiecesBitboard = 0;
+
+            for (int i = 0; i < 15; i++) {
+                this->pieceBitboard[i] = 0;
+            }
+
             this->whiteAttackBitboard = 0;
             this->blackAttackBitboard = 0;
 
@@ -162,28 +196,21 @@ class RepetitionTable {
  * Die Klasse Board stellt ein Schachbrett dar und enthält Methoden zur Zuggeneration.
  */
 class Board {
-    friend class Movegen;
+    friend class MagicMovegen;
     
     private:
-        inline static bool initialized = false;
-
          /**
-          * @brief Stellt das Schachbrett in 10x12 Notation dar.
-          * https://www.chessprogramming.org/10x12_Board
+          * @brief Stellt das Schachbrett in 8x8 Notation dar.
           */
-        int32_t pieces[120] = {
-            EMPTY,      EMPTY,        EMPTY,        EMPTY,       EMPTY,      EMPTY,        EMPTY,        EMPTY,      EMPTY, EMPTY,
-            EMPTY,      EMPTY,        EMPTY,        EMPTY,       EMPTY,      EMPTY,        EMPTY,        EMPTY,      EMPTY, EMPTY,
-            EMPTY, WHITE_ROOK, WHITE_KNIGHT, WHITE_BISHOP, WHITE_QUEEN, WHITE_KING, WHITE_BISHOP, WHITE_KNIGHT, WHITE_ROOK, EMPTY,
-            EMPTY, WHITE_PAWN,   WHITE_PAWN,   WHITE_PAWN,  WHITE_PAWN, WHITE_PAWN,   WHITE_PAWN,   WHITE_PAWN, WHITE_PAWN, EMPTY,
-            EMPTY,      EMPTY,        EMPTY,        EMPTY,       EMPTY,      EMPTY,        EMPTY,        EMPTY,      EMPTY, EMPTY,
-            EMPTY,      EMPTY,        EMPTY,        EMPTY,       EMPTY,      EMPTY,        EMPTY,        EMPTY,      EMPTY, EMPTY,
-            EMPTY,      EMPTY,        EMPTY,        EMPTY,       EMPTY,      EMPTY,        EMPTY,        EMPTY,      EMPTY, EMPTY,
-            EMPTY,      EMPTY,        EMPTY,        EMPTY,       EMPTY,      EMPTY,        EMPTY,        EMPTY,      EMPTY, EMPTY,
-            EMPTY, BLACK_PAWN,   BLACK_PAWN,   BLACK_PAWN,  BLACK_PAWN, BLACK_PAWN,   BLACK_PAWN,   BLACK_PAWN, BLACK_PAWN, EMPTY,
-            EMPTY, BLACK_ROOK, BLACK_KNIGHT, BLACK_BISHOP, BLACK_QUEEN, BLACK_KING, BLACK_BISHOP, BLACK_KNIGHT, BLACK_ROOK, EMPTY,
-            EMPTY,      EMPTY,        EMPTY,        EMPTY,       EMPTY,      EMPTY,        EMPTY,        EMPTY,      EMPTY, EMPTY,
-            EMPTY,      EMPTY,        EMPTY,        EMPTY,       EMPTY,      EMPTY,        EMPTY,        EMPTY,      EMPTY, EMPTY
+        int32_t pieces[64] = {
+            WHITE_ROOK, WHITE_KNIGHT, WHITE_BISHOP, WHITE_QUEEN, WHITE_KING, WHITE_BISHOP, WHITE_KNIGHT, WHITE_ROOK,
+            WHITE_PAWN,   WHITE_PAWN,   WHITE_PAWN,  WHITE_PAWN, WHITE_PAWN,   WHITE_PAWN,   WHITE_PAWN, WHITE_PAWN,
+                 EMPTY,        EMPTY,        EMPTY,       EMPTY,      EMPTY,        EMPTY,        EMPTY,      EMPTY,
+                 EMPTY,        EMPTY,        EMPTY,       EMPTY,      EMPTY,        EMPTY,        EMPTY,      EMPTY,
+                 EMPTY,        EMPTY,        EMPTY,       EMPTY,      EMPTY,        EMPTY,        EMPTY,      EMPTY,
+                 EMPTY,        EMPTY,        EMPTY,       EMPTY,      EMPTY,        EMPTY,        EMPTY,      EMPTY,
+            BLACK_PAWN,   BLACK_PAWN,   BLACK_PAWN,  BLACK_PAWN, BLACK_PAWN,   BLACK_PAWN,   BLACK_PAWN, BLACK_PAWN,
+            BLACK_ROOK, BLACK_KNIGHT, BLACK_BISHOP, BLACK_QUEEN, BLACK_KING, BLACK_BISHOP, BLACK_KNIGHT, BLACK_ROOK
         };
 
         /**
@@ -306,7 +333,7 @@ class Board {
 
         /**
          * @brief Generiert ein Bitboard, das alle Felder enthält, auf denen sich gefesselte Figuren befinden.
-         * Außerdem wird die Richtung, aus der die Figuren gefesselt sind, in einem 64 int großen Array gespeichert(in 120er Notation).
+         * Außerdem wird die Richtung, aus der die Figuren gefesselt sind, in einem 64 int großen Array gespeichert.
          * 
          * @param side Die Seite, für die gefesselte Figuren gefunden werden sollen.
          * @param pinnedPiecesBitboard Das Bitboard, das alle gefesselten Figuren enthält.
@@ -404,7 +431,7 @@ class Board {
         /**
          * @brief Überprüft bei einem anzugebenden Belegbitboard, ob ein Feld von einer bestimmten Seite angegriffen wird.
          * 
-         * @param square Das Feld, das überprüft werden soll(in 120er Notation).
+         * @param square Das Feld, das überprüft werden soll.
          * @param side Die Seite, die das Feld angreifen soll.
          */
         bool squareAttacked(int32_t square, int32_t side);
@@ -412,16 +439,16 @@ class Board {
         /**
          * @brief Überprüft bei einem anzugebenden Belegbitboard, ob ein Feld von einer bestimmten Seite angegriffen wird.
          * 
-         * @param sq120 Das Feld, das überprüft werden soll(in 120er Notation).
+         * @param sq Das Feld, das überprüft werden soll.
          * @param ownSide Die Seite, die das Feld angreifen soll.
          * @param occupied Das Bitboard mit den besetzten Feldern.
          */
-        bool squareAttacked(int32_t sq120, int32_t ownSide, Bitboard occupied);
+        bool squareAttacked(int32_t sq, int32_t ownSide, Bitboard occupied);
 
         /**
          * @brief Überprüft bei einem anzugebenden Belegbitboard, ob ein Feld von einer bestimmten Seite angegriffen wird.
          * 
-         * @param square Das Feld, das überprüft werden soll(in 120er Notation).
+         * @param square Das Feld, das überprüft werden soll.
          * @param side Die Seite, die das Feld angreifen soll.
          * @param occupied Das Bitboard mit den besetzten Feldern.
          * @param attackingRays Gibt dein Bitboard mit allen Angreifern zurück. Bei laufenden Figuren sind außerdem sind außerdem die Verbindungsfelder mit enthalten.
@@ -431,7 +458,7 @@ class Board {
         /**
          * @brief Gibt die Anzahl der angreifenden Figuren eines Feldes zurück.
          * 
-         * @param square Das Feld, das überprüft werden soll(in 120er Notation).
+         * @param square Das Feld, das überprüft werden soll.
          * @param side Die Seite, die das Feld angreifen soll.
          * @param occupied Das Bitboard mit den besetzten Feldern.
          */
@@ -440,7 +467,7 @@ class Board {
         /**
          * @brief Gibt die Anzahl der angreifenden Figuren eines Feldes zurück.
          * 
-         * @param square Das Feld, das überprüft werden soll(in 120er Notation).
+         * @param square Das Feld, das überprüft werden soll.
          * @param side Die Seite, die das Feld angreifen soll.
          * @param occupied Das Bitboard mit den besetzten Feldern.
          * @param attackingRays Gibt dein Bitboard mit allen Angreifern zurück. Bei laufenden Figuren sind außerdem sind außerdem die Verbindungsfelder mit enthalten.

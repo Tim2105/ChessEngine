@@ -1,5 +1,6 @@
 #include "core/utils/magics/MagicsFinder.h"
 #include "core/utils/magics/Precomputed.h"
+#include "core/utils/Bitboard.h"
 
 #include <iostream>
 #include <random>
@@ -24,7 +25,7 @@ uint64_t MagicsFinder::rookAttackMask(int32_t sq, uint64_t occupied) {
     }
 
     // Horizontal nach rechts
-    for(int32_t i = sq + 1; i < 64 && i % 8 == 0; i += 1) {
+    for(int32_t i = sq + 1; i < 64 && i % 8 != 0; i += 1) {
         attackBitboard |= (1ULL << i);
 
         if(occupied & (1ULL << i))
@@ -32,7 +33,7 @@ uint64_t MagicsFinder::rookAttackMask(int32_t sq, uint64_t occupied) {
     }
 
     // Horizontal nach links
-    for(int32_t i = sq - 1; i >= 0 && i % 8 == 7; i -= 1) {
+    for(int32_t i = sq - 1; i >= 0 && i % 8 != 7; i -= 1) {
         attackBitboard |= (1ULL << i);
 
         if(occupied & (1ULL << i))
@@ -88,17 +89,25 @@ void MagicsFinder::findRookMasks(std::ofstream& resultFile) {
         int32_t rank = sq / 8;
         int32_t file = sq % 8;
 
-        for(int32_t r = rank + 1; r < 7; r++)
+        // Vertikal nach oben
+        for(int32_t r = rank + 1; r < 7; r++) {
             mask |= (1ULL << (r * 8 + file));
+        }
 
-        for(int32_t r = rank - 1; r > 0; r--)
+        // Vertikal nach unten
+        for(int32_t r = rank - 1; r > 0; r--) {
             mask |= (1ULL << (r * 8 + file));
+        }
 
-        for(int32_t f = file + 1; f < 7; f++)
+        // Horizontal nach rechts
+        for(int32_t f = file + 1; f < 7; f++) {
             mask |= (1ULL << (rank * 8 + f));
+        }
 
-        for(int32_t f = file - 1; f > 0; f--)
+        // Horizontal nach links
+        for(int32_t f = file - 1; f > 0; f--) {
             mask |= (1ULL << (rank * 8 + f));
+        }
 
         resultFile << "0x" << std::hex << mask << "ULL,";
     }
@@ -114,17 +123,25 @@ void MagicsFinder::findBishopMasks(std::ofstream& resultFile) {
         int32_t rank = sq / 8;
         int32_t file = sq % 8;
 
-        for(int32_t r = rank + 1, f = file + 1; r < 7 && f < 7; r++, f++)
+        // Diagonal nach oben rechts
+        for(int32_t r = rank + 1, f = file + 1; r < 7 && f < 7; r++, f++) {
             mask |= (1ULL << (r * 8 + f));
+        }
 
-        for(int32_t r = rank - 1, f = file - 1; r > 0 && f > 0; r--, f--)
+        // Diagonal nach unten links
+        for(int32_t r = rank - 1, f = file - 1; r > 0 && f > 0; r--, f--) {
             mask |= (1ULL << (r * 8 + f));
+        }
 
-        for(int32_t r = rank + 1, f = file - 1; r < 7 && f > 0; r++, f--)
+        // Diagonal nach oben links
+        for(int32_t r = rank + 1, f = file - 1; r < 7 && f > 0; r++, f--) {
             mask |= (1ULL << (r * 8 + f));
+        }
 
-        for(int32_t r = rank - 1, f = file + 1; r > 0 && f < 7; r--, f++)
+        // Diagonal nach unten rechts
+        for(int32_t r = rank - 1, f = file + 1; r > 0 && f < 7; r--, f++) {
             mask |= (1ULL << (r * 8 + f));
+        }
 
         resultFile << "0x" << std::hex << mask << "ULL,";
     }

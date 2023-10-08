@@ -23,7 +23,7 @@ class Move {
         constexpr Move() : move(0) {};
         constexpr Move(uint32_t from) : move(from) {};
         constexpr Move(int32_t origin, int32_t destination, int32_t flags) : move(origin << 11 | destination << 4 | flags) {};
-        constexpr ~Move() = default;
+        ~Move() = default;
 
         friend std::ostream& operator<< (std::ostream& os, const Move& m);
 

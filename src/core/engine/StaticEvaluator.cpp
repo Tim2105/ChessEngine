@@ -1,5 +1,4 @@
 #include "core/chess/BoardDefinitions.h"
-#include "core/chess/MailboxDefinitions.h"
 #include "core/engine/PSQT.h"
 #include "core/engine/StaticEvaluator.h"
 
@@ -387,16 +386,16 @@ inline int32_t StaticEvaluator::evalMGQueens(const Bitboard& ownQueens, const Bi
     if(side == BLACK && rank == RANK_8)
         return 0;
 
-    int32_t knightSq1 = Mailbox::mailbox[B1];
-    int32_t knightSq2 = Mailbox::mailbox[G1];
-    int32_t bishopSq1 = Mailbox::mailbox[C1];
-    int32_t bishopSq2 = Mailbox::mailbox[F1];
+    int32_t knightSq1 = B1;
+    int32_t knightSq2 = G1;
+    int32_t bishopSq1 = C1;
+    int32_t bishopSq2 = F1;
 
     if(side == BLACK) {
-        knightSq1 = Mailbox::mailbox[B8];
-        knightSq2 = Mailbox::mailbox[G8];
-        bishopSq1 = Mailbox::mailbox[C8];
-        bishopSq2 = Mailbox::mailbox[F8];
+        knightSq1 = B8;
+        knightSq2 = G8;
+        bishopSq1 = C8;
+        bishopSq2 = F8;
     }
 
     if(ownKnights.getBit(knightSq1))
@@ -426,8 +425,8 @@ int32_t StaticEvaluator::evalKingPawnEG() {
     Bitboard otherMinorOrMajorPieces = b->getPieceBitboard(otherSide | KNIGHT) | b->getPieceBitboard(otherSide | BISHOP) |
                                        b->getPieceBitboard(otherSide | ROOK) | b->getPieceBitboard(otherSide | QUEEN);
 
-    int32_t ownKingSquare = Mailbox::mailbox[b->getKingSquare(side)];
-    int32_t otherKingSquare = Mailbox::mailbox[b->getKingSquare(otherSide)];
+    int32_t ownKingSquare = b->getKingSquare(side);
+    int32_t otherKingSquare = b->getKingSquare(otherSide);
 
     Bitboard ownPawns = b->getPieceBitboard(side | PAWN);
     Bitboard otherPawns = b->getPieceBitboard(otherSide | PAWN);
@@ -704,7 +703,7 @@ int32_t StaticEvaluator::evalMGKingAttackZone(int32_t side) {
     int32_t score = 0;
 
     int32_t otherSide = side ^ COLOR_MASK;
-    Bitboard kingAttackZone = kingAttackZoneMask[side / COLOR_MASK][Mailbox::mailbox[b->getKingSquare(side)]];
+    Bitboard kingAttackZone = kingAttackZoneMask[side / COLOR_MASK][b->getKingSquare(side)];
 
     int32_t attackCounter = 0;
     
@@ -739,8 +738,8 @@ int32_t StaticEvaluator::evalMGKingSafety() {
     int32_t ownKingSafetyScore = 0;
     int32_t otherKingSafetyScore = 0;
 
-    int32_t ownKingSquare = Mailbox::mailbox[b->getKingSquare(side)];
-    int32_t otherKingSquare = Mailbox::mailbox[b->getKingSquare(otherSide)];
+    int32_t ownKingSquare = b->getKingSquare(side);
+    int32_t otherKingSquare = b->getKingSquare(otherSide);
 
     ownKingSafetyScore += evalMGPawnShield(ownKingSquare, ownPawns, side);
     ownKingSafetyScore += evalMGPawnStorm(otherKingSquare, ownPawns, side);

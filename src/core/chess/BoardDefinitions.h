@@ -7,9 +7,9 @@
  * @brief Definitionen für das Spielfeld und die Zuggeneration
  */
 
-#define FR2SQ(f,r) (( 21 + (f) ) + ( (r) * 10 ))
-#define SQ2F(sq) (( (sq) % 10 ) - 1 )
-#define SQ2R(sq) (( (sq) / 10 ) - 2 )
+#define FR2SQ(f,r) ((r) * 8 + f)
+#define SQ2F(sq) ((sq) % 8)
+#define SQ2R(sq) ((sq) / 8)
 
 #define TYPEOF(p) ((p) & 7)
 
@@ -39,15 +39,15 @@ enum {
 };
 
 constexpr int32_t KNIGHT_ATTACKS[8] = {
-    -21, -19, -12, -8, 8, 12, 19, 21
+    -17, -15, -10, -6, 6, 10, 15, 17
 };
 
 constexpr int32_t DIAGONAL_ATTACKS[4] = {
-    -11, -9, 9, 11
+    -9, -7, 7, 9
 };
 
 constexpr int32_t STRAIGHT_ATTACKS[4] = {
-    -10, -1, 1, 10
+    -8, -1, 1, 8
 };
 
 enum {
@@ -79,14 +79,14 @@ enum {
 #define COLOR_MASK 8
 
 enum {
-    A1 = 21, B1, C1, D1, E1, F1, G1, H1,
-    A2 = 31, B2, C2, D2, E2, F2, G2, H2,
-    A3 = 41, B3, C3, D3, E3, F3, G3, H3,
-    A4 = 51, B4, C4, D4, E4, F4, G4, H4,
-    A5 = 61, B5, C5, D5, E5, F5, G5, H5,
-    A6 = 71, B6, C6, D6, E6, F6, G6, H6,
-    A7 = 81, B7, C7, D7, E7, F7, G7, H7,
-    A8 = 91, B8, C8, D8, E8, F8, G8, H8, NO_SQ
+    A1, B1, C1, D1, E1, F1, G1, H1,
+    A2, B2, C2, D2, E2, F2, G2, H2,
+    A3, B3, C3, D3, E3, F3, G3, H3,
+    A4, B4, C4, D4, E4, F4, G4, H4,
+    A5, B5, C5, D5, E5, F5, G5, H5,
+    A6, B6, C6, D6, E6, F6, G6, H6,
+    A7, B7, C7, D7, E7, F7, G7, H7,
+    A8, B8, C8, D8, E8, F8, G8, H8, NO_SQ
 };
 
 enum {
@@ -110,13 +110,13 @@ enum {
 
 #define NULL_MOVE 2147483648UL // 2^31
 
-#define NORTH 10
-#define SOUTH -10
+#define NORTH 8
+#define SOUTH -8
 #define EAST 1
 #define WEST -1
-#define NORTH_EAST 11
-#define NORTH_WEST 9
-#define SOUTH_EAST -9
-#define SOUTH_WEST -11
+#define NORTH_EAST 9
+#define NORTH_WEST 7
+#define SOUTH_EAST -7
+#define SOUTH_WEST -9
 
 #endif

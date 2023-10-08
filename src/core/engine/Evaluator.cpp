@@ -1,5 +1,4 @@
 #include "core/engine/Evaluator.h"
-#include "core/chess/MailboxDefinitions.h"
 
 #include "core/chess/Referee.h"
 
@@ -19,42 +18,41 @@ bool Evaluator::isDraw() {
 
 int32_t Evaluator::getSmallestAttacker(int32_t to, int32_t side) {
     int32_t otherSide = side ^ COLOR_MASK;
-    int32_t to64 = Mailbox::mailbox[to];
 
-    if(!b->getAttackBitboard(side).getBit(to64))
+    if(!b->getAttackBitboard(side).getBit(to))
         return NO_SQ;
     
-    Bitboard pawnAttackers = pawnAttackBitboard(to64, otherSide) & b->getPieceBitboard(side | PAWN);
+    Bitboard pawnAttackers = pawnAttackBitboard(to, otherSide) & b->getPieceBitboard(side | PAWN);
     if(pawnAttackers)
-        return Mailbox::mailbox64[pawnAttackers.getFirstSetBit()];
+        return pawnAttackers.getFirstSetBit();
 
-    Bitboard knightAttackers = knightAttackBitboard(to64) & b->getPieceBitboard(side | KNIGHT);
+    Bitboard knightAttackers = knightAttackBitboard(to) & b->getPieceBitboard(side | KNIGHT);
     if(knightAttackers)
-        return Mailbox::mailbox64[knightAttackers.getFirstSetBit()];
+        return knightAttackers.getFirstSetBit();
 
-    Bitboard bishopAttackers = diagonalAttackBitboard(to64, b->getOccupiedBitboard() | b->getPieceBitboard(side | KING))
+    Bitboard bishopAttackers = diagonalAttackBitboard(to, b->getOccupiedBitboard() | b->getPieceBitboard(side | KING))
                                                         & b->getPieceBitboard(side | BISHOP);
     if(bishopAttackers)
-        return Mailbox::mailbox64[bishopAttackers.getFirstSetBit()];
+        return bishopAttackers.getFirstSetBit();
 
-    Bitboard rookAttackers = straightAttackBitboard(to64, b->getOccupiedBitboard() | b->getPieceBitboard(side | KING))
+    Bitboard rookAttackers = straightAttackBitboard(to, b->getOccupiedBitboard() | b->getPieceBitboard(side | KING))
                                                         & b->getPieceBitboard(side | ROOK);
     if(rookAttackers)
-        return Mailbox::mailbox64[rookAttackers.getFirstSetBit()];
+        return rookAttackers.getFirstSetBit();
 
-    Bitboard queenAttackers = (diagonalAttackBitboard(to64, b->getOccupiedBitboard() | b->getPieceBitboard(side | KING))
-                                | straightAttackBitboard(to64, b->getOccupiedBitboard() | b->getPieceBitboard(side | KING)))
+    Bitboard queenAttackers = (diagonalAttackBitboard(to, b->getOccupiedBitboard() | b->getPieceBitboard(side | KING))
+                                | straightAttackBitboard(to, b->getOccupiedBitboard() | b->getPieceBitboard(side | KING)))
                                 & b->getPieceBitboard(side | QUEEN);
     if(queenAttackers)
-        return Mailbox::mailbox64[queenAttackers.getFirstSetBit()];
+        return queenAttackers.getFirstSetBit();
     
-    Bitboard kingAttackers = kingAttackBitboard(to64) & b->getPieceBitboard(side | KING);
+    Bitboard kingAttackers = kingAttackBitboard(to) & b->getPieceBitboard(side | KING);
     if(kingAttackers) {
         // Der König darf nur schlagen, wenn die Figur nicht verteidigt wird
-        if(b->getAttackBitboard(otherSide).getBit(to64))
+        if(b->getAttackBitboard(otherSide).getBit(to))
             return NO_SQ;
 
-        return Mailbox::mailbox64[kingAttackers.getFirstSetBit()];
+        return kingAttackers.getFirstSetBit();
     }
 
     return NO_SQ;

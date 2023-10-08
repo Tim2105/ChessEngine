@@ -1,5 +1,5 @@
-#ifndef MOVEGEN_H
-#define MOVEGEN_H
+#ifndef MAGIC_MOVEGEN_H
+#define MAGIC_MOVEGEN_H
 
 #include "core/chess/Board.h"
 #include "core/chess/BoardDefinitions.h"
@@ -71,10 +71,12 @@ class Board;
  */
 
 /**
- * @brief Die Klasse Movegen ist für die Generierung aller legalen und Pseudo-Legalen Züge für einzelne Figurenklassen zuständig.
+ * @brief Die Klasse MagicMovegen ist für die Generierung aller legalen und Pseudo-Legalen Züge für einzelne Figurenklassen zuständig.
  * Die Generierung von legalen Zügen ist sehr performancekritisch, weswegen keine Figuren in Klassen abstrahiert werden.
+ * 
+ * Zur Generierung von Turm-, Läufer- und Damenzügen werden Magic-Bitboards verwendet.
  */
-class Movegen {
+class MagicMovegen {
 
     public:
         /**

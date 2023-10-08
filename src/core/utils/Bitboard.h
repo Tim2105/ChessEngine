@@ -191,7 +191,7 @@ extern Bitboard kingAttacks[];
 /**
  * @brief Liefert ein Bitboard, dass, ausgehend von einem Feld, alle Felder enthält die von einer diagonal laufenden Figur angegriffen werden.
  * 
- * @param sq Das Feld in 64er Notation.
+ * @param sq Das Feld.
  * @param occupied Das Bitboard mit den besetzten Feldern.
  */
 Bitboard diagonalAttackBitboard(int32_t sq, const Bitboard occupied);
@@ -199,7 +199,7 @@ Bitboard diagonalAttackBitboard(int32_t sq, const Bitboard occupied);
 /**
  * @brief Liefert ein Bitboard, dass, ausgehend von einem Feld, alle Felder enthält die von einer horizontal/vertikal laufenden Figur angegriffen werden.
  * 
- * @param sq Das Feld in 64er Notation.
+ * @param sq Das Feld.
  * @param occupied Das Bitboard mit den besetzten Feldern.
  */
 Bitboard straightAttackBitboard(int32_t sq, const Bitboard occupied);
@@ -207,14 +207,14 @@ Bitboard straightAttackBitboard(int32_t sq, const Bitboard occupied);
 /**
  * @brief Liefert ein Bitboard, dass, ausgehend von einem Feld, alle Felder enthält die von einer Springer angegriffen werden.
  * 
- * @param sq Das Feld in 64er Notation.
+ * @param sq Das Feld.
  */
 Bitboard knightAttackBitboard(int32_t sq);
 
 /**
  * @brief Liefert ein Bitboard, dass, ausgehend von einem Feld, alle Felder enthält die von einem Bauern angegriffen werden.
  * 
- * @param sq Das Feld in 64er Notation.
+ * @param sq Das Feld.
  * @param side Die Farbe des Bauern.
  */
 Bitboard pawnAttackBitboard(int32_t sq, int32_t side);
@@ -222,7 +222,7 @@ Bitboard pawnAttackBitboard(int32_t sq, int32_t side);
 /**
  * @brief Liefert ein Bitboard, dass, ausgehend von einem Feld, alle Felder enthält die von einem König angegriffen werden.
  * 
- * @param sq Das Feld in 64er Notation.
+ * @param sq Das Feld.
  */
 Bitboard kingAttackBitboard(int32_t sq);
 
@@ -230,7 +230,7 @@ Bitboard kingAttackBitboard(int32_t sq);
  * @brief Gibt ein Bitboard aller Diagonalen zurück, die von einem Feld aus eine Liste von Zielen angreifen.
  * Diagonale, die aus dem Spielfeld herausgehen, werden ignoriert.
  * 
- * @param sq Das Feld in 64er Notation.
+ * @param sq Das Feld.
  */
 Bitboard diagonalAttackUntilBlocked(int32_t sq, const Bitboard target, const Bitboard occupied);
 
@@ -238,14 +238,14 @@ Bitboard diagonalAttackUntilBlocked(int32_t sq, const Bitboard target, const Bit
  * @brief Gibt ein Bitboard aller Geraden zurück, die von einem Feld aus eine Liste von Zielen angreifen.
  * Geraden, die aus dem Spielfeld herausgehen, werden ignoriert.
  * 
- * @param sq Das Feld in 64er Notation.
+ * @param sq Das Feld.
  */
 Bitboard straightAttackUntilBlocked(int32_t sq, const Bitboard target, const Bitboard occupied);
 
 /**
  * @brief Überprüft, ob auf einem Spielfeld eine/mehrere Figuren an ein Feld diagonal gefesselt ist.
  * 
- * @param sq Das Feld in 64er Notation.
+ * @param sq Das Feld.
  * @param ownPieces Das Bitboard mit den eigenen Figuren(die möglicherweise gefesselt sein könnten).
  * @param enemyPieces Das Bitboard mit den gegnerischen Figuren(die möglicherweise die Fesselung verursachen).
  * @param occupied Das Bitboard mit allen Figuren, die weder eigene noch fesselnde Figuren sind.
@@ -257,7 +257,7 @@ int32_t getDiagonallyPinnedToSquare(int32_t sq, Bitboard ownPieces, Bitboard ene
 /**
  * @brief Überprüft, ob auf einem Spielfeld eine/mehrere Figuren an ein Feld gradlinig gefesselt ist.
  * 
- * @param sq Das Feld in 64er Notation.
+ * @param sq Das Feld.
  * @param ownPieces Das Bitboard mit den eigenen Figuren(die möglicherweise gefesselt sein könnten).
  * @param enemyPieces Das Bitboard mit den gegnerischen Figuren(die möglicherweise die Fesselung verursachen).
  * @param occupied Das Bitboard mit allen Figuren, die weder eigene noch fesselnde Figuren sind.

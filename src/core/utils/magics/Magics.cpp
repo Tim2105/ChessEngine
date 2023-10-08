@@ -22,8 +22,6 @@ void Magics::initializeMagics() {
         }
     }
 
-    std::cout << "Rook magics initialized!" << std::endl;
-
     // Fülle die Läufer-Tabelle
     for(int32_t sq = 0; sq < 64; sq++) {
         uint64_t occupied = MagicNumbers::bishopMasks[sq];
@@ -38,6 +36,4 @@ void Magics::initializeMagics() {
             bishopAttacks[sq][index] = MagicsFinder::bishopAttackMask(sq, occupancies[i]);
         }
     }
-
-    std::cout << "Magics initialized!" << std::endl;
 }

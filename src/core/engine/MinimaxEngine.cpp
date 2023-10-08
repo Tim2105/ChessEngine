@@ -1,4 +1,3 @@
-#include "core/chess/MailboxDefinitions.h"
 #include "core/engine/MinimaxEngine.h"
 #include "core/engine/PSQT.h"
 #include "core/utils/MoveNotations.h"
@@ -226,32 +225,31 @@ inline int32_t MinimaxEngine::scoreMove(Move& move, int16_t ply) {
 
         Move lastMove = searchBoard.getLastMove();
         if(lastMove.exists() && counterMoves[searchBoard.pieceAt(lastMove.getOrigin())]
-                                            [Mailbox::mailbox[lastMove.getDestination()]] == move)
+                                            [lastMove.getDestination()] == move)
             moveScore += 40;
     }
 
     int32_t movedPieceType = TYPEOF(searchBoard.pieceAt(move.getOrigin()));
     int32_t side = searchBoard.getSideToMove();
-    int32_t psqtOrigin64 = Mailbox::mailbox[move.getOrigin()];
-    int32_t psqtDestination64 = Mailbox::mailbox[move.getDestination()];
+    int32_t psqtOrigin = move.getOrigin();
+    int32_t psqtDestination = move.getDestination();
 
     if(side == BLACK) {
-        int32_t rank = psqtOrigin64 / 8;
-        int32_t file = psqtOrigin64 % 8;
+        int32_t rank = psqtOrigin / 8;
+        int32_t file = psqtOrigin % 8;
 
-        psqtOrigin64 = (RANK_8 - rank) * 8 + file;
+        psqtOrigin = (RANK_8 - rank) * 8 + file;
 
-        rank = psqtDestination64 / 8;
-        file = psqtDestination64 % 8;
+        rank = psqtDestination / 8;
+        file = psqtDestination % 8;
 
-        psqtDestination64 = (RANK_8 - rank) * 8 + file;
+        psqtDestination = (RANK_8 - rank) * 8 + file;
     }
 
-    moveScore += MG_PSQT[movedPieceType][psqtDestination64] - MG_PSQT[movedPieceType][psqtOrigin64];
+    moveScore += MG_PSQT[movedPieceType][psqtDestination] - MG_PSQT[movedPieceType][psqtOrigin];
 
     moveScore += std::clamp(relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
-                        [Mailbox::mailbox[move.getOrigin()]]
-                        [Mailbox::mailbox[move.getDestination()]] / ((currentMaxDepth / ONE_PLY)),
+                        [move.getOrigin()][move.getDestination()] / ((currentMaxDepth / ONE_PLY)),
                         -99, 49);
 
     return moveScore;
@@ -467,8 +465,7 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
         }
         
         relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
-                           [Mailbox::mailbox[move.getOrigin()]]
-                           [Mailbox::mailbox[move.getDestination()]] -= depth / ONE_PLY;
+                           [move.getOrigin()][move.getDestination()] -= depth / ONE_PLY;
         
 
         if(score >= beta) {
@@ -485,12 +482,12 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
                 Move lastMove = searchBoard.getLastMove();
                 if(lastMove.exists())
                     counterMoves[searchBoard.pieceAt(lastMove.getDestination())]
-                                [Mailbox::mailbox[lastMove.getOrigin()]] = move;
+                                [lastMove.getOrigin()] = move;
             }
 
             relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
-                           [Mailbox::mailbox[move.getOrigin()]]
-                           [Mailbox::mailbox[move.getDestination()]] += std::min(1 << (depth / ONE_PLY), 1 << 24);
+                           [move.getOrigin()]
+                           [move.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
 
             return score;
         }
@@ -542,8 +539,8 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
     });
 
     relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
-                    [Mailbox::mailbox[bestMove.getOrigin()]]
-                    [Mailbox::mailbox[bestMove.getDestination()]] += std::min(1 << (depth / ONE_PLY), 1 << 24);
+                    [bestMove.getOrigin()]
+                    [bestMove.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
                 
     if(worstVariationScore > oldAlpha) {
         variations = newVariations;
@@ -625,8 +622,7 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
             return 0;
         
         relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
-                           [Mailbox::mailbox[move.getOrigin()]]
-                           [Mailbox::mailbox[move.getDestination()]] -= depth / ONE_PLY;
+                           [move.getOrigin()][move.getDestination()] -= depth / ONE_PLY;
         
 
         if(score >= beta) {
@@ -647,12 +643,12 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
                 Move lastMove = searchBoard.getLastMove();
                 if(lastMove.exists())
                     counterMoves[searchBoard.pieceAt(lastMove.getDestination())]
-                                [Mailbox::mailbox[lastMove.getOrigin()]] = move;
+                                [lastMove.getOrigin()] = move;
             }
 
             relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
-                           [Mailbox::mailbox[move.getOrigin()]]
-                           [Mailbox::mailbox[move.getDestination()]] += std::min(1 << (depth / ONE_PLY), 1 << 24);
+                           [move.getOrigin()]
+                           [move.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
 
             return score;
         }
@@ -684,8 +680,8 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
         });
 
     relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
-                    [Mailbox::mailbox[bestMove.getOrigin()]]
-                    [Mailbox::mailbox[bestMove.getDestination()]] += std::min(1 << (depth / ONE_PLY), 1 << 24);
+                    [bestMove.getOrigin()]
+                    [bestMove.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
 
     return bestScore;
 }
@@ -795,8 +791,7 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
             return 0;
         
         relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
-                        [Mailbox::mailbox[move.getOrigin()]]
-                        [Mailbox::mailbox[move.getDestination()]] -= depth / ONE_PLY;
+                        [move.getOrigin()][move.getDestination()] -= depth / ONE_PLY;
 
         if(score >= beta) {
             bool tableHit = transpositionTable.probe(searchBoard.getHashValue(), ttEntry);
@@ -816,12 +811,12 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
                 Move lastMove = searchBoard.getLastMove();
                 if(lastMove.exists())
                     counterMoves[searchBoard.pieceAt(lastMove.getDestination())]
-                                [Mailbox::mailbox[lastMove.getOrigin()]] = move;
+                                [lastMove.getOrigin()] = move;
             }
 
             relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
-                           [Mailbox::mailbox[move.getOrigin()]]
-                           [Mailbox::mailbox[move.getDestination()]] += std::min(1 << (depth / ONE_PLY), 1 << 24);
+                           [move.getOrigin()]
+                           [move.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
 
             return score;
         }
@@ -841,8 +836,8 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
         });
     
     relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
-                [Mailbox::mailbox[bestMove.getOrigin()]]
-                [Mailbox::mailbox[bestMove.getDestination()]] += std::min(1 << (depth / ONE_PLY), 1 << 24);
+                [bestMove.getOrigin()]
+                [bestMove.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
 
     return bestScore;
 }
@@ -876,7 +871,7 @@ inline int16_t MinimaxEngine::determineExtension(bool isCheckEvasion) {
         int32_t side = searchBoard.getSideToMove() ^ COLOR_MASK;
         int32_t otherSide = searchBoard.getSideToMove();
 
-        if(!(sentryMasks[side / COLOR_MASK][Mailbox::mailbox[m.getDestination()]]
+        if(!(sentryMasks[side / COLOR_MASK][m.getDestination()]
             & searchBoard.getPieceBitboard(otherSide | PAWN)))
             extension += TWO_THIRDS_PLY;
     }
@@ -899,8 +894,8 @@ inline int16_t MinimaxEngine::determineReduction(int16_t depth, int16_t ply, int
     reduction += (int16_t)(log(moveCount - unreducedMoves + 1) / log(2) * ONE_PLY);
 
     int32_t relativeHistoryScore = relativeHistory[searchBoard.getSideToMove() / COLOR_MASK]
-                                                  [Mailbox::mailbox[searchBoard.getLastMove().getOrigin()]]
-                                                  [Mailbox::mailbox[searchBoard.getLastMove().getDestination()]];
+                                                  [searchBoard.getLastMove().getOrigin()]
+                                                  [searchBoard.getLastMove().getDestination()];
 
     relativeHistoryScore = std::min(relativeHistoryScore, (int32_t)0);
 

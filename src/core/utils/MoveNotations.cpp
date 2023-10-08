@@ -1,5 +1,4 @@
 #include "core/utils/MoveNotations.h"
-#include "core/chess/MailboxDefinitions.h"
 
 /**
  * @brief Ein Array mit den Figurenbezeichnungen für die Figurine Notation.
@@ -48,7 +47,7 @@ std::string toAlgebraicNotation(const Move& move, Board& board, const std::strin
 
     std::string result = "";
 
-    int32_t dest64 = Mailbox::mailbox[move.getDestination()];
+    int32_t dest = move.getDestination();
 
     int32_t originRank = SQ2R(move.getOrigin());
     int32_t originFile = SQ2F(move.getOrigin());
@@ -113,7 +112,7 @@ std::string toAlgebraicNotation(const Move& move, Board& board, const std::strin
 
     switch(TYPEOF(movedPiece)) {
         case KNIGHT: {
-            Bitboard knightsAttackingDest = knightAttackBitboard(dest64) & board.getPieceBitboard(side | KNIGHT);
+            Bitboard knightsAttackingDest = knightAttackBitboard(dest) & board.getPieceBitboard(side | KNIGHT);
             if(knightsAttackingDest.getNumberOfSetBits() > 1) {
                 int32_t numOriginFile = 0;
                 int32_t numOriginRank = 0;
@@ -143,7 +142,7 @@ std::string toAlgebraicNotation(const Move& move, Board& board, const std::strin
             }
             break;
         } case BISHOP: {
-            Bitboard bishopsAttackingDest = diagonalAttackBitboard(dest64, board.getOccupiedBitboard() |
+            Bitboard bishopsAttackingDest = diagonalAttackBitboard(dest, board.getOccupiedBitboard() |
                                             board.getPieceBitboard(WHITE | KING) |
                                             board.getPieceBitboard(BLACK | KING)) &
                         board.getPieceBitboard(side | BISHOP);
@@ -177,7 +176,7 @@ std::string toAlgebraicNotation(const Move& move, Board& board, const std::strin
             }
             break;
         } case ROOK: {
-            Bitboard rooksAttackingDest = straightAttackBitboard(dest64, board.getOccupiedBitboard() |
+            Bitboard rooksAttackingDest = straightAttackBitboard(dest, board.getOccupiedBitboard() |
                                             board.getPieceBitboard(WHITE | KING) |
                                             board.getPieceBitboard(BLACK | KING)) &
                         board.getPieceBitboard(side | ROOK);
@@ -211,10 +210,10 @@ std::string toAlgebraicNotation(const Move& move, Board& board, const std::strin
             }
             break;
         } case QUEEN: {
-            Bitboard queensAttackingDest = (straightAttackBitboard(dest64, board.getOccupiedBitboard() |
+            Bitboard queensAttackingDest = (straightAttackBitboard(dest, board.getOccupiedBitboard() |
                                             board.getPieceBitboard(WHITE | KING) |
                                             board.getPieceBitboard(BLACK | KING)) |
-                                            diagonalAttackBitboard(dest64, board.getOccupiedBitboard() |
+                                            diagonalAttackBitboard(dest, board.getOccupiedBitboard() |
                                             board.getPieceBitboard(WHITE | KING) |
                                             board.getPieceBitboard(BLACK | KING))) &
                             board.getPieceBitboard(side | QUEEN);

@@ -3,4 +3,4 @@ MovegenTestCases/*
 BenchmarkData/*
 pgn/*
 *.txt
-.vscode/*
+*.json
