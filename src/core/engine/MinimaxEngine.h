@@ -55,7 +55,7 @@ class MinimaxEngine : public InterruptedEngine {
          * @tparam Buckets Die Anzahl der Buckets.
          * @tparam Size Die Größe eines Buckets.
          */
-        TranspositionTable<2097152, 4> transpositionTable;
+        TranspositionTable<262144, 4> transpositionTable;
 
         /**
          * @brief Eine Kopie des, zu untersuchenden, Spielbretts.
