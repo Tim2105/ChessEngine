@@ -6,13 +6,13 @@ void PGNGameAnalyzer::analyzeNextMove() {
     if(!hasNextMove())
         return;
 
+    engine->search(timePerMove * 1.5);
+
     int8_t scoreMultiplier = board.getSideToMove() == WHITE ? 1 : -1;
 
-    engine.search(timePerMove);
-
     BoardStateAnalysis analysis;
-    analysis.score = engine.getBestMoveScore() * scoreMultiplier;
-    analysis.variations = engine.getVariations();
+    analysis.score = engine->getBestMoveScore() * scoreMultiplier;
+    analysis.variations = engine->getVariations();
 
     for(uint32_t i = 0; i < analysis.variations.size(); i++)
         analysis.variations[i].score *= scoreMultiplier;
@@ -21,7 +21,7 @@ void PGNGameAnalyzer::analyzeNextMove() {
 
     board.makeMove(moves[currentMoveIndex++]);
 
-    // If the game has ended, add the final board state analysis
+    // Wenn das Spiel vorbei ist, füge noch eine Analyse mit dem Ergebnis hinzu
     if(Referee::isGameOver(board)) {
         uint32_t score = 0;
 

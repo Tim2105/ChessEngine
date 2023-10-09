@@ -148,7 +148,7 @@ class MinimaxEngine : public InterruptedEngine {
         virtual inline void checkup() override {
             InterruptedEngine::checkup();
 
-            if(getLastCheckupTime() >= endTime && currentMaxDepth >= ONE_PLY * 2)
+            if(getLastCheckupTime() >= endTime && currentMaxDepth > ONE_PLY)
                 searchRunning = false;
         }
 

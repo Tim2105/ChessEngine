@@ -3,8 +3,9 @@
 
 #include "core/chess/Board.h"
 #include "core/chess/Move.h"
-#include "core/engine/Evaluator.h"
-#include "core/engine/Engine.h"
+
+#include "core/engine/MinimaxEngine.h"
+#include "core/engine/StaticEvaluator.h"
 
 #include <string>
 #include <vector>
@@ -24,22 +25,54 @@ class PGNGameAnalyzer {
         uint32_t searchTime;
 
     private:
-        Engine& engine;
+        class PGNGameAnalyzerEngine : public MinimaxEngine {
+            private:
+                static constexpr double EST_BRANCHING_FACTOR = 1.6;
 
-        uint32_t timePerMove;
+                double timePerMove;
+                uint16_t lastRecordedDepth = 0;
+
+                inline void checkupCallback() {
+                    SearchDetails details = getSearchDetails();
+                    uint16_t depth = details.depth;
+                    uint64_t timeSpent = details.timeTaken.count();
+
+                    if(depth > lastRecordedDepth && timeSpent > (timePerMove / EST_BRANCHING_FACTOR))
+                        stop();
+
+                    lastRecordedDepth = depth;
+                }
+
+            public:
+                PGNGameAnalyzerEngine(Evaluator& e, double timePerMove)
+                    : MinimaxEngine(e, 3, 100, std::bind(&PGNGameAnalyzerEngine::checkupCallback, this))
+                    , timePerMove(timePerMove) {}
+
+        };
+
+        StaticEvaluator* evaluator;
+        PGNGameAnalyzerEngine* engine;
+        double timePerMove;
 
     public:
-        PGNGameAnalyzer(std::string pgn, Engine& engine, uint32_t searchTime) : searchTime(searchTime), engine(engine)  {
+        PGNGameAnalyzer(std::string pgn, uint32_t searchTime) : searchTime(searchTime) {
+
             board = Board::fromPGN(pgn);
 
             std::vector<MoveHistoryEntry> history = board.getMoveHistory();
             for(MoveHistoryEntry entry : history)
                 moves.push_back(entry.move);
 
-            board = Board();
-            engine.setBoard(board);
+            timePerMove = searchTime / (double)history.size();
 
-            timePerMove = searchTime / history.size();
+            board = Board();
+            evaluator = new StaticEvaluator(board);
+            engine = new PGNGameAnalyzerEngine(*evaluator, timePerMove);
+        };
+
+        ~PGNGameAnalyzer() {
+            delete evaluator;
+            delete engine;
         };
 
         void analyzeNextMove();

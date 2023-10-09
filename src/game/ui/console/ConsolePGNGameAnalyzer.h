@@ -12,7 +12,7 @@ class ConsolePGNGameAnalyzer : public PGNGameAnalyzer {
         static constexpr int32_t BLUNDER_SCORE_DIFF = 300;
 
     public:
-        ConsolePGNGameAnalyzer(std::string pgn, Engine& engine, uint32_t searchTime) : PGNGameAnalyzer(pgn, engine, searchTime) {};
+        ConsolePGNGameAnalyzer(std::string pgn, uint32_t searchTime) : PGNGameAnalyzer(pgn, searchTime) {};
 
         void output() override;
 };

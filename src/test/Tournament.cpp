@@ -28,6 +28,12 @@ const std::vector<std::string> Tournament::openings = {
     "1.d4 d5 2.c4 c6", "Slav Defense",
     "1.d4 Nf6 2.c4 e6 3.g3", "Catalan Opening",
     "1.d4 Nf6 2.c4 c5 3.d5 e6 4.Nc3 exd5 5.cxd5 d6", "Benoni Defense; Modern Variation",
+    "1.e4 e5 2.Nf3 Nc6 3.d4", "Scotch Game",
+    "1.d4 f5", "Dutch Defense",
+    "1.d4 Nf6 2.Bg5", "Trompowsky Attack",
+    "1.d4 Nf6 2.c4 e6 3.Nf3 b6", "Queen's Indian Defense",
+    "1.Nf3", "Reti Opening",
+    "1.e4 Nf6", "Alekhine's Defense"
 };
 
 const std::vector<int32_t> Tournament::timeControls = {
@@ -194,8 +200,8 @@ void Tournament::run() {
     // Ausgabe
     std::cout << std::endl << std::endl;
     std::cout << "Results:" << std::endl;
-    std::cout << std::setw(15) << "Time control" << std::setw(20) << engineName1 + " (by time)"
-            << std::setw(20) << engineName2 + " (by time)" << std::setw(15) << "Draws" << std::endl;
+    std::cout << std::setw(15) << "Time control" << std::setw(30) << engineName1 + " (by time)"
+            << std::setw(30) << engineName2 + " (by time)" << std::setw(15) << "Draws" << std::endl;
 
     for(size_t i = 0; i < timeControls.size(); i++) {
         std::vector<TournamentGameResult> timeControlResults = results[i];
@@ -227,8 +233,8 @@ void Tournament::run() {
             }
         }
 
-        std::cout << std::setw(15) << timeControls[i] << std::setw(20) << std::to_string(engine1Wins) + " (" + std::to_string(engine2Timeouts) + ")"
-                << std::setw(20) << std::to_string(engine2Wins) + " (" + std::to_string(engine1Timeouts) + ")" << std::setw(15) << draws << std::endl;
+        std::cout << std::setw(15) << timeControls[i] << std::setw(30) << std::to_string(engine1Wins) + " (" + std::to_string(engine2Timeouts) + ")"
+                << std::setw(30) << std::to_string(engine2Wins) + " (" + std::to_string(engine1Timeouts) + ")" << std::setw(15) << draws << std::endl;
     }
 
     std::cout << std::endl << std::endl;

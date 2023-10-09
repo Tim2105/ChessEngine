@@ -72,11 +72,7 @@ void ConsoleNavigator::startAnalysis() {
     try {
         std::string pgn((std::istreambuf_iterator<char>(pgnFile)), std::istreambuf_iterator<char>());
 
-        Board board;
-        StaticEvaluator evaluator(board);
-        MinimaxEngine engine(evaluator, 3);
-
-        ConsolePGNGameAnalyzer analyzer(pgn, engine, time * 1000);
+        ConsolePGNGameAnalyzer analyzer(pgn, time * 1000);
         analyzeGame(analyzer);
     } catch(std::exception& e) {
         std::cout << e.what() << std::endl;
