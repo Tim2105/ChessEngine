@@ -11,7 +11,7 @@ class ConsolePlayer : public UserPlayer {
         Move getMove() override;
         Move getMove(uint32_t remainingTime) override;
 
-        void onGameEnd(uint8_t result) override;
+        void onGameEnd(GameResult result) override;
 
 };
 

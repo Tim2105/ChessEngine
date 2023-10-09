@@ -33,7 +33,7 @@ void MinimaxEngine::runSearch(bool timeControl, uint32_t minTime, uint32_t maxTi
 
     std::vector<Variation> principalVariationHistory;
 
-    int16_t score = evaluator.evaluate();
+    int16_t score = 0;
 
     auto start = std::chrono::system_clock::now();
 
@@ -44,30 +44,6 @@ void MinimaxEngine::runSearch(bool timeControl, uint32_t minTime, uint32_t maxTi
 
         auto end = std::chrono::system_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-
-        if(_DEBUG_) {
-            std::cout << "info depth " << depth / ONE_PLY << " score cp " << score << " time " << elapsed << " nodes " << nodesSearched << " pv ";
-
-            for(std::string move : variationToFigurineAlgebraicNotation(getPrincipalVariation(), searchBoard)) {
-                std::cout << move << " ";
-            }
-
-            std::cout << std::endl;
-
-            if(numVariations > 1) {
-                for(size_t i = 1; i < variations.size(); i++) {
-                    std::cout << "info multipv " << i + 1 << " score cp " << variations[i].score;
-
-                    for(std::string move : variationToFigurineAlgebraicNotation(variations[i].moves, searchBoard)) {
-                        std::cout << " " << move;
-                    }
-
-                    std::cout << std::endl;
-                }
-            }
-
-            std::cout << std::endl << std::endl;
-        }
 
         principalVariationHistory.push_back({
             getPrincipalVariation(),
@@ -198,6 +174,8 @@ void MinimaxEngine::search(uint32_t searchTime, bool treatAsTimeControl) {
 
         runSearch(false, 0, 0);
     }
+
+    evaluator.setBoard(*board);
 }
 
 void MinimaxEngine::stop() {

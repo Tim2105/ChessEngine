@@ -32,15 +32,15 @@ class Move {
 
     public:
         constexpr Move() : move(0) {};
-        constexpr Move(uint32_t from) : move(from) {};
+        constexpr Move(uint16_t from) : move(from) {};
         constexpr Move(int32_t origin, int32_t destination, int32_t flags) : move(origin << 10 | destination << 4 | flags) {};
         ~Move() = default;
 
         friend std::ostream& operator<< (std::ostream& os, const Move& m);
 
-        constexpr uint32_t getMove() const { return move; }
+        constexpr uint16_t getMove() const { return move; }
 
-        constexpr operator uint32_t() const { return move; }
+        constexpr operator uint16_t() const { return move; }
 
         constexpr static Move nullMove() { return Move(NULL_MOVE); }
 

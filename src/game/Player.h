@@ -3,11 +3,7 @@
 
 #include "core/chess/Board.h"
 
-#define DRAW 0
-#define WHITE_WON 1
-#define BLACK_WON 2
-#define WHITE_WON_BY_TIME 3
-#define BLACK_WON_BY_TIME 4
+#include "game/GameResult.h"
 
 class Player {
     protected:
@@ -19,7 +15,7 @@ class Player {
         virtual Move getMove() = 0;
         virtual Move getMove(uint32_t remainingTime) = 0;
 
-        virtual void onGameEnd(uint8_t result) = 0;
+        virtual void onGameEnd(GameResult result) = 0;
 };
 
 #endif

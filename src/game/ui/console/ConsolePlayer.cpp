@@ -45,24 +45,26 @@ Move ConsolePlayer::getMove(uint32_t remainingTime) {
     }
 }
 
-void ConsolePlayer::onGameEnd(uint8_t result) {
+void ConsolePlayer::onGameEnd(GameResult result) {
     std::cout << "Game over! ";
 
     switch(result) {
-        case WHITE_WON:
+        case GameResult::WHITE_WON:
             std::cout << "White won!" << std::endl;
             break;
-        case BLACK_WON:
+        case GameResult::BLACK_WON:
             std::cout << "Black won!" << std::endl;
             break;
-        case WHITE_WON_BY_TIME:
+        case GameResult::WHITE_WON_BY_TIME:
             std::cout << "White won by time!" << std::endl;
             break;
-        case BLACK_WON_BY_TIME:
+        case GameResult::BLACK_WON_BY_TIME:
             std::cout << "Black won by time!" << std::endl;
             break;
-        case DRAW:
+        case GameResult::DRAW:
             std::cout << "Draw!" << std::endl;
+            break;
+        default:
             break;
     }
 

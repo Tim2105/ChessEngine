@@ -19,6 +19,7 @@ void ConsoleNavigator::startGame() {
 
     std::cout <<  "Play as white? (y/n)" << std::endl;
     int input = ngetch();
+    std::cout << char(input) << std::endl;
 
     bool isWhite = input == 'y';
 

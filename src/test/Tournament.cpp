@@ -1,9 +1,13 @@
+#include "core/utils/MoveNotations.h"
+#include "game/TimeControlledGame.h"
+#include "game/ComputerPlayer.h"
+
 #include "test/Tournament.h"
+
 #include <random>
 #include <iostream>
 #include <iomanip>
 #include <fstream>
-#include "core/utils/MoveNotations.h"
 
 const std::vector<std::string> Tournament::openings = {
     "1.e4 e5 2.Nf3 Nc6 3.Bb5", "Ruy Lopez Opening",
@@ -27,75 +31,54 @@ const std::vector<std::string> Tournament::openings = {
 };
 
 const std::vector<int32_t> Tournament::timeControls = {
-    100, 200, 300, 500, 1000
+    5, 10, 30
 };
 
 const std::vector<int32_t> Tournament::numGames = {
-    20, 15, 12, 10, 5
+    200, 100, 10
 };
 
-int32_t Tournament::runGame(Board& board, Engine& st1, Engine& st2, int32_t time) {
-    // Übergebe beiden Engines das Spielfeld
+enum class TournamentGameResult {
+    DRAW = 0,
+    ENGINE1_WON,
+    ENGINE1_WON_ON_TIME,
+    ENGINE2_WON,
+    ENGINE2_WON_ON_TIME
+};
+
+GameResult Tournament::runGame(Board& board, Engine& st1, Engine& st2, int32_t time) {
     st1.setBoard(board);
     st2.setBoard(board);
+    ComputerPlayer p1(st1);
+    ComputerPlayer p2(st2);
+    TournamentGameStateOutput output(board);
 
-    TournamentEvaluator evaluator(board);
+    TimeControlledGame game(board, p1, p2, output, time, time);
+    game.start();
 
-    int32_t playingEngine = 1;
+    return game.getResult();
+}
 
-    while(!(evaluator.isDraw()) && board.generateLegalMoves().size() > 0) {
-        // Engine 1 ist am Zug
-        if(playingEngine == 1) {
-            // Berechne Zug
-            st1.search(time);
-            // Führe Zug aus
-            Move bestMove = st1.getPrincipalVariation()[0];
+void writePGN(std::string filename, std::string pgn) {
+    std::ofstream file;
 
-            if(!board.isMoveLegal(bestMove))
-                throw std::runtime_error("Illegal move by " + engineName1 + "! " + bestMove.toString() + " Move " + std::to_string(board.getMoveHistory().size() + 1));
+    file.open(filename, std::ios::out);
 
-            board.makeMove(bestMove);
+    if(!file.is_open())
+        throw std::runtime_error("Could not open file " + filename + " for writing! (Tournament::run())");
 
-            // Wechsle Engine
-            playingEngine = 2;
-        }
-        // Engine 2 ist am Zug
-        else {
-            // Berechne Zug
-            st2.search(time);
-            // Führe Zug aus
-            Move bestMove = st2.getPrincipalVariation()[0];
+    file << pgn;
 
-            if(!board.isMoveLegal(bestMove))
-                throw std::runtime_error("Illegal move by " + engineName2 + "! " + bestMove.toString() + " Move " + std::to_string(board.getMoveHistory().size() + 1));
-
-            board.makeMove(bestMove);
-
-            // Wechsle Engine
-            playingEngine = 1;
-        }
-    }
-
-    // Auswertung
-    if(evaluator.isDraw() || (board.generateLegalMoves().size() == 0 && !board.isCheck())) {
-        return 0;
-    }
-    else if(playingEngine == 1) {
-        return 2;
-    }
-    else {
-        return 1;
-    }
+    file.close();
 }
 
 void Tournament::run() {
-    std::vector<int32_t> engine1Wins = std::vector<int32_t>(timeControls.size(), 0);
-    std::vector<int32_t> engine2Wins = std::vector<int32_t>(timeControls.size(), 0);
-    std::vector<int32_t> draws = std::vector<int32_t>(timeControls.size(), 0);
+    std::vector<std::vector<TournamentGameResult>> results;
 
     int32_t timeControlIndex = 0;
 
     for(int32_t timeControl : timeControls) {
+        results.push_back(std::vector<TournamentGameResult>());
         
         for(int32_t i = 0; i < numGames[timeControlIndex]; i++) {
             // Wähle zufällige Eröffnung
@@ -113,18 +96,61 @@ void Tournament::run() {
             bool engine1White = board.getSideToMove() == WHITE;
 
             // Ausgabe
-            std::cout << "Game " << i * 2 + 1 << " of " << numGames[timeControlIndex] * 2 << " (" << openingName << "): ";
+            std::cout << "(" << timeControl << "s) Playing Game " << i + 1 << " of " << numGames[timeControlIndex] << " (" << openingName << ")... ";
+            std::cout << std::flush;
 
             // Spiele Partie
-            int32_t result = runGame(board, st1, st2, timeControl);
+            
+            // Münzwurf, um die Reihenfolge zu bestimmen
+            std::uniform_int_distribution<> dis2(0, 1);
+            bool engine1Starts = dis2(gen);
 
+            Engine& p1 = engine1Starts ? st1 : st2;
+            Engine& p2 = engine1Starts ? st2 : st1;
+
+            GameResult result = runGame(board, p1, p2, timeControl * 1000);
+            TournamentGameResult tournamentResult = TournamentGameResult::DRAW;
+
+            switch(result) {
+                case GameResult::DRAW:
+                    tournamentResult = TournamentGameResult::DRAW;
+                    break;
+                case GameResult::WHITE_WON:
+                    if(engine1White)
+                        tournamentResult = TournamentGameResult::ENGINE1_WON;
+                    else
+                        tournamentResult = TournamentGameResult::ENGINE2_WON;
+                    break;
+                case GameResult::BLACK_WON:
+                    if(engine1White)
+                        tournamentResult = TournamentGameResult::ENGINE2_WON;
+                    else
+                        tournamentResult = TournamentGameResult::ENGINE1_WON;
+                    break;
+                case GameResult::WHITE_WON_BY_TIME:
+                    if(engine1White)
+                        tournamentResult = TournamentGameResult::ENGINE1_WON_ON_TIME;
+                    else
+                        tournamentResult = TournamentGameResult::ENGINE2_WON_ON_TIME;
+                    break;
+                case GameResult::BLACK_WON_BY_TIME:
+                    if(engine1White)
+                        tournamentResult = TournamentGameResult::ENGINE2_WON_ON_TIME;
+                    else
+                        tournamentResult = TournamentGameResult::ENGINE1_WON_ON_TIME;
+                    break;
+                default:
+                    break;
+            }
+
+            results[timeControlIndex].push_back(tournamentResult);
 
             // Speichere die Partie als PGN in Datei
             std::string filename;
 
             filename = "pgn/";
             filename += std::to_string(timeControl);
-            filename += "ms_";
+            filename += "s_";
             filename += openingName;
             filename += "_";
             filename += std::to_string(i * 2 + 1);
@@ -134,120 +160,32 @@ void Tournament::run() {
             filename += engineName2;
             filename += ".pgn";
 
-            std::ofstream file;
+            writePGN(filename, board.pgnString());
 
-            file.open(filename, std::ios::out);
+            std::string resultString;
 
-            if(!file.is_open())
-                throw std::runtime_error("Could not open file " + filename + " for writing! (Tournament::run())");
-
-            file << board.pgnString();
-
-            file.close();
-
-            // Auswertung
-            if(result == 1) {
-                engine1Wins[timeControlIndex]++;
-            }
-            else if(result == 2) {
-                engine2Wins[timeControlIndex]++;
-            }
-            else {
-                draws[timeControlIndex]++;
-            }
-
-            // Ausgabe
-            if(result == 1) {
-                std::cout << engineName1 << " wins";
-                if(engine1White) {
-                    std::cout << " with white";
-                }
-                else {
-                    std::cout << " with black";
-                }
-            }
-            else if(result == 2) {
-                std::cout << engineName2 << " wins";
-                if(engine1White) {
-                    std::cout << " with black";
-                }
-                else {
-                    std::cout << " with white";
-                }
-            }
-            else {
-                std::cout << "Draw";
-            }
-
-            std::cout << std::endl;
-
-            // Wechsele Seiten
-
-            // Erstelle Spielfeld
-            board = Board::fromPGN(pgn);
-
-            bool engine2White = board.getSideToMove() == WHITE;
-
-            // Ausgabe
-            std::cout << "Game " << i * 2 + 2 << " of " << numGames[timeControlIndex] * 2 << " (" << openingName << "): ";
-
-            // Spiele Partie
-            result = runGame(board, st2, st1, timeControl);
-
-            // Speichere die Partie als PGN in Datei
-            filename = "pgn/";
-            filename += std::to_string(timeControl);
-            filename += "ms_";
-            filename += openingName;
-            filename += "_";
-            filename += std::to_string(i * 2 + 2);
-            filename += "_";
-            filename += engineName1;
-            filename += "vs";
-            filename += engineName2;
-            filename += ".pgn";
-
-            file.open(filename, std::ios::out);
-
-            file << board.pgnString();
-
-            file.close();
-
-            // Auswertung
-            if(result == 1) {
-                engine2Wins[timeControlIndex]++;
-            }
-            else if(result == 2) {
-                engine1Wins[timeControlIndex]++;
-            }
-            else {
-                draws[timeControlIndex]++;
+            switch(tournamentResult) {
+                case TournamentGameResult::DRAW:
+                    resultString = "Draw";
+                    break;
+                case TournamentGameResult::ENGINE1_WON:
+                    resultString = engineName1 + " won";
+                    break;
+                case TournamentGameResult::ENGINE1_WON_ON_TIME:
+                    resultString = engineName1 + " won on time";
+                    break;
+                case TournamentGameResult::ENGINE2_WON:
+                    resultString = engineName2 + " won";
+                    break;
+                case TournamentGameResult::ENGINE2_WON_ON_TIME:
+                    resultString = engineName2 + " won on time";
+                    break;
+                default:
+                    break;
             }
 
             // Ausgabe
-            if(result == 1) {
-                std::cout << engineName2 << " wins";
-                if(engine2White) {
-                    std::cout << " with white";
-                }
-                else {
-                    std::cout << " with black";
-                }
-            }
-            else if(result == 2) {
-                std::cout << engineName1 << " wins";
-                if(engine2White) {
-                    std::cout << " with black";
-                }
-                else {
-                    std::cout << " with white";
-                }
-            }
-            else {
-                std::cout << "Draw";
-            }
-
-            std::cout << std::endl;
+            std::cout << " completed (" << resultString << ")" << std::endl;
         }
 
         timeControlIndex++;
@@ -256,9 +194,41 @@ void Tournament::run() {
     // Ausgabe
     std::cout << std::endl << std::endl;
     std::cout << "Results:" << std::endl;
-    std::cout << std::setw(15) << "Time control" << std::setw(15) << engineName1 << std::setw(15) << engineName2 << std::setw(15) << "Draws" << std::endl;
+    std::cout << std::setw(15) << "Time control" << std::setw(20) << engineName1 + " (by time)"
+            << std::setw(20) << engineName2 + " (by time)" << std::setw(15) << "Draws" << std::endl;
+
     for(size_t i = 0; i < timeControls.size(); i++) {
-        std::cout << std::setw(15) << timeControls[i] << std::setw(15) << engine1Wins[i] << std::setw(15) << engine2Wins[i] << std::setw(15) << draws[i] << std::endl;
+        std::vector<TournamentGameResult> timeControlResults = results[i];
+        int32_t engine1Wins = 0;
+        int32_t engine2Wins = 0;
+        int32_t draws = 0;
+        int32_t engine1Timeouts = 0;
+        int32_t engine2Timeouts = 0;
+
+        for(TournamentGameResult result : timeControlResults) {
+            switch(result) {
+                case TournamentGameResult::DRAW:
+                    draws++;
+                    break;
+                case TournamentGameResult::ENGINE1_WON_ON_TIME:
+                    engine2Timeouts++;
+                    engine1Wins++;
+                    break;
+                case TournamentGameResult::ENGINE1_WON:
+                    engine1Wins++;
+                    break;
+                case TournamentGameResult::ENGINE2_WON_ON_TIME:
+                    engine1Timeouts++;
+                    engine2Wins++;
+                    break;
+                case TournamentGameResult::ENGINE2_WON:
+                    engine2Wins++;
+                    break;
+            }
+        }
+
+        std::cout << std::setw(15) << timeControls[i] << std::setw(20) << std::to_string(engine1Wins) + " (" + std::to_string(engine2Timeouts) + ")"
+                << std::setw(20) << std::to_string(engine2Wins) + " (" + std::to_string(engine1Timeouts) + ")" << std::setw(15) << draws << std::endl;
     }
 
     std::cout << std::endl << std::endl;

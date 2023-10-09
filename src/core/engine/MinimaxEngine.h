@@ -148,7 +148,7 @@ class MinimaxEngine : public InterruptedEngine {
         virtual inline void checkup() override {
             InterruptedEngine::checkup();
 
-            if(getLastCheckupTime() >= endTime)
+            if(getLastCheckupTime() >= endTime && currentMaxDepth >= ONE_PLY * 2)
                 searchRunning = false;
         }
 
@@ -175,7 +175,7 @@ class MinimaxEngine : public InterruptedEngine {
         constexpr uint32_t getNodesSearched() { return nodesSearched; }
 
         inline void setBoard(Board& b) override {
-            if(searchRunning) return;
+            stop();
 
             board = &b;
             evaluator.setBoard(b);

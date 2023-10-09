@@ -7,25 +7,18 @@
 #include <vector>
 #include <string>
 
-/**
- * @brief Evaluator für das Turnier.
- * Die Methode evaluate() gibt immer 0 zurück, da die Bewertung der Positionen
- * im Turnier nicht relevant ist.
- * Stattdessen ist diese Klasse nur zur Überprüfung auf Unentschieden zuständig.
- */
-class TournamentEvaluator : public Evaluator {
-    public:
-        TournamentEvaluator(Board& board) : Evaluator(board) {};
-        ~TournamentEvaluator() = default;
-
-        int32_t evaluate() override {
-            return 0;
-        }
-};
-
 class Tournament {
 
     private:
+        class TournamentGameStateOutput : public GameStateOutput {
+            public:
+                TournamentGameStateOutput(Board& board) : GameStateOutput(board) {};
+                inline void outputGameState(std::string whiteAdditionalInfo, std::string blackAdditionalInfo) override {
+                    UNUSED(whiteAdditionalInfo);
+                    UNUSED(blackAdditionalInfo);
+                };
+        };
+
         Engine& st1;
         Engine& st2;
         std::string engineName1;
@@ -35,7 +28,7 @@ class Tournament {
         static const std::vector<int32_t> timeControls;
         static const std::vector<int32_t> numGames;
 
-        int32_t runGame(Board& board, Engine& st1, Engine& st2, int32_t time);
+        GameResult runGame(Board& board, Engine& st1, Engine& st2, int32_t time);
 
     public:
         Tournament(Engine& st1, Engine& st2, std::string engineName1, std::string engineName2) : st1(st1), st2(st2), engineName1(engineName1), engineName2(engineName2) {};

@@ -3,10 +3,10 @@
 
 #include "core/chess/Board.h"
 #include "game/ui/GameStateOutput.h"
+#include "game/GameResult.h"
 #include "game/Player.h"
 
 class Game {
-
     private:
         GameStateOutput& gameStateOutput;
 
@@ -14,6 +14,8 @@ class Game {
         Board& board;
         Player& whitePlayer;
         Player& blackPlayer;
+
+        GameResult result = GameResult::RUNNING;
 
         void outputGameState();
         void saveGameToFile();
@@ -33,6 +35,7 @@ class Game {
         constexpr Player& getWhitePlayer() const { return whitePlayer; };
         constexpr Player& getBlackPlayer() const { return blackPlayer; };
 
+        constexpr GameResult getResult() const { return result; };
 };
 
 #endif

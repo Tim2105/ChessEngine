@@ -50,6 +50,9 @@ void TimeControlledGame::start() {
             }
         }
 
+        if(!board.isMoveLegal(move))
+            throw std::runtime_error("Illegal move!");
+
         board.makeMove(move);
     }
 
@@ -59,26 +62,31 @@ void TimeControlledGame::start() {
 
     if (Referee::isCheckmate(board)) {
         if (board.getSideToMove() == WHITE) {
-            whitePlayer.onGameEnd(BLACK_WON);
-            blackPlayer.onGameEnd(BLACK_WON);
+            result = GameResult::BLACK_WON;
+            whitePlayer.onGameEnd(GameResult::BLACK_WON);
+            blackPlayer.onGameEnd(GameResult::BLACK_WON);
         } else {
-            whitePlayer.onGameEnd(WHITE_WON);
-            blackPlayer.onGameEnd(WHITE_WON);
+            result = GameResult::WHITE_WON;
+            whitePlayer.onGameEnd(GameResult::WHITE_WON);
+            blackPlayer.onGameEnd(GameResult::WHITE_WON);
         }
     } else {
         if(board.getSideToMove() == WHITE &&
           (whiteTimeControlled && whiteTime == 0)) {
-            whitePlayer.onGameEnd(BLACK_WON_BY_TIME);
-            blackPlayer.onGameEnd(BLACK_WON_BY_TIME);
+            result = GameResult::BLACK_WON_BY_TIME;
+            whitePlayer.onGameEnd(GameResult::BLACK_WON_BY_TIME);
+            blackPlayer.onGameEnd(GameResult::BLACK_WON_BY_TIME);
           }
         else if(board.getSideToMove() == BLACK &&
           (blackTimeControlled && blackTime == 0)) {
-            whitePlayer.onGameEnd(WHITE_WON_BY_TIME);
-            blackPlayer.onGameEnd(WHITE_WON_BY_TIME);
+            result = GameResult::WHITE_WON_BY_TIME;
+            whitePlayer.onGameEnd(GameResult::WHITE_WON_BY_TIME);
+            blackPlayer.onGameEnd(GameResult::WHITE_WON_BY_TIME);
           }
         else {
-            whitePlayer.onGameEnd(DRAW);
-            blackPlayer.onGameEnd(DRAW);
+            result = GameResult::DRAW;
+            whitePlayer.onGameEnd(GameResult::DRAW);
+            blackPlayer.onGameEnd(GameResult::DRAW);
         }
     }
 }

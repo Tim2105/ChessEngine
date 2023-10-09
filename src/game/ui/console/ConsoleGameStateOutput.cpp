@@ -49,11 +49,11 @@ void ConsoleGameStateOutput::outputGameState(std::string whiteAdditionalInfo, st
     if(flipBoard) {
         std::cout << whiteAdditionalInfo << std::endl << std::endl;
         std::cout << visualizeBoardWithFigurines(board, true) << std::endl;
-        std::cout << blackAdditionalInfo << std::endl;
+        std::cout << blackAdditionalInfo << std::endl << std::endl;
     } else {
         std::cout << blackAdditionalInfo << std::endl << std::endl;
         std::cout << visualizeBoardWithFigurines(board) << std::endl;
-        std::cout << whiteAdditionalInfo << std::endl;
+        std::cout << whiteAdditionalInfo << std::endl << std::endl;
     }
 
     return;

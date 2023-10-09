@@ -18,7 +18,7 @@ class ComputerPlayer : public Player {
         Move getMove() override;
         Move getMove(uint32_t remainingTime) override;
 
-        inline void onGameEnd(uint8_t result) override {
+        inline void onGameEnd(GameResult result) override {
             UNUSED(result);
         };
 
