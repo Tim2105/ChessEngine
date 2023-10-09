@@ -27,9 +27,9 @@ void PGNGameAnalyzer::analyzeNextMove() {
 
         if(Referee::isCheckmate(board)) {
             if(board.getSideToMove() == WHITE)
-                score = MATE_SCORE;
-            else
                 score = -MATE_SCORE;
+            else
+                score = MATE_SCORE;
         }
 
         BoardStateAnalysis finalAnalysis;

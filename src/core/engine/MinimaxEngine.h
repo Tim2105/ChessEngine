@@ -135,7 +135,7 @@ class MinimaxEngine : public InterruptedEngine {
 
         int16_t nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, int32_t nullMoveCooldown);
 
-        int16_t quiescence(int16_t alpha, int16_t beta);
+        int16_t quiescence(int16_t ply, int16_t alpha, int16_t beta);
 
         inline int16_t determineExtension(bool isCheckEvasion = false);
 

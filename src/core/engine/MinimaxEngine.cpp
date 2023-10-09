@@ -548,7 +548,7 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
     }
 
     if(depth <= 0)
-        return quiescence(alpha, beta);
+        return quiescence(ply + 1, alpha, beta);
 
     pvTable[ply + 1].clear();
 
@@ -681,7 +681,7 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
         return MIN_SCORE + 1;
 
     if(depth <= 0)
-        return quiescence(alpha, beta);
+        return quiescence(ply + 1, alpha, beta);
 
     TranspositionTableEntry ttEntry = {0, 0, 0, 0, Move()};
     bool tableHit = transpositionTable.probe(searchBoard.getHashValue(), ttEntry);
@@ -891,7 +891,7 @@ inline int16_t MinimaxEngine::determineReduction(int16_t depth, int16_t ply, int
     return reduction;
 }
 
-int16_t MinimaxEngine::quiescence(int16_t alpha, int16_t beta) {
+int16_t MinimaxEngine::quiescence(int16_t ply, int16_t alpha, int16_t beta) {
     if(isCheckupTime()) {
         checkup();
     }
@@ -918,11 +918,10 @@ int16_t MinimaxEngine::quiescence(int16_t alpha, int16_t beta) {
     if(searchBoard.isCheck()) {
         moves = searchBoard.generateLegalMoves();
         if(moves.size() == 0)
-            return -MATE_SCORE + MAX_PLY;
+            return -MATE_SCORE + ply;
 
         sortAndCutMovesForQuiescence(moves, MIN_SCORE, MVVLVA);
-    }
-    else {
+    } else {
         moves = searchBoard.generateLegalCaptures();
 
         sortAndCutMovesForQuiescence(moves, NEUTRAL_SEE_SCORE, SEE);
@@ -931,7 +930,7 @@ int16_t MinimaxEngine::quiescence(int16_t alpha, int16_t beta) {
     for(Move move : moves) {
         searchBoard.makeMove(move);
 
-        score = -quiescence(-beta, -alpha);
+        score = -quiescence(ply + 1, -beta, -alpha);
 
         searchBoard.undoMove();
 

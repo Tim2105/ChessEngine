@@ -25,9 +25,9 @@ void ConsoleLiveAnalyzer::start() {
             if(Referee::isDraw(board))
                 details.variations[0].score = 0;
             else if(board.getSideToMove() == WHITE)
-                details.variations[0].score = MATE_SCORE;
-            else
                 details.variations[0].score = -MATE_SCORE;
+            else
+                details.variations[0].score = MATE_SCORE;
 
             output(details);
 
