@@ -45,6 +45,19 @@
 
 #define NULL_MOVE_R_VALUE 2
 
+/**
+ * @brief Eine Fail-Soft Implementation des Scout-Algorithmus mit anschließender Quieszenzsuche.
+ * 
+ * Der Algorithmus ist eine Erweiterung des Alpha-Beta-Algorithmus,
+ * der die Nullfenster-Suche für alle Kinder eines Knotens außer dem ersten Kind verwendet.
+ * 
+ * Verwendete Optimierungen:
+ * - Transpositionstabelle
+ * - Killerzug-Heuristik
+ * - Konterzug-Heuristik
+ * - Vergangenheits-Heuristik
+ * - Nullzug-Heuristik
+ */
 class MinimaxEngine : public InterruptedEngine {
     private:
         /**
@@ -117,7 +130,7 @@ class MinimaxEngine : public InterruptedEngine {
 
         bool extendSearchUnderTimeControl(std::vector<Variation> pvHistory, uint32_t minTime, uint32_t maxTime, uint32_t timeSpent);
 
-        inline int32_t scoreMove(Move& move, int16_t ply);
+        int32_t scoreMove(Move& move, int16_t ply);
 
         void sortMovesAtRoot(Array<Move, 256>& moves);
 
@@ -137,9 +150,9 @@ class MinimaxEngine : public InterruptedEngine {
 
         int16_t quiescence(int16_t ply, int16_t alpha, int16_t beta);
 
-        inline int16_t determineExtension(bool isCheckEvasion = false);
+        int16_t determineExtension(bool isCheckEvasion = false);
 
-        inline int16_t determineReduction(int16_t depth, int16_t ply, int32_t moveCount, bool isCheckEvasion = false);
+        int16_t determineReduction(int16_t depth, int16_t ply, int32_t moveCount, bool isCheckEvasion = false);
 
         constexpr bool isMateLine() { return mateDistance != MAX_PLY; }
 

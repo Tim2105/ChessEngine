@@ -5,6 +5,9 @@
 #include <algorithm>
 #include <cmath>
 
+/**
+ * @brief Setzt alle Vergangenheitsbewertungen auf 0 zurück.
+ */
 void MinimaxEngine::clearRelativeHistory() {
     for(int i = 0; i < 2; i++) {
         for(int j = 0; j < 64; j++) {
@@ -15,12 +18,18 @@ void MinimaxEngine::clearRelativeHistory() {
     }
 }
 
+/**
+ * @brief Leert die PV-Tabelle.
+ */
 void MinimaxEngine::clearPvTable() {
     for(int i = 0; i < 64; i++) {
         pvTable[i].clear();
     }
 }
 
+/**
+ * @brief Löscht alle Killerzüge.
+ */
 void MinimaxEngine::clearKillerMoves() {
     for(int i = 0; i < 256; i++) {
         killerMoves[i][0] = Move();
@@ -28,9 +37,17 @@ void MinimaxEngine::clearKillerMoves() {
     }
 }
 
+/**
+ * @brief Führt die Suche aus.
+ * 
+ * @param timeControl Gibt an, ob die Zeit eingeteilt werden soll.
+ * @param minTime Die minimale Zeit, die die Suche dauern soll.
+ * @param maxTime Die maximale Zeit, die die Suche dauern soll.
+ */
 void MinimaxEngine::runSearch(bool timeControl, uint32_t minTime, uint32_t maxTime) {
     searchRunning = true;
 
+    // Enthält die PV aller vorherigen Suchtiefen
     std::vector<Variation> principalVariationHistory;
 
     int16_t score = 0;
@@ -40,24 +57,27 @@ void MinimaxEngine::runSearch(bool timeControl, uint32_t minTime, uint32_t maxTi
     for(int16_t depth = ONE_PLY; searchRunning && depth < (MAX_PLY * ONE_PLY); depth += ONE_PLY) {
         currentMaxDepth = depth;
 
+        // Führe die eigentliche Suche durch
         score = rootSearch(depth, score);
 
         auto end = std::chrono::system_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
+        // Speichere die Ergebnisse der letzten Suche ab
         principalVariationHistory.push_back({
             getPrincipalVariation(),
             getBestMoveScore()
         });
 
+        // Wenn die Zeit eingeteilt werden soll,
+        // bestimme, ob die Suche verlängert werden soll
         if(timeControl && !extendSearchUnderTimeControl(principalVariationHistory, minTime, maxTime, elapsed))
             break;
     }
 
-    if(searchRunning) {
-        // Wenn die Suche vorzeitig beendet wurde weil die maximale Tiefe erreicht wurde, dann wurde die letzte durchsuchte Tiefe vervollständigt
+    // Wenn die Suche vorzeitig beendet wurde weil die maximale Tiefe erreicht wurde, dann wurde die letzte durchsuchte Tiefe vervollständigt
+    if(searchRunning)
         currentMaxDepth += ONE_PLY;
-    }
 
     searchRunning = false;
 }
@@ -126,18 +146,29 @@ bool MinimaxEngine::extendSearchUnderTimeControl(std::vector<Variation> pvHistor
     return false;
 }
 
+/**
+ * @brief Startet die Suche.
+ * 
+ * @param searchTime Die Zeit, die die Suche dauern soll.
+ * @param treatAsTimeControl Gibt an, ob die Zeit eingeteilt werden soll.
+ */
 void MinimaxEngine::search(uint32_t searchTime, bool treatAsTimeControl) {
     stop();
 
+    // Setze die Suchmetriken zurück
     searchRunning = true;
     currentMaxDepth = 0;
     currentAge = board->getPly();
     nodesSearched = 0;
     mateDistance = MAX_PLY;
 
+    // Erstelle eine Kopie des Spielbretts,
+    // damit das Ausgangsbrett nicht verändert wird
     searchBoard = *board;
     evaluator.setBoard(searchBoard);
 
+    // Leert sämtliche Tabellen und Listen,
+    // die während der Suche verwendet werden
     clearRelativeHistory();
     clearKillerMoves();
     variations.clear();
@@ -145,6 +176,7 @@ void MinimaxEngine::search(uint32_t searchTime, bool treatAsTimeControl) {
     startTime = std::chrono::system_clock::now();
 
     if(treatAsTimeControl) {
+        // Berechne die minimale und maximale Zeit, die die Suche dauern soll
         int32_t numLegalMoves = searchBoard.generateLegalMoves().size();
 
         double oneThirtiethOfSearchTime = searchTime * 0.0333;
@@ -167,6 +199,7 @@ void MinimaxEngine::search(uint32_t searchTime, bool treatAsTimeControl) {
         endTime = startTime + std::chrono::milliseconds(maxTime);
         runSearch(true, minTime, maxTime);
     } else {
+        // Berechne die Endzeit
         if(searchTime > 0)
             endTime = startTime + std::chrono::milliseconds(searchTime);
         else
@@ -182,14 +215,23 @@ void MinimaxEngine::stop() {
     searchRunning = false;
 }
 
-inline int32_t MinimaxEngine::scoreMove(Move& move, int16_t ply) {
+/**
+ * @brief Gibt eine schnelle Vorbewertung des Zuges zurück.
+ * 
+ * @param move Der, zu bewertende, Zug.
+ * @param ply Die Suchtiefe.
+ * @return Die Bewertung des Zuges.
+ */
+int32_t MinimaxEngine::scoreMove(Move& move, int16_t ply) {
     int32_t moveScore = 0;
     
     if(!move.isQuiet()) {
+        // Alle, nicht leisen, Züge werden nach SEE bewertet
         int32_t seeScore = evaluator.evaluateMoveSEE(move);
         seeCache.put(move, seeScore);
         moveScore += seeScore + DEFAULT_CAPTURE_MOVE_SCORE;
     } else {
+        // Leise Züge werden mit der Killerzug- und Konterzug-Heuristik bewertet
         if(killerMoves[ply][0] == move)
             moveScore += 80;
         else if(killerMoves[ply][1] == move)
@@ -207,6 +249,7 @@ inline int32_t MinimaxEngine::scoreMove(Move& move, int16_t ply) {
             moveScore += 40;
     }
 
+    // Alle Züge werden mit den Figuren-Feldtabelle bewertet
     int32_t movedPieceType = TYPEOF(searchBoard.pieceAt(move.getOrigin()));
     int32_t side = searchBoard.getSideToMove();
     int32_t psqtOrigin = move.getOrigin();
@@ -226,6 +269,7 @@ inline int32_t MinimaxEngine::scoreMove(Move& move, int16_t ply) {
 
     moveScore += MG_PSQT[movedPieceType][psqtDestination] - MG_PSQT[movedPieceType][psqtOrigin];
 
+    // Alle Züge werden mit der Vergangenheitsheuristik bewertet
     moveScore += std::clamp(relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
                         [move.getOrigin()][move.getDestination()] / ((currentMaxDepth / ONE_PLY)),
                         -99, 49);
@@ -233,23 +277,30 @@ inline int32_t MinimaxEngine::scoreMove(Move& move, int16_t ply) {
     return moveScore;
 }
 
+/**
+ * @brief Führt eine (inplace) Vorsortierung der Züge durch.
+ * Die Variante ist speziell für die Wurzel der Suche gedacht
+ * und verwendet die Ergebnisse der letzten Suche (falls vorhanden).
+ * 
+ * @param moves Die, zu sortierenden, Züge.
+ */
 void MinimaxEngine::sortMovesAtRoot(Array<Move, 256>& moves) {
     Array<MoveScorePair, 256> msp;
     
     std::vector<Move> bestMovesFromLastDepth;
 
-    for(Variation v : variations) {
+    for(Variation v : variations)
         bestMovesFromLastDepth.push_back(v.moves[0]);
-    }
 
     for(Move move : moves) {
         int32_t moveScore = 0;
 
+        // Wenn der Zug in der letzten Suche zu den besten Zügen gehört hat, dann wird er mit einem Maximalwert bewertet
         size_t index = std::find(bestMovesFromLastDepth.begin(), bestMovesFromLastDepth.end(), move) - bestMovesFromLastDepth.begin();
         if(index < bestMovesFromLastDepth.size())
             moveScore += 30000 - index;
         else
-            moveScore += scoreMove(move, 0);
+            moveScore += scoreMove(move, 0); // Ansonsten wird er normal bewertet
 
         msp.push_back({move, moveScore});
     }
@@ -262,16 +313,31 @@ void MinimaxEngine::sortMovesAtRoot(Array<Move, 256>& moves) {
         moves.push_back(pair.move);
 }
 
+/**
+ * @brief Führt eine (inplace) Vorsortierung der Züge durch.
+ * 
+ * @param moves Die, zu sortierenden, Züge.
+ */
 void MinimaxEngine::sortMoves(Array<Move, 256>& moves, int16_t ply) {
     sortAndCutMoves(moves, ply, MIN_SCORE);
 }
 
+/**
+ * @brief Führt eine (inplace) Vorsortierung der Züge durch.
+ * Diese Sortierung ist speziell für die Quieszenzsuche gedacht
+ * und bekommt eine Minimalbewertung übergeben, die die Züge haben müssen,
+ * um nicht aus der Liste entfernt zu werden.
+ * 
+ * @param moves Die, zu sortierenden, Züge.
+ * @param minScore Die minimale Bewertung, die ein Zug haben muss, um nicht aus der Liste entfernt zu werden.
+ */
 void MinimaxEngine::sortAndCutMovesForQuiescence(Array<Move, 256>& moves, int32_t minScore, int32_t moveEvalFunc) {
     Array<MoveScorePair, 256> msp;
 
     for(Move move : moves) {
         int32_t moveScore = 0;
 
+        // Führe eine statische Figurenabtauschbewertung durch (SEE oder MVVLVA)
         switch(moveEvalFunc) {
             case MVVLVA:
                 moveScore += evaluator.evaluateMoveMVVLVA(move) + DEFAULT_CAPTURE_MOVE_SCORE;
@@ -294,15 +360,32 @@ void MinimaxEngine::sortAndCutMovesForQuiescence(Array<Move, 256>& moves, int32_
         moves.push_back(msPair.move);
 }
 
+/**
+ * @brief Führt eine (inplace) Vorsortierung der Züge durch.
+ * Diese Sortierung ist speziell für die Nullfenster- und PV-Suche gedacht
+ * und bekommt eine Minimalbewertung übergeben, die die Züge haben müssen,
+ * um nicht aus der Liste entfernt zu werden.
+ * 
+ * Außerdem verwendet diese Suche die Transpositionstabelle,
+ * um die besten Züge aus der letzten Suche zu priorisieren.
+ * 
+ * @param moves Die, zu sortierenden, Züge.
+ * @param ply Die Suchtiefe.
+ * @param minScore Die minimale Bewertung, die ein Zug haben muss, um nicht aus der Liste entfernt zu werden.
+ */
 void MinimaxEngine::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t minScore) {
     Array<MoveScorePair, 256> msp;
 
+    // Suche nach einem Eintrag zu dieser Position in der Transpositionstabelle
     TranspositionTableEntry ttEntry;
     transpositionTable.probe(searchBoard.getHashValue(), ttEntry);
 
     for(Move move : moves) {
         int32_t moveScore = 0;
 
+        // Wenn dieser Zug in der Transpositionstabelle gespeichert ist,
+        // war er in bei der letzten Betrachtung dieser Position der Beste.
+        // Daher wird er mit einem Maximalwert bewertet.
         if(move == ttEntry.hashMove)
             moveScore += 30000;
         else
@@ -320,10 +403,20 @@ void MinimaxEngine::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_
         moves.push_back(pair.move);
 }
 
+/**
+ * @brief Startet die Suche an der Wurzel.
+ * Dabei wird ein Aspirationsfenster verwendet,
+ * dass bei fail-highs oder fail-lows entsprchend vergrößert wird.
+ * 
+ * @param depth Die Suchtiefe.
+ * @param expectedScore Die erwartete Bewertung der Position (relevant für das Aspirationsfenster).
+ */
 int16_t MinimaxEngine::rootSearch(int16_t depth, int16_t expectedScore) {
     int32_t aspAlphaReduction = ASP_WINDOW, numAlphaReduction = 1;
     int32_t aspBetaReduction = ASP_WINDOW, numBetaReduction = 1;
 
+    // Bestimme das Fenster der vorherigen Bewertungen
+    // (im Multi-PV Modus muss das Aspirationsfenster eventuell vergrößert werden)
     int16_t upperExpectedScore = expectedScore;
     int16_t lowerExpectedScore = expectedScore;
 
@@ -339,6 +432,7 @@ int16_t MinimaxEngine::rootSearch(int16_t depth, int16_t expectedScore) {
 
     while((score <= alpha || score >= beta)) {
         if(score <= alpha) {
+            // fail-high -> vergrößere das Aspirationsfenster nach unten
             if(numAlphaReduction >= ASP_MAX_DEPTH)
                 alpha = MIN_SCORE;
             else {
@@ -348,6 +442,7 @@ int16_t MinimaxEngine::rootSearch(int16_t depth, int16_t expectedScore) {
 
             numAlphaReduction++;
         } else if(score >= beta) {
+            // fail-low -> vergrößere das Aspirationsfenster nach oben
             if(numBetaReduction >= ASP_MAX_DEPTH)
                 beta = MAX_SCORE;
             else {
@@ -364,10 +459,17 @@ int16_t MinimaxEngine::rootSearch(int16_t depth, int16_t expectedScore) {
     return variations.front().score;
 }
 
+/**
+ * @brief Führt eine PV-Suche an der Wurzel durch.
+ * 
+ * @param depth 
+ * @param alpha 
+ * @param beta 
+ * @return int16_t 
+ */
 int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
-    if(isCheckupTime()) {
+    if(isCheckupTime())
         checkup();
-    }
 
     if(!searchRunning)
         return 0;
@@ -387,6 +489,7 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
     int32_t moveNumber = 1;
     bool isCheckEvasion = searchBoard.isCheck();
 
+    // Generiere alle Züge und wende eine Vorsortierung an
     Array<Move, 256> moves = searchBoard.generateLegalMoves();
     sortMovesAtRoot(moves);
 
@@ -394,6 +497,7 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
         int16_t matePly = MAX_PLY;
         bool isMateVariation = false;
 
+        // Überprüfe, ob diese Variante in einer vorherigen Suche eine Mattvariante war
         for(Variation variation : variations) {
             if(variation.moves.size() > 0 && variation.moves[0] == move &&
                 IS_MATE_SCORE(variation.score)) {
@@ -403,6 +507,8 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
             }
         }
 
+        // Wenn dieser Zug zu keiner Mattvariante gehört, begrenze die Suchtiefe dieser Variante
+        // auf die Matttiefe der schlechtesten Mattvariante der vorherigen Suche
         if(variations.size() > 0 && !isMateVariation) {
             int16_t bestVariationScore = variations.front().score;
 
@@ -414,8 +520,10 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
 
         mateDistance = matePly;
 
+        // Spiele den Zug
         searchBoard.makeMove(move);
 
+        // Bestimme, um wie viel die Suchtiefe verkleinert werden soll
         int16_t extension = determineExtension(isCheckEvasion);
         int16_t nwReduction = determineReduction(depth, 0, moveNumber, isCheckEvasion);
 
@@ -426,13 +534,20 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
         nwDepthDelta = std::min(nwDepthDelta, minReduction);
 
         if(pvNodes > 0) {
+            // Führe eine PV-Suche auf dieser Variation durch, wenn die Anzahl der betrachteten Variationen
+            // kleiner als die Anzahl der, zu bestimmenden, Variationen ist
             score = -pvSearch(depth - ONE_PLY, 1, -beta, -alpha, NULL_MOVE_R_VALUE - 1);
         } else {
+            // Führe ansonsten eine Nullfenster-Suche durch
             score = -nwSearch(depth + nwDepthDelta, 1, -alpha - 1, -alpha, NULL_MOVE_R_VALUE - 1);
+
+            // Wenn die Nullfenstersuche einen Wert > alpha liefert, muss die Bewertung
+            // dieser Variation exakt bestimmt werden
             if(score > worstVariationScore)
                 score = -pvSearch(depth - ONE_PLY, 1, -beta, -alpha, NULL_MOVE_R_VALUE - 1);
         }
 
+        // Nehme den Zug zurück
         searchBoard.undoMove();
 
         if(!searchRunning) {
@@ -442,15 +557,18 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
                 break;
         }
         
+        // Aktualisiere die Vergangenheitsbewertung
         relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
                            [move.getOrigin()][move.getDestination()] -= depth / ONE_PLY;
-        
 
+        // Ist dieser Knoten ein fail-high-Knoten?
         if(score >= beta) {
+            // Erstelle ein Eintrag in der Transpositionstabelle
             transpositionTable.put(searchBoard.getHashValue(), {
                 currentAge, depth, score, CUT_NODE, move
             });
 
+            // Wenn dieser Zug ein ruhiger Zug ist, aktualisiere die Killerzug- und Konterzug-Heuristik
             if(move.isQuiet()) {
                 if(killerMoves[0][0] != move) {
                     killerMoves[0][1] = killerMoves[0][0];
@@ -463,6 +581,7 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
                                 [lastMove.getOrigin()] = move;
             }
 
+            // Erhöhe die Vergangenheitsbewertung
             relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
                            [move.getOrigin()]
                            [move.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
@@ -475,7 +594,9 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
             bestMove = move;
         }
 
+        // Ist dieser Knoten ein PV-Knoten?
         if(score > worstVariationScore) {
+            // Erstelle einen Eintrag in der Variationsliste
             std::vector<Move> variationMoves;
             variationMoves.push_back(move);
             variationMoves.insert(variationMoves.end(), pvTable[1].begin(), pvTable[1].end());
@@ -501,6 +622,7 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
             }
 
             if(newVariations.size() >= numVariations || newVariations.size() >= moves.size()) {
+                // Aktualisiere alpha
                 worstVariationScore = newVariations.back().score;
 
                 if(worstVariationScore > oldAlpha)
@@ -512,14 +634,19 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
         moveNumber++;
     }
 
+    // Erstelle einen Eintrag in der Transpositionstabelle
+    // für diese Position
     transpositionTable.put(searchBoard.getHashValue(), {
         currentAge, depth, bestScore, EXACT_NODE, bestMove
     });
 
+    // Erhöhe die Vergangenheitsbewertung des besten Zuges
     relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
                     [bestMove.getOrigin()]
                     [bestMove.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
                 
+    // Überschreibe die Variationsliste mit der neuen Variationsliste, wenn unsere Bewertung
+    // innerhalb [alpha, beta] liegt
     if(worstVariationScore > oldAlpha) {
         variations = newVariations;
     }
@@ -527,26 +654,39 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
     return worstVariationScore;
 }
 
+/**
+ * @brief Führt eine generische PV-Suche durch.
+ * 
+ * @param depth Die Suchtiefe.
+ * @param ply Der Abstand zur Wurzel.
+ * @param alpha Unterer Wert des Suchfensters.
+ * @param beta Oberer Wert des Suchfensters.
+ * @param nullMoveCooldown Die Anzahl der Züge, bis die Nullzugheuristik wieder angewendet werden darf.
+ */
 int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, int32_t nullMoveCooldown) {
-    if(isCheckupTime()) {
+    // Überprüfe, ob die Suche unterbrochen werden soll
+    if(isCheckupTime())
         checkup();
-    }
     
     if(!searchRunning)
         return 0;
 
     nodesSearched++;
 
+    // Brich ab, wenn die Position ein Unentschieden durch
+    // Positionswiederholung, 50-Züge-Regel oder Material ist
     if(evaluator.isDraw()) {
         pvTable[ply].clear();
         return 0;
     }
 
+    // Brich ab, wenn die Entfernung zur Wurzel größer als das bisher schlechteste Matt ist
     if(mateDistance < ply) {
         pvTable[ply].clear();
         return MIN_SCORE + 1;
     }
 
+    // Gehe in die Quieszenzsuche über, wenn das Ende der regulären Suche erreicht ist
     if(depth <= 0)
         return quiescence(ply + 1, alpha, beta);
 
@@ -558,25 +698,30 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
     int16_t score, bestScore = MIN_SCORE;
     Move bestMove;
     
+    // Generiere alle legalen Züge
     Array<Move, 256> moves = searchBoard.generateLegalMoves();
 
+    // Wenn keine Züge generiert werden konnten, dann ist die Position Matt oder Patt
     if(moves.size() == 0) {
         pvTable[ply].clear();
 
         if(searchBoard.isCheck())
-            return -MATE_SCORE + ply;
+            return -MATE_SCORE + ply; // Matt
         else
-            return 0;
+            return 0; // Patt
     }
 
     int32_t moveNumber = 1;
     bool isCheckEvasion = searchBoard.isCheck();
 
+    // Wende eine Vorsortierung an
     sortMoves(moves, ply);
 
     for(Move move : moves) {
+        // Spiele den Zug
         searchBoard.makeMove(move);
 
+        // Bestimme, um wie viel die Suchtiefe verkleinert werden soll
         int16_t extension = determineExtension(isCheckEvasion);
         int16_t nwReduction = determineReduction(depth, ply, moveNumber, isCheckEvasion);
 
@@ -587,31 +732,42 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
         nwDepthDelta = std::min(nwDepthDelta, minReduction);
 
         if(searchPv) {
+            // Führe auf dem ersten Zug eine PV-Suche durch
             score = -pvSearch(depth - ONE_PLY, ply + 1, -beta, -alpha, nullMoveCooldown - 1);
         } else {
+            // Führe ansonsten eine Nullfenster-Suche durch
             score = -nwSearch(depth + nwDepthDelta, ply + 1, -alpha - 1, -alpha, nullMoveCooldown - 1);
+
+            // Wenn die Nullfenstersuche einen Wert > alpha liefert, muss die Bewertung
+            // dieser Variation exakt bestimmt werden
             if(score > alpha)
                 score = -pvSearch(depth - ONE_PLY, ply + 1, -beta, -alpha, nullMoveCooldown - 1);
         }
 
+        // Nehme den Zug zurück
         searchBoard.undoMove();
 
+        // Brich ab, wenn die Suche unterbrochen werden soll
         if(!searchRunning)
             return 0;
         
+        // Aktualisiere die Vergangenheitsbewertung
         relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
                            [move.getOrigin()][move.getDestination()] -= depth / ONE_PLY;
         
-
+        // Ist dieser Knoten ein fail-high-Knoten?
         if(score >= beta) {
+            // Erstelle ein Eintrag in der Transpositionstabelle
             bool tableHit = transpositionTable.probe(searchBoard.getHashValue(), ttEntry);
 
+            // aber nur, wenn kein Eintrag mit höherer Suchtiefe oder eines PV-Knotens vorhanden ist
             if((!tableHit || (depth > ttEntry.depth)) &&
                              (ttEntry.type != (PV_NODE | EXACT_NODE)))
                 transpositionTable.put(searchBoard.getHashValue(), {
                     currentAge, depth, score, CUT_NODE, move
                 });
 
+            // Wenn dieser Zug ein ruhiger Zug ist, aktualisiere die Killerzug- und Konterzug-Heuristik
             if(move.isQuiet()) {
                 if(killerMoves[ply][0] != move) {
                     killerMoves[ply][1] = killerMoves[ply][0];
@@ -624,6 +780,7 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
                                 [lastMove.getOrigin()] = move;
             }
 
+            // Erhöhe die Vergangenheitsbewertung
             relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
                            [move.getOrigin()]
                            [move.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
@@ -636,9 +793,11 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
             bestMove = move;
         }
         
+        // Ist dieser Knoten ein PV-Knoten?
         if(score > alpha) {
             alpha = score;
 
+            // Schreibe die neue PV in die PV-Tabelle
             if(ply < 63) {
                 pvTable[ply].clear();
                 pvTable[ply].push_back(move);
@@ -650,6 +809,8 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
         moveNumber++;
     }
 
+    // Erstelle einen Eintrag in der Transpositionstabelle
+    // für diese Position
     bool tableHit = transpositionTable.probe(searchBoard.getHashValue(), ttEntry);
 
     if(!tableHit || (depth > ttEntry.depth))
@@ -657,6 +818,7 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
             currentAge, depth, bestScore, EXACT_NODE, bestMove
         });
 
+    // Erhöhe die Vergangenheitsbewertung des besten Zuges
     relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
                     [bestMove.getOrigin()]
                     [bestMove.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
@@ -664,29 +826,44 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
     return bestScore;
 }
 
+/**
+ * @brief Führt eine Nullfenstersuche durch.
+ * 
+ * @param ply Der Abstand zur Wurzel.
+ * @param alpha Unterer Wert des Suchfensters.
+ * @param beta Oberer Wert des Suchfensters.
+ * @param nullMoveCooldown Die Anzahl der Züge, bis die Nullzugheuristik wieder angewendet werden darf.
+ */
 int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, int32_t nullMoveCooldown) {
-    if(isCheckupTime()) {
+    // Überprüfe, ob die Suche unterbrochen werden soll
+    if(isCheckupTime())
         checkup();
-    }
 
     if(!searchRunning)
         return 0;
 
     nodesSearched++;
 
+    // Brich ab, wenn die Position ein Unentschieden durch
+    // Positionswiederholung, 50-Züge-Regel oder Material ist
     if(evaluator.isDraw())
         return 0;
 
+    // Brich ab, wenn die Entfernung zur Wurzel größer als das bisher schlechteste Matt ist
     if(mateDistance < ply)
         return MIN_SCORE + 1;
 
+    // Gehe in die Quieszenzsuche über, wenn das Ende der regulären Suche erreicht ist
     if(depth <= 0)
         return quiescence(ply + 1, alpha, beta);
 
+    // Suche in der Transpositionstabelle nach einem Eintrag zu dieser Position
     TranspositionTableEntry ttEntry = {0, 0, 0, 0, Move()};
     bool tableHit = transpositionTable.probe(searchBoard.getHashValue(), ttEntry);
 
     if(tableHit) {
+        // Wenn ein Eintrag gefunden wurde, überprüfe, ob dieser Eintrag
+        // für diese Suchtiefe gültig ist
         if(ttEntry.depth >= depth) {
             switch(NODE_TYPE(ttEntry.type)) {
                 case EXACT_NODE:
@@ -700,7 +877,7 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
 
     bool isCheckEvasion = searchBoard.isCheck();
 
-    // Null move pruning
+    // Wenn die Nullzugheuristik angewendet werden darf, dann wende sie an
     if(nullMoveCooldown <= 0 && !isCheckEvasion && !isMateLine()) {
         int32_t side = searchBoard.getSideToMove();
         Bitboard minorOrMajorPieces;
@@ -710,11 +887,14 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
         else
             minorOrMajorPieces = searchBoard.getBlackOccupiedBitboard() & ~searchBoard.getPieceBitboard(BLACK | PAWN);
 
-        // Nullzug nur durchführen, wenn wir mindestens eine Leichtfigur haben
+        // Wende die Nullzugheuristik nur an, wenn wir midestens eine Leicht- /Schwerfigur haben.
+        // Ansonsten liefert die Nullzugheuristik im Fall von Zugzwang sehr schlechte Ergebnisse.
         if(minorOrMajorPieces) {
+            // Führe einen Nullzug durch
             Move nullMove = Move::nullMove();
             searchBoard.makeMove(nullMove);
 
+            // Bestimme, um wie viel die Suchtiefe verkleinert werden soll
             int16_t depthReduction = 3 * ONE_PLY;
 
             if(depth >= 8 * ONE_PLY)
@@ -724,20 +904,25 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
 
             searchBoard.undoMove();
 
+            // Wenn der Nullzug einen Wert >= beta liefert, befinden wir uns
+            // höchstwahrscheinlich in einem fail-high-Knoten und können die Suche abbrechen
             if(nullMoveScore >= beta)
                 return nullMoveScore;
         }
     }
     
+    // Generiere alle legalen Züge
     Array<Move, 256> moves = searchBoard.generateLegalMoves();
 
+    // Wenn keine Züge generiert werden konnten, dann ist die Position Matt oder Patt
     if(moves.size() == 0) {
         if(searchBoard.isCheck())
-            return -MATE_SCORE + ply;
+            return -MATE_SCORE + ply; // Matt
         else
-            return 0;
+            return 0; // Patt
     }
 
+    // Wende eine Vorsortierung an
     sortMoves(moves, ply);
 
     int16_t bestScore = MIN_SCORE;
@@ -746,8 +931,10 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
     int32_t moveNumber = 1;
 
     for(Move move : moves) {
+        // Spiele den Zug
         searchBoard.makeMove(move);
 
+        // Bestimme, um wie viel die Suchtiefe verkleinert werden soll
         int16_t extension = determineExtension(isCheckEvasion);
         int16_t nwReduction = determineReduction(depth, ply, moveNumber, isCheckEvasion);
 
@@ -763,23 +950,30 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
         if(nwDepthDelta < -ONE_PLY && score > alpha)
             score = -nwSearch(depth - ONE_PLY, ply + 1, -beta, -alpha, nullMoveCooldown - 1);
 
+        // Nehme den Zug zurück
         searchBoard.undoMove();
 
+        // Brich ab, wenn die Suche unterbrochen werden soll
         if(!searchRunning)
             return 0;
         
+        // Aktualisiere die Vergangenheitsbewertung
         relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
                         [move.getOrigin()][move.getDestination()] -= depth / ONE_PLY;
 
+        // Ist dieser Knoten ein fail-high-Knoten?
         if(score >= beta) {
+            // Erstelle ein Eintrag in der Transpositionstabelle
             bool tableHit = transpositionTable.probe(searchBoard.getHashValue(), ttEntry);
 
+            // aber nur, wenn kein Eintrag mit höherer Suchtiefe oder eines PV-Knotens vorhanden ist
             if(!tableHit || (depth > ttEntry.depth &&
                                ttEntry.type == (NW_NODE | CUT_NODE)))
                 transpositionTable.put(searchBoard.getHashValue(), {
                     currentAge, depth, score, NW_NODE | CUT_NODE, move
                 });
             
+            // Wenn dieser Zug ein ruhiger Zug ist, aktualisiere die Killerzug- und Konterzug-Heuristik
             if(move.isQuiet()) {
                 if(killerMoves[ply][0] != move) {
                     killerMoves[ply][1] = killerMoves[ply][0];
@@ -792,6 +986,7 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
                                 [lastMove.getOrigin()] = move;
             }
 
+            // Erhöhe die Vergangenheitsbewertung
             relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
                            [move.getOrigin()]
                            [move.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
@@ -807,12 +1002,15 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
         moveNumber++;
     }
 
+    // Erstelle einen Eintrag in der Transpositionstabelle für diese Position
+    // (nur wenn kein Eintrag mit höherer Suchtiefe oder eines PV-Knotens für diese Position existiert)
     if(!tableHit || (depth > ttEntry.depth &&
                         !IS_REGULAR_NODE(ttEntry.type)))
         transpositionTable.put(searchBoard.getHashValue(), {
             currentAge, depth, bestScore, NW_NODE | EXACT_NODE, bestMove
         });
     
+    // Erhöhe die Vergangenheitsbewertung des besten Zuges
     relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
                 [bestMove.getOrigin()]
                 [bestMove.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
@@ -820,7 +1018,12 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
     return bestScore;
 }
 
-inline int16_t MinimaxEngine::determineExtension(bool isCheckEvasion) {
+/**
+ * @brief Bestimme, um die viel die Suchtiefe für diesen Zug erweitert werden soll.
+ * 
+ * @param isCheckEvasion Gibt an, ob es sich um eine Schachabwehr handelt.
+ */
+int16_t MinimaxEngine::determineExtension(bool isCheckEvasion) {
     int16_t extension = 0;
 
     Move m = searchBoard.getLastMove();
@@ -829,7 +1032,7 @@ inline int16_t MinimaxEngine::determineExtension(bool isCheckEvasion) {
 
     bool isCheck = searchBoard.isCheck();
 
-    // Schach
+    // Schach oder Schachabwehr
     if(isCheckEvasion || isCheck)
         extension += ONE_PLY * 3;
     
@@ -857,20 +1060,33 @@ inline int16_t MinimaxEngine::determineExtension(bool isCheckEvasion) {
     return extension;
 }
 
-inline int16_t MinimaxEngine::determineReduction(int16_t depth, int16_t ply, int32_t moveCount, bool isCheckEvasion) {
+/**
+ * @brief Bestimmt, um wie viel die Suchtiefe für diesen Zug reduziert werden soll.
+ * 
+ * @param depth Die Suchtiefe.
+ * @param ply Der Abstand zur Wurzel.
+ * @param moveCount Die Anzahl der bereits generierten Züge.
+ * @param isCheckEvasion Gibt an, ob es sich um eine Schachabwehr handelt.
+ */
+int16_t MinimaxEngine::determineReduction(int16_t depth, int16_t ply, int32_t moveCount, bool isCheckEvasion) {
     UNUSED(depth);
 
     int16_t reduction = 0;
 
     bool isCheck = searchBoard.isCheck();
 
+    // Keine Reduktion bei den ersten 2 Zügen
     int32_t unreducedMoves = 2;
-    
+
+    // oder bei Schach oder einer Schachabwehr
     if(moveCount <= unreducedMoves || isCheck || isCheckEvasion)
         return 0;
 
+    // Reduziere anhand einer logarithmischen Funktion,
+    // die von der Anzahl der bereits bearbeiteten Züge abhängig ist
     reduction += (int16_t)(log(moveCount - unreducedMoves + 1) / log(2) * ONE_PLY);
 
+    // Reduziere anhand der Vergangenheitsbewertung
     int32_t relativeHistoryScore = relativeHistory[searchBoard.getSideToMove() / COLOR_MASK]
                                                   [searchBoard.getLastMove().getOrigin()]
                                                   [searchBoard.getLastMove().getDestination()];
@@ -879,6 +1095,7 @@ inline int16_t MinimaxEngine::determineReduction(int16_t depth, int16_t ply, int
 
     reduction -= (int16_t)((relativeHistoryScore / 20000.0) * ONE_PLY);
 
+    // Reduziere weniger, wenn wir uns in einer Mattvariante befinden
     if(isMateLine()) {
         int16_t maxSearchPly = (int16_t)(currentMaxDepth / ONE_PLY);
 
@@ -891,20 +1108,34 @@ inline int16_t MinimaxEngine::determineReduction(int16_t depth, int16_t ply, int
     return reduction;
 }
 
+/**
+ * @brief Führt eine Quieszenzsuche durch.
+ * Die Quieszenzsuche erweitert die Blätter des Suchbaums so,
+ * dass nur noch ruhige Züge betrachtet werden.
+ * 
+ * @param ply Der Abstand zur Wurzel.
+ * @param alpha Unterer Wert des Suchfensters.
+ * @param beta Oberer Wert des Suchfensters.
+ */
 int16_t MinimaxEngine::quiescence(int16_t ply, int16_t alpha, int16_t beta) {
-    if(isCheckupTime()) {
+    // Überprüfe, ob die Suche unterbrochen werden soll
+    if(isCheckupTime())
         checkup();
-    }
 
     if(!searchRunning)
         return 0;
 
     nodesSearched++;
 
+    // "Stand-Pat"-Score:
+    // Die Bewertung der momentanen Postion ohne weitere Züge zu betrachten.
+    // Weil die Quieszenzsuche nicht alle Züge betrachtet, muss der Spieler,
+    // der hier am Zug ist, nicht unbedingt einen Zug spielen, der hier betrachtet wird
     int16_t staticEvaluationScore = (int16_t)evaluator.evaluate();
 
     int16_t score = staticEvaluationScore;
 
+    // Brich ab, wenn der Stand-Pat-Score >= beta ist
     if(score >= beta)
         return score;
     
@@ -915,31 +1146,43 @@ int16_t MinimaxEngine::quiescence(int16_t ply, int16_t alpha, int16_t beta) {
     
     Array<Move, 256> moves;
 
+    // Generiere alle, zu betrachtenden, Züge
     if(searchBoard.isCheck()) {
+        // Wenn wir im Schach stehen, betrachte alle Züge
+        // (in diesem Fall sind alle Züge Schachabwehrzüge)
         moves = searchBoard.generateLegalMoves();
         if(moves.size() == 0)
             return -MATE_SCORE + ply;
 
+        // Führe eine Vorsortierung durch
         sortAndCutMovesForQuiescence(moves, MIN_SCORE, MVVLVA);
     } else {
+        // Wenn wir nicht im Schach stehen, betrachte nur Schlagzüge
         moves = searchBoard.generateLegalCaptures();
 
+        // Führe eine Vorsortierung durch und schneide alle Züge ab,
+        // die eine negative SEE-Bewertung haben
         sortAndCutMovesForQuiescence(moves, NEUTRAL_SEE_SCORE, SEE);
     }
     
     for(Move move : moves) {
+        // Spiele den Zug
         searchBoard.makeMove(move);
 
         score = -quiescence(ply + 1, -beta, -alpha);
 
+        // Nehme den Zug zurück
         searchBoard.undoMove();
 
+        // Brich ab, wenn die Suche unterbrochen werden soll
         if(!searchRunning)
             return 0;
 
+        // Ist dieser Knoten ein fail-high-Knoten?
         if(score >= beta)
             return score;
-        
+
+        // Ist dieser Knoten ein PV-Knoten?
         if(score > bestScore)
             bestScore = score;
         
