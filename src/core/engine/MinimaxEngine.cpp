@@ -1127,13 +1127,15 @@ int16_t MinimaxEngine::quiescence(int16_t ply, int16_t alpha, int16_t beta) {
 
     nodesSearched++;
 
-    // "Stand-Pat"-Score:
-    // Die Bewertung der momentanen Postion ohne weitere Züge zu betrachten.
-    // Weil die Quieszenzsuche nicht alle Züge betrachtet, muss der Spieler,
-    // der hier am Zug ist, nicht unbedingt einen Zug spielen, der hier betrachtet wird
-    int16_t staticEvaluationScore = (int16_t)evaluator.evaluate();
+    int16_t score = MIN_SCORE;
 
-    int16_t score = staticEvaluationScore;
+    if(!searchBoard.isCheck()) {
+        // "Stand-Pat"-Score:
+        // Die Bewertung der momentanen Postion ohne weitere Züge zu betrachten.
+        // Weil die Quieszenzsuche nicht alle Züge betrachtet, muss der Spieler,
+        // der hier am Zug ist, nicht unbedingt einen Zug spielen, der hier betrachtet wird
+        score = (int16_t)evaluator.evaluate();
+    }
 
     // Brich ab, wenn der Stand-Pat-Score >= beta ist
     if(score >= beta)
