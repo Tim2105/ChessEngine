@@ -48,8 +48,8 @@
 /**
  * @brief Eine Fail-Soft Implementation des Scout-Algorithmus mit anschließender Quieszenzsuche.
  * 
- * Der Algorithmus ist eine Erweiterung des Alpha-Beta-Algorithmus,
- * der die Nullfenster-Suche für alle Kinder eines Knotens außer dem ersten Kind verwendet.
+ * Der Scout-Algorithmus ist eine Erweiterung des Alpha-Beta-Algorithmus,
+ * der die Nullfenster-Suche für alle Kinder eines Knotens außer dem Ersten verwendet.
  * 
  * Verwendete Optimierungen:
  * - Transpositionstabelle
@@ -57,6 +57,7 @@
  * - Konterzug-Heuristik
  * - Vergangenheits-Heuristik
  * - Nullzug-Heuristik
+ * - Asprirationsfenster
  */
 class MinimaxEngine : public InterruptedEngine {
     private:
@@ -216,6 +217,7 @@ class MinimaxEngine : public InterruptedEngine {
         static constexpr int32_t ASP_MAX_DEPTH = 3;
 
         static constexpr int32_t DEFAULT_CAPTURE_MOVE_SCORE = 100;
+        static constexpr int32_t DEFAULT_PASSED_PAWN_MOVE_SCORE = 100;
 
         static constexpr int32_t NEUTRAL_SEE_SCORE = 0;
 

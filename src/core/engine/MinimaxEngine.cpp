@@ -247,6 +247,17 @@ int32_t MinimaxEngine::scoreMove(Move& move, int16_t ply) {
         if(lastMove.exists() && counterMoves[searchBoard.pieceAt(lastMove.getOrigin())]
                                             [lastMove.getDestination()] == move)
             moveScore += 40;
+
+        // Erhöhe die Bewertung von Freibauerzügen
+        int32_t movedPieceType = TYPEOF(searchBoard.pieceAt(move.getOrigin()));
+        if(movedPieceType == PAWN) {
+            int32_t side = searchBoard.getSideToMove();
+            int32_t otherSide = searchBoard.getSideToMove() ^ COLOR_MASK;
+
+            if(!(sentryMasks[side / COLOR_MASK][move.getDestination()]
+                & searchBoard.getPieceBitboard(otherSide | PAWN)))
+                moveScore += DEFAULT_PASSED_PAWN_MOVE_SCORE;
+        }
     }
 
     // Alle Züge werden mit den Figuren-Feldtabelle bewertet
