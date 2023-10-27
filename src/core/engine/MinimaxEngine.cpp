@@ -1146,6 +1146,12 @@ int16_t MinimaxEngine::quiescence(int16_t ply, int16_t alpha, int16_t beta) {
         // Weil die Quieszenzsuche nicht alle Züge betrachtet, muss der Spieler,
         // der hier am Zug ist, nicht unbedingt einen Zug spielen, der hier betrachtet wird
         score = (int16_t)evaluator.evaluate();
+    } else if(evaluator.isDraw()) {
+        // Brich ab, wenn die Position ein Unentschieden durch
+        // Positionswiederholung, 50-Züge-Regel oder Material ist
+        // Ohne diese Abbruchbedingung würde die Quieszenzsuche in einer
+        // Endlosschleife enden, wenn ein Spieler den anderen ewig im Schach halten kann
+        return 0;
     }
 
     // Brich ab, wenn der Stand-Pat-Score >= beta ist
