@@ -282,7 +282,7 @@ int32_t MinimaxEngine::scoreMove(Move& move, int16_t ply) {
 
     // Alle Züge werden mit der Vergangenheitsheuristik bewertet
     moveScore += std::clamp(relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
-                        [move.getOrigin()][move.getDestination()] / ((currentMaxDepth / ONE_PLY)),
+                        [move.getOrigin()][move.getDestination()] / ((currentMaxDepth / ONE_PLY) * (currentMaxDepth / ONE_PLY)),
                         -99, 49);
 
     return moveScore;

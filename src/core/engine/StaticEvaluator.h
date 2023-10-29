@@ -286,7 +286,7 @@ class StaticEvaluator : public Evaluator {
         static constexpr int32_t EG_BISHOP_PAIR_VALUE = 35;
 
         // Bonus für Farbdominanz mit einem Läufer
-        static constexpr int32_t MG_BISHOP_COLOR_DOMINANCE_VALUE = 50;
+        static constexpr int32_t MG_BISHOP_COLOR_DOMINANCE_VALUE = 40;
 
         // Bonus für Türme auf offenen/halboffenen Linien
         static constexpr int32_t MG_ROOK_SEMI_OPEN_FILE_VALUE = 15;
@@ -414,8 +414,8 @@ class StaticEvaluator : public Evaluator {
         static constexpr int32_t EG_PAWN_DOUBLED_VALUE = -20;
 
         // Bestrafung für einen Bauern, der keine Nachbarn hat(keine Bauern in einer Nachbarspalte)
-        static constexpr int32_t MG_PAWN_ISOLATED_VALUE = -12;
-        static constexpr int32_t EG_PAWN_ISOLATED_VALUE = -14;
+        static constexpr int32_t MG_PAWN_ISOLATED_VALUE = -8;
+        static constexpr int32_t EG_PAWN_ISOLATED_VALUE = -10;
 
         // Bonus für jeden Freibauern(passed pawn)
         static constexpr Bitboard sentryMasks[2][64] = {
@@ -460,9 +460,9 @@ class StaticEvaluator : public Evaluator {
         static constexpr int32_t EG_PAWN_MOBILITY_VALUE = 0;
         static constexpr int32_t MG_KNIGHT_MOBILITY_VALUE = 2;
         static constexpr int32_t EG_KNIGHT_MOBILITY_VALUE = 1;
-        static constexpr int32_t MG_BISHOP_MOBILITY_VALUE = 4;
+        static constexpr int32_t MG_BISHOP_MOBILITY_VALUE = 3;
         static constexpr int32_t EG_BISHOP_MOBILITY_VALUE = 2;
-        static constexpr int32_t MG_ROOK_MOBILITY_VALUE = 4;
+        static constexpr int32_t MG_ROOK_MOBILITY_VALUE = 3;
         static constexpr int32_t EG_ROOK_MOBILITY_VALUE = 3;
         static constexpr int32_t MG_QUEEN_MOBILITY_VALUE = 0;
         static constexpr int32_t EG_QUEEN_MOBILITY_VALUE = 0;
