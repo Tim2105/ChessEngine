@@ -15,7 +15,7 @@ rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 CC = g++
 
 # Compilerflags
-CFLAGS = -Wall -Wextra -Werror -std=c++20 -Ofast -Isrc -flto=auto -mavx2
+CFLAGS = -Wall -Wextra -Werror -std=c++20 -Isrc -Ofast -flto=auto -march=native
 
 # Linkerflags
 LDFLAGS = 
@@ -23,7 +23,11 @@ LDFLAGS =
 # Externe Bibliotheken
 LDLIBS = 
 
+# Ausgabe der verwendeten Compilerflags
+# (nur wenn das Ziel nicht clean ist)
+ifneq ($(MAKECMDGOALS),clean)
 $(info Compiling with $(CC) $(CFLAGS))
+endif
 
 # Quelldateien
 SRC = $(call rwildcard,src/,*.cpp)
@@ -39,7 +43,7 @@ EXEC = bin/main
 # Erstellt die Ausführbare Datei
 $(EXEC): $(OBJ)
 	$(info Linking with $(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS))
-	@$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
+	@$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) -o $@ $^
 
 # mkdir -p für Windows
 MKDIR = $(if $(filter $(OS),Windows_NT),if not exist $(subst /,\,$1) mkdir $(subst /,\,$1),mkdir -p $1)
@@ -54,9 +58,9 @@ bin/obj/%.o: src/%.cpp
 # Löscht alle erstellten Dateien
 clean:
 ifeq ($(OS),Windows_NT)
-	@rmdir /s /q bin
+	rmdir /s /q bin
 else
-	@rm -rf bin
+	rm -rf bin
 endif
 
 

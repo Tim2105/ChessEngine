@@ -25,11 +25,11 @@ class Array {
     
     public:
         constexpr Array() : count(0) {};
-        Array(const Array<T, s>& other);
-        Array(std::initializer_list<int32_t> list);
-        ~Array();
+        constexpr Array(const Array<T, s>& other);
+        constexpr Array(std::initializer_list<int32_t> list);
+        constexpr ~Array();
 
-        Array& operator=(const Array& other);
+        constexpr Array& operator=(const Array& other);
 
         T& operator[](size_t index) { return array[index]; };
         operator T*() { return array; };
@@ -97,13 +97,13 @@ class Array {
 };
 
 template <typename T, size_t s>
-Array<T, s>::Array(const Array& other) {
+constexpr Array<T, s>::Array(const Array& other) {
     count = other.count;
     memcpy(array, other.array, count * sizeof(T));
 }
 
 template <typename T, size_t s>
-Array<T, s>::Array(std::initializer_list<int32_t> elems) {
+constexpr Array<T, s>::Array(std::initializer_list<int32_t> elems) {
     count = 0;
     for(T elem : elems) {
         this->array[count++] = elem;
@@ -111,12 +111,12 @@ Array<T, s>::Array(std::initializer_list<int32_t> elems) {
 }
 
 template <typename T, size_t s>
-Array<T, s>::~Array() {
+constexpr Array<T, s>::~Array() {
 
 }
 
 template <typename T, size_t s>
-Array<T, s>& Array<T, s>::operator=(const Array& other) {
+constexpr Array<T, s>& Array<T, s>::operator=(const Array& other) {
     count = other.count;
     memcpy(array, other.array, count * sizeof(T));
 

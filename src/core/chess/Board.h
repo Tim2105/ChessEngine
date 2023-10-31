@@ -477,12 +477,12 @@ class Board {
         /**
          * @brief Gibt die Figur auf einem Feld zurück.
          */
-        inline int32_t pieceAt(int32_t square) const { return pieces[square]; };
+        constexpr int32_t pieceAt(int32_t square) const { return pieces[square]; };
 
         /**
          * @brief Gibt die Seite zurück, die am Zug ist.
          */
-        inline int32_t getSideToMove() const { return side; };
+        constexpr int32_t getSideToMove() const { return side; };
 
         /**
          * @brief Gibt en letzten gespielten Zug zurück.
@@ -506,7 +506,7 @@ class Board {
         /**
          * @brief Gibt alle Positionen eines bestimmten Figurentyps zurück.
          */
-        inline Array<int32_t, 9> getPieceList(int32_t piece) const { return pieceList[piece]; };
+        constexpr Array<int32_t, 9> getPieceList(int32_t piece) const { return pieceList[piece]; };
 
         /**
          * @brief Gibt alle Positionen eines bestimmten Figurentyps als Bitboard zurück.
