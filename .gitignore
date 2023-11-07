@@ -4,3 +4,4 @@ BenchmarkData/*
 pgn/*
 *.txt
 *.json
+.vscode/*

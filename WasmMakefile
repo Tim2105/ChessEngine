@@ -1,4 +1,4 @@
-# Eine Makefile, die Dateien aus dem Verzeichnis "src" in WASM kompiliert und
+# Eine Makefile, die Dateien aus dem Verzeichnis "src" kompiliert und
 # das Ergebnis in das Verzeichnis "bin" legt.
 
 # Shell für die Ausführung von Befehlen setzen
@@ -15,12 +15,19 @@ rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 CC = em++
 
 # Compilerflags
-CFLAGS = -Wall -Wextra -std=c++20 -O3 -Isrc -msimd128 -msse4.2 -flto -fwasm-exceptions -mnontrapping-fptoint
+CFLAGS = -Wall -Wextra -Werror -std=c++20 -Isrc -O3 -flto=auto -msimd128 -msse4.2 --no-entry
 
-#Linkerflags
-LDFLAGS = -s STACK_SIZE=1MB -s ALLOW_MEMORY_GROWTH=1 -s EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap']" \
+# Linkerflags
+LDFLAGS = 
 
+# Externe Bibliotheken
+LDLIBS = 
+
+# Ausgabe der verwendeten Compilerflags
+# (nur wenn das Ziel nicht clean ist)
+ifneq ($(MAKECMDGOALS),clean)
 $(info Compiling with $(CC) $(CFLAGS))
+endif
 
 # Quelldateien
 SRC = $(call rwildcard,src/,*.cpp)
@@ -29,25 +36,32 @@ SRC = $(call rwildcard,src/,*.cpp)
 # Werden in den Ordner bin/obj erstellt
 OBJ = $(SRC:src/%.cpp=bin/obj/%.o)
 
-# Ausführbare Datei
+# WebAssembly Modul
 # Wird in den Ordner bin erstellt
-EXEC = bin/chess.js bin/chess.wasm
+EXEC = bin/module.js
 
 # Erstellt die Ausführbare Datei
 $(EXEC): $(OBJ)
-	@$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	$(info Linking with $(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS))
+	@$(CC) $(CFLAGS) $(LDFLAGS) $(LDLIBS) -o $@ $^
+
+# mkdir -p für Windows
+MKDIR = $(if $(filter $(OS),Windows_NT),if not exist $(subst /,\,$1) mkdir $(subst /,\,$1),mkdir -p $1)
 
 # Erstellt die Objektdateien
 # Fehlende Ordner werden erstellt
 bin/obj/%.o: src/%.cpp
 	$(info Compiling $<)
-	@if not exist "$(subst /,\,$(@D))" mkdir $(subst /,\,$(@D))
+	@$(call MKDIR,$(dir $@))
 	@$(CC) $(CFLAGS) -c -o $@ $<
-
 
 # Löscht alle erstellten Dateien
 clean:
-	@rmdir /s /q bin
+ifeq ($(OS),Windows_NT)
+	rmdir /s /q bin
+else
+	rm -rf bin
+endif
 
 
 # Führt die Ausführbare Datei aus
