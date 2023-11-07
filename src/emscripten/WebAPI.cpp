@@ -1,12 +1,19 @@
 #ifdef __EMSCRIPTEN__
 #include "emscripten/WebAPI.h"
 
+#include <memory>
+
 Board board;
 StaticEvaluator evaluator(board);
-MinimaxEngine engine(evaluator);
+MinimaxEngine playEngine(evaluator);
+
+SearchDetails searchDetails;
+
+std::unique_ptr<MinimaxEngine> analysisEngine;
 
 std::string error;
 std::string fen;
+std::string analysisData;
 
 bool setBoard(const char* fen) {
     try {
@@ -24,8 +31,8 @@ char* getBoard() {
 }
 
 int16_t getBestMove(int32_t remainingTime) {
-    engine.search(remainingTime, true);
-    return engine.getBestMove();
+    playEngine.search(remainingTime, true);
+    return playEngine.getBestMove();
 }
 
 bool makeMove(int16_t move) {
@@ -33,8 +40,54 @@ bool makeMove(int16_t move) {
         board.makeMove(move);
         return true;
     } else {
+        error = "Illegal move " + Move(move).toString();
         return false;
     }
+}
+
+void initAnalysis(void (*callback)()) {
+    analysisEngine = std::make_unique<MinimaxEngine>(evaluator, 3, 50, [&callback]() {
+        searchDetails = analysisEngine->getSearchDetails();
+        callback();
+    });
+}
+
+void startAnalysis() {
+    analysisEngine->search(0);
+}
+
+void stopAnalysis() {
+    analysisEngine->stop();
+}
+
+char* getAnalysisData() {
+    analysisData = "{";
+
+    analysisData += "\"depth\":" + std::to_string(searchDetails.depth) + ",";
+    analysisData += "\"nodes\":" + std::to_string(searchDetails.nodesSearched) + ",";
+    analysisData += "\"time\":" + std::to_string(searchDetails.timeTaken.count()) + ",";
+    analysisData += "\"variations\":[";
+
+    for(size_t i = 0; i < searchDetails.variations.size(); i++) {
+        analysisData += "{";
+        analysisData += "\"score\":" + std::to_string(searchDetails.variations[i].score) + ",";
+        analysisData += "\"moves\":[";
+        for(size_t j = 0; j < searchDetails.variations[i].moves.size(); j++) {
+            analysisData += "\"" + searchDetails.variations[i].moves[j].toString() + "\"";
+            if(j < searchDetails.variations[i].moves.size() - 1) {
+                analysisData += ",";
+            }
+        }
+        analysisData += "]";
+        analysisData += "}";
+        if(i < searchDetails.variations.size() - 1) {
+            analysisData += ",";
+        }
+    }
+
+    analysisData += "]}";
+
+    return (char*)analysisData.c_str();
 }
 
 char* getError() {

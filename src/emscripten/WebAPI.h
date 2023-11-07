@@ -17,6 +17,14 @@ EMSCRIPTEN_KEEPALIVE int16_t getBestMove(int32_t remainingTime);
 
 EMSCRIPTEN_KEEPALIVE bool makeMove(int16_t move);
 
+EMSCRIPTEN_KEEPALIVE void initAnalysis(void (*callback)());
+
+EMSCRIPTEN_KEEPALIVE void startAnalysis();
+
+EMSCRIPTEN_KEEPALIVE void stopAnalysis();
+
+EMSCRIPTEN_KEEPALIVE char* getAnalysisData();
+
 EMSCRIPTEN_KEEPALIVE char* getError();
 
 #endif
