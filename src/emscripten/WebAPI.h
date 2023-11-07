@@ -13,6 +13,8 @@ EMSCRIPTEN_KEEPALIVE bool setBoard(const char* fen);
 
 EMSCRIPTEN_KEEPALIVE char* getBoard();
 
+EMSCRIPTEN_KEEPALIVE char* getLegalMoves();
+
 EMSCRIPTEN_KEEPALIVE int16_t getBestMove(int32_t remainingTime);
 
 EMSCRIPTEN_KEEPALIVE bool makeMove(int16_t move);

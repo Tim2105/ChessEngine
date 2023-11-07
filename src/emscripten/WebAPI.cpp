@@ -13,6 +13,7 @@ std::unique_ptr<MinimaxEngine> analysisEngine;
 
 std::string error;
 std::string fen;
+std::string legalMoves;
 std::string analysisData;
 
 bool setBoard(const char* fen) {
@@ -28,6 +29,22 @@ bool setBoard(const char* fen) {
 char* getBoard() {
     fen = board.fenString();
     return (char*)fen.c_str();
+}
+
+char* getLegalMoves() {
+    legalMoves = "[";
+
+    Array<Move, 256> moves = board.generateLegalMoves();
+    for(size_t i = 0; i < moves.size(); i++) {
+        legalMoves += std::to_string(moves[i].getMove());
+
+        if(i < moves.size() - 1)
+            legalMoves += ",";
+    }
+
+    legalMoves += "]";
+
+    return (char*)legalMoves.c_str();
 }
 
 int16_t getBestMove(int32_t remainingTime) {
@@ -74,15 +91,15 @@ char* getAnalysisData() {
         analysisData += "\"moves\":[";
         for(size_t j = 0; j < searchDetails.variations[i].moves.size(); j++) {
             analysisData += "\"" + searchDetails.variations[i].moves[j].toString() + "\"";
-            if(j < searchDetails.variations[i].moves.size() - 1) {
+            
+            if(j < searchDetails.variations[i].moves.size() - 1)
                 analysisData += ",";
-            }
         }
         analysisData += "]";
         analysisData += "}";
-        if(i < searchDetails.variations.size() - 1) {
+
+        if(i < searchDetails.variations.size() - 1)
             analysisData += ",";
-        }
     }
 
     analysisData += "]}";
