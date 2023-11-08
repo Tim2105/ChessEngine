@@ -34,6 +34,30 @@ class MagicsFinder {
         static uint64_t bishopAttackMask(int32_t sq, uint64_t occupied);
 
         /**
+         * Generiert alle möglichen Züge in eine bestimmte Richtung für einen Turm auf einem bestimmten Feld.
+         */
+
+        static uint64_t rookAttackTopMask(int32_t sq);
+
+        static uint64_t rookAttackRightMask(int32_t sq);
+
+        static uint64_t rookAttackBottomMask(int32_t sq);
+
+        static uint64_t rookAttackLeftMask(int32_t sq);
+
+        /**
+         * Generiert alle möglichen Züge in eine bestimmte Richtung für einen Läufer auf einem bestimmten Feld.
+         */
+
+        static uint64_t bishopAttackTopLeftMask(int32_t sq);
+
+        static uint64_t bishopAttackTopRightMask(int32_t sq);
+
+        static uint64_t bishopAttackBottomLeftMask(int32_t sq);
+
+        static uint64_t bishopAttackBottomRightMask(int32_t sq);
+
+        /**
          * @brief Generiert alle möglichen Rook-Masks und speichert die in der Datei.
         */
         static void findRookMasks(std::ofstream& resultFile);

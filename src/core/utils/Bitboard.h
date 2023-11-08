@@ -10,6 +10,9 @@ class Bitboard {
         uint64_t bitboard;
 
     public:
+        static constexpr uint64_t ZEROS = 0ULL;
+        static constexpr uint64_t ONES = 0xFFFFFFFFFFFFFFFFULL;
+
         constexpr Bitboard() : bitboard(0) {};
         constexpr Bitboard(uint64_t bitboard) : bitboard(bitboard) {};
         constexpr Bitboard(const Bitboard& bitboard) : bitboard(bitboard.bitboard) {};
@@ -56,6 +59,24 @@ class Bitboard {
          */
         constexpr int32_t getLastSetBit() const {
             return 63 - __builtin_clzll(bitboard);
+        }
+
+        /**
+         * @brief Löscht das erste gesetzte Bit und gibt dessen Index zurück.
+         */
+        constexpr int32_t popFirstSetBit() {
+            int32_t index = getFirstSetBit();
+            clearBit(index);
+            return index;
+        }
+
+        /**
+         * @brief Löscht das letzte gesetzte Bit und gibt dessen Index zurück.
+         */
+        constexpr int32_t popLastSetBit() {
+            int32_t index = getLastSetBit();
+            clearBit(index);
+            return index;
         }
 
         /**
@@ -283,7 +304,7 @@ Bitboard kingAttackBitboard(int32_t sq);
  * 
  * @param sq Das Feld.
  */
-Bitboard diagonalAttackUntilBlocked(int32_t sq, const Bitboard target, const Bitboard occupied);
+Bitboard diagonalAttackUntilBlocked(int32_t sq, Bitboard target, Bitboard occupied);
 
 /**
  * @brief Gibt ein Bitboard aller Geraden zurück, die von einem Feld aus eine Liste von Zielen angreifen.
@@ -291,7 +312,7 @@ Bitboard diagonalAttackUntilBlocked(int32_t sq, const Bitboard target, const Bit
  * 
  * @param sq Das Feld.
  */
-Bitboard straightAttackUntilBlocked(int32_t sq, const Bitboard target, const Bitboard occupied);
+Bitboard horizontalAttackUntilBlocked(int32_t sq, Bitboard target, Bitboard occupied);
 
 /**
  * @brief Überprüft, ob auf einem Spielfeld eine/mehrere Figuren an ein Feld diagonal gefesselt ist.
@@ -302,6 +323,8 @@ Bitboard straightAttackUntilBlocked(int32_t sq, const Bitboard target, const Bit
  * @param occupied Das Bitboard mit allen Figuren, die weder eigene noch fesselnde Figuren sind.
  * @param pinnedSquare Die Felder, auf denen die gefesselten Figuren stehen(muss mind. Größe 4 haben).
  * @param pinnedDirection Die Richtungen, aus denen die Figuren gefesselt sind(muss mind. Größe 4 haben).
+ * 
+ * @return Die Anzahl der gefesselten Figuren.
  */
 int32_t getDiagonallyPinnedToSquare(int32_t sq, Bitboard ownPieces, Bitboard enemyPieces, Bitboard occupied, int32_t* pinnedSquare, int32_t* pinnedDirection);
 
@@ -314,7 +337,9 @@ int32_t getDiagonallyPinnedToSquare(int32_t sq, Bitboard ownPieces, Bitboard ene
  * @param occupied Das Bitboard mit allen Figuren, die weder eigene noch fesselnde Figuren sind.
  * @param pinnedSquare Die Felder, auf denen die gefesselten Figuren stehen(muss mind. Größe 4 haben).
  * @param pinnedDirection Die Richtungen, aus denen die Figuren gefesselt sind(muss mind. Größe 4 haben).
+ * 
+ * @return Die Anzahl der gefesselten Figuren.
  */
-int32_t getStraightPinnedToSquare(int32_t sq, Bitboard ownPieces, Bitboard enemyPieces, Bitboard occupied, int32_t* pinnedSquare, int32_t* pinnedDirection);
+int32_t getHorizontallyPinnedToSquare(int32_t sq, Bitboard ownPieces, Bitboard enemyPieces, Bitboard occupied, int32_t* pinnedSquare, int32_t* pinnedDirection);
 
 #endif

@@ -13,6 +13,16 @@ class Magics {
         static uint64_t rookAttackPtrs[];
         static uint64_t bishopAttackPtrs[];
 
+        static uint64_t rookAttacksTopMask[];
+        static uint64_t rookAttacksRightMask[];
+        static uint64_t rookAttacksBottomMask[];
+        static uint64_t rookAttacksLeftMask[];
+
+        static uint64_t bishopAttacksTopLeftMask[];
+        static uint64_t bishopAttacksTopRightMask[];
+        static uint64_t bishopAttacksBottomLeftMask[];
+        static uint64_t bishopAttacksBottomRightMask[];
+
     public:
         static void initializeMagics();
 
@@ -34,6 +44,37 @@ class Magics {
             return bishopAttacks[ptr + index];
         }
 
+        static inline uint64_t lookupRookAttacksTop(int32_t sq, uint64_t occupied) {
+            return lookupRookAttacks(sq, occupied) & rookAttacksTopMask[sq];
+        }
+
+        static inline uint64_t lookupRookAttacksRight(int32_t sq, uint64_t occupied) {
+            return lookupRookAttacks(sq, occupied) & rookAttacksRightMask[sq];
+        }
+
+        static inline uint64_t lookupRookAttacksBottom(int32_t sq, uint64_t occupied) {
+            return lookupRookAttacks(sq, occupied) & rookAttacksBottomMask[sq];
+        }
+
+        static inline uint64_t lookupRookAttacksLeft(int32_t sq, uint64_t occupied) {
+            return lookupRookAttacks(sq, occupied) & rookAttacksLeftMask[sq];
+        }
+
+        static inline uint64_t lookupBishopAttacksTopLeft(int32_t sq, uint64_t occupied) {
+            return lookupBishopAttacks(sq, occupied) & bishopAttacksTopLeftMask[sq];
+        }
+
+        static inline uint64_t lookupBishopAttacksTopRight(int32_t sq, uint64_t occupied) {
+            return lookupBishopAttacks(sq, occupied) & bishopAttacksTopRightMask[sq];
+        }
+
+        static inline uint64_t lookupBishopAttacksBottomLeft(int32_t sq, uint64_t occupied) {
+            return lookupBishopAttacks(sq, occupied) & bishopAttacksBottomLeftMask[sq];
+        }
+
+        static inline uint64_t lookupBishopAttacksBottomRight(int32_t sq, uint64_t occupied) {
+            return lookupBishopAttacks(sq, occupied) & bishopAttacksBottomRightMask[sq];
+        }
 };
 
 #endif

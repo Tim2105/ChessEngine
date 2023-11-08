@@ -5,13 +5,11 @@
 #include <algorithm>
 
 StaticEvaluator::StaticEvaluator(StaticEvaluator&& other) : Evaluator(*(other.b)) {
-    this->evaluationTable = std::move(other.evaluationTable);
     this->pawnStructureTable = std::move(other.pawnStructureTable);
 }
 
 StaticEvaluator& StaticEvaluator::operator=(StaticEvaluator&& other) {
     this->b = other.b;
-    this->evaluationTable = std::move(other.evaluationTable);
     this->pawnStructureTable = std::move(other.pawnStructureTable);
 
     return *this;
@@ -42,12 +40,6 @@ double StaticEvaluator::getGamePhase() const {
 int32_t StaticEvaluator::evaluate() {
     if(isDraw() || isLikelyDraw()) // Unentschieden
         return 0;
-    
-    int32_t storedScore;
-    bool evaluationFound = probeEvaluationTable(storedScore);
-
-    if(evaluationFound)
-        return storedScore;
 
     int32_t score = 0;
     int32_t side = b->getSideToMove();
@@ -79,8 +71,6 @@ int32_t StaticEvaluator::evaluate() {
 
     score += pawnStructureScore.mg * midgameWeight;
     score += pawnStructureScore.eg * endgameWeight;
-
-    storeEvaluationTable(score);
 
     return score;
 }
@@ -561,18 +551,6 @@ inline int32_t StaticEvaluator::evalEG_PSQT() {
     }
 
     return score;
-}
-
-bool StaticEvaluator::probeEvaluationTable(int32_t& score) {
-    uint64_t hash = b->getHashValue();
-
-    return evaluationTable.probe(hash, score);
-}
-
-void StaticEvaluator::storeEvaluationTable(int32_t score) {
-    uint64_t hash = b->getHashValue();
-
-    evaluationTable.put(hash, score);
 }
 
 bool StaticEvaluator::probePawnStructure(Score& score) {  

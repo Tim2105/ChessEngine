@@ -15,15 +15,11 @@
 class StaticEvaluator : public Evaluator {
 
     private:
-        // Eine Hash-Tabelle, in der die Bewertung von Stellungen gespeichert wird,
-        // um sie bei der nächsten Bewertung(bei gleicher Stellung) wieder zu verwenden.
-        HeapHashTable<uint64_t, int32_t, 131072, 4> evaluationTable;
-
         // Die Bewertung von Bauernstrukturen ist sehr aufwendig,
         // weshalb berechnete Bewertungen von Bauernstrukturen in einer Hash-Tabelle gespeichert werden,
         // um sie bei der nächsten Bewertung(bei gleicher Bauernstruktur) wieder zu verwenden.
         // Weil Bauernstrukturen sich nicht zu häufig ändern, bekommt man hier eine hohe Trefferquote(Durchschnitt ca. 75%).
-        HeapHashTable<uint64_t, Score, 8192, 4> pawnStructureTable;
+        HeapHashTable<uint64_t, Score, 16384, 4> pawnStructureTable;
 
         /**
          * @brief Überprüft ob eine Position anhand des Materials wahrscheinlich ein Unentschieden ist.

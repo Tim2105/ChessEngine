@@ -45,6 +45,8 @@
 
 #define NULL_MOVE_R_VALUE 2
 
+#define NODES_BETWEEN_CHECKUPS 1024
+
 /**
  * @brief Eine Fail-Soft Implementation des Scout-Algorithmus mit anschließender Quieszenzsuche.
  * 

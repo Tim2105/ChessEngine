@@ -759,8 +759,25 @@ void Board::makeMove(Move m) {
     }
 
     // Aktualisiere Angriffsbitboards
-    whiteAttackBitboard = generateAttackBitboard(WHITE);
-    blackAttackBitboard = generateAttackBitboard(BLACK);
+    Bitboard updatedSquares;
+    updatedSquares.setBit(origin);
+    updatedSquares.setBit(destination);
+
+    if(m.isEnPassant())
+        updatedSquares.setBit(enPassantCaptureSq);
+
+    if(m.isCastle()) {
+        if(m.isKingsideCastle()) {
+            updatedSquares.setBit(origin + 3);
+            updatedSquares.setBit(origin + 1);
+        } else {
+            updatedSquares.setBit(origin - 4);
+            updatedSquares.setBit(origin - 1);
+        }
+    }
+
+    whiteAttackBitboard = generateAttackBitboard(WHITE, updatedSquares, capturedPieceType, m.isPromotion() && side == WHITE);
+    blackAttackBitboard = generateAttackBitboard(BLACK, updatedSquares, capturedPieceType, m.isPromotion() && side == BLACK);
 
     // Aktualisiere Rochandenrechte und En Passant
     enPassantSquare = NO_SQ;
@@ -997,7 +1014,7 @@ int32_t Board::numSquareAttackers(int32_t sq, int32_t ownSide, Bitboard occupied
     // Waaagerechte Angriffe
     Bitboard straightAttackers = straightAttackBitboard(sq, occupied) & (pieceBitboard[ownSide | ROOK] | pieceBitboard[ownSide | QUEEN]);
     numAttackers += straightAttackers.getNumberOfSetBits();
-    attackerRays |= straightAttackUntilBlocked(sq, pieceBitboard[ownSide | ROOK] | pieceBitboard[ownSide | QUEEN], occupied);
+    attackerRays |= horizontalAttackUntilBlocked(sq, pieceBitboard[ownSide | ROOK] | pieceBitboard[ownSide | QUEEN], occupied);
 
     // Springer Angriffe
     Bitboard knightAttackers = knightAttackBitboard(sq) & pieceBitboard[ownSide | KNIGHT];
@@ -1067,6 +1084,82 @@ Bitboard Board::generateAttackBitboard(int32_t side) {
     return attackBitboard;
 }
 
+Bitboard Board::generateAttackBitboard(int32_t side, Bitboard updatedSquares, int32_t capturedPiece, bool wasPromotion) {
+    Bitboard piecesPlusOwnKing = allPiecesBitboard | pieceBitboard[side | KING];
+    
+    // Diagonale Angriffe
+    if(capturedPiece == (side | BISHOP) ||
+       updatedSquares & (pieceAttackBitboard[side | BISHOP] | pieceBitboard[side | BISHOP])) {
+        Bitboard bishopAttackBitboard;
+
+        for(int sq : pieceList[side | BISHOP])
+            bishopAttackBitboard |= diagonalAttackBitboard(sq, piecesPlusOwnKing);
+
+        pieceAttackBitboard[side | BISHOP] = bishopAttackBitboard;
+    }
+
+    // Waagerechte Angriffe
+    if(capturedPiece == (side | ROOK) ||
+       updatedSquares & (pieceAttackBitboard[side | ROOK] | pieceBitboard[side | ROOK])) {
+        Bitboard rookAttackBitboard;
+
+        for(int sq : pieceList[side | ROOK])
+            rookAttackBitboard |= straightAttackBitboard(sq, piecesPlusOwnKing);
+
+        pieceAttackBitboard[side | ROOK] = rookAttackBitboard;
+    }
+
+    // Damen-Angriffe
+    if(capturedPiece == (side | QUEEN) ||
+       updatedSquares & (pieceAttackBitboard[side | QUEEN] | pieceBitboard[side | QUEEN])) {
+        Bitboard queenAttackBitboard;
+
+        for(int sq : pieceList[side | QUEEN])
+            queenAttackBitboard |= diagonalAttackBitboard(sq, piecesPlusOwnKing) | straightAttackBitboard(sq, piecesPlusOwnKing);
+
+        pieceAttackBitboard[side | QUEEN] = queenAttackBitboard;
+    }
+
+    // Springer-Angriffe
+    if(capturedPiece == (side | KNIGHT) ||
+       updatedSquares & pieceBitboard[side | KNIGHT]) {
+        Bitboard knightBitboard;
+
+        for(int sq : pieceList[side | KNIGHT])
+            knightBitboard |= knightAttackBitboard(sq);
+
+        pieceAttackBitboard[side | KNIGHT] = knightBitboard;
+    }
+
+    // Bauer-Angriffe
+    if(capturedPiece == (side | PAWN) || wasPromotion ||
+       updatedSquares & pieceBitboard[side | PAWN]) {
+        Bitboard pawnBitboard;
+
+        for(int sq : pieceList[side | PAWN])
+            pawnBitboard |= pawnAttackBitboard(sq, side);
+
+        pieceAttackBitboard[side | PAWN] = pawnBitboard;
+    }
+
+    // König-Angriffe
+    if(updatedSquares & pieceBitboard[side | KING]) {
+        Bitboard kingBitboard;
+
+        for(int sq : pieceList[side | KING])
+            kingBitboard |= kingAttackBitboard(sq);
+
+        pieceAttackBitboard[side | KING] = kingBitboard;
+    }
+
+    // Erstelle ein zentrales Angriffsbitboard
+    Bitboard attackBitboard;
+    for(int i = (side | PAWN); i <= (side | KING); i++)
+        attackBitboard |= pieceAttackBitboard[i];
+
+    return attackBitboard;
+}
+
 void Board::generatePinnedPiecesBitboards(int32_t side, Bitboard& pinnedPiecesBitboard,
                                           int32_t* pinnedPiecesDirection) {
 
@@ -1095,7 +1188,7 @@ void Board::generatePinnedPiecesBitboards(int32_t side, Bitboard& pinnedPiecesBi
     int straightPins[4];
     int straightPinDirections[4];
 
-    int32_t numStraightPins = getStraightPinnedToSquare(kingSquare,
+    int32_t numStraightPins = getHorizontallyPinnedToSquare(kingSquare,
                               ownPieces,
                               pieceBitboard[otherSide | QUEEN] | pieceBitboard[otherSide | ROOK],
                               enemyPiecesPlusKing,

@@ -36,126 +36,60 @@ Bitboard kingAttackBitboard(int32_t sq) {
     return kingAttacks[sq];
 }
 
-Bitboard diagonalAttackUntilBlocked(int32_t sq, const Bitboard targets, const Bitboard occupied) {
+Bitboard diagonalAttackUntilBlocked(int32_t sq, Bitboard targets, Bitboard occupied) {
     Bitboard attackBitboard;
 
+    // Schließe die Targets aus dem Belegboard aus
+    occupied &= ~targets;
+
     // Diagonale nach oben rechts
-    Bitboard temp;
-    for(int32_t i = sq + 9; i < 64 && i % 8 != 0; i += 9) {
-        temp.setBit(i);
-
-        if(targets.getBit(i)) {
-            attackBitboard |= temp;
-            break;
-        }
-
-        if(occupied.getBit(i))
-            break;
-    }
+    Bitboard temp = Magics::lookupBishopAttacksTopRight(sq, targets);
+    if((temp & targets) && !(temp & occupied))
+        attackBitboard |= temp;
 
     // Diagonale nach unten links
-    temp = Bitboard();
-    for(int32_t i = sq - 9; i >= 0 && i % 8 != 7; i -= 9) {
-        temp.setBit(i);
-
-        if(targets.getBit(i)) {
-            attackBitboard |= temp;
-            break;
-        }
-
-        if(occupied.getBit(i))
-            break;
-    }
+    temp = Magics::lookupBishopAttacksBottomLeft(sq, targets);
+    if((temp & targets) && !(temp & occupied))
+        attackBitboard |= temp;
 
     // Diagonale nach unten rechts
-    temp = Bitboard();
-    for(int32_t i = sq + 7; i < 64 && i % 8 != 7; i += 7) {
-        temp.setBit(i);
-
-        if(targets.getBit(i)) {
-            attackBitboard |= temp;
-            break;
-        }
-
-        if(occupied.getBit(i))
-            break;
-    }
+    temp = Magics::lookupBishopAttacksBottomRight(sq, targets);
+    if((temp & targets) && !(temp & occupied))
+        attackBitboard |= temp;
 
     // Diagonale nach oben links
-    temp = Bitboard();
-    for(int32_t i = sq - 7; i >= 0 && i % 8 != 0; i -= 7) {
-        temp.setBit(i);
-
-        if(targets.getBit(i)) {
-            attackBitboard |= temp;
-            break;
-        }
-
-        if(occupied.getBit(i))
-            break;
-    }
+    temp = Magics::lookupBishopAttacksTopLeft(sq, targets);
+    if((temp & targets) && !(temp & occupied))
+        attackBitboard |= temp;
 
     return attackBitboard;
 }
 
-Bitboard straightAttackUntilBlocked(int32_t sq, const Bitboard targets, const Bitboard occupied) {
+Bitboard horizontalAttackUntilBlocked(int32_t sq, Bitboard targets, Bitboard occupied) {
     Bitboard attackBitboard;
 
+    // Schließe die Targets aus dem Belegboard aus
+    occupied &= ~targets;
+
     // Vertikal nach oben
-    Bitboard temp;
-    for(int32_t i = sq + 8; i < 64; i += 8) {
-        temp.setBit(i);
-
-        if(targets.getBit(i)) {
-            attackBitboard |= temp;
-            break;
-        }
-
-        if(occupied.getBit(i))
-            break;
-    }
+    Bitboard temp = Magics::lookupRookAttacksTop(sq, targets);
+    if((temp & targets) && !(temp & occupied))
+        attackBitboard |= temp;
 
     // Vertikal nach unten
-    temp = Bitboard();
-    for(int32_t i = sq - 8; i >= 0; i -= 8) {
-        temp.setBit(i);
-
-        if(targets.getBit(i)) {
-            attackBitboard |= temp;
-            break;
-        }
-
-        if(occupied.getBit(i))
-            break;
-    }
+    temp = Magics::lookupRookAttacksBottom(sq, targets);
+    if((temp & targets) && !(temp & occupied))
+        attackBitboard |= temp;
 
     // Horizontal nach rechts
-    temp = Bitboard();
-    for(int32_t i = sq + 1; i < 64 && i % 8 != 0; i += 1) {
-        temp.setBit(i);
-
-        if(targets.getBit(i)) {
-            attackBitboard |= temp;
-            break;
-        }
-
-        if(occupied.getBit(i))
-            break;
-    }
+    temp = Magics::lookupRookAttacksRight(sq, targets);
+    if((temp & targets) && !(temp & occupied))
+        attackBitboard |= temp;
 
     // Horizontal nach links
-    temp = Bitboard();
-    for(int32_t i = sq - 1; i >= 0 && i % 8 != 7; i -= 1) {
-        temp.setBit(i);
-
-        if(targets.getBit(i)) {
-            attackBitboard |= temp;
-            break;
-        }
-
-        if(occupied.getBit(i))
-            break;
-    }
+    temp = Magics::lookupRookAttacksLeft(sq, targets);
+    if((temp & targets) && !(temp & occupied))
+        attackBitboard |= temp;
 
     return attackBitboard;
 }
@@ -270,7 +204,7 @@ int32_t getDiagonallyPinnedToSquare(int32_t sq, Bitboard ownPieces,
     return numPins;
 }
 
-int32_t getStraightPinnedToSquare(int32_t sq, Bitboard ownPieces,
+int32_t getHorizontallyPinnedToSquare(int32_t sq, Bitboard ownPieces,
                                     Bitboard enemyPieces, Bitboard occupied,
                                     int32_t* pinnedSquares, int32_t* pinnedDirections) {
     

@@ -1,7 +1,7 @@
 #include "core/chess/movegen/MagicMovegen.h"
 
 void MagicMovegen::generatePseudoLegalWhitePawnMoves(Array<Move, 256>& moves, Board& b) {
-    for(int& sq : b.pieceList[WHITE_PAWN]) {
+    for(int sq : b.pieceList[WHITE_PAWN]) {
         int32_t file = SQ2F(sq);
         int32_t rank = SQ2R(sq);
 
@@ -46,7 +46,7 @@ void MagicMovegen::generatePseudoLegalWhitePawnMoves(Array<Move, 256>& moves, Bo
 }
 
 void MagicMovegen::generatePseudoLegalBlackPawnMoves(Array<Move, 256>& moves, Board& b) {
-    for(int& sq : b.pieceList[BLACK_PAWN]) {
+    for(int sq : b.pieceList[BLACK_PAWN]) {
         int32_t file = SQ2F(sq);
         int32_t rank = SQ2R(sq);
 
@@ -91,7 +91,7 @@ void MagicMovegen::generatePseudoLegalBlackPawnMoves(Array<Move, 256>& moves, Bo
 }
 
 void MagicMovegen::generatePseudoLegalWhiteKnightMoves(Array<Move, 256>& moves, Board& b) {
-    for(int& sq : b.pieceList[WHITE_KNIGHT]) {
+    for(int sq : b.pieceList[WHITE_KNIGHT]) {
         Bitboard knightAttacks = knightAttackBitboard(sq) & ~b.whitePiecesBitboard & ~b.pieceBitboard[WHITE_KING];
         while(knightAttacks) {
             int32_t dest = knightAttacks.getFirstSetBit();
@@ -106,7 +106,7 @@ void MagicMovegen::generatePseudoLegalWhiteKnightMoves(Array<Move, 256>& moves, 
 }
 
 void MagicMovegen:: generatePseudoLegalBlackKnightMoves(Array<Move, 256>& moves, Board& b) {
-    for(int& sq : b.pieceList[BLACK_KNIGHT]) {
+    for(int sq : b.pieceList[BLACK_KNIGHT]) {
         Bitboard knightAttacks = knightAttackBitboard(sq) & ~b.blackPiecesBitboard & ~b.pieceBitboard[BLACK_KING];
         while(knightAttacks) {
             int32_t dest = knightAttacks.getFirstSetBit();
@@ -121,7 +121,7 @@ void MagicMovegen:: generatePseudoLegalBlackKnightMoves(Array<Move, 256>& moves,
 }
 
 void MagicMovegen::generatePseudoLegalWhiteBishopMoves(Array<Move, 256>& moves, Board& b) {
-    for(int& sq : b.pieceList[WHITE_BISHOP]) {
+    for(int sq : b.pieceList[WHITE_BISHOP]) {
         Bitboard bishopAttacks = diagonalAttackBitboard(sq, b.allPiecesBitboard | b.pieceBitboard[WHITE_KING])
                                     & ~b.whitePiecesBitboard & ~b.pieceBitboard[WHITE_KING];
         while(bishopAttacks) {
@@ -137,7 +137,7 @@ void MagicMovegen::generatePseudoLegalWhiteBishopMoves(Array<Move, 256>& moves, 
 }
 
 void MagicMovegen::generatePseudoLegalBlackBishopMoves(Array<Move, 256>& moves, Board& b) {
-    for(int& sq : b.pieceList[BLACK_BISHOP]) {
+    for(int sq : b.pieceList[BLACK_BISHOP]) {
         Bitboard bishopAttacks = diagonalAttackBitboard(sq, b.allPiecesBitboard | b.pieceBitboard[BLACK_KING])
                                     & ~b.blackPiecesBitboard & ~b.pieceBitboard[BLACK_KING];
         while(bishopAttacks) {
@@ -153,7 +153,7 @@ void MagicMovegen::generatePseudoLegalBlackBishopMoves(Array<Move, 256>& moves, 
 }
 
 void MagicMovegen::generatePseudoLegalWhiteRookMoves(Array<Move, 256>& moves, Board& b) {
-    for(int& sq : b.pieceList[WHITE_ROOK]) {
+    for(int sq : b.pieceList[WHITE_ROOK]) {
         Bitboard rookAttacks = straightAttackBitboard(sq, b.allPiecesBitboard | b.pieceBitboard[WHITE_KING])
                                     & ~b.whitePiecesBitboard & ~b.pieceBitboard[WHITE_KING];
         while(rookAttacks) {
@@ -169,7 +169,7 @@ void MagicMovegen::generatePseudoLegalWhiteRookMoves(Array<Move, 256>& moves, Bo
 }
 
 void MagicMovegen::generatePseudoLegalBlackRookMoves(Array<Move, 256>& moves, Board& b) {
-    for(int& sq : b.pieceList[BLACK_ROOK]) {
+    for(int sq : b.pieceList[BLACK_ROOK]) {
         Bitboard rookAttacks = straightAttackBitboard(sq, b.allPiecesBitboard | b.pieceBitboard[BLACK_KING])
                                     & ~b.blackPiecesBitboard & ~b.pieceBitboard[BLACK_KING];
         while(rookAttacks) {
@@ -185,7 +185,7 @@ void MagicMovegen::generatePseudoLegalBlackRookMoves(Array<Move, 256>& moves, Bo
 }
 
 void MagicMovegen::generatePseudoLegalWhiteQueenMoves(Array<Move, 256>& moves, Board& b) {
-    for(int& sq : b.pieceList[WHITE_QUEEN]) {
+    for(int sq : b.pieceList[WHITE_QUEEN]) {
         Bitboard queenAttacks = (diagonalAttackBitboard(sq, b.allPiecesBitboard | b.pieceBitboard[WHITE_KING])
                                     | straightAttackBitboard(sq, b.allPiecesBitboard | b.pieceBitboard[WHITE_KING]))
                                     & ~b.whitePiecesBitboard & ~b.pieceBitboard[WHITE_KING];
@@ -202,7 +202,7 @@ void MagicMovegen::generatePseudoLegalWhiteQueenMoves(Array<Move, 256>& moves, B
 }
 
 void MagicMovegen::generatePseudoLegalBlackQueenMoves(Array<Move, 256>& moves, Board& b) {
-    for(int& sq : b.pieceList[BLACK_QUEEN]) {
+    for(int sq : b.pieceList[BLACK_QUEEN]) {
         Bitboard queenAttacks = (diagonalAttackBitboard(sq, b.allPiecesBitboard | b.pieceBitboard[BLACK_KING])
                                     | straightAttackBitboard(sq, b.allPiecesBitboard | b.pieceBitboard[BLACK_KING]))
                                     & ~b.blackPiecesBitboard & ~b.pieceBitboard[BLACK_KING];
@@ -281,7 +281,7 @@ void MagicMovegen::generateWhitePawnMoves(Array<Move, 256>& moves, Board& b,
 
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Bauer den Angreifer schlagen oder den König schützen
     if(numAttackers == 1) {
-        for(int& sq : b.pieceList[WHITE_PAWN]) {
+        for(int sq : b.pieceList[WHITE_PAWN]) {
             int32_t rank = SQ2R(sq);
 
             int32_t destForw = sq + NORTH;
@@ -342,7 +342,7 @@ void MagicMovegen::generateWhitePawnMoves(Array<Move, 256>& moves, Board& b,
             }
         }
     } else {
-        for(int& sq : b.pieceList[WHITE_PAWN]) {
+        for(int sq : b.pieceList[WHITE_PAWN]) {
             int32_t rank = SQ2R(sq);
 
             int32_t destForw = sq + NORTH;
@@ -461,7 +461,7 @@ void MagicMovegen::generateBlackPawnMoves(Array<Move, 256>& moves, Board& b,
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Bauer den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int& sq : b.pieceList[BLACK_PAWN]) {
+        for(int sq : b.pieceList[BLACK_PAWN]) {
             int32_t rank = SQ2R(sq);
 
             int32_t destForw = sq + SOUTH;
@@ -522,7 +522,7 @@ void MagicMovegen::generateBlackPawnMoves(Array<Move, 256>& moves, Board& b,
             }
         }
     } else {
-        for(int& sq : b.pieceList[BLACK_PAWN]) {
+        for(int sq : b.pieceList[BLACK_PAWN]) {
             int32_t rank = SQ2R(sq);
 
             int32_t destForw = sq + SOUTH;
@@ -641,7 +641,7 @@ void MagicMovegen::generateWhiteKnightMoves(Array<Move, 256>& moves, Board& b,
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Springer den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int& sq : b.pieceList[WHITE_KNIGHT]) {
+        for(int sq : b.pieceList[WHITE_KNIGHT]) {
             // Wenn der Springer gefesselt ist, kann er sich nicht bewegen
             if(pinnedPieces.getBit(sq))
                 continue;
@@ -660,7 +660,7 @@ void MagicMovegen::generateWhiteKnightMoves(Array<Move, 256>& moves, Board& b,
             }
         }
     } else {
-        for(int& sq : b.pieceList[WHITE_KNIGHT]) {
+        for(int sq : b.pieceList[WHITE_KNIGHT]) {
             // Wenn der Springer gefesselt ist, kann er sich nicht bewegen
             if(pinnedPieces.getBit(sq))
                 continue;
@@ -690,7 +690,7 @@ void MagicMovegen::generateBlackKnightMoves(Array<Move, 256>& moves, Board& b,
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Springer den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int& sq : b.pieceList[BLACK_KNIGHT]) {
+        for(int sq : b.pieceList[BLACK_KNIGHT]) {
             // Wenn der Springer gefesselt ist, kann er sich nicht bewegen
             if(pinnedPieces.getBit(sq))
                 continue;
@@ -709,7 +709,7 @@ void MagicMovegen::generateBlackKnightMoves(Array<Move, 256>& moves, Board& b,
             }
         }
     } else {
-        for(int& sq : b.pieceList[BLACK_KNIGHT]) {
+        for(int sq : b.pieceList[BLACK_KNIGHT]) {
             // Wenn der Springer gefesselt ist, kann er sich nicht bewegen
             if(pinnedPieces.getBit(sq))
                 continue;
@@ -739,7 +739,7 @@ void MagicMovegen::generateWhiteBishopMoves(Array<Move, 256>& moves, Board& b,
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Läufer den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int& sq : b.pieceList[WHITE_BISHOP]) {
+        for(int sq : b.pieceList[WHITE_BISHOP]) {
             // Wenn der Läufer gefesselt ist, kann er sich nicht bewegen
             if(pinnedPiecesBitboard.getBit(sq))
                 continue;
@@ -761,7 +761,7 @@ void MagicMovegen::generateWhiteBishopMoves(Array<Move, 256>& moves, Board& b,
             }
         }
     } else {
-        for(int& sq : b.pieceList[WHITE_BISHOP]) {
+        for(int sq : b.pieceList[WHITE_BISHOP]) {
             // Wenn der Läufer gefesselt ist, muss er sich in oder gegen die Richtung bewegen, in die er gefesselt ist
             if(pinnedPiecesBitboard.getBit(sq)) {
                 int32_t pinDirection = pinDirections[sq];
@@ -856,7 +856,7 @@ void MagicMovegen::generateBlackBishopMoves(Array<Move, 256>& moves, Board& b,
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Läufer den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int& sq : b.pieceList[BLACK_BISHOP]) {
+        for(int sq : b.pieceList[BLACK_BISHOP]) {
             // Wenn der Läufer gefesselt ist, kann er sich nicht bewegen
             if(pinnedPiecesBitboard.getBit(sq))
                 continue;
@@ -878,7 +878,7 @@ void MagicMovegen::generateBlackBishopMoves(Array<Move, 256>& moves, Board& b,
             }
         }
     } else {
-        for(int& sq : b.pieceList[BLACK_BISHOP]) {
+        for(int sq : b.pieceList[BLACK_BISHOP]) {
             // Wenn der Läufer gefesselt ist, muss er sich in oder gegen die Richtung bewegen, in die er gefesselt ist
             if(pinnedPiecesBitboard.getBit(sq)) {
                 int32_t pinDirection = pinDirections[sq];
@@ -973,7 +973,7 @@ void MagicMovegen::generateWhiteRookMoves(Array<Move, 256>& moves, Board& b,
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Turm den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int& sq : b.pieceList[WHITE_ROOK]) {
+        for(int sq : b.pieceList[WHITE_ROOK]) {
             // Wenn der Turm gefesselt ist, kann er sich nicht bewegen
             if(pinnedPiecesBitboard.getBit(sq))
                 continue;
@@ -995,7 +995,7 @@ void MagicMovegen::generateWhiteRookMoves(Array<Move, 256>& moves, Board& b,
             }
         }
     } else {
-        for(int& sq : b.pieceList[WHITE_ROOK]) {
+        for(int sq : b.pieceList[WHITE_ROOK]) {
             // Wenn der Turm gefesselt ist, muss er sich in oder gegen die Richtung bewegen, in die er gefesselt ist
             if(pinnedPiecesBitboard.getBit(sq)) {
                 int32_t pinDirection = pinDirections[sq];
@@ -1090,7 +1090,7 @@ void MagicMovegen::generateBlackRookMoves(Array<Move, 256>& moves, Board& b,
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Turm den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int& sq : b.pieceList[BLACK_ROOK]) {
+        for(int sq : b.pieceList[BLACK_ROOK]) {
             // Wenn der Turm gefesselt ist, kann er sich nicht bewegen
             if(pinnedPiecesBitboard.getBit(sq))
                 continue;
@@ -1112,7 +1112,7 @@ void MagicMovegen::generateBlackRookMoves(Array<Move, 256>& moves, Board& b,
             }
         }
     } else {
-        for(int& sq : b.pieceList[BLACK_ROOK]) {
+        for(int sq : b.pieceList[BLACK_ROOK]) {
             // Wenn der Turm gefesselt ist, muss er sich in oder gegen die Richtung bewegen, in die er gefesselt ist
             if(pinnedPiecesBitboard.getBit(sq)) {
                 int32_t pinDirection = pinDirections[sq];
@@ -1207,7 +1207,7 @@ void MagicMovegen::generateWhiteQueenMoves(Array<Move, 256>& moves, Board& b,
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann die Dame den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int& sq : b.pieceList[WHITE_QUEEN]) {
+        for(int sq : b.pieceList[WHITE_QUEEN]) {
             // Wenn die Dame gefesselt ist, kann sie sich nicht bewegen
             if(pinnedPiecesBitboard.getBit(sq))
                 continue;
@@ -1235,7 +1235,7 @@ void MagicMovegen::generateWhiteQueenMoves(Array<Move, 256>& moves, Board& b,
             }
         }
     } else {
-        for(int& sq : b.pieceList[WHITE_QUEEN]) {
+        for(int sq : b.pieceList[WHITE_QUEEN]) {
             // Wenn die Dame gefesselt ist, muss sie sich in oder gegen die Richtung bewegen, in die sie gefesselt ist
             if(pinnedPiecesBitboard.getBit(sq)) {
                 int32_t pinDirection = pinDirections[sq];
@@ -1397,7 +1397,7 @@ void MagicMovegen::generateBlackQueenMoves(Array<Move, 256>& moves, Board& b,
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann die Dame den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int& sq : b.pieceList[BLACK_QUEEN]) {
+        for(int sq : b.pieceList[BLACK_QUEEN]) {
             // Wenn die Dame gefesselt ist, kann sie sich nicht bewegen
             if(pinnedPiecesBitboard.getBit(sq))
                 continue;
@@ -1425,7 +1425,7 @@ void MagicMovegen::generateBlackQueenMoves(Array<Move, 256>& moves, Board& b,
             }
         }
     } else {
-        for(int& sq : b.pieceList[BLACK_QUEEN]) {
+        for(int sq : b.pieceList[BLACK_QUEEN]) {
             // Wenn die Dame gefesselt ist, muss sie sich in oder gegen die Richtung bewegen, in die sie gefesselt ist
             if(pinnedPiecesBitboard.getBit(sq)) {
                 int32_t pinDirection = pinDirections[sq];
@@ -1655,7 +1655,7 @@ void MagicMovegen::generateWhitePawnCaptures(Array<Move, 256>& moves, Board& b,
 
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Bauer den Angreifer schlagen oder den König schützen
     if(numAttackers == 1) {
-        for(int& sq : b.pieceList[WHITE_PAWN]) {
+        for(int sq : b.pieceList[WHITE_PAWN]) {
             int32_t rank = SQ2R(sq);
 
             int32_t destLeft = sq + NORTH_WEST;
@@ -1700,7 +1700,7 @@ void MagicMovegen::generateWhitePawnCaptures(Array<Move, 256>& moves, Board& b,
             }
         }
     } else {
-        for(int& sq : b.pieceList[WHITE_PAWN]) {
+        for(int sq : b.pieceList[WHITE_PAWN]) {
             int32_t rank = SQ2R(sq);
 
             int32_t destLeft = sq + NORTH_WEST;
@@ -1802,7 +1802,7 @@ void MagicMovegen::generateBlackPawnCaptures(Array<Move, 256>& moves, Board& b,
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Bauer den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int& sq : b.pieceList[BLACK_PAWN]) {
+        for(int sq : b.pieceList[BLACK_PAWN]) {
             int32_t rank = SQ2R(sq);
 
             int32_t destLeft = sq + SOUTH_WEST;
@@ -1847,7 +1847,7 @@ void MagicMovegen::generateBlackPawnCaptures(Array<Move, 256>& moves, Board& b,
             }
         }
     } else {
-        for(int& sq : b.pieceList[BLACK_PAWN]) {
+        for(int sq : b.pieceList[BLACK_PAWN]) {
             int32_t rank = SQ2R(sq);
 
             int32_t destLeft = sq + SOUTH_WEST;
@@ -1950,7 +1950,7 @@ void MagicMovegen::generateWhiteKnightCaptures(Array<Move, 256>& moves, Board& b
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Springer den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int& sq : b.pieceList[WHITE_KNIGHT]) {
+        for(int sq : b.pieceList[WHITE_KNIGHT]) {
             // Wenn der Springer gefesselt ist, kann er sich nicht bewegen
             if(pinnedPieces.getBit(sq))
                 continue;
@@ -1964,7 +1964,7 @@ void MagicMovegen::generateWhiteKnightCaptures(Array<Move, 256>& moves, Board& b
             }
         }
     } else {
-        for(int& sq : b.pieceList[WHITE_KNIGHT]) {
+        for(int sq : b.pieceList[WHITE_KNIGHT]) {
             // Wenn der Springer gefesselt ist, kann er sich nicht bewegen
             if(pinnedPieces.getBit(sq))
                 continue;
@@ -1992,7 +1992,7 @@ void MagicMovegen::generateBlackKnightCaptures(Array<Move, 256>& moves, Board& b
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Springer den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int& sq : b.pieceList[BLACK_KNIGHT]) {
+        for(int sq : b.pieceList[BLACK_KNIGHT]) {
             // Wenn der Springer gefesselt ist, kann er sich nicht bewegen
             if(pinnedPieces.getBit(sq))
                 continue;
@@ -2006,7 +2006,7 @@ void MagicMovegen::generateBlackKnightCaptures(Array<Move, 256>& moves, Board& b
             }
         }
     } else {
-        for(int& sq : b.pieceList[BLACK_KNIGHT]) {
+        for(int sq : b.pieceList[BLACK_KNIGHT]) {
             // Wenn der Springer gefesselt ist, kann er sich nicht bewegen
             if(pinnedPieces.getBit(sq))
                 continue;
@@ -2034,7 +2034,7 @@ void MagicMovegen::generateWhiteBishopCaptures(Array<Move, 256>& moves, Board& b
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Läufer den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int& sq : b.pieceList[WHITE_BISHOP]) {
+        for(int sq : b.pieceList[WHITE_BISHOP]) {
             // Wenn der Läufer gefesselt ist, kann er sich nicht bewegen
             if(pinnedPiecesBitboard.getBit(sq))
                 continue;
@@ -2052,7 +2052,7 @@ void MagicMovegen::generateWhiteBishopCaptures(Array<Move, 256>& moves, Board& b
             }
         }
     } else {
-        for(int& sq : b.pieceList[WHITE_BISHOP]) {
+        for(int sq : b.pieceList[WHITE_BISHOP]) {
             // Wenn der Läufer gefesselt ist, muss er sich in oder gegen die Richtung bewegen, in die er gefesselt ist
             if(pinnedPiecesBitboard.getBit(sq)) {
                 int32_t pinDirection = pinDirections[sq];
@@ -2137,7 +2137,7 @@ void MagicMovegen::generateBlackBishopCaptures(Array<Move, 256>& moves, Board& b
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Läufer den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int& sq : b.pieceList[BLACK_BISHOP]) {
+        for(int sq : b.pieceList[BLACK_BISHOP]) {
             // Wenn der Läufer gefesselt ist, kann er sich nicht bewegen
             if(pinnedPiecesBitboard.getBit(sq))
                 continue;
@@ -2155,7 +2155,7 @@ void MagicMovegen::generateBlackBishopCaptures(Array<Move, 256>& moves, Board& b
             }
         }
     } else {
-        for(int& sq : b.pieceList[BLACK_BISHOP]) {
+        for(int sq : b.pieceList[BLACK_BISHOP]) {
             // Wenn der Läufer gefesselt ist, muss er sich in oder gegen die Richtung bewegen, in die er gefesselt ist
             if(pinnedPiecesBitboard.getBit(sq)) {
                 int32_t pinDirection = pinDirections[sq];
@@ -2240,7 +2240,7 @@ void MagicMovegen::generateWhiteRookCaptures(Array<Move, 256>& moves, Board& b,
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Turm den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int& sq : b.pieceList[WHITE_ROOK]) {
+        for(int sq : b.pieceList[WHITE_ROOK]) {
             // Wenn der Turm gefesselt ist, kann er sich nicht bewegen
             if(pinnedPiecesBitboard.getBit(sq))
                 continue;
@@ -2258,7 +2258,7 @@ void MagicMovegen::generateWhiteRookCaptures(Array<Move, 256>& moves, Board& b,
             }
         }
     } else {
-        for(int& sq : b.pieceList[WHITE_ROOK]) {
+        for(int sq : b.pieceList[WHITE_ROOK]) {
             // Wenn der Turm gefesselt ist, muss er sich in oder gegen die Richtung bewegen, in die er gefesselt ist
             if(pinnedPiecesBitboard.getBit(sq)) {
                 int32_t pinDirection = pinDirections[sq];
@@ -2343,7 +2343,7 @@ void MagicMovegen::generateBlackRookCaptures(Array<Move, 256>& moves, Board& b,
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Turm den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int& sq : b.pieceList[BLACK_ROOK]) {
+        for(int sq : b.pieceList[BLACK_ROOK]) {
             // Wenn der Turm gefesselt ist, kann er sich nicht bewegen
             if(pinnedPiecesBitboard.getBit(sq))
                 continue;
@@ -2361,7 +2361,7 @@ void MagicMovegen::generateBlackRookCaptures(Array<Move, 256>& moves, Board& b,
             }
         }
     } else {
-        for(int& sq : b.pieceList[BLACK_ROOK]) {
+        for(int sq : b.pieceList[BLACK_ROOK]) {
             // Wenn der Turm gefesselt ist, muss er sich in oder gegen die Richtung bewegen, in die er gefesselt ist
             if(pinnedPiecesBitboard.getBit(sq)) {
                 int32_t pinDirection = pinDirections[sq];
@@ -2445,7 +2445,7 @@ void MagicMovegen::generateWhiteQueenCaptures(Array<Move, 256>& moves, Board& b,
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann die Dame den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int& sq : b.pieceList[WHITE_QUEEN]) {
+        for(int sq : b.pieceList[WHITE_QUEEN]) {
             // Wenn die Dame gefesselt ist, kann sie sich nicht bewegen
             if(pinnedPiecesBitboard.getBit(sq))
                 continue;
@@ -2469,7 +2469,7 @@ void MagicMovegen::generateWhiteQueenCaptures(Array<Move, 256>& moves, Board& b,
             }
         }
     } else {
-        for(int& sq : b.pieceList[WHITE_QUEEN]) {
+        for(int sq : b.pieceList[WHITE_QUEEN]) {
             // Wenn die Dame gefesselt ist, muss sie sich in oder gegen die Richtung bewegen, in die sie gefesselt ist
             if(pinnedPiecesBitboard.getBit(sq)) {
                 int32_t pinDirection = pinDirections[sq];
@@ -2610,7 +2610,7 @@ void MagicMovegen::generateBlackQueenCaptures(Array<Move, 256>& moves, Board& b,
     
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann die Dame den Angreifer schlagen oder sich dazwischen stellen
     if(numAttackers == 1) {
-        for(int& sq : b.pieceList[BLACK_QUEEN]) {
+        for(int sq : b.pieceList[BLACK_QUEEN]) {
             // Wenn die Dame gefesselt ist, kann sie sich nicht bewegen
             if(pinnedPiecesBitboard.getBit(sq))
                 continue;
@@ -2634,7 +2634,7 @@ void MagicMovegen::generateBlackQueenCaptures(Array<Move, 256>& moves, Board& b,
             }
         }
     } else {
-        for(int& sq : b.pieceList[BLACK_QUEEN]) {
+        for(int sq : b.pieceList[BLACK_QUEEN]) {
             // Wenn die Dame gefesselt ist, muss sie sich in oder gegen die Richtung bewegen, in die sie gefesselt ist
             if(pinnedPiecesBitboard.getBit(sq)) {
                 int32_t pinDirection = pinDirections[sq];

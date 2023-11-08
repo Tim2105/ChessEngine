@@ -332,6 +332,18 @@ class Board {
         Bitboard generateAttackBitboard(int32_t side);
 
         /**
+         * @brief Generiert ein Bitboard mit allen Feldern, die von einer Seite angegriffen werden.
+         * Die Angriffsbitboard der einzelnen Figurentypen werden aktualisiert. Es werden nur
+         * notwendige Bitboards aktualisiert, um die Effizienz zu steigern.
+         * 
+         * @param side Die Seite.
+         * @param updatedSquares Das Bitboard, das alle Felder enthält, dessen Belegung sich geändert hat.
+         * @param capturedPiece Der Typ der geschlagenen Figur, oder EMPTY, wenn keine Figur geschlagen wurde.
+         * @param wasPromotion Gibt an, ob der letzte Zug eine Bauernaufwertung war.
+         */
+        Bitboard generateAttackBitboard(int32_t side, Bitboard updatedSquares, int32_t capturedPiece, bool wasPromotion);
+
+        /**
          * @brief Generiert ein Bitboard, das alle Felder enthält, auf denen sich gefesselte Figuren befinden.
          * Außerdem wird die Richtung, aus der die Figuren gefesselt sind, in einem 64 int großen Array gespeichert.
          * 

@@ -81,6 +81,87 @@ uint64_t MagicsFinder::bishopAttackMask(int32_t sq, uint64_t occupied) {
     return attackBitboard;
 }
 
+uint64_t MagicsFinder::rookAttackTopMask(int32_t sq) {
+    uint64_t attackBitboard = 0ULL;
+
+    // Vertikal nach oben
+    for(int32_t i = sq + 8; i < 64; i += 8)
+        attackBitboard |= (1ULL << i);
+
+    return attackBitboard;
+}
+
+uint64_t MagicsFinder::rookAttackRightMask(int32_t sq) {
+    uint64_t attackBitboard = 0ULL;
+
+    // Horizontal nach rechts
+    for(int32_t i = sq + 1; i < 64 && i % 8 != 0; i += 1)
+        attackBitboard |= (1ULL << i);
+
+    return attackBitboard;
+}
+
+uint64_t MagicsFinder::rookAttackBottomMask(int32_t sq) {
+    uint64_t attackBitboard = 0ULL;
+
+    // Vertikal nach unten
+    for(int32_t i = sq - 8; i >= 0; i -= 8)
+        attackBitboard |= (1ULL << i);
+
+    return attackBitboard;
+}
+
+uint64_t MagicsFinder::rookAttackLeftMask(int32_t sq) {
+    uint64_t attackBitboard = 0ULL;
+
+    // Horizontal nach links
+    for(int32_t i = sq - 1; i >= 0 && i % 8 != 7; i -= 1)
+        attackBitboard |= (1ULL << i);
+
+    return attackBitboard;
+}
+
+uint64_t MagicsFinder::bishopAttackTopLeftMask(int32_t sq) {
+    uint64_t attackBitboard = 0ULL;
+
+    // Diagonal nach oben links
+    for(int32_t i = sq + 7; i < 64 && i % 8 != 7; i += 7)
+        attackBitboard |= (1ULL << i);
+
+    return attackBitboard;
+}
+
+
+uint64_t MagicsFinder::bishopAttackTopRightMask(int32_t sq) {
+    uint64_t attackBitboard = 0ULL;
+
+    // Diagonal nach oben rechts
+    for(int32_t i = sq + 9; i < 64 && i % 8 != 0; i += 9)
+        attackBitboard |= (1ULL << i);
+
+    return attackBitboard;
+}
+
+uint64_t MagicsFinder::bishopAttackBottomLeftMask(int32_t sq) {
+    uint64_t attackBitboard = 0ULL;
+
+    // Diagonal nach unten links
+    for(int32_t i = sq - 9; i >= 0 && i % 8 != 7; i -= 9)
+        attackBitboard |= (1ULL << i);
+
+    return attackBitboard;
+}
+
+uint64_t MagicsFinder::bishopAttackBottomRightMask(int32_t sq) {
+    uint64_t attackBitboard = 0ULL;
+
+    // Diagonal nach unten rechts
+    for(int32_t i = sq - 7; i >= 0 && i % 8 != 0; i -= 7)
+        attackBitboard |= (1ULL << i);
+
+    return attackBitboard;
+}
+
 void MagicsFinder::findRookMasks(std::ofstream& resultFile) {
     resultFile << "static constexpr uint64_t rookMasks[64] = {\n";
     for(int32_t sq = 0; sq < 64; sq++) {

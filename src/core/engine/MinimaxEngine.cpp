@@ -479,12 +479,6 @@ int16_t MinimaxEngine::rootSearch(int16_t depth, int16_t expectedScore) {
  * @return int16_t 
  */
 int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) {
-    if(isCheckupTime())
-        checkup();
-
-    if(!searchRunning)
-        return 0;
-
     nodesSearched++;
 
     clearPvTable();
@@ -676,7 +670,7 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
  */
 int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, int32_t nullMoveCooldown) {
     // Überprüfe, ob die Suche unterbrochen werden soll
-    if(isCheckupTime())
+    if(nodesSearched % NODES_BETWEEN_CHECKUPS == 0 && isCheckupTime())
         checkup();
     
     if(!searchRunning)
@@ -847,7 +841,7 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
  */
 int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16_t beta, int32_t nullMoveCooldown) {
     // Überprüfe, ob die Suche unterbrochen werden soll
-    if(isCheckupTime())
+    if(nodesSearched % NODES_BETWEEN_CHECKUPS == 0 && isCheckupTime())
         checkup();
 
     if(!searchRunning)
@@ -1130,7 +1124,7 @@ int16_t MinimaxEngine::determineReduction(int16_t depth, int16_t ply, int32_t mo
  */
 int16_t MinimaxEngine::quiescence(int16_t ply, int16_t alpha, int16_t beta) {
     // Überprüfe, ob die Suche unterbrochen werden soll
-    if(isCheckupTime())
+    if(nodesSearched % NODES_BETWEEN_CHECKUPS == 0 && isCheckupTime())
         checkup();
 
     if(!searchRunning)
