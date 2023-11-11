@@ -128,18 +128,18 @@ bool MinimaxEngine::extendSearchUnderTimeControl(std::vector<Variation> pvHistor
         return true;
 
     // Wenn sich der beste Zug in den letzten 5 Durchläufen mindestens 3 mal geändert hat, dann wird die Suche verlängert,
-    // wenn die Standardabweichung der Bewertungen der letzten 5 Durchläufe größer als 30 ist
-    if(bestMoveChanges >= 3 && scoreStandardDeviation > 30.0 * timeFactor)
+    // wenn die Standardabweichung der Bewertungen der letzten 5 Durchläufe ein wenig hoch ist
+    if(bestMoveChanges >= 3 && scoreStandardDeviation > 40.0 * timeFactor)
         return true;
 
     // Wenn sich der beste Zug in den letzten 5 Durchläufen mindestens 2 mal geändert hat, dann wird die Suche verlängert,
-    // wenn die Standardabweichung der Bewertungen der letzten 5 Durchläufe größer als 45 ist
-    if(bestMoveChanges >= 2 && scoreStandardDeviation > 45.0 * timeFactor)
+    // wenn die Standardabweichung der Bewertungen der letzten 5 Durchläufe mittelhoch ist
+    if(bestMoveChanges >= 2 && scoreStandardDeviation > 60.0 * timeFactor)
         return true;
 
     // Wenn sich der beste Zug in den letzten 5 Durchläufen mindestens 1 mal geändert hat, dann wird die Suche verlängert,
-    // wenn die Standardabweichung der Bewertungen der letzten 5 Durchläufe größer als 60 ist
-    if(bestMoveChanges >= 1 && scoreStandardDeviation > 60.0 * timeFactor)
+    // wenn die Standardabweichung der Bewertungen der letzten 5 Durchläufe hoch ist
+    if(bestMoveChanges >= 1 && scoreStandardDeviation > 75.0 * timeFactor)
         return true;
 
     // Ansonsten wird die Suche nicht verlängert
@@ -1074,14 +1074,17 @@ int16_t MinimaxEngine::determineExtension(bool isCheckEvasion) {
  * @param isCheckEvasion Gibt an, ob es sich um eine Schachabwehr handelt.
  */
 int16_t MinimaxEngine::determineReduction(int16_t depth, int16_t ply, int32_t moveCount, bool isCheckEvasion) {
-    UNUSED(depth);
-
     int16_t reduction = 0;
 
     bool isCheck = searchBoard.isCheck();
 
-    // Keine Reduktion bei den ersten 2 Zügen
-    int32_t unreducedMoves = 2;
+    // Keine Reduktion bei dem ersten Zug
+    int32_t unreducedMoves = 1;
+
+    // Erhöhe die Anzahl der nicht reduzierten Züge,
+    // wenn wir näher an den Blättern sind
+    if(depth <= 6 * ONE_PLY)
+        unreducedMoves = 2;
 
     // oder bei Schach oder einer Schachabwehr
     if(moveCount <= unreducedMoves || isCheck || isCheckEvasion)
@@ -1089,16 +1092,7 @@ int16_t MinimaxEngine::determineReduction(int16_t depth, int16_t ply, int32_t mo
 
     // Reduziere anhand einer logarithmischen Funktion,
     // die von der Anzahl der bereits bearbeiteten Züge abhängig ist
-    reduction += (int16_t)(log(moveCount - unreducedMoves + 1) / log(2) * ONE_PLY);
-
-    // Reduziere anhand der Vergangenheitsbewertung
-    int32_t relativeHistoryScore = relativeHistory[searchBoard.getSideToMove() / COLOR_MASK]
-                                                  [searchBoard.getLastMove().getOrigin()]
-                                                  [searchBoard.getLastMove().getDestination()];
-
-    relativeHistoryScore = std::min(relativeHistoryScore, (int32_t)0);
-
-    reduction -= (int16_t)((relativeHistoryScore / 20000.0) * ONE_PLY);
+    reduction += (int16_t)(std::log(moveCount - unreducedMoves + 1) / std::log(2) * ONE_PLY);
 
     // Reduziere weniger, wenn wir uns in einer Mattvariante befinden
     if(isMateLine()) {
