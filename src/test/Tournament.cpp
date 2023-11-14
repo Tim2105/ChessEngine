@@ -37,11 +37,11 @@ const std::vector<std::string> Tournament::openings = {
 };
 
 const std::vector<int32_t> Tournament::timeControls = {
-    5, 10, 30
+    1, 5, 10
 };
 
 const std::vector<int32_t> Tournament::numGames = {
-    200, 100, 10
+    200, 200, 100
 };
 
 enum class TournamentGameResult {

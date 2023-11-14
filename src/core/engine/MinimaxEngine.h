@@ -129,6 +129,8 @@ class MinimaxEngine : public InterruptedEngine {
 
         void clearKillerMoves();
 
+        void clearCounterMoves();
+
         void runSearch(bool timeControl = false, uint32_t minTime = 0, uint32_t maxTime = 0);
 
         bool extendSearchUnderTimeControl(std::vector<Variation> pvHistory, uint32_t minTime, uint32_t maxTime, uint32_t timeSpent);

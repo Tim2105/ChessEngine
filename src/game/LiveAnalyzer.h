@@ -34,7 +34,7 @@ class LiveAnalyzer {
                 }
             };
 
-            engine = new MinimaxEngine(evaluator, 3, 10, checkupCallback);
+            engine = new MinimaxEngine(evaluator, 3, 50, checkupCallback);
         };
 
         virtual ~LiveAnalyzer() {

@@ -38,6 +38,15 @@ void MinimaxEngine::clearKillerMoves() {
 }
 
 /**
+ * @brief Löscht alle Konterzüge.
+ */
+void MinimaxEngine::clearCounterMoves() {
+    for(int i = 0; i < 15; i++)
+        for(int j = 0; j < 64; j++)
+            counterMoves[i][j] = Move();
+}
+
+/**
  * @brief Führt die Suche aus.
  * 
  * @param timeControl Gibt an, ob die Zeit eingeteilt werden soll.
@@ -171,6 +180,7 @@ void MinimaxEngine::search(uint32_t searchTime, bool treatAsTimeControl) {
     // die während der Suche verwendet werden
     clearRelativeHistory();
     clearKillerMoves();
+    clearCounterMoves();
     variations.clear();
 
     startTime = std::chrono::system_clock::now();
@@ -530,18 +540,14 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
 
         // Bestimme, um wie viel die Suchtiefe verkleinert werden soll
         int16_t extension = determineExtension(isCheckEvasion);
-        int16_t nwReduction = determineReduction(depth, 0, moveNumber, isCheckEvasion);
+        int16_t nwReduction = determineReduction(depth, 0, moveNumber, isCheckEvasion) * 2 / 3;
 
         int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
-
-        int16_t minReduction = -ONE_PLY;
-
-        nwDepthDelta = std::min(nwDepthDelta, minReduction);
 
         if(pvNodes > 0) {
             // Führe eine PV-Suche auf dieser Variation durch, wenn die Anzahl der betrachteten Variationen
             // kleiner als die Anzahl der, zu bestimmenden, Variationen ist
-            score = -pvSearch(depth - ONE_PLY, 1, -beta, -alpha, NULL_MOVE_R_VALUE - 1);
+            score = -pvSearch(depth - ONE_PLY + extension, 1, -beta, -alpha, NULL_MOVE_R_VALUE - 1);
         } else {
             // Führe ansonsten eine Nullfenster-Suche durch
             score = -nwSearch(depth + nwDepthDelta, 1, -alpha - 1, -alpha, NULL_MOVE_R_VALUE - 1);
@@ -549,7 +555,7 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
             // Wenn die Nullfenstersuche einen Wert > alpha liefert, muss die Bewertung
             // dieser Variation exakt bestimmt werden
             if(score > worstVariationScore)
-                score = -pvSearch(depth - ONE_PLY, 1, -beta, -alpha, NULL_MOVE_R_VALUE - 1);
+                score = -pvSearch(depth - ONE_PLY + extension, 1, -beta, -alpha, NULL_MOVE_R_VALUE - 1);
         }
 
         // Nehme den Zug zurück
@@ -692,7 +698,7 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
     }
 
     // Gehe in die Quieszenzsuche über, wenn das Ende der regulären Suche erreicht ist
-    if(depth <= 0)
+    if(depth <= 0 || ply * ONE_PLY >= currentMaxDepth)
         return quiescence(ply + 1, alpha, beta);
 
     pvTable[ply + 1].clear();
@@ -728,17 +734,13 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
 
         // Bestimme, um wie viel die Suchtiefe verkleinert werden soll
         int16_t extension = determineExtension(isCheckEvasion);
-        int16_t nwReduction = determineReduction(depth, ply, moveNumber, isCheckEvasion);
+        int16_t nwReduction = determineReduction(depth, ply, moveNumber, isCheckEvasion) * 2 / 3;
 
         int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
 
-        int16_t minReduction = -ONE_PLY;
-
-        nwDepthDelta = std::min(nwDepthDelta, minReduction);
-
         if(searchPv) {
             // Führe auf dem ersten Zug eine PV-Suche durch
-            score = -pvSearch(depth - ONE_PLY, ply + 1, -beta, -alpha, nullMoveCooldown - 1);
+            score = -pvSearch(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, nullMoveCooldown - 1);
         } else {
             // Führe ansonsten eine Nullfenster-Suche durch
             score = -nwSearch(depth + nwDepthDelta, ply + 1, -alpha - 1, -alpha, nullMoveCooldown - 1);
@@ -746,7 +748,7 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
             // Wenn die Nullfenstersuche einen Wert > alpha liefert, muss die Bewertung
             // dieser Variation exakt bestimmt werden
             if(score > alpha)
-                score = -pvSearch(depth - ONE_PLY, ply + 1, -beta, -alpha, nullMoveCooldown - 1);
+                score = -pvSearch(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, nullMoveCooldown - 1);
         }
 
         // Nehme den Zug zurück
@@ -859,7 +861,7 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
         return MIN_SCORE + 1;
 
     // Gehe in die Quieszenzsuche über, wenn das Ende der regulären Suche erreicht ist
-    if(depth <= 0)
+    if(depth <= 0 || ply * ONE_PLY >= currentMaxDepth)
         return quiescence(ply + 1, alpha, beta);
 
     // Suche in der Transpositionstabelle nach einem Eintrag zu dieser Position
@@ -944,16 +946,13 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
         int16_t nwReduction = determineReduction(depth, ply, moveNumber, isCheckEvasion);
 
         int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
-        int16_t minReduction = -ONE_PLY;
-
-        nwDepthDelta = std::min(nwDepthDelta, minReduction);
 
         int16_t score = -nwSearch(depth + nwDepthDelta, ply + 1, -beta, -alpha, nullMoveCooldown - 1);
 
         // Wenn eine reduzierte Suche eine Bewertung > alpha liefert, dann
         // wird eine nicht reduzierte Suche durchgeführt.
-        if(nwDepthDelta < -ONE_PLY && score > alpha)
-            score = -nwSearch(depth - ONE_PLY, ply + 1, -beta, -alpha, nullMoveCooldown - 1);
+        if(score > alpha && nwReduction > 0)
+            score = -nwSearch(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, nullMoveCooldown - 1);
 
         // Nehme den Zug zurück
         searchBoard.undoMove();
@@ -1039,7 +1038,7 @@ int16_t MinimaxEngine::determineExtension(bool isCheckEvasion) {
 
     // Schach oder Schachabwehr
     if(isCheckEvasion || isCheck)
-        extension += ONE_PLY * 3;
+        extension += ONE_PLY;
     
     // Schlagzug oder Bauernumwandlung
     if(!m.isQuiet()) {
@@ -1047,9 +1046,9 @@ int16_t MinimaxEngine::determineExtension(bool isCheckEvasion) {
         bool seeCacheHit = seeCache.probe(m, seeScore);
 
         if(!seeCacheHit || seeScore >= NEUTRAL_SEE_SCORE)
-            extension += ONE_PLY * 2; // Erweiterung wenn der Schlagzug eine gute/neutrale SEE-Bewertung hat
+            extension += TWO_THIRDS_PLY; // Erweiterung wenn der Schlagzug eine gute/neutrale SEE-Bewertung hat
         else
-            extension += TWO_THIRDS_PLY; // Geringere Erweiterung wenn der Schlagzug eine schlechte SEE-Bewertung hat
+            extension += ONE_THIRD_PLY; // Geringere Erweiterung wenn der Schlagzug eine schlechte SEE-Bewertung hat
     }
 
     // Freibauerzüge
@@ -1059,7 +1058,7 @@ int16_t MinimaxEngine::determineExtension(bool isCheckEvasion) {
 
         if(!(sentryMasks[side / COLOR_MASK][m.getDestination()]
             & searchBoard.getPieceBitboard(otherSide | PAWN)))
-            extension += TWO_THIRDS_PLY;
+            extension += ONE_THIRD_PLY;
     }
     
     return extension;
