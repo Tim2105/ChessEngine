@@ -15,11 +15,12 @@ rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 CC = em++
 
 # Compilerflags
-CFLAGS = -Wall -Wextra -Werror -std=c++20 -Isrc -O3 -flto=auto\
+CFLAGS = -Wall -Wextra -Werror -std=c++20 -Isrc -O3 -flto=full\
 		 -msimd128 -mavx
 
 # Linkerflags
-LDFLAGS = -sMODULARIZE=1 -sEXPORT_ES6=1 -sEXPORTED_RUNTIME_METHODS='["cwrap", "ccall", "addFunction", "removeFunction"]'\
+LDFLAGS = -sMODULARIZE=1 -sEXPORT_ES6=1 -sSINGLE_FILE=1\
+     	  -sEXPORTED_RUNTIME_METHODS='["cwrap", "ccall", "addFunction", "removeFunction"]'\
 		  -sALLOW_MEMORY_GROWTH=1 -sALLOW_TABLE_GROWTH=1 -sASSERTIONS=0 -sFILESYSTEM=0
 
 # Externe Bibliotheken

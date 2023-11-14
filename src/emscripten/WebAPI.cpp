@@ -7,6 +7,8 @@
 #include "core/engine/MinimaxEngine.h"
 #include "core/engine/StaticEvaluator.h"
 
+#include "core/utils/MoveNotations.h"
+
 #include <memory>
 
 // Initialisiere die Magic Bitboards
@@ -29,6 +31,7 @@ std::string fen;
 std::string legalMoves;
 std::string analysisData;
 std::string perftData;
+std::string figurineNotation;
 
 bool setBoard(const char* fen) {
     try {
@@ -195,6 +198,12 @@ char* getAnalysisData() {
 
 char* getError() {
     return (char*)error.c_str();
+}
+
+char* moveToFigurineNotation(int16_t move) {
+    Move m(move);
+    figurineNotation = toFigurineAlgebraicNotation(m, board);
+    return (char*)figurineNotation.c_str();
 }
 
 #endif

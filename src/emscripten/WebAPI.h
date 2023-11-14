@@ -39,6 +39,7 @@ extern "C" {
 
     EMSCRIPTEN_KEEPALIVE char* getError();
 
+    EMSCRIPTEN_KEEPALIVE char* moveToFigurineNotation(int16_t move);
 }
 
 #endif
