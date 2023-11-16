@@ -336,15 +336,6 @@ void MinimaxEngine::sortMovesAtRoot(Array<Move, 256>& moves) {
 
 /**
  * @brief Führt eine (inplace) Vorsortierung der Züge durch.
- * 
- * @param moves Die, zu sortierenden, Züge.
- */
-void MinimaxEngine::sortMoves(Array<Move, 256>& moves, int16_t ply) {
-    sortAndCutMoves(moves, ply, MIN_SCORE);
-}
-
-/**
- * @brief Führt eine (inplace) Vorsortierung der Züge durch.
  * Diese Sortierung ist speziell für die Quieszenzsuche gedacht
  * und bekommt eine Minimalbewertung übergeben, die die Züge haben müssen,
  * um nicht aus der Liste entfernt zu werden.
@@ -394,7 +385,7 @@ void MinimaxEngine::sortAndCutMovesForQuiescence(Array<Move, 256>& moves, int32_
  * @param ply Die Suchtiefe.
  * @param minScore Die minimale Bewertung, die ein Zug haben muss, um nicht aus der Liste entfernt zu werden.
  */
-void MinimaxEngine::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t minScore) {
+void MinimaxEngine::sortMoves(Array<Move, 256>& moves, int16_t ply) {
     Array<MoveScorePair, 256> msp;
 
     // Suche nach einem Eintrag zu dieser Position in der Transpositionstabelle
@@ -412,8 +403,7 @@ void MinimaxEngine::sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_
         else
             moveScore += scoreMove(move, ply);
 
-        if(moveScore >= minScore)
-            msp.push_back({move, moveScore});
+        msp.push_back({move, moveScore});
     }
 
     std::sort(msp.begin(), msp.end(), std::greater<MoveScorePair>());
@@ -592,10 +582,12 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
                                 [lastMove.getOrigin()] = move;
             }
 
-            // Erhöhe die Vergangenheitsbewertung
-            relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
-                           [move.getOrigin()]
-                           [move.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
+            if(depth >= 4 * ONE_PLY) {
+                // Erhöhe die Vergangenheitsbewertung
+                relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
+                            [move.getOrigin()]
+                            [move.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
+            }
 
             return score;
         }
@@ -651,10 +643,12 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
         currentAge, depth, bestScore, EXACT_NODE, bestMove
     });
 
-    // Erhöhe die Vergangenheitsbewertung des besten Zuges
-    relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
-                    [bestMove.getOrigin()]
-                    [bestMove.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
+    if(depth >= 4 * ONE_PLY) {
+        // Erhöhe die Vergangenheitsbewertung des besten Zuges
+        relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
+                        [bestMove.getOrigin()]
+                        [bestMove.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
+    }
                 
     // Überschreibe die Variationsliste mit der neuen Variationsliste, wenn unsere Bewertung
     // innerhalb [alpha, beta] liegt
@@ -681,8 +675,6 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
     
     if(!searchRunning)
         return 0;
-
-    nodesSearched++;
 
     // Brich ab, wenn die Position ein Unentschieden durch
     // Positionswiederholung, 50-Züge-Regel oder Material ist
@@ -787,10 +779,12 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
                                 [lastMove.getOrigin()] = move;
             }
 
-            // Erhöhe die Vergangenheitsbewertung
-            relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
-                           [move.getOrigin()]
-                           [move.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
+            if(depth >= 4 * ONE_PLY) {
+                // Erhöhe die Vergangenheitsbewertung
+                relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
+                            [move.getOrigin()]
+                            [move.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
+            }
 
             return score;
         }
@@ -825,10 +819,12 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
             currentAge, depth, bestScore, EXACT_NODE, bestMove
         });
 
-    // Erhöhe die Vergangenheitsbewertung des besten Zuges
-    relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
-                    [bestMove.getOrigin()]
-                    [bestMove.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
+    if(depth >= 4 * ONE_PLY) {
+        // Erhöhe die Vergangenheitsbewertung des besten Zuges
+        relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
+                        [bestMove.getOrigin()]
+                        [bestMove.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
+    }
 
     return bestScore;
 }
@@ -848,8 +844,6 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
 
     if(!searchRunning)
         return 0;
-
-    nodesSearched++;
 
     // Brich ab, wenn die Position ein Unentschieden durch
     // Positionswiederholung, 50-Züge-Regel oder Material ist
@@ -990,10 +984,12 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
                                 [lastMove.getOrigin()] = move;
             }
 
-            // Erhöhe die Vergangenheitsbewertung
-            relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
-                           [move.getOrigin()]
-                           [move.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
+            if(depth >= 4 * ONE_PLY) {
+                // Erhöhe die Vergangenheitsbewertung
+                relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
+                            [move.getOrigin()]
+                            [move.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
+            }
 
             return score;
         }
@@ -1013,11 +1009,6 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
         transpositionTable.put(searchBoard.getHashValue(), {
             currentAge, depth, bestScore, NW_NODE | EXACT_NODE, bestMove
         });
-    
-    // Erhöhe die Vergangenheitsbewertung des besten Zuges
-    relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
-                [bestMove.getOrigin()]
-                [bestMove.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
 
     return bestScore;
 }
@@ -1041,15 +1032,16 @@ int16_t MinimaxEngine::determineExtension(bool isCheckEvasion) {
         extension += ONE_PLY;
     
     // Schlagzug oder Bauernumwandlung
-    if(!m.isQuiet()) {
+    if(m.isCapture()) {
         int32_t seeScore = MIN_SCORE;
-        bool seeCacheHit = seeCache.probe(m, seeScore);
+        seeCache.probe(m, seeScore);
 
-        if(!seeCacheHit || seeScore >= NEUTRAL_SEE_SCORE)
-            extension += TWO_THIRDS_PLY; // Erweiterung wenn der Schlagzug eine gute/neutrale SEE-Bewertung hat
+        if(seeScore >= NEUTRAL_SEE_SCORE)
+            extension += ONE_PLY; // Erweiterung wenn der Schlagzug eine gute/neutrale SEE-Bewertung hat
         else
-            extension += ONE_THIRD_PLY; // Geringere Erweiterung wenn der Schlagzug eine schlechte SEE-Bewertung hat
-    }
+            extension += ONE_HALF_PLY; // Geringere Erweiterung wenn der Schlagzug eine schlechte SEE-Bewertung hat
+    } else if(!m.isQuiet())
+        extension += ONE_HALF_PLY; // Geringere Erweiterung bei Aufwertung oder Rochade
 
     // Freibauerzüge
     if(movedPieceType == PAWN) {
@@ -1058,7 +1050,7 @@ int16_t MinimaxEngine::determineExtension(bool isCheckEvasion) {
 
         if(!(sentryMasks[side / COLOR_MASK][m.getDestination()]
             & searchBoard.getPieceBitboard(otherSide | PAWN)))
-            extension += ONE_THIRD_PLY;
+            extension += FIVE_SIXTHS_PLY;
     }
     
     return extension;
@@ -1080,18 +1072,28 @@ int16_t MinimaxEngine::determineReduction(int16_t depth, int16_t ply, int32_t mo
     // Keine Reduktion bei dem ersten Zug
     int32_t unreducedMoves = 1;
 
-    // Erhöhe die Anzahl der nicht reduzierten Züge,
-    // wenn wir näher an den Blättern sind
-    if(depth <= 6 * ONE_PLY)
-        unreducedMoves = 2;
+    if(ply < 2)
+        return 0;
 
     // oder bei Schach oder einer Schachabwehr
     if(moveCount <= unreducedMoves || isCheck || isCheckEvasion)
         return 0;
 
+    Move m = searchBoard.getLastMove();
+    int32_t seeScore = MIN_SCORE;
+    if(m.isCapture()) {
+        seeCache.probe(m, seeScore);
+
+        if(seeScore >= NEUTRAL_SEE_SCORE)
+            return 0; // Keine Reduktion bei guten/neutralen SEE-Bewertungen
+    }
+
     // Reduziere anhand einer logarithmischen Funktion,
     // die von der Anzahl der bereits bearbeiteten Züge abhängig ist
-    reduction += (int16_t)(std::log(moveCount - unreducedMoves + 1) / std::log(2) * ONE_PLY);
+    reduction += (int16_t)((std::log(moveCount - unreducedMoves + 1) / std::log(2) + std::log(depth / ONE_PLY)) * ONE_PLY);
+
+    if(m.isCapture())
+        reduction /= 2;
 
     // Reduziere weniger, wenn wir uns in einer Mattvariante befinden
     if(isMateLine()) {
@@ -1103,7 +1105,7 @@ int16_t MinimaxEngine::determineReduction(int16_t depth, int16_t ply, int32_t mo
         }
     }
     
-    return reduction;
+    return std::max(reduction, (int16_t)0);
 }
 
 /**

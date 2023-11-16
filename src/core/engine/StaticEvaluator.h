@@ -124,16 +124,6 @@ class StaticEvaluator : public Evaluator {
         inline int32_t evalEG_PSQT();
 
         /**
-         * @brief Versucht die Bewertung einer Stellung aus der Hash-Tabelle zu laden.
-         */
-        bool probeEvaluationTable(int32_t& score);
-
-        /**
-         * @brief Speichert die Bewertung einer Stellung in der Hash-Tabelle.
-         */
-        void storeEvaluationTable(int32_t score);
-
-        /**
          * @brief Versucht die Bewertung einer Bauernstruktur aus der Hash-Tabelle zu laden.
          * 
          * @param b Das aktuelle Spielfeld.
@@ -265,9 +255,9 @@ class StaticEvaluator : public Evaluator {
             0, // Empty
             150, // Pawn
             350, // Knight
-            370, // Bishop
+            360, // Bishop
             530, // Rook
-            1010, // Queen
+            950, // Queen
             0 // King
         };
 

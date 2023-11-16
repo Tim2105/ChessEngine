@@ -45,7 +45,7 @@
 
 #define NULL_MOVE_R_VALUE 2
 
-#define NODES_BETWEEN_CHECKUPS 2048
+#define NODES_BETWEEN_CHECKUPS 1024
 
 /**
  * @brief Eine Fail-Soft Implementation des Scout-Algorithmus mit anschließender Quieszenzsuche.
@@ -139,11 +139,9 @@ class MinimaxEngine : public InterruptedEngine {
 
         void sortMovesAtRoot(Array<Move, 256>& moves);
 
-        void sortMoves(Array<Move, 256>& moves, int16_t ply);
-
         void sortAndCutMovesForQuiescence(Array<Move, 256>& moves, int32_t minScore, int32_t moveEvalFunc);
 
-        void sortAndCutMoves(Array<Move, 256>& moves, int16_t ply, int32_t minScore);
+        void sortMoves(Array<Move, 256>& moves, int16_t ply);
 
         int16_t rootSearch(int16_t depth, int16_t expectedScore);
 
