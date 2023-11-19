@@ -153,9 +153,23 @@ class MinimaxEngine : public InterruptedEngine {
 
         int16_t quiescence(int16_t ply, int16_t alpha, int16_t beta);
 
-        int16_t determineExtension(bool isCheckEvasion = false);
+        struct PruningVariables {
+            Move lastMove;
+            int32_t movedPiece;
+            bool isCheck;
+            int32_t seeScore;
+            bool isPawnPush;
+            bool isPassedPawnPush;
+            bool isCaptureEvasion;
+        };
 
-        int16_t determineReduction(int16_t depth, int16_t ply, int32_t moveCount, bool isCheckEvasion = false);
+        PruningVariables determinePruningVariables();
+
+        int16_t determineExtension(PruningVariables& pruningVars, bool isCheckEvasion = false);
+
+        int16_t determineReduction(int16_t depth, int16_t ply, int32_t moveCount, PruningVariables& pruningVars, bool isCheckEvasion = false);
+
+        bool shouldPrune(int16_t depth, int16_t ply, int32_t moveCount, PruningVariables& pruningVars, bool isCheckEvasion = false);
 
         constexpr bool isMateLine() { return mateDistance != MAX_PLY; }
 

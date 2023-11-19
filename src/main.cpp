@@ -2,6 +2,7 @@
 #include "core/chess/Board.h"
 #include "core/engine/StaticEvaluator.h"
 #include "core/engine/MinimaxEngine.h"
+#include "core/engine/OldEngine.h"
 #include "core/utils/magics/Magics.h"
 
 #include "game/ComputerPlayer.h"

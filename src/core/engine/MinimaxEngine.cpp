@@ -528,9 +528,12 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
         // Spiele den Zug
         searchBoard.makeMove(move);
 
+        // Bestimme alle Variablen zur Abschnittsbestimmung
+        PruningVariables pruningVars = determinePruningVariables();
+
         // Bestimme, um wie viel die Suchtiefe verkleinert werden soll
-        int16_t extension = determineExtension(isCheckEvasion);
-        int16_t nwReduction = determineReduction(depth, 0, moveNumber, isCheckEvasion) * 2 / 3;
+        int16_t extension = determineExtension(pruningVars, isCheckEvasion);
+        int16_t nwReduction = determineReduction(depth, 0, moveNumber, pruningVars, isCheckEvasion) * 2 / 3;
 
         int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
 
@@ -693,6 +696,8 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
     if(depth <= 0 || ply * ONE_PLY >= currentMaxDepth)
         return quiescence(ply + 1, alpha, beta);
 
+    nodesSearched++;
+
     pvTable[ply + 1].clear();
 
     TranspositionTableEntry ttEntry;
@@ -724,9 +729,12 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
         // Spiele den Zug
         searchBoard.makeMove(move);
 
+        // Bestimme alle Variablen zur Abschnittsbestimmung
+        PruningVariables pruningVars = determinePruningVariables();
+
         // Bestimme, um wie viel die Suchtiefe verkleinert werden soll
-        int16_t extension = determineExtension(isCheckEvasion);
-        int16_t nwReduction = determineReduction(depth, ply, moveNumber, isCheckEvasion) * 2 / 3;
+        int16_t extension = determineExtension(pruningVars, isCheckEvasion);
+        int16_t nwReduction = determineReduction(depth, ply, moveNumber, pruningVars, isCheckEvasion) * 2 / 3;
 
         int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
 
@@ -858,6 +866,8 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
     if(depth <= 0 || ply * ONE_PLY >= currentMaxDepth)
         return quiescence(ply + 1, alpha, beta);
 
+    nodesSearched++;
+
     // Suche in der Transpositionstabelle nach einem Eintrag zu dieser Position
     TranspositionTableEntry ttEntry = {0, 0, 0, 0, Move()};
     bool tableHit = transpositionTable.probe(searchBoard.getHashValue(), ttEntry);
@@ -935,9 +945,18 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
         // Spiele den Zug
         searchBoard.makeMove(move);
 
+        // Bestimme alle Variablen zur Abschnittsbestimmung
+        PruningVariables pruningVars = determinePruningVariables();
+
+        if(shouldPrune(depth, ply, moveNumber, pruningVars, isCheckEvasion)) {
+            // Nehme den Zug zurück
+            searchBoard.undoMove();
+            continue;
+        }
+
         // Bestimme, um wie viel die Suchtiefe verkleinert werden soll
-        int16_t extension = determineExtension(isCheckEvasion);
-        int16_t nwReduction = determineReduction(depth, ply, moveNumber, isCheckEvasion);
+        int16_t extension = determineExtension(pruningVars, isCheckEvasion);
+        int16_t nwReduction = determineReduction(depth, ply, moveNumber, pruningVars, isCheckEvasion);
 
         int16_t nwDepthDelta = -ONE_PLY - nwReduction + extension;
 
@@ -1013,45 +1032,62 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
     return bestScore;
 }
 
+MinimaxEngine::PruningVariables MinimaxEngine::determinePruningVariables() {
+    PruningVariables state {
+        Move::nullMove(),
+        EMPTY,
+        false,
+        MIN_SCORE,
+        false,
+        false,
+        false
+    };
+
+    state.lastMove = searchBoard.getLastMove();
+    state.movedPiece = searchBoard.pieceAt(state.lastMove.getDestination());
+    state.isCheck = searchBoard.isCheck();
+    seeCache.probe(state.lastMove, state.seeScore);
+
+    int32_t movedPieceType = TYPEOF(searchBoard.pieceAt(state.lastMove.getDestination()));
+    state.isPawnPush = movedPieceType == PAWN;
+
+    int32_t side = searchBoard.getSideToMove() ^ COLOR_MASK;
+    int32_t otherSide = searchBoard.getSideToMove();
+    if(state.isPawnPush) {
+        if(!(sentryMasks[side / COLOR_MASK][state.lastMove.getDestination()]
+            & searchBoard.getPieceBitboard(otherSide | PAWN)))
+            state.isPassedPawnPush = true;
+    }
+
+    if(searchBoard.getAttackBitboard(otherSide).getBit(state.lastMove.getOrigin()))
+        state.isCaptureEvasion = true;
+
+    return state;
+}
+
 /**
  * @brief Bestimme, um die viel die Suchtiefe für diesen Zug erweitert werden soll.
  * 
  * @param isCheckEvasion Gibt an, ob es sich um eine Schachabwehr handelt.
  */
-int16_t MinimaxEngine::determineExtension(bool isCheckEvasion) {
+int16_t MinimaxEngine::determineExtension(PruningVariables& pruningVars, bool isCheckEvasion) {
     int16_t extension = 0;
 
-    Move m = searchBoard.getLastMove();
+    Move m = pruningVars.lastMove;
 
-    int32_t movedPieceType = TYPEOF(searchBoard.pieceAt(m.getDestination()));
-
-    bool isCheck = searchBoard.isCheck();
+    bool isCheck = pruningVars.isCheck;
 
     // Schach oder Schachabwehr
     if(isCheckEvasion || isCheck)
         extension += ONE_PLY;
     
     // Schlagzug oder Bauernumwandlung
-    if(m.isCapture()) {
-        int32_t seeScore = MIN_SCORE;
-        seeCache.probe(m, seeScore);
-
-        if(seeScore >= NEUTRAL_SEE_SCORE)
-            extension += ONE_PLY; // Erweiterung wenn der Schlagzug eine gute/neutrale SEE-Bewertung hat
-        else
-            extension += ONE_HALF_PLY; // Geringere Erweiterung wenn der Schlagzug eine schlechte SEE-Bewertung hat
-    } else if(!m.isQuiet())
-        extension += ONE_HALF_PLY; // Geringere Erweiterung bei Aufwertung oder Rochade
+    if(m.isCapture() || m.isPromotion())
+        extension += ONE_HALF_PLY;
 
     // Freibauerzüge
-    if(movedPieceType == PAWN) {
-        int32_t side = searchBoard.getSideToMove() ^ COLOR_MASK;
-        int32_t otherSide = searchBoard.getSideToMove();
-
-        if(!(sentryMasks[side / COLOR_MASK][m.getDestination()]
-            & searchBoard.getPieceBitboard(otherSide | PAWN)))
-            extension += FIVE_SIXTHS_PLY;
-    }
+    if(pruningVars.isPassedPawnPush)
+        extension += ONE_HALF_PLY;
     
     return extension;
 }
@@ -1064,36 +1100,35 @@ int16_t MinimaxEngine::determineExtension(bool isCheckEvasion) {
  * @param moveCount Die Anzahl der bereits generierten Züge.
  * @param isCheckEvasion Gibt an, ob es sich um eine Schachabwehr handelt.
  */
-int16_t MinimaxEngine::determineReduction(int16_t depth, int16_t ply, int32_t moveCount, bool isCheckEvasion) {
+int16_t MinimaxEngine::determineReduction(int16_t depth, int16_t ply, int32_t moveCount, PruningVariables& pruningVars, bool isCheckEvasion) {
     int16_t reduction = 0;
 
-    bool isCheck = searchBoard.isCheck();
+    bool isCheck = pruningVars.isCheck;
 
     // Keine Reduktion bei dem ersten Zug
     int32_t unreducedMoves = 1;
 
-    if(ply < 2)
+    if(ply <= 2)
         return 0;
 
     // oder bei Schach oder einer Schachabwehr
     if(moveCount <= unreducedMoves || isCheck || isCheckEvasion)
         return 0;
 
-    Move m = searchBoard.getLastMove();
-    int32_t seeScore = MIN_SCORE;
-    if(m.isCapture()) {
-        seeCache.probe(m, seeScore);
-
-        if(seeScore >= NEUTRAL_SEE_SCORE)
-            return 0; // Keine Reduktion bei guten/neutralen SEE-Bewertungen
-    }
+    if(pruningVars.seeScore >= NEUTRAL_SEE_SCORE)
+        return 0; // Keine Reduktion bei guten/neutralen SEE-Bewertungen
 
     // Reduziere anhand einer logarithmischen Funktion,
     // die von der Anzahl der bereits bearbeiteten Züge abhängig ist
     reduction += (int16_t)((std::log(moveCount - unreducedMoves + 1) / std::log(2) + std::log(depth / ONE_PLY)) * ONE_PLY);
 
-    if(m.isCapture())
-        reduction /= 2;
+    // Geringere Reduktion, wenn wir einem Schlagzug ausweichen
+    if(pruningVars.isCaptureEvasion)
+        reduction -= ONE_PLY;
+
+    // Höhere Reduktion bei einem Schlagzug mit SEE < 0
+    if(pruningVars.lastMove.isCapture())
+        reduction += ONE_PLY;
 
     // Reduziere weniger, wenn wir uns in einer Mattvariante befinden
     if(isMateLine()) {
@@ -1106,6 +1141,41 @@ int16_t MinimaxEngine::determineReduction(int16_t depth, int16_t ply, int32_t mo
     }
     
     return std::max(reduction, (int16_t)0);
+}
+
+/**
+ * @brief Überprüft, ob ein Knoten abgeschnitten werden soll.
+ * 
+ * @param depth Die momentane Tiefe.
+ * @param ply Der Abstand zur Wurzel.
+ * @param moveCount Die Anzahl der bereits generierten Züge.
+ * @param isCheckEvasion Gibt an, ob es sich um eine Schachabwehr handelt.
+ */
+bool MinimaxEngine::shouldPrune(int16_t depth, int16_t ply, int32_t moveCount, PruningVariables& pruningVars, bool isCheckEvasion) {
+    // Wir schneiden nie den ersten Zug ab
+    if(moveCount <= 1)
+        return false;
+
+    if(ply <= 2)
+        return false;
+
+    // Wir schneiden nie einen Schlagzug oder eine Bauernumwandlung ab
+    Move m = pruningVars.lastMove;
+    if(m.isCapture() || m.isPromotion())
+        return false;
+
+    // Wir schneiden nie bei Schach oder Schachabwehr ab
+    if(isCheckEvasion || pruningVars.isCheck)
+        return false;
+
+    // Wir schneiden nie Freibauerzüge ab
+    if(pruningVars.isPassedPawnPush)
+        return false;
+
+    if(moveCount >= depth * 5 / (ONE_PLY * 3) + 2)
+        return true;
+
+    return false;
 }
 
 /**
