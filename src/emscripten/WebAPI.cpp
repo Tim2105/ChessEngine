@@ -179,7 +179,7 @@ char* getAnalysisData() {
         analysisData += "\"score\":" + std::to_string(searchDetails.variations[i].score) + ",";
         analysisData += "\"moves\":[";
         for(size_t j = 0; j < searchDetails.variations[i].moves.size(); j++) {
-            analysisData += "\"" + searchDetails.variations[i].moves[j].toString() + "\"";
+            analysisData += std::to_string(searchDetails.variations[i].moves[j]);
             
             if(j < searchDetails.variations[i].moves.size() - 1)
                 analysisData += ",";
