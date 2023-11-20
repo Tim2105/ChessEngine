@@ -152,6 +152,9 @@ bool startAnalysis() {
 
     analysisEngine->search(0);
 
+    // Schreib den letzten Stand in die searchDetails
+    searchDetails = analysisEngine->getSearchDetails();
+
     return true;
 }
 

@@ -949,6 +949,7 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
         PruningVariables pruningVars = determinePruningVariables();
 
         if(shouldPrune(depth, ply, moveNumber, pruningVars, isCheckEvasion)) {
+            nodesSearched++;
             // Nehme den Zug zurück
             searchBoard.undoMove();
             continue;
@@ -1108,36 +1109,40 @@ int16_t MinimaxEngine::determineReduction(int16_t depth, int16_t ply, int32_t mo
     // Keine Reduktion bei dem ersten Zug
     int32_t unreducedMoves = 1;
 
+    // oder bei Schach oder einer Schachabwehr
+    if(moveCount <= unreducedMoves)
+        return 0;
+
     if(ply <= 2)
         return 0;
 
-    // oder bei Schach oder einer Schachabwehr
-    if(moveCount <= unreducedMoves || isCheck || isCheckEvasion)
-        return 0;
-
-    if(pruningVars.seeScore >= NEUTRAL_SEE_SCORE)
-        return 0; // Keine Reduktion bei guten/neutralen SEE-Bewertungen
+    if(isCheck || isCheckEvasion || pruningVars.seeScore >= NEUTRAL_SEE_SCORE)
+        reduction -= 2 * ONE_PLY;
 
     // Reduziere anhand einer logarithmischen Funktion,
     // die von der Anzahl der bereits bearbeiteten Züge abhängig ist
     reduction += (int16_t)((std::log(moveCount - unreducedMoves + 1) / std::log(2) + std::log(depth / ONE_PLY)) * ONE_PLY);
 
+    // Höhere Reduktion bei einem Schlagzug mit SEE < 0
+    if(pruningVars.lastMove.isCapture() && pruningVars.seeScore < NEUTRAL_SEE_SCORE)
+        reduction += 2 * ONE_PLY;
+
     // Geringere Reduktion, wenn wir einem Schlagzug ausweichen
     if(pruningVars.isCaptureEvasion)
         reduction -= ONE_PLY;
+    else if(!pruningVars.isPawnPush && pruningVars.lastMove.isQuiet())
+        reduction += 2 * ONE_PLY;
 
-    // Höhere Reduktion bei einem Schlagzug mit SEE < 0
-    if(pruningVars.lastMove.isCapture())
-        reduction += ONE_PLY;
+    reduction -= relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
+                                [pruningVars.lastMove.getOrigin()]
+                                [pruningVars.lastMove.getDestination()] / 25000 * ONE_PLY;
 
     // Reduziere weniger, wenn wir uns in einer Mattvariante befinden
     if(isMateLine()) {
         int16_t maxSearchPly = (int16_t)(currentMaxDepth / ONE_PLY);
 
-        if(maxSearchPly > mateDistance + ply) {
+        if(maxSearchPly > mateDistance + ply)
             reduction -= (maxSearchPly - mateDistance - ply) * ONE_PLY;
-            reduction = std::max(reduction, (int16_t)0);
-        }
     }
     
     return std::max(reduction, (int16_t)0);
@@ -1156,7 +1161,7 @@ bool MinimaxEngine::shouldPrune(int16_t depth, int16_t ply, int32_t moveCount, P
     if(moveCount <= 1)
         return false;
 
-    if(ply <= 2)
+    if(ply <= 3)
         return false;
 
     // Wir schneiden nie einen Schlagzug oder eine Bauernumwandlung ab
@@ -1170,6 +1175,10 @@ bool MinimaxEngine::shouldPrune(int16_t depth, int16_t ply, int32_t moveCount, P
 
     // Wir schneiden nie Freibauerzüge ab
     if(pruningVars.isPassedPawnPush)
+        return false;
+
+    // Wir schneiden nie bei einem ausweichenden Zug ab
+    if(pruningVars.isCaptureEvasion)
         return false;
 
     if(moveCount >= depth * 5 / (ONE_PLY * 3) + 2)

@@ -24,9 +24,20 @@ int main() {
 
     Magics::initializeMagics();
 
-    ConsoleNavigator navigator;
+    // ConsoleNavigator navigator;
 
-    navigator.navigate();
+    // navigator.navigate();
+
+    Board board;
+
+    StaticEvaluator evaluator(board);
+    StaticEvaluator evaluator2(board);
+
+    MinimaxEngine engine(evaluator);
+    OldEngine engine2(evaluator2);
+
+    Tournament tournament(engine, engine2, "v3.1 new", "v3 old");
+    tournament.run();
 
     return 0;
 }
