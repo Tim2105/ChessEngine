@@ -585,12 +585,10 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
                                 [lastMove.getOrigin()] = move;
             }
 
-            if(depth >= 4 * ONE_PLY) {
-                // Erhöhe die Vergangenheitsbewertung
-                relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
-                            [move.getOrigin()]
-                            [move.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
-            }
+            // Erhöhe die Vergangenheitsbewertung
+            relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
+                        [move.getOrigin()]
+                        [move.getDestination()] += (depth / ONE_PLY) * (depth / ONE_PLY);
 
             return score;
         }
@@ -646,12 +644,10 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
         currentAge, depth, bestScore, EXACT_NODE, bestMove
     });
 
-    if(depth >= 4 * ONE_PLY) {
-        // Erhöhe die Vergangenheitsbewertung des besten Zuges
-        relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
-                        [bestMove.getOrigin()]
-                        [bestMove.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
-    }
+    // Erhöhe die Vergangenheitsbewertung des besten Zuges
+    relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
+                    [bestMove.getOrigin()]
+                    [bestMove.getDestination()] += (depth / ONE_PLY) * (depth / ONE_PLY);
                 
     // Überschreibe die Variationsliste mit der neuen Variationsliste, wenn unsere Bewertung
     // innerhalb [alpha, beta] liegt
@@ -787,12 +783,10 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
                                 [lastMove.getOrigin()] = move;
             }
 
-            if(depth >= 4 * ONE_PLY) {
-                // Erhöhe die Vergangenheitsbewertung
-                relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
-                            [move.getOrigin()]
-                            [move.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
-            }
+            // Erhöhe die Vergangenheitsbewertung
+            relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
+                        [move.getOrigin()]
+                        [move.getDestination()] += (depth / ONE_PLY) * (depth / ONE_PLY);
 
             return score;
         }
@@ -827,12 +821,10 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
             currentAge, depth, bestScore, EXACT_NODE, bestMove
         });
 
-    if(depth >= 4 * ONE_PLY) {
-        // Erhöhe die Vergangenheitsbewertung des besten Zuges
-        relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
-                        [bestMove.getOrigin()]
-                        [bestMove.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
-    }
+    // Erhöhe die Vergangenheitsbewertung des besten Zuges
+    relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
+                    [bestMove.getOrigin()]
+                    [bestMove.getDestination()] += (depth / ONE_PLY) * (depth / ONE_PLY);
 
     return bestScore;
 }
@@ -1004,12 +996,10 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
                                 [lastMove.getOrigin()] = move;
             }
 
-            if(depth >= 4 * ONE_PLY) {
-                // Erhöhe die Vergangenheitsbewertung
-                relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
-                            [move.getOrigin()]
-                            [move.getDestination()] += std::min(1 << (depth / ONE_PLY), 1 << 24);
-            }
+            // Erhöhe die Vergangenheitsbewertung
+            relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
+                        [move.getOrigin()]
+                        [move.getDestination()] += (depth / ONE_PLY) * (depth / ONE_PLY);
 
             return score;
         }
@@ -1085,7 +1075,7 @@ int16_t MinimaxEngine::determineExtension(PruningVariables& pruningVars, bool is
     // Schlagzug oder Bauernumwandlung
     if(m.isCapture() || m.isPromotion())
         extension += ONE_HALF_PLY;
-
+    
     // Freibauerzüge
     if(pruningVars.isPassedPawnPush)
         extension += ONE_HALF_PLY;
@@ -1135,7 +1125,7 @@ int16_t MinimaxEngine::determineReduction(int16_t depth, int16_t ply, int32_t mo
 
     reduction -= relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
                                 [pruningVars.lastMove.getOrigin()]
-                                [pruningVars.lastMove.getDestination()] / 25000 * ONE_PLY;
+                                [pruningVars.lastMove.getDestination()] / 25000.0 * ONE_PLY;
 
     // Reduziere weniger, wenn wir uns in einer Mattvariante befinden
     if(isMateLine()) {
