@@ -242,16 +242,28 @@ int32_t MinimaxEngine::scoreMove(Move& move, int16_t ply) {
         moveScore += seeScore + DEFAULT_CAPTURE_MOVE_SCORE;
     } else {
         // Leise Züge werden mit der Killerzug- und Konterzug-Heuristik bewertet
-        if(killerMoves[ply][0] == move)
+        bool isKillerMove = false;
+        if(killerMoves[ply][0] == move) {
             moveScore += 80;
-        else if(killerMoves[ply][1] == move)
+            isKillerMove = true;
+        } else if(killerMoves[ply][1] == move) {
             moveScore += 70;  
-        else if(ply >= 2) {
-            if(killerMoves[ply - 2][0] == move)
+            isKillerMove = true;
+        } else if(ply >= 2) {
+            if(killerMoves[ply - 2][0] == move) {
                 moveScore += 60;
-            else if(killerMoves[ply - 2][1] == move)
+                isKillerMove = true;
+            } else if(killerMoves[ply - 2][1] == move) {
                 moveScore += 50;
+                isKillerMove = true;
+            }
         }
+
+        // Alle Nicht-Killerzüge werden mit der Vergangenheitsbewertung bewertet
+        if(!isKillerMove)
+            moveScore += std::clamp(relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
+                            [move.getOrigin()][move.getDestination()] / ((currentMaxDepth / ONE_PLY) * (currentMaxDepth / ONE_PLY)),
+                            -99, 49);
 
         Move lastMove = searchBoard.getLastMove();
         if(lastMove.exists() && counterMoves[searchBoard.pieceAt(lastMove.getOrigin())]
@@ -289,11 +301,6 @@ int32_t MinimaxEngine::scoreMove(Move& move, int16_t ply) {
     }
 
     moveScore += MG_PSQT[movedPieceType][psqtDestination] - MG_PSQT[movedPieceType][psqtOrigin];
-
-    // Alle Züge werden mit der Vergangenheitsheuristik bewertet
-    moveScore += std::clamp(relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
-                        [move.getOrigin()][move.getDestination()] / ((currentMaxDepth / ONE_PLY) * (currentMaxDepth / ONE_PLY)),
-                        -99, 49);
 
     return moveScore;
 }
