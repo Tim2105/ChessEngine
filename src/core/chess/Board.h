@@ -3,7 +3,6 @@
 
 #include "core/chess/BoardDefinitions.h"
 #include "core/chess/Move.h"
-#include "core/chess/movegen/MagicMovegen.h"
 #include "core/utils/Array.h"
 #include "core/utils/Bitboard.h"
 
@@ -196,7 +195,7 @@ class RepetitionTable {
  * Die Klasse Board stellt ein Schachbrett dar und enthält Methoden zur Zuggeneration.
  */
 class Board {
-    friend class MagicMovegen;
+    friend class Movegen;
     
     private:
          /**
@@ -415,6 +414,9 @@ class Board {
          */
         Array<Move, 256> generateLegalMoves();
 
+        template <Array<uint8_t, 10> moveTypes, Array<uint8_t, 6> pieceTypes>
+        Array<Move, 256> generateLegalMoves();
+
         /**
          * @brief Generiert alle legalen Züge, die eine Figur schlagen
          */
@@ -585,5 +587,64 @@ class Board {
          */
         inline int32_t getKingSquare(int32_t side) const { return pieceList[side | KING].front(); };
 };
+
+#ifndef MOVEGEN_H
+    #include "core/chess/movegen/Movegen.h"
+
+    template <Array<uint8_t, 10> moveTypes, Array<uint8_t, 6> pieceTypes>
+    Array<Move, 256> Board::generateLegalMoves() {
+        Array<Move, 256> legalMoves;
+
+        if(side == WHITE) {
+            Bitboard attackedSquares = blackAttackBitboard;
+
+            Bitboard attackingRays;
+            int32_t numAttackers = numSquareAttackers(pieceList[WHITE_KING].front(), BLACK, allPiecesBitboard | pieceBitboard[BLACK_KING], attackingRays);
+
+            Bitboard pinnedPieces;
+            int pinnedDirections[64];
+
+            generatePinnedPiecesBitboards(WHITE, pinnedPieces, pinnedDirections);
+
+            if constexpr(pieceTypes.contains(PAWN))
+                Movegen::generateWhitePawnMoves<moveTypes>(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+            if constexpr(pieceTypes.contains(KNIGHT))
+                Movegen::generateWhiteKnightMoves<moveTypes>(legalMoves, *this, numAttackers, attackingRays, pinnedPieces);
+            if constexpr(pieceTypes.contains(BISHOP))
+                Movegen::generateWhiteBishopMoves<moveTypes>(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+            if constexpr(pieceTypes.contains(ROOK))
+                Movegen::generateWhiteRookMoves<moveTypes>(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+            if constexpr(pieceTypes.contains(QUEEN))
+                Movegen::generateWhiteQueenMoves<moveTypes>(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+            if constexpr(pieceTypes.contains(KING))
+                Movegen::generateWhiteKingMoves<moveTypes>(legalMoves, *this, attackedSquares);
+        } else {
+            Bitboard attackedSquares = whiteAttackBitboard;
+
+            Bitboard attackingRays;
+            int32_t numAttackers = numSquareAttackers(pieceList[BLACK_KING].front(), WHITE, allPiecesBitboard | pieceBitboard[WHITE_KING], attackingRays);
+
+            Bitboard pinnedPieces;
+            int pinnedDirections[64];
+
+            generatePinnedPiecesBitboards(BLACK, pinnedPieces, pinnedDirections);
+
+            if constexpr(pieceTypes.contains(PAWN))
+                Movegen::generateBlackPawnMoves<moveTypes>(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+            if constexpr(pieceTypes.contains(KNIGHT))
+                Movegen::generateBlackKnightMoves<moveTypes>(legalMoves, *this, numAttackers, attackingRays, pinnedPieces);
+            if constexpr(pieceTypes.contains(BISHOP))
+                Movegen::generateBlackBishopMoves<moveTypes>(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+            if constexpr(pieceTypes.contains(ROOK))
+                Movegen::generateBlackRookMoves<moveTypes>(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+            if constexpr(pieceTypes.contains(QUEEN))
+                Movegen::generateBlackQueenMoves<moveTypes>(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+            if constexpr(pieceTypes.contains(KING))
+                Movegen::generateBlackKingMoves<moveTypes>(legalMoves, *this, attackedSquares);
+        }
+
+        return legalMoves;
+    }
+#endif
 
 #endif

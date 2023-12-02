@@ -1211,19 +1211,19 @@ Array<Move, 256> Board::generatePseudoLegalMoves() {
     Array<Move, 256> moves;
 
     if(side == WHITE) {
-        MagicMovegen::generatePseudoLegalWhitePawnMoves(moves, *this);
-        MagicMovegen::generatePseudoLegalWhiteKnightMoves(moves, *this);
-        MagicMovegen::generatePseudoLegalWhiteBishopMoves(moves, *this);
-        MagicMovegen::generatePseudoLegalWhiteRookMoves(moves, *this);
-        MagicMovegen::generatePseudoLegalWhiteQueenMoves(moves, *this);
-        MagicMovegen::generatePseudoLegalWhiteKingMoves(moves, *this);
+        Movegen::generatePseudoLegalWhitePawnMoves(moves, *this);
+        Movegen::generatePseudoLegalWhiteKnightMoves(moves, *this);
+        Movegen::generatePseudoLegalWhiteBishopMoves(moves, *this);
+        Movegen::generatePseudoLegalWhiteRookMoves(moves, *this);
+        Movegen::generatePseudoLegalWhiteQueenMoves(moves, *this);
+        Movegen::generatePseudoLegalWhiteKingMoves(moves, *this);
     } else {
-        MagicMovegen::generatePseudoLegalBlackPawnMoves(moves, *this);
-        MagicMovegen::generatePseudoLegalBlackKnightMoves(moves, *this);
-        MagicMovegen::generatePseudoLegalBlackBishopMoves(moves, *this);
-        MagicMovegen::generatePseudoLegalBlackRookMoves(moves, *this);
-        MagicMovegen::generatePseudoLegalBlackQueenMoves(moves, *this);
-        MagicMovegen::generatePseudoLegalBlackKingMoves(moves, *this);
+        Movegen::generatePseudoLegalBlackPawnMoves(moves, *this);
+        Movegen::generatePseudoLegalBlackKnightMoves(moves, *this);
+        Movegen::generatePseudoLegalBlackBishopMoves(moves, *this);
+        Movegen::generatePseudoLegalBlackRookMoves(moves, *this);
+        Movegen::generatePseudoLegalBlackQueenMoves(moves, *this);
+        Movegen::generatePseudoLegalBlackKingMoves(moves, *this);
     }
 
     return moves;
@@ -1243,12 +1243,12 @@ Array<Move, 256> Board::generateLegalMoves() {
 
         generatePinnedPiecesBitboards(WHITE, pinnedPieces, pinnedDirections);
 
-        MagicMovegen::generateWhitePawnMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
-        MagicMovegen::generateWhiteKnightMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces);
-        MagicMovegen::generateWhiteBishopMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
-        MagicMovegen::generateWhiteRookMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
-        MagicMovegen::generateWhiteQueenMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
-        MagicMovegen::generateWhiteKingMoves(legalMoves, *this, attackedSquares);
+        Movegen::generateWhitePawnMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+        Movegen::generateWhiteKnightMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces);
+        Movegen::generateWhiteBishopMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+        Movegen::generateWhiteRookMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+        Movegen::generateWhiteQueenMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+        Movegen::generateWhiteKingMoves(legalMoves, *this, attackedSquares);
     } else {
         Bitboard attackedSquares = whiteAttackBitboard;
 
@@ -1260,12 +1260,12 @@ Array<Move, 256> Board::generateLegalMoves() {
 
         generatePinnedPiecesBitboards(BLACK, pinnedPieces, pinnedDirections);
 
-        MagicMovegen::generateBlackPawnMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
-        MagicMovegen::generateBlackKnightMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces);
-        MagicMovegen::generateBlackBishopMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
-        MagicMovegen::generateBlackRookMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
-        MagicMovegen::generateBlackQueenMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
-        MagicMovegen::generateBlackKingMoves(legalMoves, *this, attackedSquares);
+        Movegen::generateBlackPawnMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+        Movegen::generateBlackKnightMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces);
+        Movegen::generateBlackBishopMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+        Movegen::generateBlackRookMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+        Movegen::generateBlackQueenMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+        Movegen::generateBlackKingMoves(legalMoves, *this, attackedSquares);
     }
 
     return legalMoves;
@@ -1283,12 +1283,12 @@ Array<Move, 256> Board::generateLegalCaptures() {
 
         generatePinnedPiecesBitboards(WHITE, pinnedPieces, pinnedDirections);
 
-        MagicMovegen::generateWhitePawnCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
-        MagicMovegen::generateWhiteKnightCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces);
-        MagicMovegen::generateWhiteBishopCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
-        MagicMovegen::generateWhiteRookCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
-        MagicMovegen::generateWhiteQueenCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
-        MagicMovegen::generateWhiteKingCaptures(legalCaptures, *this);
+        Movegen::generateWhitePawnCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+        Movegen::generateWhiteKnightCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces);
+        Movegen::generateWhiteBishopCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+        Movegen::generateWhiteRookCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+        Movegen::generateWhiteQueenCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+        Movegen::generateWhiteKingCaptures(legalCaptures, *this);
     } else {
         Bitboard attackingRays;
         int32_t numAttackers = numSquareAttackers(pieceList[BLACK_KING].front(), WHITE, allPiecesBitboard | pieceBitboard[WHITE_KING], attackingRays);
@@ -1298,12 +1298,12 @@ Array<Move, 256> Board::generateLegalCaptures() {
 
         generatePinnedPiecesBitboards(BLACK, pinnedPieces, pinnedDirections);
 
-        MagicMovegen::generateBlackPawnCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
-        MagicMovegen::generateBlackKnightCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces);
-        MagicMovegen::generateBlackBishopCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
-        MagicMovegen::generateBlackRookCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
-        MagicMovegen::generateBlackQueenCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
-        MagicMovegen::generateBlackKingCaptures(legalCaptures, *this);
+        Movegen::generateBlackPawnCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+        Movegen::generateBlackKnightCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces);
+        Movegen::generateBlackBishopCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+        Movegen::generateBlackRookCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+        Movegen::generateBlackQueenCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
+        Movegen::generateBlackKingCaptures(legalCaptures, *this);
     }
 
     return legalCaptures;
