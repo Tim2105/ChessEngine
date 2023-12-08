@@ -1110,7 +1110,7 @@ int16_t MinimaxEngine::determineReduction(int16_t depth, int16_t ply, int32_t mo
     if(moveCount <= unreducedMoves)
         return 0;
 
-    if(ply <= 2)
+    if(ply <= 3)
         return 0;
 
     if(isCheck || isCheckEvasion || pruningVars.seeScore >= NEUTRAL_SEE_SCORE)

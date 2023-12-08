@@ -261,7 +261,7 @@ void MagicsFinder::generateAllOccupancyCombinations(uint64_t mask, uint64_t* occ
 bool validateRookMagicNumber(uint64_t magic, int32_t sq, int32_t shift, uint64_t* occupancies, int32_t numMaskBits) {
     int32_t numIndices = 1 << shift;
 
-    uint64_t attacks[numIndices];
+    uint64_t* attacks = new uint64_t[numIndices];
 
     for(int32_t j = 0; j < numIndices; j++)
         attacks[j] = 0;
@@ -273,17 +273,19 @@ bool validateRookMagicNumber(uint64_t magic, int32_t sq, int32_t shift, uint64_t
         if(attacks[magicIndex] == 0) {
             attacks[magicIndex] = MagicsFinder::rookAttackMask(sq, occupancy);
         } else if(attacks[magicIndex] != MagicsFinder::rookAttackMask(sq, occupancy)) {
+            delete[] attacks;
             return false;
         }
     }
 
+    delete[] attacks;
     return true;
 }
 
 bool validateBishopMagicNumber(uint64_t magic, int32_t sq, int32_t shift, uint64_t* occupancies, int32_t numMaskBits) {
     int32_t numIndices = 1 << shift;
 
-    uint64_t attacks[numIndices];
+    uint64_t* attacks = new uint64_t[numIndices];
 
     for(int32_t j = 0; j < numIndices; j++)
         attacks[j] = 0;
@@ -295,10 +297,12 @@ bool validateBishopMagicNumber(uint64_t magic, int32_t sq, int32_t shift, uint64
         if(attacks[magicIndex] == 0) {
             attacks[magicIndex] = MagicsFinder::bishopAttackMask(sq, occupancy);
         } else if(attacks[magicIndex] != MagicsFinder::bishopAttackMask(sq, occupancy)) {
+            delete[] attacks;
             return false;
         }
     }
 
+    delete[] attacks;
     return true;
 }
 

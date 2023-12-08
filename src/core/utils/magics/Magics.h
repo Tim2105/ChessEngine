@@ -75,6 +75,38 @@ class Magics {
         static inline uint64_t lookupBishopAttacksBottomRight(int32_t sq, uint64_t occupied) {
             return lookupBishopAttacks(sq, occupied) & bishopAttacksBottomRightMask[sq];
         }
+
+        static inline uint64_t rookAttackTopMask(int32_t sq) {
+            return rookAttacksTopMask[sq];
+        }
+
+        static inline uint64_t rookAttackRightMask(int32_t sq) {
+            return rookAttacksRightMask[sq];
+        }
+
+        static inline uint64_t rookAttackBottomMask(int32_t sq) {
+            return rookAttacksBottomMask[sq];
+        }
+
+        static inline uint64_t rookAttackLeftMask(int32_t sq) {
+            return rookAttacksLeftMask[sq];
+        }
+
+        static inline uint64_t bishopAttackTopLeftMask(int32_t sq) {
+            return bishopAttacksTopLeftMask[sq];
+        }
+
+        static inline uint64_t bishopAttackTopRightMask(int32_t sq) {
+            return bishopAttacksTopRightMask[sq];
+        }
+
+        static inline uint64_t bishopAttackBottomLeftMask(int32_t sq) {
+            return bishopAttacksBottomLeftMask[sq];
+        }
+
+        static inline uint64_t bishopAttackBottomRightMask(int32_t sq) {
+            return bishopAttacksBottomRightMask[sq];
+        }
 };
 
 #endif

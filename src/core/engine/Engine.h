@@ -21,14 +21,14 @@ struct MoveScorePair {
 
 template<>
 struct std::greater<MoveScorePair> {
-    bool operator()(const MoveScorePair& lhs, const MoveScorePair& rhs) {
+    bool operator()(const MoveScorePair& lhs, const MoveScorePair& rhs) const {
         return lhs.score > rhs.score;
     }
 };
 
 template<>
 struct std::less<MoveScorePair> {
-    bool operator()(const MoveScorePair& lhs, const MoveScorePair& rhs) {
+    bool operator()(const MoveScorePair& lhs, const MoveScorePair& rhs) const {
         return lhs.score < rhs.score;
     }
 };

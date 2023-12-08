@@ -98,107 +98,47 @@ int32_t getDiagonallyPinnedToSquare(int32_t sq, Bitboard ownPieces,
                                     Bitboard enemyPieces, Bitboard occupied,
                                     int32_t* pinnedSquares, int32_t* pinnedDirections) {
     int32_t numPins = 0;
-    int32_t pinnedSquare = -1;
 
-    Bitboard temp;
+    Bitboard bishopAttacks = Magics::lookupBishopAttacks(sq, occupied);
 
-    // Diagonale nach oben rechts 
-    for(int32_t i = sq + 9; i < 64 && i % 8 != 0; i += 9) {
-        temp.setBit(i);
+    Bitboard potentialAttacks = bishopAttacks & Bitboard(Magics::bishopAttackTopRightMask(sq));
+    Bitboard potentialPinnedPieces = potentialAttacks & ownPieces;
+    Bitboard potentialPinners = potentialAttacks & enemyPieces;
 
-        if(ownPieces.getBit(i)) {
-            if(pinnedSquare != -1)
-                break;
-
-            pinnedSquare = i;
-        } else if(occupied.getBit(i)) {
-            if(enemyPieces.getBit(i))
-                if(pinnedSquare != -1) {
-                    pinnedSquares[numPins] = pinnedSquare;
-                    pinnedDirections[numPins] = NORTH_EAST;
-                    numPins++;
-                    break;
-                }
-                else
-                    break;
-            else
-                break;
-        }
+    if(potentialPinners && potentialPinnedPieces.getNumberOfSetBits() == 1) {
+        pinnedSquares[numPins] = potentialPinnedPieces.getFirstSetBit();
+        pinnedDirections[numPins] = NORTH_EAST;
+        numPins++;
     }
 
-    temp = 0ULL;
+    potentialAttacks = bishopAttacks & Bitboard(Magics::bishopAttackBottomLeftMask(sq));
+    potentialPinnedPieces = potentialAttacks & ownPieces;
+    potentialPinners = potentialAttacks & enemyPieces;
 
-    // Diagonale nach unten links
-    pinnedSquare = -1;
-    for(int32_t i = sq - 9; i >= 0 && i % 8 != 7; i -= 9) {
-        if(ownPieces.getBit(i)) {
-            if(pinnedSquare != -1)
-                break;
-
-            pinnedSquare = i;
-        } else if(occupied.getBit(i)) {
-            if(enemyPieces.getBit(i))
-                if(pinnedSquare != -1) {
-                    pinnedSquares[numPins] = pinnedSquare;
-                    pinnedDirections[numPins] = SOUTH_WEST;
-                    numPins++;
-                    break;
-                }
-                else
-                    break;
-            else
-                break;
-        }
+    if(potentialPinners && potentialPinnedPieces.getNumberOfSetBits() == 1) {
+        pinnedSquares[numPins] = potentialPinnedPieces.getFirstSetBit();
+        pinnedDirections[numPins] = SOUTH_WEST;
+        numPins++;
     }
 
-    temp = 0ULL;
+    potentialAttacks = bishopAttacks & Bitboard(Magics::bishopAttackBottomRightMask(sq));
+    potentialPinnedPieces = potentialAttacks & ownPieces;
+    potentialPinners = potentialAttacks & enemyPieces;
 
-    // Diagonale nach unten rechts
-    pinnedSquare = -1;
-    for(int32_t i = sq + 7; i < 64 && i % 8 != 7; i += 7) {
-        if(ownPieces.getBit(i)) {
-            if(pinnedSquare != -1)
-                break;
-
-            pinnedSquare = i;
-        } else if(occupied.getBit(i)) {
-            if(enemyPieces.getBit(i))
-                if(pinnedSquare != -1) {
-                    pinnedSquares[numPins] = pinnedSquare;
-                    pinnedDirections[numPins] = SOUTH_EAST;
-                    numPins++;
-                    break;
-                }
-                else
-                    break;
-            else
-                break;
-        }
+    if(potentialPinners && potentialPinnedPieces.getNumberOfSetBits() == 1) {
+        pinnedSquares[numPins] = potentialPinnedPieces.getFirstSetBit();
+        pinnedDirections[numPins] = SOUTH_EAST;
+        numPins++;
     }
 
-    temp = 0ULL;
+    potentialAttacks = bishopAttacks & Bitboard(Magics::bishopAttackTopLeftMask(sq));
+    potentialPinnedPieces = potentialAttacks & ownPieces;
+    potentialPinners = potentialAttacks & enemyPieces;
 
-    // Diagonale nach oben links
-    pinnedSquare = -1;
-    for(int32_t i = sq - 7; i >= 0 && i % 8 != 0; i -= 7) {
-        if(ownPieces.getBit(i)) {
-            if(pinnedSquare != -1)
-                break;
-
-            pinnedSquare = i;
-        } else if(occupied.getBit(i)) {
-            if(enemyPieces.getBit(i))
-                if(pinnedSquare != -1) {
-                    pinnedSquares[numPins] = pinnedSquare;
-                    pinnedDirections[numPins] = NORTH_WEST;
-                    numPins++;
-                    break;
-                }
-                else
-                    break;
-            else
-                break;
-        }
+    if(potentialPinners && potentialPinnedPieces.getNumberOfSetBits() == 1) {
+        pinnedSquares[numPins] = potentialPinnedPieces.getFirstSetBit();
+        pinnedDirections[numPins] = NORTH_WEST;
+        numPins++;
     }
 
     return numPins;
@@ -209,97 +149,47 @@ int32_t getHorizontallyPinnedToSquare(int32_t sq, Bitboard ownPieces,
                                     int32_t* pinnedSquares, int32_t* pinnedDirections) {
     
     int32_t numPins = 0;
-    int32_t pinnedSquare = -1;
 
-    // Vertikal nach oben
-    for(int32_t i = sq + 8; i < 64; i += 8) {
-        if(ownPieces.getBit(i)) {
-            if(pinnedSquare != -1)
-                break;
+    Bitboard rookAttacks = Magics::lookupRookAttacks(sq, occupied);
 
-            pinnedSquare = i;
-        } else if(occupied.getBit(i)) {
-            if(enemyPieces.getBit(i))
-                if(pinnedSquare != -1) {
-                    pinnedSquares[numPins] = pinnedSquare;
-                    pinnedDirections[numPins] = NORTH;
-                    numPins++;
-                    break;
-                }
-                else
-                    break;
-            else
-                break;
-        }
+    Bitboard potentialAttacks = rookAttacks & Bitboard(Magics::rookAttackTopMask(sq));
+    Bitboard potentialPinnedPieces = potentialAttacks & ownPieces;
+    Bitboard potentialPinners = potentialAttacks & enemyPieces;
+
+    if(potentialPinners && potentialPinnedPieces.getNumberOfSetBits() == 1) {
+        pinnedSquares[numPins] = potentialPinnedPieces.getFirstSetBit();
+        pinnedDirections[numPins] = NORTH;
+        numPins++;
     }
 
-    // Vertikal nach unten
-    pinnedSquare = -1;
-    for(int32_t i = sq - 8; i >= 0; i -= 8) {
-        if(ownPieces.getBit(i)) {
-            if(pinnedSquare != -1)
-                break;
+    potentialAttacks = rookAttacks & Bitboard(Magics::rookAttackBottomMask(sq));
+    potentialPinnedPieces = potentialAttacks & ownPieces;
+    potentialPinners = potentialAttacks & enemyPieces;
 
-            pinnedSquare = i;
-        } else if(occupied.getBit(i)) {
-            if(enemyPieces.getBit(i))
-                if(pinnedSquare != -1) {
-                    pinnedSquares[numPins] = pinnedSquare;
-                    pinnedDirections[numPins] = SOUTH;
-                    numPins++;
-                    break;
-                }
-                else
-                    break;
-            else
-                break;
-        }
+    if(potentialPinners && potentialPinnedPieces.getNumberOfSetBits() == 1) {
+        pinnedSquares[numPins] = potentialPinnedPieces.getFirstSetBit();
+        pinnedDirections[numPins] = SOUTH;
+        numPins++;
     }
 
-    // Horizontal nach rechts
-    pinnedSquare = -1;
-    for(int32_t i = sq + 1; i < 64 && i % 8 != 0; i += 1) {
-        if(ownPieces.getBit(i)) {
-            if(pinnedSquare != -1)
-                break;
+    potentialAttacks = rookAttacks & Bitboard(Magics::rookAttackRightMask(sq));
+    potentialPinnedPieces = potentialAttacks & ownPieces;
+    potentialPinners = potentialAttacks & enemyPieces;
 
-            pinnedSquare = i;
-        } else if(occupied.getBit(i)) {
-            if(enemyPieces.getBit(i))
-                if(pinnedSquare != -1) {
-                    pinnedSquares[numPins] = pinnedSquare;
-                    pinnedDirections[numPins] = EAST;
-                    numPins++;
-                    break;
-                }
-                else
-                    break;
-            else
-                break;
-        }
+    if(potentialPinners && potentialPinnedPieces.getNumberOfSetBits() == 1) {
+        pinnedSquares[numPins] = potentialPinnedPieces.getFirstSetBit();
+        pinnedDirections[numPins] = EAST;
+        numPins++;
     }
 
-    // Horizontal nach links
-    pinnedSquare = -1;
-    for(int32_t i = sq - 1; i >= 0 && i % 8 != 7; i -= 1) {
-        if(ownPieces.getBit(i)) {
-            if(pinnedSquare != -1)
-                break;
+    potentialAttacks = rookAttacks & Bitboard(Magics::rookAttackLeftMask(sq));
+    potentialPinnedPieces = potentialAttacks & ownPieces;
+    potentialPinners = potentialAttacks & enemyPieces;
 
-            pinnedSquare = i;
-        } else if(occupied.getBit(i)) {
-            if(enemyPieces.getBit(i))
-                if(pinnedSquare != -1) {
-                    pinnedSquares[numPins] = pinnedSquare;
-                    pinnedDirections[numPins] = WEST;
-                    numPins++;
-                    break;
-                }
-                else
-                    break;
-            else
-                break;
-        }
+    if(potentialPinners && potentialPinnedPieces.getNumberOfSetBits() == 1) {
+        pinnedSquares[numPins] = potentialPinnedPieces.getFirstSetBit();
+        pinnedDirections[numPins] = WEST;
+        numPins++;
     }
 
     return numPins;

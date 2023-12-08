@@ -25,7 +25,7 @@ class Array {
 
         constexpr Array(const Array<T, s>& other) {
             count = other.count;
-            if(!std::is_constant_evaluated())
+            if constexpr(!std::is_constant_evaluated())
                 memcpy(array, other.array, count * sizeof(T));
             else {
                 for(size_t i = 0; i < count; i++) {
@@ -158,7 +158,7 @@ class Array {
         /**
          * @brief Überprüft, ob ein Element im Array enthalten ist.
          * 
-         * Only exists, if T is a trivial type.
+         * Existiert nur, wenn T ein trivialer Typ ist.
          */
         constexpr bool contains(const T& elem) const requires(std::is_trivial_v<T>) {
             for(size_t i = 0; i < count; i++) {
@@ -172,7 +172,7 @@ class Array {
         /**
          * @brief Überprüft, ob ein Element im Array enthalten ist.
          * 
-         * Only exists, if T is not a trivial type.
+         * Existiert nur, wenn T kein trivialer Typ ist.
          */
         inline bool contains(const T& elem) const requires(!std::is_trivial_v<T>) {
             for(size_t i = 0; i < count; i++) {
@@ -182,6 +182,9 @@ class Array {
 
             return false;
         }
+
+        constexpr const T* begin() const { return array; };
+        constexpr const T* end() const { return array + count; };
 
         constexpr T* begin() { return array; };
         constexpr T* end() { return array + count; };

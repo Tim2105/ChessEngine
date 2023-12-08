@@ -31,7 +31,7 @@ void Magics::initializeMagics() {
         int32_t shift = MagicNumbers::rookShifts[sq];
         uint64_t magic = MagicNumbers::rookMagics[sq];
         int32_t numOccupancies = 1 << __builtin_popcountll(occupied);
-        uint64_t occupancies[numOccupancies];
+        uint64_t* occupancies = new uint64_t[numOccupancies];
         MagicsFinder::generateAllOccupancyCombinations(occupied, occupancies);
 
         for(int32_t i = 0; i < numOccupancies; i++) {
@@ -47,6 +47,8 @@ void Magics::initializeMagics() {
         rookAttacksRightMask[sq] = MagicsFinder::rookAttackRightMask(sq);
         rookAttacksBottomMask[sq] = MagicsFinder::rookAttackBottomMask(sq);
         rookAttacksLeftMask[sq] = MagicsFinder::rookAttackLeftMask(sq);
+
+        delete[] occupancies;
     }
 
     // Fülle die Läufer-Tabellen
@@ -60,7 +62,7 @@ void Magics::initializeMagics() {
         int32_t shift = MagicNumbers::bishopShifts[sq];
         uint64_t magic = MagicNumbers::bishopMagics[sq];
         int32_t numOccupancies = 1 << __builtin_popcountll(occupied);
-        uint64_t occupancies[numOccupancies];
+        uint64_t* occupancies = new uint64_t[numOccupancies];
         MagicsFinder::generateAllOccupancyCombinations(occupied, occupancies);
 
         for(int32_t i = 0; i < numOccupancies; i++) {
@@ -76,5 +78,7 @@ void Magics::initializeMagics() {
         bishopAttacksTopRightMask[sq] = MagicsFinder::bishopAttackTopRightMask(sq);
         bishopAttacksBottomLeftMask[sq] = MagicsFinder::bishopAttackBottomLeftMask(sq);
         bishopAttacksBottomRightMask[sq] = MagicsFinder::bishopAttackBottomRightMask(sq);
+
+        delete[] occupancies;
     }
 }

@@ -179,7 +179,7 @@ class RepetitionTable {
             }
         }
 
-        inline uint8_t get(uint64_t key) {
+        inline uint8_t get(uint64_t key) const {
             for(auto it = entries.rbegin(); it != entries.rend(); it++) {
                 if (it->key == key) {
                     return it->count;
@@ -351,7 +351,7 @@ class Board {
          * @param pinnedPiecesDirection Das Array, in dem die Richtung, aus der die Figuren gefesselt sind, gespeichert wird(muss mind. 8 groß sein).
          */
         void generatePinnedPiecesBitboards(int32_t side, Bitboard& pinnedPiecesBitboard,
-                                           int32_t* pinnedPiecesDirection);
+                                           int32_t* pinnedPiecesDirection) const;
 
     public:
         /**
@@ -400,27 +400,24 @@ class Board {
         /**
          * @brief Überprüft, ob der Spieler, der am Zug ist, im Schach steht.
          */
-        bool isCheck();
+        bool isCheck() const;
 
         /**
          * @brief Generiert alle Pseudo-Legalen Züge.
          * Pseudo-Legale Züge sind Züge, die auf dem Schachbrett möglich sind, aber eventuell den eigenen König im Schach lassen.
          */
-        Array<Move, 256> generatePseudoLegalMoves();
+        Array<Move, 256> generatePseudoLegalMoves() const;
 
         /**
          * @brief Generiert alle legalen Züge.
          * Legale Züge sind Züge, die auf dem Schachbrett möglich sind und den eigenen König nicht im Schach lassen.
          */
-        Array<Move, 256> generateLegalMoves();
-
-        template <Array<uint8_t, 10> moveTypes, Array<uint8_t, 6> pieceTypes>
-        Array<Move, 256> generateLegalMoves();
+        Array<Move, 256> generateLegalMoves() const;
 
         /**
          * @brief Generiert alle legalen Züge, die eine Figur schlagen
          */
-        Array<Move, 256> generateLegalCaptures();
+        Array<Move, 256> generateLegalCaptures() const;
 
         /**
          * @brief Führt einen Zug aus.
@@ -448,7 +445,7 @@ class Board {
          * @param square Das Feld, das überprüft werden soll.
          * @param side Die Seite, die das Feld angreifen soll.
          */
-        bool squareAttacked(int32_t square, int32_t side);
+        bool squareAttacked(int32_t square, int32_t side) const;
 
         /**
          * @brief Überprüft bei einem anzugebenden Belegbitboard, ob ein Feld von einer bestimmten Seite angegriffen wird.
@@ -457,7 +454,7 @@ class Board {
          * @param ownSide Die Seite, die das Feld angreifen soll.
          * @param occupied Das Bitboard mit den besetzten Feldern.
          */
-        bool squareAttacked(int32_t sq, int32_t ownSide, Bitboard occupied);
+        bool squareAttacked(int32_t sq, int32_t ownSide, Bitboard occupied) const;
 
         /**
          * @brief Überprüft bei einem anzugebenden Belegbitboard, ob ein Feld von einer bestimmten Seite angegriffen wird.
@@ -467,7 +464,7 @@ class Board {
          * @param occupied Das Bitboard mit den besetzten Feldern.
          * @param attackingRays Gibt dein Bitboard mit allen Angreifern zurück. Bei laufenden Figuren sind außerdem sind außerdem die Verbindungsfelder mit enthalten.
          */
-        bool squareAttacked(int32_t square, int32_t side, Bitboard occupied, Bitboard& attackingRays);
+        bool squareAttacked(int32_t square, int32_t side, Bitboard occupied, Bitboard& attackingRays) const;
 
         /**
          * @brief Gibt die Anzahl der angreifenden Figuren eines Feldes zurück.
@@ -476,7 +473,7 @@ class Board {
          * @param side Die Seite, die das Feld angreifen soll.
          * @param occupied Das Bitboard mit den besetzten Feldern.
          */
-        int32_t numSquareAttackers(int32_t square, int32_t side, Bitboard occupied);
+        int32_t numSquareAttackers(int32_t square, int32_t side, Bitboard occupied) const;
 
         /**
          * @brief Gibt die Anzahl der angreifenden Figuren eines Feldes zurück.
@@ -486,7 +483,7 @@ class Board {
          * @param occupied Das Bitboard mit den besetzten Feldern.
          * @param attackingRays Gibt dein Bitboard mit allen Angreifern zurück. Bei laufenden Figuren sind außerdem sind außerdem die Verbindungsfelder mit enthalten.
          */
-        int32_t numSquareAttackers(int32_t square, int32_t side, Bitboard occupied, Bitboard& attackingRays);
+        int32_t numSquareAttackers(int32_t square, int32_t side, Bitboard occupied, Bitboard& attackingRays) const;
 
         /**
          * @brief Gibt die Figur auf einem Feld zurück.
@@ -555,7 +552,7 @@ class Board {
         /**
          * @brief Überprüft, wie häufig die momentane Position schon aufgetreten ist. 
          */
-        uint8_t repetitionCount();
+        uint8_t repetitionCount() const;
 
         /**
          * @brief Gibt die Anzahl der Halbzüge zurück, die gespielt wurden.
@@ -587,64 +584,5 @@ class Board {
          */
         inline int32_t getKingSquare(int32_t side) const { return pieceList[side | KING].front(); };
 };
-
-#ifndef MOVEGEN_H
-    #include "core/chess/movegen/Movegen.h"
-
-    template <Array<uint8_t, 10> moveTypes, Array<uint8_t, 6> pieceTypes>
-    Array<Move, 256> Board::generateLegalMoves() {
-        Array<Move, 256> legalMoves;
-
-        if(side == WHITE) {
-            Bitboard attackedSquares = blackAttackBitboard;
-
-            Bitboard attackingRays;
-            int32_t numAttackers = numSquareAttackers(pieceList[WHITE_KING].front(), BLACK, allPiecesBitboard | pieceBitboard[BLACK_KING], attackingRays);
-
-            Bitboard pinnedPieces;
-            int pinnedDirections[64];
-
-            generatePinnedPiecesBitboards(WHITE, pinnedPieces, pinnedDirections);
-
-            if constexpr(pieceTypes.contains(PAWN))
-                Movegen::generateWhitePawnMoves<moveTypes>(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
-            if constexpr(pieceTypes.contains(KNIGHT))
-                Movegen::generateWhiteKnightMoves<moveTypes>(legalMoves, *this, numAttackers, attackingRays, pinnedPieces);
-            if constexpr(pieceTypes.contains(BISHOP))
-                Movegen::generateWhiteBishopMoves<moveTypes>(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
-            if constexpr(pieceTypes.contains(ROOK))
-                Movegen::generateWhiteRookMoves<moveTypes>(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
-            if constexpr(pieceTypes.contains(QUEEN))
-                Movegen::generateWhiteQueenMoves<moveTypes>(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
-            if constexpr(pieceTypes.contains(KING))
-                Movegen::generateWhiteKingMoves<moveTypes>(legalMoves, *this, attackedSquares);
-        } else {
-            Bitboard attackedSquares = whiteAttackBitboard;
-
-            Bitboard attackingRays;
-            int32_t numAttackers = numSquareAttackers(pieceList[BLACK_KING].front(), WHITE, allPiecesBitboard | pieceBitboard[WHITE_KING], attackingRays);
-
-            Bitboard pinnedPieces;
-            int pinnedDirections[64];
-
-            generatePinnedPiecesBitboards(BLACK, pinnedPieces, pinnedDirections);
-
-            if constexpr(pieceTypes.contains(PAWN))
-                Movegen::generateBlackPawnMoves<moveTypes>(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
-            if constexpr(pieceTypes.contains(KNIGHT))
-                Movegen::generateBlackKnightMoves<moveTypes>(legalMoves, *this, numAttackers, attackingRays, pinnedPieces);
-            if constexpr(pieceTypes.contains(BISHOP))
-                Movegen::generateBlackBishopMoves<moveTypes>(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
-            if constexpr(pieceTypes.contains(ROOK))
-                Movegen::generateBlackRookMoves<moveTypes>(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
-            if constexpr(pieceTypes.contains(QUEEN))
-                Movegen::generateBlackQueenMoves<moveTypes>(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
-            if constexpr(pieceTypes.contains(KING))
-                Movegen::generateBlackKingMoves<moveTypes>(legalMoves, *this, attackedSquares);
-        }
-
-        return legalMoves;
-    }
-#endif
 
 #endif

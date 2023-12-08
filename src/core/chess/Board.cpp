@@ -1,5 +1,6 @@
 #include "core/chess/Board.h"
 #include "core/chess/ZobristDefinitions.h"
+#include "core/chess/movegen/Movegen.h"
 #include "core/utils/MoveNotations.h"
 
 #include <stdio.h>
@@ -570,7 +571,7 @@ bool Board::isMoveLegal(Move move) {
     return true;
 }
 
-bool Board::isCheck() {
+bool Board::isCheck() const {
     return squareAttacked(pieceList[side | KING].front(), side ^ COLOR_MASK);
 }
 
@@ -938,14 +939,14 @@ void Board::undoMove() {
     }
 }
 
-bool Board::squareAttacked(int32_t sq, int32_t ownSide) {
+bool Board::squareAttacked(int32_t sq, int32_t ownSide) const {
     if(ownSide == WHITE)
         return whiteAttackBitboard.getBit(sq);
     else
         return blackAttackBitboard.getBit(sq);
 }
 
-bool Board::squareAttacked(int32_t sq, int32_t ownSide, Bitboard occupied) {
+bool Board::squareAttacked(int32_t sq, int32_t ownSide, Bitboard occupied) const {
     int32_t otherSide = (ownSide == WHITE) ? BLACK : WHITE;
 
     // Diagonale Angriffe
@@ -971,11 +972,11 @@ bool Board::squareAttacked(int32_t sq, int32_t ownSide, Bitboard occupied) {
     return false;
 }
 
-bool Board::squareAttacked(int32_t sq, int32_t ownSide, Bitboard occupied, Bitboard& attackerRays) {
+bool Board::squareAttacked(int32_t sq, int32_t ownSide, Bitboard occupied, Bitboard& attackerRays) const {
     return numSquareAttackers(sq, ownSide, occupied, attackerRays) > 0;
 }
 
-int32_t Board::numSquareAttackers(int32_t sq, int32_t ownSide, Bitboard occupied) {
+int32_t Board::numSquareAttackers(int32_t sq, int32_t ownSide, Bitboard occupied) const {
     int32_t otherSide = (ownSide == WHITE) ? BLACK : WHITE;
     int32_t numAttackers = 0;
 
@@ -1002,7 +1003,7 @@ int32_t Board::numSquareAttackers(int32_t sq, int32_t ownSide, Bitboard occupied
     return numAttackers;
 }
 
-int32_t Board::numSquareAttackers(int32_t sq, int32_t ownSide, Bitboard occupied, Bitboard& attackerRays) {
+int32_t Board::numSquareAttackers(int32_t sq, int32_t ownSide, Bitboard occupied, Bitboard& attackerRays) const {
     int32_t otherSide = (ownSide == WHITE) ? BLACK : WHITE;
     int32_t numAttackers = 0;
 
@@ -1161,7 +1162,7 @@ Bitboard Board::generateAttackBitboard(int32_t side, Bitboard updatedSquares, in
 }
 
 void Board::generatePinnedPiecesBitboards(int32_t side, Bitboard& pinnedPiecesBitboard,
-                                          int32_t* pinnedPiecesDirection) {
+                                          int32_t* pinnedPiecesDirection) const {
 
     int32_t kingSquare = pieceList[side | KING].front();
     int32_t otherSide = side ^ COLOR_MASK;
@@ -1207,7 +1208,7 @@ void Board::generatePinnedPiecesBitboards(int32_t side, Bitboard& pinnedPiecesBi
     }
 }
 
-Array<Move, 256> Board::generatePseudoLegalMoves() {
+Array<Move, 256> Board::generatePseudoLegalMoves() const {
     Array<Move, 256> moves;
 
     if(side == WHITE) {
@@ -1229,14 +1230,16 @@ Array<Move, 256> Board::generatePseudoLegalMoves() {
     return moves;
 }
 
-Array<Move, 256> Board::generateLegalMoves() {
+Array<Move, 256> Board::generateLegalMoves() const {
     Array<Move, 256> legalMoves;
 
     if(side == WHITE) {
         Bitboard attackedSquares = blackAttackBitboard;
 
         Bitboard attackingRays;
-        int32_t numAttackers = numSquareAttackers(pieceList[WHITE_KING].front(), BLACK, allPiecesBitboard | pieceBitboard[BLACK_KING], attackingRays);
+        int32_t numAttackers = 0;
+        if(isCheck())
+            numAttackers = numSquareAttackers(pieceList[WHITE_KING].front(), BLACK, allPiecesBitboard | pieceBitboard[BLACK_KING], attackingRays);
 
         Bitboard pinnedPieces;
         int pinnedDirections[64];
@@ -1253,7 +1256,9 @@ Array<Move, 256> Board::generateLegalMoves() {
         Bitboard attackedSquares = whiteAttackBitboard;
 
         Bitboard attackingRays;
-        int32_t numAttackers = numSquareAttackers(pieceList[BLACK_KING].front(), WHITE, allPiecesBitboard | pieceBitboard[WHITE_KING], attackingRays);
+        int32_t numAttackers = 0;
+        if(isCheck())
+            numAttackers = numSquareAttackers(pieceList[BLACK_KING].front(), WHITE, allPiecesBitboard | pieceBitboard[WHITE_KING], attackingRays);
 
         Bitboard pinnedPieces;
         int pinnedDirections[64];
@@ -1271,12 +1276,14 @@ Array<Move, 256> Board::generateLegalMoves() {
     return legalMoves;
 }
 
-Array<Move, 256> Board::generateLegalCaptures() {
+Array<Move, 256> Board::generateLegalCaptures() const {
     Array<Move, 256> legalCaptures;
 
     if(side == WHITE) {
         Bitboard attackingRays;
-        int32_t numAttackers = numSquareAttackers(pieceList[WHITE_KING].front(), BLACK, allPiecesBitboard | pieceBitboard[BLACK_KING], attackingRays);
+        int32_t numAttackers = 0;
+        if(isCheck())
+            numAttackers = numSquareAttackers(pieceList[WHITE_KING].front(), BLACK, allPiecesBitboard | pieceBitboard[BLACK_KING], attackingRays);
 
         Bitboard pinnedPieces;
         int pinnedDirections[64];
@@ -1291,7 +1298,9 @@ Array<Move, 256> Board::generateLegalCaptures() {
         Movegen::generateWhiteKingCaptures(legalCaptures, *this);
     } else {
         Bitboard attackingRays;
-        int32_t numAttackers = numSquareAttackers(pieceList[BLACK_KING].front(), WHITE, allPiecesBitboard | pieceBitboard[WHITE_KING], attackingRays);
+        int32_t numAttackers = 0;
+        if(isCheck())
+            numAttackers = numSquareAttackers(pieceList[BLACK_KING].front(), WHITE, allPiecesBitboard | pieceBitboard[WHITE_KING], attackingRays);
 
         Bitboard pinnedPieces;
         int pinnedDirections[64];
@@ -1462,6 +1471,6 @@ std::string Board::pgnString() const {
     return pgn;
 }
 
-uint8_t Board::repetitionCount() {
+uint8_t Board::repetitionCount() const {
     return repetitionTable.get(hashValue);
 }
