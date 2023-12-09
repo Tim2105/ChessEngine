@@ -16,7 +16,7 @@ CC = em++
 
 # Compilerflags
 CFLAGS = -Wall -Wextra -Werror -std=c++20 -Isrc -O3 -flto=full\
-		 -msimd128 -mavx
+		 -msimd128 -mavx -fwasm-exceptions
 
 # Linkerflags
 LDFLAGS = -sMODULARIZE=1 -sEXPORT_ES6=1 -sSINGLE_FILE=1\
