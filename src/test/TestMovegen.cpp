@@ -14,7 +14,7 @@ MovegenTestCase::~MovegenTestCase() {
 
 bool MovegenTestCase::run() {
     std::cout << "Running test case: " << description << std::endl;
-    std::string fen = board.fenString();
+    std::string fen = board.toFen();
     Array<Move, 256> moves = board.generateLegalMoves();
 
     std::cout << "Generated " << moves.size() << " moves." << std::endl;
@@ -30,7 +30,7 @@ bool MovegenTestCase::run() {
         bool found = false;
         for(std::string s : expectedOutcomes) {
             board.makeMove(m);
-            if(board.fenString() == s) {
+            if(board.toFen() == s) {
                 found = true;
                 board.undoMove();
                 break;

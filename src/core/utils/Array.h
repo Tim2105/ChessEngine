@@ -23,19 +23,9 @@ class Array {
 
         constexpr Array() : count(0) {}
 
-        constexpr Array(const Array<T, s>& other) {
+        Array(const Array<T, s>& other) {
             count = other.count;
-            if constexpr(!std::is_constant_evaluated())
-                memcpy(array, other.array, count * sizeof(T));
-            else {
-                for(size_t i = 0; i < count; i++) {
-                    array[i] = other.array[i];
-                }
-
-                for(size_t i = count; i < s; i++) {
-                    array[i] = T();
-                }
-            }
+            memcpy(array, other.array, count * sizeof(T));
         }
 
         constexpr Array(const std::initializer_list<T>& list) {

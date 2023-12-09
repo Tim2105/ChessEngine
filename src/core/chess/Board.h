@@ -432,15 +432,15 @@ class Board {
         /**
          * @brief Wandelt die aktuelle Stellung in eine FEN-Notation um.
          */
-        std::string fenString() const;
+        std::string toFen() const;
 
         /**
          * @brief Wandelt das Spiel in einen PGN-String um.
          */
-        std::string pgnString() const;
+        std::string toPgn() const;
 
         /**
-         * @brief Überprüft bei einem anzugebenden Belegbitboard, ob ein Feld von einer bestimmten Seite angegriffen wird.
+         * @brief Überprüft, ob ein Feld von einer bestimmten Seite angegriffen wird.
          * 
          * @param square Das Feld, das überprüft werden soll.
          * @param side Die Seite, die das Feld angreifen soll.
@@ -517,7 +517,7 @@ class Board {
         /**
          * @brief Gibt alle Positionen eines bestimmten Figurentyps zurück.
          */
-        constexpr Array<int32_t, 9> getPieceList(int32_t piece) const { return pieceList[piece]; };
+        inline Array<int32_t, 9> getPieceList(int32_t piece) const { return pieceList[piece]; };
 
         /**
          * @brief Gibt alle Positionen eines bestimmten Figurentyps als Bitboard zurück.

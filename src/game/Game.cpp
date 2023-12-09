@@ -12,7 +12,7 @@ void Game::outputGameState() {
 void Game::saveGameToFile() {
     std::filesystem::create_directory("pgn");
     std::ofstream pgnFile("pgn/recentGame.pgn");
-    pgnFile << board.pgnString();
+    pgnFile << board.toPgn();
     pgnFile.close();
 }
 

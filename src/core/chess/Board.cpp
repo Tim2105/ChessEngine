@@ -69,6 +69,10 @@ Board& Board::operator=(const Board& b) {
 }
 
 Board::Board(std::string fen) {
+    // Trimme die FEN-Zeichenkette
+    fen.erase(0, fen.find_first_not_of(' '));
+    fen.erase(fen.find_last_not_of(' ') + 1);
+
     // Spielfeld-Array und Figurlisten leeren
     for(int i = 0; i < 15; i++)
         pieceList[i].clear();
@@ -78,7 +82,10 @@ Board::Board(std::string fen) {
 
     int file = FILE_A;
     int rank = RANK_8;
-    int indexNextSection = fen.find(' ');
+    size_t indexNextSection = fen.find(' ');
+
+    if(indexNextSection == std::string::npos)
+        throw std::invalid_argument("Invalid FEN string: Side character missing");
 
     // Figuren auslesen und einfügen
     std::string fenPieces = fen.substr(0, indexNextSection);
@@ -129,13 +136,21 @@ Board::Board(std::string fen) {
     fen = fen.substr(indexNextSection + 1);
     indexNextSection = fen.find(' ');
 
+    if(indexNextSection == std::string::npos)
+        throw std::invalid_argument("Invalid FEN string: Castling rights missing");
+
     if(fen[0] != 'w' && fen[0] != 'b')
         throw std::invalid_argument("Invalid FEN string: " + std::to_string(fen[0]) + " is not a valid side character");
 
     // Zugfarbe auslesen
     side = fen[0] == 'w' ? WHITE : BLACK;
+
     fen = fen.substr(indexNextSection + 1);
     indexNextSection = fen.find(' ');
+
+    // Wenn das En Passant Feld fehlt, wird es standardmäßig auf NO_SQ gesetzt
+    if(indexNextSection == std::string::npos)
+        indexNextSection = fen.length();
 
     // Noch mögliche Rochaden auslesen
     std::string fenCastling = fen.substr(0, indexNextSection);
@@ -150,17 +165,21 @@ Board::Board(std::string fen) {
             default: throw std::invalid_argument("Invalid FEN string: " + std::to_string(c) + " is not a valid castling character");
         }
     }
-    fen = fen.substr(indexNextSection + 1);
+    fen = fen.substr(std::min(indexNextSection + 1, fen.length()));
     indexNextSection = fen.find(' ');
+
+    // Wenn die 50-Züge-Regel fehlt, wird sie standardmäßig auf 0 gesetzt
+    if(indexNextSection == std::string::npos)
+        indexNextSection = fen.length();
 
     // En Passant Feld auslesen
     std::string fenEnPassant = fen.substr(0, indexNextSection);
-    if(fenEnPassant != "-") {
+    if(fenEnPassant.length() == 2) {
         int file = fenEnPassant[0] - 'a';
         int rank = fenEnPassant[1] - '1';
         enPassantSquare = FR2SQ(file, rank);
 
-        if(enPassantSquare == NO_SQ)
+        if(enPassantSquare < A1 || enPassantSquare > H8)
             throw std::invalid_argument("Invalid FEN string: En Passant square is not on the board");
 
         if(side == WHITE && rank != RANK_6)
@@ -171,24 +190,41 @@ Board::Board(std::string fen) {
     else {
         enPassantSquare = NO_SQ;
     }
-    fen = fen.substr(indexNextSection + 1);
+    fen = fen.substr(std::min(indexNextSection + 1, fen.length()));
     indexNextSection = fen.find(' ');
 
+    // Wenn die Anzahl der bereits gespielten Züge fehlt, wird sie standardmäßig auf 0 gesetzt
+    if(indexNextSection == std::string::npos)
+        indexNextSection = fen.length();
+
     // Status der 50-Züge-Regel auslesen
-    fiftyMoveRule = std::stoi(fen.substr(0, indexNextSection));
-    if(fiftyMoveRule < 0)
-        throw std::invalid_argument("Invalid FEN string: Fifty move rule is negative");
+    if(indexNextSection == 0)
+        fiftyMoveRule = 0;
+    else {
+        fiftyMoveRule = std::stoi(fen.substr(0, indexNextSection));
+        if(fiftyMoveRule < 0)
+            throw std::invalid_argument("Invalid FEN string: Fifty move rule is negative");
+    }
 
-    fen = fen.substr(indexNextSection + 1);
+    fen = fen.substr(std::min(indexNextSection + 1, fen.length()));
 
-    // Anzahl der bereits gespielten Züge auslesen
-    int plyAdd = side == WHITE ? 0 : 1;
-    if(std::stoi(fen) < 0)
-        throw std::invalid_argument("Invalid FEN string: Number of played moves is negative");
+    if(fen.length() == 0)
+        ply = side == WHITE ? 0 : 1;
+    else {
+        // Anzahl der bereits gespielten Züge auslesen
+        int plyAdd = side == WHITE ? 0 : 1;
+        int plyFen = std::stoi(fen);
+        if(plyFen < 1)
+            throw std::invalid_argument("Invalid FEN string: Number of played moves is zero or negative");
 
-    ply = (std::stoi(fen) - 1) * 2 + plyAdd;
+        ply = (plyFen - 1) * 2 + plyAdd;
+    }
 
     generateBitboards();
+
+    // Überprüfe, ob der König des Spielers, der nicht am Zug ist, im Schach steht
+    if(squareAttacked(pieceList[(side ^ COLOR_MASK) | KING].front(), side))
+        throw std::invalid_argument("Invalid FEN string: King of player not moving is in check");
 
     hashValue = generateHashValue();
 
@@ -1318,7 +1354,7 @@ Array<Move, 256> Board::generateLegalCaptures() const {
     return legalCaptures;
 }
 
-std::string Board::fenString() const {
+std::string Board::toFen() const {
     std::string fen = "";
 
     int emptySquares = 0;
@@ -1436,7 +1472,7 @@ std::string Board::fenString() const {
     return fen;
 }
 
-std::string Board::pgnString() const {
+std::string Board::toPgn() const {
     std::string pgn = "";
 
     Board temp;

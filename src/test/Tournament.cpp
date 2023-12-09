@@ -166,7 +166,7 @@ void Tournament::run() {
             filename += engineName2;
             filename += ".pgn";
 
-            writePGN(filename, board.pgnString());
+            writePGN(filename, board.toPgn());
 
             std::string resultString;
 

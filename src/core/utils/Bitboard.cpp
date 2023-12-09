@@ -42,23 +42,25 @@ Bitboard diagonalAttackUntilBlocked(int32_t sq, Bitboard targets, Bitboard occup
     // Schließe die Targets aus dem Belegboard aus
     occupied &= ~targets;
 
+    Bitboard allBishopAttacks = Magics::lookupBishopAttacks(sq, targets);
+
     // Diagonale nach oben rechts
-    Bitboard temp = Magics::lookupBishopAttacksTopRight(sq, targets);
+    Bitboard temp = allBishopAttacks & Bitboard(Magics::bishopAttackTopRightMask(sq));
     if((temp & targets) && !(temp & occupied))
         attackBitboard |= temp;
 
     // Diagonale nach unten links
-    temp = Magics::lookupBishopAttacksBottomLeft(sq, targets);
+    temp = allBishopAttacks & Bitboard(Magics::bishopAttackBottomLeftMask(sq));
     if((temp & targets) && !(temp & occupied))
         attackBitboard |= temp;
 
     // Diagonale nach unten rechts
-    temp = Magics::lookupBishopAttacksBottomRight(sq, targets);
+    temp = allBishopAttacks & Bitboard(Magics::bishopAttackBottomRightMask(sq));
     if((temp & targets) && !(temp & occupied))
         attackBitboard |= temp;
 
     // Diagonale nach oben links
-    temp = Magics::lookupBishopAttacksTopLeft(sq, targets);
+    temp = allBishopAttacks & Bitboard(Magics::bishopAttackTopLeftMask(sq));
     if((temp & targets) && !(temp & occupied))
         attackBitboard |= temp;
 
@@ -71,23 +73,25 @@ Bitboard horizontalAttackUntilBlocked(int32_t sq, Bitboard targets, Bitboard occ
     // Schließe die Targets aus dem Belegboard aus
     occupied &= ~targets;
 
+    Bitboard allRookAttacks = Magics::lookupRookAttacks(sq, targets);
+
     // Vertikal nach oben
-    Bitboard temp = Magics::lookupRookAttacksTop(sq, targets);
+    Bitboard temp = allRookAttacks & Bitboard(Magics::rookAttackTopMask(sq));
     if((temp & targets) && !(temp & occupied))
         attackBitboard |= temp;
 
     // Vertikal nach unten
-    temp = Magics::lookupRookAttacksBottom(sq, targets);
+    temp = allRookAttacks & Bitboard(Magics::rookAttackBottomMask(sq));
     if((temp & targets) && !(temp & occupied))
         attackBitboard |= temp;
 
     // Horizontal nach rechts
-    temp = Magics::lookupRookAttacksRight(sq, targets);
+    temp = allRookAttacks & Bitboard(Magics::rookAttackRightMask(sq));
     if((temp & targets) && !(temp & occupied))
         attackBitboard |= temp;
 
     // Horizontal nach links
-    temp = Magics::lookupRookAttacksLeft(sq, targets);
+    temp = allRookAttacks & Bitboard(Magics::rookAttackLeftMask(sq));
     if((temp & targets) && !(temp & occupied))
         attackBitboard |= temp;
 
