@@ -1,6 +1,7 @@
 #ifndef BITBOARD_H
 #define BITBOARD_H
 
+#include <bit>
 #include <functional>
 #include <iostream>
 #include <stdint.h>
@@ -51,14 +52,14 @@ class Bitboard {
          * @brief Gibt den Index des ersten gesetzten Bits zurück.
          */
         constexpr int32_t getFirstSetBit() const {
-            return __builtin_ctzll(bitboard);
+            return std::countr_zero(bitboard);
         }
 
         /**
          * @brief Gibt den Index des letzten gesetzten Bits zurück.
          */
         constexpr int32_t getLastSetBit() const {
-            return 63 - __builtin_clzll(bitboard);
+            return 63 - std::countl_zero(bitboard);
         }
 
         /**
@@ -83,7 +84,7 @@ class Bitboard {
          * @brief Gibt die Anzahl der gesetzten Bits zurück.
          */
         constexpr int32_t getNumberOfSetBits() const {
-            return __builtin_popcountll(bitboard);
+            return std::popcount(bitboard);
         }
 
         /**
