@@ -361,22 +361,38 @@ void Movegen::generateWhitePawnMoves(Array<Move, 256>& moves, const Board& b,
                 int32_t kingSquare = b.pieceList[WHITE_KING].front();
 
                 if(b.enPassantSquare == destLeft && file != FILE_A) {
+                    Bitboard enemyRooksAndQueens = b.pieceBitboard[BLACK_ROOK] | b.pieceBitboard[BLACK_QUEEN];
                     Bitboard allPiecesAfterMove = b.allPiecesBitboard | b.pieceBitboard[BLACK_KING];
                     allPiecesAfterMove.clearBit(sq);
                     allPiecesAfterMove.clearBit(captureSquare);
                     allPiecesAfterMove.setBit(destLeft);
 
-                    if(!b.squareAttacked(kingSquare, BLACK, allPiecesAfterMove))
-                        moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
+                    if(pinned) {
+                        int32_t pinDir = pinDirections[sq];
+                        if(pinDir == NORTH_WEST || pinDir == SOUTH_EAST)
+                            moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
+                    } else {
+                        if(SQ2R(kingSquare) != RANK_5 ||
+                           !(straightAttackBitboard(kingSquare, allPiecesAfterMove) & enemyRooksAndQueens))
+                            moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
+                    }
 
                 } else if(b.enPassantSquare == destRight && file != FILE_H) {
+                    Bitboard enemyRooksAndQueens = b.pieceBitboard[BLACK_ROOK] | b.pieceBitboard[BLACK_QUEEN];
                     Bitboard allPiecesAfterMove = b.allPiecesBitboard | b.pieceBitboard[BLACK_KING];
                     allPiecesAfterMove.clearBit(sq);
                     allPiecesAfterMove.clearBit(captureSquare);
                     allPiecesAfterMove.setBit(destRight);
 
-                    if(!b.squareAttacked(kingSquare, BLACK, allPiecesAfterMove))
-                        moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
+                    if(pinned) {
+                        int32_t pinDir = pinDirections[sq];
+                        if(pinDir == NORTH_EAST || pinDir == SOUTH_WEST)
+                            moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
+                    } else {
+                        if(SQ2R(kingSquare) != RANK_5 ||
+                           !(straightAttackBitboard(kingSquare, allPiecesAfterMove) & enemyRooksAndQueens))
+                            moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
+                    }
                 }
             }
 
@@ -541,22 +557,38 @@ void Movegen::generateBlackPawnMoves(Array<Move, 256>& moves, const Board& b,
                 int32_t kingSquare = b.pieceList[BLACK_KING].front();
 
                 if(b.enPassantSquare == destLeft && file != FILE_A) {
+                    Bitboard enemyRooksAndQueens = b.pieceBitboard[WHITE_ROOK] | b.pieceBitboard[WHITE_QUEEN];
                     Bitboard allPiecesAfterMove = b.allPiecesBitboard | b.pieceBitboard[WHITE_KING];
                     allPiecesAfterMove.clearBit(sq);
                     allPiecesAfterMove.clearBit(captureSquare);
                     allPiecesAfterMove.setBit(destLeft);
 
-                    if(!b.squareAttacked(kingSquare, WHITE, allPiecesAfterMove))
-                        moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
+                    if(pinned) {
+                        int32_t pinDir = pinDirections[sq];
+                        if(pinDir == SOUTH_WEST || pinDir == NORTH_EAST)
+                            moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
+                    } else {
+                        if(SQ2R(kingSquare) != RANK_4 ||
+                           !(straightAttackBitboard(kingSquare, allPiecesAfterMove) & enemyRooksAndQueens))
+                            moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
+                    }
 
                 } else if(b.enPassantSquare == destRight && file != FILE_H) {
+                    Bitboard enemyRooksAndQueens = b.pieceBitboard[WHITE_ROOK] | b.pieceBitboard[WHITE_QUEEN];
                     Bitboard allPiecesAfterMove = b.allPiecesBitboard | b.pieceBitboard[WHITE_KING];
                     allPiecesAfterMove.clearBit(sq);
                     allPiecesAfterMove.clearBit(captureSquare);
                     allPiecesAfterMove.setBit(destRight);
 
-                    if(!b.squareAttacked(kingSquare, WHITE, allPiecesAfterMove))
-                        moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
+                    if(pinned) {
+                        int32_t pinDir = pinDirections[sq];
+                        if(pinDir == SOUTH_EAST || pinDir == NORTH_WEST)
+                            moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
+                    } else {
+                        if(SQ2R(kingSquare) != RANK_4 ||
+                           !(straightAttackBitboard(kingSquare, allPiecesAfterMove) & enemyRooksAndQueens))
+                            moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
+                    }
                 }
             }
 
@@ -1717,22 +1749,38 @@ void Movegen::generateWhitePawnCaptures(Array<Move, 256>& moves, const Board& b,
                 int32_t kingSquare = b.pieceList[WHITE_KING].front();
 
                 if(b.enPassantSquare == destLeft && file != FILE_A) {
+                    Bitboard enemyRooksAndQueens = b.pieceBitboard[BLACK_ROOK] | b.pieceBitboard[BLACK_QUEEN];
                     Bitboard allPiecesAfterMove = b.allPiecesBitboard | b.pieceBitboard[BLACK_KING];
                     allPiecesAfterMove.clearBit(sq);
                     allPiecesAfterMove.clearBit(captureSquare);
                     allPiecesAfterMove.setBit(destLeft);
 
-                    if(!b.squareAttacked(kingSquare, BLACK, allPiecesAfterMove))
-                        moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
+                    if(pinned) {
+                        int32_t pinDir = pinDirections[sq];
+                        if(pinDir == NORTH_WEST || pinDir == SOUTH_EAST)
+                            moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
+                    } else {
+                        if(SQ2R(kingSquare) != RANK_5 ||
+                           !(straightAttackBitboard(kingSquare, allPiecesAfterMove) & enemyRooksAndQueens))
+                            moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
+                    }
 
                 } else if(b.enPassantSquare == destRight && file != FILE_H) {
+                    Bitboard enemyRooksAndQueens = b.pieceBitboard[BLACK_ROOK] | b.pieceBitboard[BLACK_QUEEN];
                     Bitboard allPiecesAfterMove = b.allPiecesBitboard | b.pieceBitboard[BLACK_KING];
                     allPiecesAfterMove.clearBit(sq);
                     allPiecesAfterMove.clearBit(captureSquare);
                     allPiecesAfterMove.setBit(destRight);
 
-                    if(!b.squareAttacked(kingSquare, BLACK, allPiecesAfterMove))
-                        moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
+                    if(pinned) {
+                        int32_t pinDir = pinDirections[sq];
+                        if(pinDir == NORTH_EAST || pinDir == SOUTH_WEST)
+                            moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
+                    } else {
+                        if(SQ2R(kingSquare) != RANK_5 ||
+                           !(straightAttackBitboard(kingSquare, allPiecesAfterMove) & enemyRooksAndQueens))
+                            moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
+                    }
                 }
             }
 
@@ -1864,22 +1912,38 @@ void Movegen::generateBlackPawnCaptures(Array<Move, 256>& moves, const Board& b,
                 int32_t kingSquare = b.pieceList[BLACK_KING].front();
 
                 if(b.enPassantSquare == destLeft && file != FILE_A) {
+                    Bitboard enemyRooksAndQueens = b.pieceBitboard[WHITE_ROOK] | b.pieceBitboard[WHITE_QUEEN];
                     Bitboard allPiecesAfterMove = b.allPiecesBitboard | b.pieceBitboard[WHITE_KING];
                     allPiecesAfterMove.clearBit(sq);
                     allPiecesAfterMove.clearBit(captureSquare);
                     allPiecesAfterMove.setBit(destLeft);
 
-                    if(!b.squareAttacked(kingSquare, WHITE, allPiecesAfterMove))
-                        moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
+                    if(pinned) {
+                        int32_t pinDir = pinDirections[sq];
+                        if(pinDir == SOUTH_WEST || pinDir == NORTH_EAST)
+                            moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
+                    } else {
+                        if(SQ2R(kingSquare) != RANK_4 ||
+                           !(straightAttackBitboard(kingSquare, allPiecesAfterMove) & enemyRooksAndQueens))
+                            moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
+                    }
 
                 } else if(b.enPassantSquare == destRight && file != FILE_H) {
+                    Bitboard enemyRooksAndQueens = b.pieceBitboard[WHITE_ROOK] | b.pieceBitboard[WHITE_QUEEN];
                     Bitboard allPiecesAfterMove = b.allPiecesBitboard | b.pieceBitboard[WHITE_KING];
                     allPiecesAfterMove.clearBit(sq);
                     allPiecesAfterMove.clearBit(captureSquare);
                     allPiecesAfterMove.setBit(destRight);
 
-                    if(!b.squareAttacked(kingSquare, WHITE, allPiecesAfterMove))
-                        moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
+                    if(pinned) {
+                        int32_t pinDir = pinDirections[sq];
+                        if(pinDir == SOUTH_EAST || pinDir == NORTH_WEST)
+                            moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
+                    } else {
+                        if(SQ2R(kingSquare) != RANK_4 ||
+                           !(straightAttackBitboard(kingSquare, allPiecesAfterMove) & enemyRooksAndQueens))
+                            moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
+                    }
                 }
             }
 
