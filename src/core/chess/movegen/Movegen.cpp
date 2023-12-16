@@ -154,7 +154,7 @@ void Movegen::generatePseudoLegalBlackBishopMoves(Array<Move, 256>& moves, const
 
 void Movegen::generatePseudoLegalWhiteRookMoves(Array<Move, 256>& moves, const Board& b) {
     for(int sq : b.pieceList[WHITE_ROOK]) {
-        Bitboard rookAttacks = straightAttackBitboard(sq, b.allPiecesBitboard | b.pieceBitboard[WHITE_KING])
+        Bitboard rookAttacks = horizontalAttackBitboard(sq, b.allPiecesBitboard | b.pieceBitboard[WHITE_KING])
                                     & ~b.whitePiecesBitboard & ~b.pieceBitboard[WHITE_KING];
         while(rookAttacks) {
             int32_t dest = rookAttacks.getFirstSetBit();
@@ -170,7 +170,7 @@ void Movegen::generatePseudoLegalWhiteRookMoves(Array<Move, 256>& moves, const B
 
 void Movegen::generatePseudoLegalBlackRookMoves(Array<Move, 256>& moves, const Board& b) {
     for(int sq : b.pieceList[BLACK_ROOK]) {
-        Bitboard rookAttacks = straightAttackBitboard(sq, b.allPiecesBitboard | b.pieceBitboard[BLACK_KING])
+        Bitboard rookAttacks = horizontalAttackBitboard(sq, b.allPiecesBitboard | b.pieceBitboard[BLACK_KING])
                                     & ~b.blackPiecesBitboard & ~b.pieceBitboard[BLACK_KING];
         while(rookAttacks) {
             int32_t dest = rookAttacks.getFirstSetBit();
@@ -187,7 +187,7 @@ void Movegen::generatePseudoLegalBlackRookMoves(Array<Move, 256>& moves, const B
 void Movegen::generatePseudoLegalWhiteQueenMoves(Array<Move, 256>& moves, const Board& b) {
     for(int sq : b.pieceList[WHITE_QUEEN]) {
         Bitboard queenAttacks = (diagonalAttackBitboard(sq, b.allPiecesBitboard | b.pieceBitboard[WHITE_KING])
-                                    | straightAttackBitboard(sq, b.allPiecesBitboard | b.pieceBitboard[WHITE_KING]))
+                                    | horizontalAttackBitboard(sq, b.allPiecesBitboard | b.pieceBitboard[WHITE_KING]))
                                     & ~b.whitePiecesBitboard & ~b.pieceBitboard[WHITE_KING];
         while(queenAttacks) {
             int32_t dest = queenAttacks.getFirstSetBit();
@@ -204,7 +204,7 @@ void Movegen::generatePseudoLegalWhiteQueenMoves(Array<Move, 256>& moves, const 
 void Movegen::generatePseudoLegalBlackQueenMoves(Array<Move, 256>& moves, const Board& b) {
     for(int sq : b.pieceList[BLACK_QUEEN]) {
         Bitboard queenAttacks = (diagonalAttackBitboard(sq, b.allPiecesBitboard | b.pieceBitboard[BLACK_KING])
-                                    | straightAttackBitboard(sq, b.allPiecesBitboard | b.pieceBitboard[BLACK_KING]))
+                                    | horizontalAttackBitboard(sq, b.allPiecesBitboard | b.pieceBitboard[BLACK_KING]))
                                     & ~b.blackPiecesBitboard & ~b.pieceBitboard[BLACK_KING];
 
         while(queenAttacks) {
@@ -373,7 +373,7 @@ void Movegen::generateWhitePawnMoves(Array<Move, 256>& moves, const Board& b,
                             moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
                     } else {
                         if(SQ2R(kingSquare) != RANK_5 ||
-                           !(straightAttackBitboard(kingSquare, allPiecesAfterMove) & enemyRooksAndQueens))
+                           !(horizontalAttackBitboard(kingSquare, allPiecesAfterMove) & enemyRooksAndQueens))
                             moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
                     }
 
@@ -390,7 +390,7 @@ void Movegen::generateWhitePawnMoves(Array<Move, 256>& moves, const Board& b,
                             moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
                     } else {
                         if(SQ2R(kingSquare) != RANK_5 ||
-                           !(straightAttackBitboard(kingSquare, allPiecesAfterMove) & enemyRooksAndQueens))
+                           !(horizontalAttackBitboard(kingSquare, allPiecesAfterMove) & enemyRooksAndQueens))
                             moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
                     }
                 }
@@ -569,7 +569,7 @@ void Movegen::generateBlackPawnMoves(Array<Move, 256>& moves, const Board& b,
                             moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
                     } else {
                         if(SQ2R(kingSquare) != RANK_4 ||
-                           !(straightAttackBitboard(kingSquare, allPiecesAfterMove) & enemyRooksAndQueens))
+                           !(horizontalAttackBitboard(kingSquare, allPiecesAfterMove) & enemyRooksAndQueens))
                             moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
                     }
 
@@ -586,7 +586,7 @@ void Movegen::generateBlackPawnMoves(Array<Move, 256>& moves, const Board& b,
                             moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
                     } else {
                         if(SQ2R(kingSquare) != RANK_4 ||
-                           !(straightAttackBitboard(kingSquare, allPiecesAfterMove) & enemyRooksAndQueens))
+                           !(horizontalAttackBitboard(kingSquare, allPiecesAfterMove) & enemyRooksAndQueens))
                             moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
                     }
                 }
@@ -1010,7 +1010,7 @@ void Movegen::generateWhiteRookMoves(Array<Move, 256>& moves, const Board& b,
             if(pinnedPiecesBitboard.getBit(sq))
                 continue;
 
-            Bitboard rookAttacks = straightAttackBitboard(sq,
+            Bitboard rookAttacks = horizontalAttackBitboard(sq,
                                     b.allPiecesBitboard | b.pieceBitboard[WHITE_KING])
                                     & ~b.whitePiecesBitboard & ~b.pieceBitboard[WHITE_KING];
 
@@ -1094,7 +1094,7 @@ void Movegen::generateWhiteRookMoves(Array<Move, 256>& moves, const Board& b,
                 }
             } else {
                 // Ansonsten darf er sich frei bewegen
-                Bitboard rookAttacks = straightAttackBitboard(sq,
+                Bitboard rookAttacks = horizontalAttackBitboard(sq,
                                         b.allPiecesBitboard | b.pieceBitboard[WHITE_KING])
                                         & ~b.whitePiecesBitboard & ~b.pieceBitboard[WHITE_KING];
 
@@ -1127,7 +1127,7 @@ void Movegen::generateBlackRookMoves(Array<Move, 256>& moves, const Board& b,
             if(pinnedPiecesBitboard.getBit(sq))
                 continue;
 
-            Bitboard rookAttacks = straightAttackBitboard(sq,
+            Bitboard rookAttacks = horizontalAttackBitboard(sq,
                                     b.allPiecesBitboard | b.pieceBitboard[BLACK_KING])
                                     & ~b.blackPiecesBitboard & ~b.pieceBitboard[BLACK_KING];
 
@@ -1211,7 +1211,7 @@ void Movegen::generateBlackRookMoves(Array<Move, 256>& moves, const Board& b,
                 }
             } else {
                 // Ansonsten darf er sich frei bewegen
-                Bitboard rookAttacks = straightAttackBitboard(sq,
+                Bitboard rookAttacks = horizontalAttackBitboard(sq,
                                         b.allPiecesBitboard | b.pieceBitboard[BLACK_KING])
                                         & ~b.blackPiecesBitboard & ~b.pieceBitboard[BLACK_KING];
 
@@ -1250,7 +1250,7 @@ void Movegen::generateWhiteQueenMoves(Array<Move, 256>& moves, const Board& b,
                                     & ~b.whitePiecesBitboard & ~b.pieceBitboard[WHITE_KING];
 
             // Gerade
-            queenAttacks |= straightAttackBitboard(sq,
+            queenAttacks |= horizontalAttackBitboard(sq,
                                     b.allPiecesBitboard | b.pieceBitboard[WHITE_KING])
                                     & ~b.whitePiecesBitboard & ~b.pieceBitboard[WHITE_KING];
 
@@ -1401,7 +1401,7 @@ void Movegen::generateWhiteQueenMoves(Array<Move, 256>& moves, const Board& b,
                                         & ~b.whitePiecesBitboard & ~b.pieceBitboard[WHITE_KING];
 
                 // Gerade
-                queenAttacks |= straightAttackBitboard(sq,
+                queenAttacks |= horizontalAttackBitboard(sq,
                                         b.allPiecesBitboard | b.pieceBitboard[WHITE_KING])
                                         & ~b.whitePiecesBitboard & ~b.pieceBitboard[WHITE_KING];
 
@@ -1440,7 +1440,7 @@ void Movegen::generateBlackQueenMoves(Array<Move, 256>& moves, const Board& b,
                                     & ~b.blackPiecesBitboard & ~b.pieceBitboard[BLACK_KING];
 
             // Gerade
-            queenAttacks |= straightAttackBitboard(sq,
+            queenAttacks |= horizontalAttackBitboard(sq,
                                     b.allPiecesBitboard | b.pieceBitboard[BLACK_KING])
                                     & ~b.blackPiecesBitboard & ~b.pieceBitboard[BLACK_KING];
 
@@ -1591,7 +1591,7 @@ void Movegen::generateBlackQueenMoves(Array<Move, 256>& moves, const Board& b,
                                         & ~b.blackPiecesBitboard & ~b.pieceBitboard[BLACK_KING];
 
                 // Gerade
-                queenAttacks |= straightAttackBitboard(sq,
+                queenAttacks |= horizontalAttackBitboard(sq,
                                         b.allPiecesBitboard | b.pieceBitboard[BLACK_KING])
                                         & ~b.blackPiecesBitboard & ~b.pieceBitboard[BLACK_KING];
 
@@ -1761,7 +1761,7 @@ void Movegen::generateWhitePawnCaptures(Array<Move, 256>& moves, const Board& b,
                             moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
                     } else {
                         if(SQ2R(kingSquare) != RANK_5 ||
-                           !(straightAttackBitboard(kingSquare, allPiecesAfterMove) & enemyRooksAndQueens))
+                           !(horizontalAttackBitboard(kingSquare, allPiecesAfterMove) & enemyRooksAndQueens))
                             moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
                     }
 
@@ -1778,7 +1778,7 @@ void Movegen::generateWhitePawnCaptures(Array<Move, 256>& moves, const Board& b,
                             moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
                     } else {
                         if(SQ2R(kingSquare) != RANK_5 ||
-                           !(straightAttackBitboard(kingSquare, allPiecesAfterMove) & enemyRooksAndQueens))
+                           !(horizontalAttackBitboard(kingSquare, allPiecesAfterMove) & enemyRooksAndQueens))
                             moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
                     }
                 }
@@ -1924,7 +1924,7 @@ void Movegen::generateBlackPawnCaptures(Array<Move, 256>& moves, const Board& b,
                             moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
                     } else {
                         if(SQ2R(kingSquare) != RANK_4 ||
-                           !(straightAttackBitboard(kingSquare, allPiecesAfterMove) & enemyRooksAndQueens))
+                           !(horizontalAttackBitboard(kingSquare, allPiecesAfterMove) & enemyRooksAndQueens))
                             moves.push_back(Move(sq, destLeft, MOVE_EN_PASSANT));
                     }
 
@@ -1941,7 +1941,7 @@ void Movegen::generateBlackPawnCaptures(Array<Move, 256>& moves, const Board& b,
                             moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
                     } else {
                         if(SQ2R(kingSquare) != RANK_4 ||
-                           !(straightAttackBitboard(kingSquare, allPiecesAfterMove) & enemyRooksAndQueens))
+                           !(horizontalAttackBitboard(kingSquare, allPiecesAfterMove) & enemyRooksAndQueens))
                             moves.push_back(Move(sq, destRight, MOVE_EN_PASSANT));
                     }
                 }
@@ -2309,7 +2309,7 @@ void Movegen::generateWhiteRookCaptures(Array<Move, 256>& moves, const Board& b,
             if(pinnedPiecesBitboard.getBit(sq))
                 continue;
 
-            Bitboard rookAttacks = straightAttackBitboard(sq,
+            Bitboard rookAttacks = horizontalAttackBitboard(sq,
                                     b.allPiecesBitboard | b.pieceBitboard[WHITE_KING])
                                     & ~b.whitePiecesBitboard & ~b.pieceBitboard[WHITE_KING];
 
@@ -2381,7 +2381,7 @@ void Movegen::generateWhiteRookCaptures(Array<Move, 256>& moves, const Board& b,
                 }
             } else {
                 // Ansonsten darf er sich frei bewegen
-                Bitboard rookAttacks = straightAttackBitboard(sq,
+                Bitboard rookAttacks = horizontalAttackBitboard(sq,
                                         b.allPiecesBitboard | b.pieceBitboard[WHITE_KING])
                                         & ~b.whitePiecesBitboard & ~b.pieceBitboard[WHITE_KING]
                                         & b.blackPiecesBitboard;
@@ -2412,7 +2412,7 @@ void Movegen::generateBlackRookCaptures(Array<Move, 256>& moves, const Board& b,
             if(pinnedPiecesBitboard.getBit(sq))
                 continue;
 
-            Bitboard rookAttacks = straightAttackBitboard(sq,
+            Bitboard rookAttacks = horizontalAttackBitboard(sq,
                                     b.allPiecesBitboard | b.pieceBitboard[BLACK_KING])
                                     & ~b.blackPiecesBitboard & ~b.pieceBitboard[BLACK_KING];
 
@@ -2484,7 +2484,7 @@ void Movegen::generateBlackRookCaptures(Array<Move, 256>& moves, const Board& b,
                 }
             } else {
                 // Ansonsten darf er sich frei bewegen
-                Bitboard rookAttacks = straightAttackBitboard(sq,
+                Bitboard rookAttacks = horizontalAttackBitboard(sq,
                                         b.allPiecesBitboard | b.pieceBitboard[BLACK_KING])
                                         & ~b.blackPiecesBitboard & ~b.pieceBitboard[BLACK_KING]
                                         & b.whitePiecesBitboard;
@@ -2520,7 +2520,7 @@ void Movegen::generateWhiteQueenCaptures(Array<Move, 256>& moves, const Board& b
                                     & ~b.whitePiecesBitboard & ~b.pieceBitboard[WHITE_KING];
 
             // Gerade
-            queenAttacks |= straightAttackBitboard(sq,
+            queenAttacks |= horizontalAttackBitboard(sq,
                                     b.allPiecesBitboard | b.pieceBitboard[WHITE_KING])
                                     & ~b.whitePiecesBitboard & ~b.pieceBitboard[WHITE_KING];
 
@@ -2648,7 +2648,7 @@ void Movegen::generateWhiteQueenCaptures(Array<Move, 256>& moves, const Board& b
                                         & ~b.whitePiecesBitboard & ~b.pieceBitboard[WHITE_KING];
 
                 // Gerade
-                queenAttacks |= straightAttackBitboard(sq,
+                queenAttacks |= horizontalAttackBitboard(sq,
                                         b.allPiecesBitboard | b.pieceBitboard[WHITE_KING])
                                         & ~b.whitePiecesBitboard & ~b.pieceBitboard[WHITE_KING];
 
@@ -2685,7 +2685,7 @@ void Movegen::generateBlackQueenCaptures(Array<Move, 256>& moves, const Board& b
                                     & ~b.blackPiecesBitboard & ~b.pieceBitboard[BLACK_KING];
 
             // Gerade
-            queenAttacks |= straightAttackBitboard(sq,
+            queenAttacks |= horizontalAttackBitboard(sq,
                                     b.allPiecesBitboard | b.pieceBitboard[BLACK_KING])
                                     & ~b.blackPiecesBitboard & ~b.pieceBitboard[BLACK_KING];
 
@@ -2813,7 +2813,7 @@ void Movegen::generateBlackQueenCaptures(Array<Move, 256>& moves, const Board& b
                                         & ~b.blackPiecesBitboard & ~b.pieceBitboard[BLACK_KING];
 
                 // Gerade
-                queenAttacks |= straightAttackBitboard(sq,
+                queenAttacks |= horizontalAttackBitboard(sq,
                                         b.allPiecesBitboard | b.pieceBitboard[BLACK_KING])
                                         & ~b.blackPiecesBitboard & ~b.pieceBitboard[BLACK_KING];
 

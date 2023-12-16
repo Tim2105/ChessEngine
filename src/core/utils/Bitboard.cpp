@@ -20,7 +20,7 @@ Bitboard diagonalAttackBitboard(int32_t sq, const Bitboard occupied) {
     return Magics::lookupBishopAttacks(sq, occupied);
 }
 
-Bitboard straightAttackBitboard(int32_t sq, const Bitboard occupied) {
+Bitboard horizontalAttackBitboard(int32_t sq, const Bitboard occupied) {
     return Magics::lookupRookAttacks(sq, occupied);
 }
 

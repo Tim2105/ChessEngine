@@ -176,7 +176,7 @@ std::string toAlgebraicNotation(const Move& move, Board& board, const std::strin
             }
             break;
         } case ROOK: {
-            Bitboard rooksAttackingDest = straightAttackBitboard(dest, board.getOccupiedBitboard() |
+            Bitboard rooksAttackingDest = horizontalAttackBitboard(dest, board.getOccupiedBitboard() |
                                             board.getPieceBitboard(WHITE | KING) |
                                             board.getPieceBitboard(BLACK | KING)) &
                         board.getPieceBitboard(side | ROOK);
@@ -210,7 +210,7 @@ std::string toAlgebraicNotation(const Move& move, Board& board, const std::strin
             }
             break;
         } case QUEEN: {
-            Bitboard queensAttackingDest = (straightAttackBitboard(dest, board.getOccupiedBitboard() |
+            Bitboard queensAttackingDest = (horizontalAttackBitboard(dest, board.getOccupiedBitboard() |
                                             board.getPieceBitboard(WHITE | KING) |
                                             board.getPieceBitboard(BLACK | KING)) |
                                             diagonalAttackBitboard(dest, board.getOccupiedBitboard() |

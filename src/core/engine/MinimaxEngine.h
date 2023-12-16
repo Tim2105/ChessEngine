@@ -21,10 +21,10 @@
 #define MATE_SCORE 21000
 #define IS_MATE_SCORE(x) (std::abs(x) > MATE_SCORE - 1000)
 
-#define EXACT_NODE 1
+#define PV_NODE 1
 #define CUT_NODE 2
 
-#define PV_NODE 0
+#define FW_NODE 0
 #define NW_NODE 4
 
 #define IS_REGULAR_NODE(x) (!((x) & 4))
@@ -63,6 +63,20 @@
  */
 class MinimaxEngine : public InterruptedEngine {
     private:
+
+        /**
+         * @brief Das Ersetzungsprädikat für die Transpositionstabelle.
+         * Ein Eintrag wird ersetzt, wenn die Funktion true zurückgibt.
+         * 
+         * @param lhs Der neue Eintrag.
+         * @param rhs Der alte Eintrag.
+         */
+        static constexpr bool ttReplacementPredicate(const TranspositionTableEntry& lhs,
+                                                     const TranspositionTableEntry& rhs) {
+                                                        
+            return lhs.depth * 1.2f + lhs.age >= rhs.depth * 1.2f + rhs.age;
+        };
+
         /**
          * @brief Enthält Informationen über bereits untersuchte Teilbäume.
          * 
@@ -71,7 +85,7 @@ class MinimaxEngine : public InterruptedEngine {
          * @tparam Buckets Die Anzahl der Buckets.
          * @tparam Size Die Größe eines Buckets.
          */
-        TranspositionTable<262144, 4> transpositionTable;
+        TranspositionTable<524288, ttReplacementPredicate> transpositionTable;
 
         /**
          * @brief Eine Kopie des, zu untersuchenden, Spielbretts.
@@ -161,6 +175,7 @@ class MinimaxEngine : public InterruptedEngine {
             bool isPawnPush;
             bool isPassedPawnPush;
             bool isCaptureEvasion;
+            bool threatensKing;
         };
 
         PruningVariables determinePruningVariables();
@@ -264,6 +279,20 @@ class MinimaxEngine : public InterruptedEngine {
                         0x30303030303,0x70707070707,0xE0E0E0E0E0E,0x1C1C1C1C1C1C,0x383838383838,0x707070707070,0xE0E0E0E0E0E0,0xC0C0C0C0C0C0,
                         0x3030303030303,0x7070707070707,0xE0E0E0E0E0E0E,0x1C1C1C1C1C1C1C,0x38383838383838,0x70707070707070,0xE0E0E0E0E0E0E0,0xC0C0C0C0C0C0C0,
                 }
+        };
+
+        /**
+         * @brief Enthält Bitboards für die umliegenden 2 Felder.
+         */
+        static constexpr Bitboard vicinity[64] = {
+            0x70706ULL,0xf0f0dULL,0x1f1f1bULL,0x3e3e36ULL,0x7c7c6cULL,0xf8f8d8ULL,0xf0f0b0ULL,0xe0e060ULL,
+            0x7070607ULL,0xf0f0d0fULL,0x1f1f1b1fULL,0x3e3e363eULL,0x7c7c6c7cULL,0xf8f8d8f8ULL,0xf0f0b0f0ULL,0xe0e060e0ULL,
+            0x707060707ULL,0xf0f0d0f0fULL,0x1f1f1b1f1fULL,0x3e3e363e3eULL,0x7c7c6c7c7cULL,0xf8f8d8f8f8ULL,0xf0f0b0f0f0ULL,0xe0e060e0e0ULL,
+            0x70706070700ULL,0xf0f0d0f0f00ULL,0x1f1f1b1f1f00ULL,0x3e3e363e3e00ULL,0x7c7c6c7c7c00ULL,0xf8f8d8f8f800ULL,0xf0f0b0f0f000ULL,0xe0e060e0e000ULL,
+            0x7070607070000ULL,0xf0f0d0f0f0000ULL,0x1f1f1b1f1f0000ULL,0x3e3e363e3e0000ULL,0x7c7c6c7c7c0000ULL,0xf8f8d8f8f80000ULL,0xf0f0b0f0f00000ULL,0xe0e060e0e00000ULL,
+            0x707060707000000ULL,0xf0f0d0f0f000000ULL,0x1f1f1b1f1f000000ULL,0x3e3e363e3e000000ULL,0x7c7c6c7c7c000000ULL,0xf8f8d8f8f8000000ULL,0xf0f0b0f0f0000000ULL,0xe0e060e0e0000000ULL,
+            0x706070700000000ULL,0xf0d0f0f00000000ULL,0x1f1b1f1f00000000ULL,0x3e363e3e00000000ULL,0x7c6c7c7c00000000ULL,0xf8d8f8f800000000ULL,0xf0b0f0f000000000ULL,0xe060e0e000000000ULL,
+            0x607070000000000ULL,0xd0f0f0000000000ULL,0x1b1f1f0000000000ULL,0x363e3e0000000000ULL,0x6c7c7c0000000000ULL,0xd8f8f80000000000ULL,0xb0f0f00000000000ULL,0x60e0e00000000000ULL,
         };
 
         /**

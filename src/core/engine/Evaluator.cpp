@@ -35,13 +35,13 @@ int32_t Evaluator::getSmallestAttacker(int32_t to, int32_t side) {
     if(bishopAttackers)
         return bishopAttackers.getFirstSetBit();
 
-    Bitboard rookAttackers = straightAttackBitboard(to, b->getOccupiedBitboard() | b->getPieceBitboard(side | KING))
+    Bitboard rookAttackers = horizontalAttackBitboard(to, b->getOccupiedBitboard() | b->getPieceBitboard(side | KING))
                                                         & b->getPieceBitboard(side | ROOK);
     if(rookAttackers)
         return rookAttackers.getFirstSetBit();
 
     Bitboard queenAttackers = (diagonalAttackBitboard(to, b->getOccupiedBitboard() | b->getPieceBitboard(side | KING))
-                                | straightAttackBitboard(to, b->getOccupiedBitboard() | b->getPieceBitboard(side | KING)))
+                                | horizontalAttackBitboard(to, b->getOccupiedBitboard() | b->getPieceBitboard(side | KING)))
                                 & b->getPieceBitboard(side | QUEEN);
     if(queenAttackers)
         return queenAttackers.getFirstSetBit();

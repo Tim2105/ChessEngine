@@ -275,7 +275,7 @@ Bitboard diagonalAttackBitboard(int32_t sq, const Bitboard occupied);
  * @param sq Das Feld.
  * @param occupied Das Bitboard mit den besetzten Feldern.
  */
-Bitboard straightAttackBitboard(int32_t sq, const Bitboard occupied);
+Bitboard horizontalAttackBitboard(int32_t sq, const Bitboard occupied);
 
 /**
  * @brief Liefert ein Bitboard, dass, ausgehend von einem Feld, alle Felder enthält die von einer Springer angegriffen werden.

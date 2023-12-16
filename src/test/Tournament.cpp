@@ -41,7 +41,7 @@ const std::vector<int32_t> Tournament::timeControls = {
 };
 
 const std::vector<int32_t> Tournament::numGames = {
-    200, 70, 50
+    100, 30, 10
 };
 
 enum class TournamentGameResult {

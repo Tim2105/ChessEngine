@@ -576,7 +576,7 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
         if(score >= beta) {
             // Erstelle ein Eintrag in der Transpositionstabelle
             transpositionTable.put(searchBoard.getHashValue(), {
-                currentAge, depth, score, CUT_NODE, move
+                currentAge * ONE_PLY, depth, score, FW_NODE | CUT_NODE, move
             });
 
             // Wenn dieser Zug ein ruhiger Zug ist, aktualisiere die Killerzug- und Konterzug-Heuristik
@@ -648,7 +648,7 @@ int16_t MinimaxEngine::pvSearchRoot(int16_t depth, int16_t alpha, int16_t beta) 
     // Erstelle einen Eintrag in der Transpositionstabelle
     // für diese Position
     transpositionTable.put(searchBoard.getHashValue(), {
-        currentAge, depth, bestScore, EXACT_NODE, bestMove
+        currentAge * ONE_PLY, depth, bestScore, FW_NODE | PV_NODE, bestMove
     });
 
     // Erhöhe die Vergangenheitsbewertung des besten Zuges
@@ -697,7 +697,7 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
 
     // Gehe in die Quieszenzsuche über, wenn das Ende der regulären Suche erreicht ist
     if(depth <= 0 || ply * ONE_PLY >= currentMaxDepth)
-        return quiescence(ply + 1, alpha, beta);
+        return quiescence(ply, alpha, beta);
 
     nodesSearched++;
 
@@ -768,14 +768,10 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
         // Ist dieser Knoten ein fail-high-Knoten?
         if(score >= beta) {
             // Erstelle ein Eintrag in der Transpositionstabelle
-            bool tableHit = transpositionTable.probe(searchBoard.getHashValue(), ttEntry);
-
-            // aber nur, wenn kein Eintrag mit höherer Suchtiefe oder eines PV-Knotens vorhanden ist
-            if((!tableHit || (depth > ttEntry.depth)) &&
-                             (ttEntry.type != (PV_NODE | EXACT_NODE)))
-                transpositionTable.put(searchBoard.getHashValue(), {
-                    currentAge, depth, score, CUT_NODE, move
-                });
+            transpositionTable.put(searchBoard.getHashValue(), {
+                currentAge * ONE_PLY + currentMaxDepth - depth, depth,
+                score, FW_NODE | CUT_NODE, move
+            });
 
             // Wenn dieser Zug ein ruhiger Zug ist, aktualisiere die Killerzug- und Konterzug-Heuristik
             if(move.isQuiet()) {
@@ -820,13 +816,10 @@ int16_t MinimaxEngine::pvSearch(int16_t depth, int16_t ply, int16_t alpha, int16
     }
 
     // Erstelle einen Eintrag in der Transpositionstabelle
-    // für diese Position
-    bool tableHit = transpositionTable.probe(searchBoard.getHashValue(), ttEntry);
-
-    if(!tableHit || (depth > ttEntry.depth))
-        transpositionTable.put(searchBoard.getHashValue(), {
-            currentAge, depth, bestScore, EXACT_NODE, bestMove
-        });
+    transpositionTable.put(searchBoard.getHashValue(), {
+        currentAge * ONE_PLY + currentMaxDepth - depth, depth,
+        bestScore, FW_NODE | PV_NODE, bestMove
+    });
 
     // Erhöhe die Vergangenheitsbewertung des besten Zuges
     relativeHistory[(searchBoard.getSideToMove() ^ COLOR_MASK) / COLOR_MASK]
@@ -863,7 +856,7 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
 
     // Gehe in die Quieszenzsuche über, wenn das Ende der regulären Suche erreicht ist
     if(depth <= 0 || ply * ONE_PLY >= currentMaxDepth)
-        return quiescence(ply + 1, alpha, beta);
+        return quiescence(ply, alpha, beta);
 
     nodesSearched++;
 
@@ -876,7 +869,7 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
         // für diese Suchtiefe gültig ist
         if(ttEntry.depth >= depth) {
             switch(NODE_TYPE(ttEntry.type)) {
-                case EXACT_NODE:
+                case PV_NODE:
                     return ttEntry.score;
                 case CUT_NODE:
                     if(ttEntry.score >= beta)
@@ -981,14 +974,10 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
         // Ist dieser Knoten ein fail-high-Knoten?
         if(score >= beta) {
             // Erstelle ein Eintrag in der Transpositionstabelle
-            bool tableHit = transpositionTable.probe(searchBoard.getHashValue(), ttEntry);
-
-            // aber nur, wenn kein Eintrag mit höherer Suchtiefe oder eines PV-Knotens vorhanden ist
-            if(!tableHit || (depth > ttEntry.depth &&
-                               ttEntry.type == (NW_NODE | CUT_NODE)))
-                transpositionTable.put(searchBoard.getHashValue(), {
-                    currentAge, depth, score, NW_NODE | CUT_NODE, move
-                });
+            transpositionTable.put(searchBoard.getHashValue(), {
+                currentAge * ONE_PLY + currentMaxDepth - depth, depth,
+                score, NW_NODE | CUT_NODE, move
+            });
             
             // Wenn dieser Zug ein ruhiger Zug ist, aktualisiere die Killerzug- und Konterzug-Heuristik
             if(move.isQuiet()) {
@@ -1020,12 +1009,10 @@ int16_t MinimaxEngine::nwSearch(int16_t depth, int16_t ply, int16_t alpha, int16
     }
 
     // Erstelle einen Eintrag in der Transpositionstabelle für diese Position
-    // (nur wenn kein Eintrag mit höherer Suchtiefe oder eines PV-Knotens für diese Position existiert)
-    if(!tableHit || (depth > ttEntry.depth &&
-                        !IS_REGULAR_NODE(ttEntry.type)))
-        transpositionTable.put(searchBoard.getHashValue(), {
-            currentAge, depth, bestScore, NW_NODE | EXACT_NODE, bestMove
-        });
+    transpositionTable.put(searchBoard.getHashValue(), {
+        currentAge * ONE_PLY + currentMaxDepth - depth, depth,
+        bestScore, NW_NODE | PV_NODE, bestMove
+    });
 
     return bestScore;
 }
@@ -1036,6 +1023,7 @@ MinimaxEngine::PruningVariables MinimaxEngine::determinePruningVariables() {
         EMPTY,
         false,
         MIN_SCORE,
+        false,
         false,
         false,
         false
@@ -1059,6 +1047,36 @@ MinimaxEngine::PruningVariables MinimaxEngine::determinePruningVariables() {
 
     if(searchBoard.getAttackBitboard(otherSide).getBit(state.lastMove.getOrigin()))
         state.isCaptureEvasion = true;
+
+    int32_t sq = state.lastMove.getDestination();
+    int32_t kingSq = searchBoard.getKingSquare(otherSide);
+    switch(movedPieceType) {
+        case PAWN:
+            if(pawnAttackBitboard(sq, side) & vicinity[kingSq])
+                state.threatensKing = true;
+            break;
+        case KNIGHT:
+            if(knightAttackBitboard(sq) & vicinity[kingSq])
+                state.threatensKing = true;
+            break;
+        case BISHOP:
+            if(diagonalAttackBitboard(sq, searchBoard.getOccupiedBitboard()) & vicinity[kingSq])
+                state.threatensKing = true;
+            break;
+        case ROOK:
+            if(horizontalAttackBitboard(sq, searchBoard.getOccupiedBitboard()) & vicinity[kingSq])
+                state.threatensKing = true;
+            break;
+        case QUEEN:
+            if((diagonalAttackBitboard(sq, searchBoard.getOccupiedBitboard()) |
+                horizontalAttackBitboard(sq, searchBoard.getOccupiedBitboard())) & vicinity[kingSq])
+                state.threatensKing = true;
+            break;
+        case KING:
+            if(kingAttackBitboard(sq) & vicinity[kingSq])
+                state.threatensKing = true;
+            break;
+    }
 
     return state;
 }
@@ -1085,7 +1103,7 @@ int16_t MinimaxEngine::determineExtension(PruningVariables& pruningVars, bool is
     
     // Freibauerzüge
     if(pruningVars.isPassedPawnPush)
-        extension += ONE_HALF_PLY;
+        extension += ONE_THIRD_PLY;
     
     return extension;
 }
@@ -1103,30 +1121,32 @@ int16_t MinimaxEngine::determineReduction(int16_t depth, int16_t ply, int32_t mo
 
     bool isCheck = pruningVars.isCheck;
 
-    // Keine Reduktion bei dem ersten Zug
-    int32_t unreducedMoves = 1;
+    // Keine Reduktion bei den ersten beiden Zügen
+    int32_t unreducedMoves = 2;
 
     // oder bei Schach oder einer Schachabwehr
-    if(moveCount <= unreducedMoves)
+    if(moveCount <= unreducedMoves || isCheck || isCheckEvasion)
         return 0;
 
     if(ply <= 3)
         return 0;
 
-    if(isCheck || isCheckEvasion || pruningVars.seeScore >= NEUTRAL_SEE_SCORE)
-        reduction -= 2 * ONE_PLY;
+    if(pruningVars.seeScore >= NEUTRAL_SEE_SCORE)
+        reduction -= 4 * ONE_PLY;
 
     // Reduziere anhand einer logarithmischen Funktion,
     // die von der Anzahl der bereits bearbeiteten Züge abhängig ist
-    reduction += (int16_t)((std::log(moveCount - unreducedMoves + 1) / std::log(2) + std::log(depth / ONE_PLY)) * ONE_PLY);
+    reduction += (int16_t)((std::log(moveCount - unreducedMoves + 1) / std::log(2) + std::log(depth / ONE_PLY + 1)) * ONE_PLY);
 
     // Höhere Reduktion bei einem Schlagzug mit SEE < 0
     if(pruningVars.lastMove.isCapture() && pruningVars.seeScore < NEUTRAL_SEE_SCORE)
-        reduction += 2 * ONE_PLY;
+        reduction += ONE_PLY;
 
-    // Geringere Reduktion, wenn wir einem Schlagzug ausweichen
-    if(pruningVars.isCaptureEvasion)
-        reduction -= ONE_PLY;
+    // Geringere Reduktion, wenn wir einem Schlagzug oder der König bedroht wird
+    if(pruningVars.threatensKing)
+        reduction -= 3 * ONE_PLY;
+    else if(pruningVars.isCaptureEvasion)
+        reduction -= 3 * ONE_PLY;
     else if(!pruningVars.isPawnPush && pruningVars.lastMove.isQuiet())
         reduction += 2 * ONE_PLY;
 
@@ -1154,11 +1174,11 @@ int16_t MinimaxEngine::determineReduction(int16_t depth, int16_t ply, int32_t mo
  * @param isCheckEvasion Gibt an, ob es sich um eine Schachabwehr handelt.
  */
 bool MinimaxEngine::shouldPrune(int16_t depth, int16_t ply, int32_t moveCount, PruningVariables& pruningVars, bool isCheckEvasion) {
-    // Wir schneiden nie den ersten Zug ab
-    if(moveCount <= 1)
+    // Wir schneiden nie die ersten beiden Züge ab
+    if(moveCount <= 2)
         return false;
 
-    if(ply <= 3)
+    if(ply <= 4)
         return false;
 
     // Wir schneiden nie einen Schlagzug oder eine Bauernumwandlung ab
@@ -1176,6 +1196,14 @@ bool MinimaxEngine::shouldPrune(int16_t depth, int16_t ply, int32_t moveCount, P
 
     // Wir schneiden nie bei einem ausweichenden Zug ab
     if(pruningVars.isCaptureEvasion)
+        return false;
+
+    // Wir schneiden nie einen Zug ab, der den gegnerischen König bedroht
+    if(pruningVars.threatensKing)
+        return false;
+
+    // Wir schneiden nie in einer Mattvariante ab
+    if(isMateLine())
         return false;
 
     if(moveCount >= depth * 5 / (ONE_PLY * 3) + 2)
@@ -1225,6 +1253,8 @@ int16_t MinimaxEngine::quiescence(int16_t ply, int16_t alpha, int16_t beta) {
     
     if(score > alpha)
         alpha = score;
+
+    pvTable[ply + 1].clear();
     
     int16_t bestScore = score;
     
@@ -1270,8 +1300,19 @@ int16_t MinimaxEngine::quiescence(int16_t ply, int16_t alpha, int16_t beta) {
         if(score > bestScore)
             bestScore = score;
         
-        if(score > alpha)
+        if(score > alpha) {
             alpha = score;
+
+            if(IS_MATE_SCORE(score)) {
+                // Schreibe die neue PV in die PV-Tabelle,
+                // wenn wir eine Mattvariante gefunden haben
+                if(ply < 63) {
+                    pvTable[ply].clear();
+                    pvTable[ply].push_back(move);
+                    pvTable[ply].push_back(pvTable[ply + 1]);
+                }
+            }
+        }
     }
 
     return bestScore;

@@ -572,14 +572,14 @@ bool Board::isMoveLegal(Move move) {
         }
         case WHITE_ROOK: {
         case BLACK_ROOK:
-            if(!(straightAttackBitboard(origin, allPiecesBitboard | pieceBitboard[side | KING]).getBit(destination)))
+            if(!(horizontalAttackBitboard(origin, allPiecesBitboard | pieceBitboard[side | KING]).getBit(destination)))
                 return false;
             break;
         }
         case WHITE_QUEEN: {
         case BLACK_QUEEN:
             if(!(diagonalAttackBitboard(origin, allPiecesBitboard | pieceBitboard[side | KING]).getBit(destination)
-                || straightAttackBitboard(origin, allPiecesBitboard | pieceBitboard[side | KING]).getBit(destination)))
+                || horizontalAttackBitboard(origin, allPiecesBitboard | pieceBitboard[side | KING]).getBit(destination)))
                 return false;
             break;
         }
@@ -595,16 +595,11 @@ bool Board::isMoveLegal(Move move) {
     // Überprüfe, ob der Zug den eigenen König in Schach setzt/lässt
     makeMove(move);
 
-    Bitboard otherSideAttackBitboard = generateAttackBitboard(otherSide);
-
-    if(otherSideAttackBitboard.getBit(pieceList[side | KING].front())) {
-        undoMove();
-        return false;
-    }
+    bool isCheck = squareAttacked(pieceList[side | KING].front(), otherSide);
 
     undoMove();
 
-    return true;
+    return !isCheck;
 }
 
 bool Board::isCheck() const {
@@ -990,7 +985,7 @@ bool Board::squareAttacked(int32_t sq, int32_t ownSide, Bitboard occupied) const
         return true;
 
     // Waaagerechte Angriffe
-    if(straightAttackBitboard(sq, occupied) & (pieceBitboard[ownSide | ROOK] | pieceBitboard[ownSide | QUEEN]))
+    if(horizontalAttackBitboard(sq, occupied) & (pieceBitboard[ownSide | ROOK] | pieceBitboard[ownSide | QUEEN]))
         return true;
 
     // Springer Angriffe
@@ -1021,7 +1016,7 @@ int32_t Board::numSquareAttackers(int32_t sq, int32_t ownSide, Bitboard occupied
     numAttackers += diagonalAttackers.getNumberOfSetBits();
 
     // Waaagerechte Angriffe
-    Bitboard straightAttackers = straightAttackBitboard(sq, occupied) & (pieceBitboard[ownSide | ROOK] | pieceBitboard[ownSide | QUEEN]);
+    Bitboard straightAttackers = horizontalAttackBitboard(sq, occupied) & (pieceBitboard[ownSide | ROOK] | pieceBitboard[ownSide | QUEEN]);
     numAttackers += straightAttackers.getNumberOfSetBits();
 
     // Springer Angriffe
@@ -1049,7 +1044,7 @@ int32_t Board::numSquareAttackers(int32_t sq, int32_t ownSide, Bitboard occupied
     attackerRays |= diagonalAttackUntilBlocked(sq, pieceBitboard[ownSide | BISHOP] | pieceBitboard[ownSide | QUEEN], occupied);
 
     // Waaagerechte Angriffe
-    Bitboard straightAttackers = straightAttackBitboard(sq, occupied) & (pieceBitboard[ownSide | ROOK] | pieceBitboard[ownSide | QUEEN]);
+    Bitboard straightAttackers = horizontalAttackBitboard(sq, occupied) & (pieceBitboard[ownSide | ROOK] | pieceBitboard[ownSide | QUEEN]);
     numAttackers += straightAttackers.getNumberOfSetBits();
     attackerRays |= horizontalAttackUntilBlocked(sq, pieceBitboard[ownSide | ROOK] | pieceBitboard[ownSide | QUEEN], occupied);
 
@@ -1091,12 +1086,12 @@ Bitboard Board::generateAttackBitboard(int32_t side) {
 
     // Waagerechte Angriffe
     for(int sq : pieceList[side | ROOK]) {
-        pieceAttackBitboard[side | ROOK] |= straightAttackBitboard(sq, piecesPlusOwnKing);
+        pieceAttackBitboard[side | ROOK] |= horizontalAttackBitboard(sq, piecesPlusOwnKing);
         attackBitboard |= pieceAttackBitboard[side | ROOK];
     }
 
     for(int sq : pieceList[side | QUEEN]) {
-        pieceAttackBitboard[side | QUEEN] |= straightAttackBitboard(sq, piecesPlusOwnKing);
+        pieceAttackBitboard[side | QUEEN] |= horizontalAttackBitboard(sq, piecesPlusOwnKing);
         attackBitboard |= pieceAttackBitboard[side | QUEEN];
     }
 
@@ -1141,7 +1136,7 @@ Bitboard Board::generateAttackBitboard(int32_t side, Bitboard updatedSquares, in
         Bitboard rookAttackBitboard;
 
         for(int sq : pieceList[side | ROOK])
-            rookAttackBitboard |= straightAttackBitboard(sq, piecesPlusOwnKing);
+            rookAttackBitboard |= horizontalAttackBitboard(sq, piecesPlusOwnKing);
 
         pieceAttackBitboard[side | ROOK] = rookAttackBitboard;
     }
@@ -1152,7 +1147,7 @@ Bitboard Board::generateAttackBitboard(int32_t side, Bitboard updatedSquares, in
         Bitboard queenAttackBitboard;
 
         for(int sq : pieceList[side | QUEEN])
-            queenAttackBitboard |= diagonalAttackBitboard(sq, piecesPlusOwnKing) | straightAttackBitboard(sq, piecesPlusOwnKing);
+            queenAttackBitboard |= diagonalAttackBitboard(sq, piecesPlusOwnKing) | horizontalAttackBitboard(sq, piecesPlusOwnKing);
 
         pieceAttackBitboard[side | QUEEN] = queenAttackBitboard;
     }

@@ -18,7 +18,7 @@ class StaticEvaluator : public Evaluator {
         // Die Bewertung von Bauernstrukturen ist sehr aufwendig,
         // weshalb berechnete Bewertungen von Bauernstrukturen in einer Hash-Tabelle gespeichert werden,
         // um sie bei der nächsten Bewertung(bei gleicher Bauernstruktur) wieder zu verwenden.
-        // Weil Bauernstrukturen sich nicht zu häufig ändern, bekommt man hier eine hohe Trefferquote(Durchschnitt ca. 75%).
+        // Weil Bauernstrukturen sich nicht zu häufig ändern, bekommt man hier eine hohe Trefferquote.
         HeapHashTable<uint64_t, Score, 16384, 4> pawnStructureTable;
 
         /**
@@ -295,7 +295,7 @@ class StaticEvaluator : public Evaluator {
          */
         
         // Bonus für einen unaufhaltbaren Freibauern
-        static constexpr int32_t EG_UNSTOPPABLE_PAWN_VALUE = 1000;
+        static constexpr int32_t EG_UNSTOPPABLE_PAWN_VALUE = 750;
 
         static constexpr Bitboard fileMasks[64] = {
                 0x101010101010101,0x202020202020202,0x404040404040404,0x808080808080808,0x1010101010101010,0x2020202020202020,0x4040404040404040,0x8080808080808080,

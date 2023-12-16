@@ -8,42 +8,29 @@
 #include <functional>
 
 struct TranspositionTableEntry {
-    uint16_t age;
+    int32_t age;
     int16_t depth;
     int16_t score;
     uint8_t type;
     Move hashMove;
-
-    bool operator<(const TranspositionTableEntry& other) const {
-        if(age == other.age)
-            return depth < other.depth;
-
-        return age > other.age;
-    }
-
-    bool operator>(const TranspositionTableEntry& other) const {
-        return (uint16_t)depth + age > (uint16_t)other.depth + other.age;
-    }
 };
 
-template<size_t bucketCount, size_t bucketSize>
+template<size_t bucketCount,
+        bool (*replacementPredicate)(const TranspositionTableEntry&, const TranspositionTableEntry&)>
 class TranspositionTable {
     private:
         struct Entry {
             uint64_t hash;
             TranspositionTableEntry entry;
-        };
-
-        static constexpr auto replacementPredicate = [](const Entry& lhs, const TranspositionTableEntry& rhs) {
-            return lhs.entry > rhs;
+            bool exists;
         };
 
         static constexpr auto equalityPredicate = [](const Entry& lhs, const uint64_t& rhs) {
             return lhs.hash == rhs;
         };
 
-        Entry* table;
-        uint8_t* bucketSizes;
+        Entry* predicateBucket;
+        Entry* alwaysReplaceBucket;
     
     public:
         TranspositionTable();
@@ -55,106 +42,99 @@ class TranspositionTable {
         TranspositionTable(TranspositionTable&& other);
         TranspositionTable& operator=(TranspositionTable&& other);
 
-        void put(uint64_t hash, TranspositionTableEntry entry);
+        void put(uint64_t hash, const TranspositionTableEntry& entry);
 
         bool probe(uint64_t hash, TranspositionTableEntry& entry);
 
         void clear();
 };
 
-template<size_t bucketCount, size_t bucketSize>
-TranspositionTable<bucketCount, bucketSize>::TranspositionTable() {
-    table = new Entry[bucketCount * bucketSize];
-    bucketSizes = new uint8_t[bucketCount];
+template<size_t bucketCount,
+    bool (*replacementPredicate)(const TranspositionTableEntry&, const TranspositionTableEntry&)>
+TranspositionTable<bucketCount, replacementPredicate>::TranspositionTable() {
+    predicateBucket = new Entry[bucketCount];
+    alwaysReplaceBucket = new Entry[bucketCount];
 
-    for (size_t i = 0; i < bucketCount; i++) {
-        bucketSizes[i] = 0;
-    }
+    clear();
 }
 
-template<size_t bucketCount, size_t bucketSize>
-TranspositionTable<bucketCount, bucketSize>::~TranspositionTable() {
-    delete[] table;
-    delete[] bucketSizes;
+template<size_t bucketCount,
+    bool (*replacementPredicate)(const TranspositionTableEntry&, const TranspositionTableEntry&)>
+TranspositionTable<bucketCount, replacementPredicate>::~TranspositionTable() {
+    delete[] predicateBucket;
+    delete[] alwaysReplaceBucket;
 }
 
-template<size_t bucketCount, size_t bucketSize>
-TranspositionTable<bucketCount, bucketSize>::TranspositionTable(TranspositionTable&& other) {
-    delete[] table;
-    delete[] bucketSizes;
+template<size_t bucketCount,
+    bool (*replacementPredicate)(const TranspositionTableEntry&, const TranspositionTableEntry&)>
+TranspositionTable<bucketCount, replacementPredicate>::TranspositionTable(TranspositionTable&& other) {
+    predicateBucket = other.predicateBucket;
+    other.predicateBucket = nullptr;
 
-    table = other.table;
-    other.table = nullptr;
-
-    bucketSizes = other.bucketSizes;
-    other.bucketSizes = nullptr;
+    alwaysReplaceBucket = other.alwaysReplaceBucket;
+    other.alwaysReplaceBucket = nullptr;
 }
 
-template<size_t bucketCount, size_t bucketSize>
-TranspositionTable<bucketCount, bucketSize>& TranspositionTable<bucketCount, bucketSize>::operator=(TranspositionTable&& other) {
-    delete[] table;
-    delete[] bucketSizes;
+template<size_t bucketCount,
+    bool (*replacementPredicate)(const TranspositionTableEntry&, const TranspositionTableEntry&)>
+TranspositionTable<bucketCount, replacementPredicate>& TranspositionTable<bucketCount, replacementPredicate>::operator=(TranspositionTable&& other) {
+    delete[] predicateBucket;
+    delete[] alwaysReplaceBucket;
 
-    table = other.table;
-    other.table = nullptr;
+    predicateBucket = other.predicateBucket;
+    other.predicateBucket = nullptr;
 
-    bucketSizes = other.bucketSizes;
-    other.bucketSizes = nullptr;
+    alwaysReplaceBucket = other.alwaysReplaceBucket;
+    other.alwaysReplaceBucket = nullptr;
 
     return *this;
 }
 
-template <size_t bucketCount, size_t bucketSize>
-void TranspositionTable<bucketCount, bucketSize>::put(uint64_t hash, TranspositionTableEntry entry) {
+template<size_t bucketCount,
+    bool (*replacementPredicate)(const TranspositionTableEntry&, const TranspositionTableEntry&)>
+void TranspositionTable<bucketCount, replacementPredicate>::put(uint64_t hash, const TranspositionTableEntry& entry) {
     size_t index = hash % bucketCount;
-    Entry* bucket = table + index * bucketSize;
 
-    // Überprüfe, ob der Schlüssel bereits existiert.
-    for (size_t i = 0; i < bucketSizes[index]; i++) {
-        if (bucket[i].hash == hash) {
-            bucket[i].entry = entry;
-            return;
-        }
+    // Überprüfe, ob der Bucket mit Ersetzungsprädikat leer ist.
+    if(!predicateBucket[index].exists)
+        predicateBucket[index] = { hash, entry, true };
+    else if(replacementPredicate(entry, predicateBucket[index].entry)) {
+        // Wenn der Bucket mit Ersetzungsprädikat nicht leer ist,
+        // bestimme, ob der Eintrag ersetzt werden soll.
+        predicateBucket[index] = { hash, entry, true };
     }
 
-    // Wenn der Schlüssel nicht existiert, füge ihn hinzu.
-    if (bucketSizes[index] < bucketSize) {
-        size_t insertionIndex = std::lower_bound(bucket, bucket + bucketSizes[index], entry, replacementPredicate) - bucket;
-        
-        memmove(bucket + insertionIndex + 1, bucket + insertionIndex, sizeof(Entry) * (bucketSizes[index] - insertionIndex));
-        bucket[insertionIndex].hash = hash;
-        bucket[insertionIndex].entry = entry;
-
-        bucketSizes[index]++;
-    } else {
-        size_t insertionIndex = std::lower_bound(bucket, bucket + bucketSize, entry, replacementPredicate) - bucket;
-        if (insertionIndex < bucketSize) {
-            memmove(bucket + insertionIndex + 1, bucket + insertionIndex, sizeof(Entry) * (bucketSize - insertionIndex - 1));
-            bucket[insertionIndex].hash = hash;
-            bucket[insertionIndex].entry = entry;
-        }
-    }
+    // Ersetze den Eintrag im Bucket ohne Ersetzungsprädikat.
+    alwaysReplaceBucket[index] = { hash, entry, true };
 }
 
-template <size_t bucketCount, size_t bucketSize>
-bool TranspositionTable<bucketCount, bucketSize>::probe(uint64_t hash, TranspositionTableEntry& entry) {
+template<size_t bucketCount,
+    bool (*replacementPredicate)(const TranspositionTableEntry&, const TranspositionTableEntry&)>
+bool TranspositionTable<bucketCount, replacementPredicate>::probe(uint64_t hash, TranspositionTableEntry& entry) {
     size_t index = hash % bucketCount;
-    Entry* bucket = table + index * bucketSize;
 
-    for (size_t i = 0; i < bucketSizes[index]; i++) {
-        if (bucket[i].hash == hash) {
-            entry = bucket[i].entry;
-            return true;
-        }
+    // Überprüfe den Bucket mit Ersetzungsprädikat.
+    if(predicateBucket[index].exists && predicateBucket[index].hash == hash) {
+        entry = predicateBucket[index].entry;
+        return true;
+    }
+
+    // Überprüfe den Bucket ohne Ersetzungsprädikat.
+    if(alwaysReplaceBucket[index].exists && alwaysReplaceBucket[index].hash == hash) {
+        entry = alwaysReplaceBucket[index].entry;
+        return true;
     }
 
     return false;
 }
 
-template <size_t bucketCount, size_t bucketSize>
-void TranspositionTable<bucketCount, bucketSize>::clear() {
-    for (size_t i = 0; i < bucketCount; i++) {
-        bucketSizes[i] = 0;
+template<size_t bucketCount,
+    bool (*replacementPredicate)(const TranspositionTableEntry&, const TranspositionTableEntry&)>
+void TranspositionTable<bucketCount, replacementPredicate>::clear() {
+    // Setze alle Einträge auf nicht existent.
+    for(size_t i = 0; i < bucketCount; i++) {
+        predicateBucket[i].exists = false;
+        alwaysReplaceBucket[i].exists = false;
     }
 }
 

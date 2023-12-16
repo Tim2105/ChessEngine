@@ -10,51 +10,51 @@ struct Score {
     int32_t mg;
     int32_t eg;
 
-    Score operator+(const Score& other) const {
+    constexpr Score operator+(const Score& other) const {
         return Score{mg + other.mg, eg + other.eg};
     }
 
-    Score operator-(const Score& other) const {
+    constexpr Score operator-(const Score& other) const {
         return Score{mg - other.mg, eg - other.eg};
     }
 
-    Score& operator+=(const Score& other) {
+    constexpr Score& operator+=(const Score& other) {
         mg += other.mg;
         eg += other.eg;
         return *this;
     }
 
-    Score& operator-=(const Score& other) {
+    constexpr Score& operator-=(const Score& other) {
         mg -= other.mg;
         eg -= other.eg;
         return *this;
     }
 
-    Score operator*(const int32_t& scalar) const {
+    constexpr Score operator*(const int32_t& scalar) const {
         return Score{mg * scalar, eg * scalar};
     }
 
-    Score& operator*=(const int32_t& scalar) {
+    constexpr Score& operator*=(const int32_t& scalar) {
         mg *= scalar;
         eg *= scalar;
         return *this;
     }
 
-    Score operator/(const int32_t& scalar) const {
+    constexpr Score operator/(const int32_t& scalar) const {
         return Score{mg / scalar, eg / scalar};
     }
 
-    Score& operator/=(const int32_t& scalar) {
+    constexpr Score& operator/=(const int32_t& scalar) {
         mg /= scalar;
         eg /= scalar;
         return *this;
     }
 
-    bool operator==(const Score& other) const {
+    constexpr bool operator==(const Score& other) const {
         return mg == other.mg && eg == other.eg;
     }
 
-    bool operator!=(const Score& other) const {
+    constexpr bool operator!=(const Score& other) const {
         return !(*this == other);
     }
 };
