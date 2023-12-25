@@ -8,30 +8,11 @@
 #include <functional>
 #include <stdint.h>
 
-#define MIN_SCORE -32000
-#define MAX_SCORE 32000
+#define SCORE_MIN -32000
+#define SCORE_MAX 32000
 
-#define MATE_SCORE 21000
-#define IS_MATE_SCORE(x) (std::abs(x) > MATE_SCORE - 1000)
-
-struct MoveScorePair {
-    Move move;
-    int32_t score;
-};
-
-template<>
-struct std::greater<MoveScorePair> {
-    bool operator()(const MoveScorePair& lhs, const MoveScorePair& rhs) const {
-        return lhs.score > rhs.score;
-    }
-};
-
-template<>
-struct std::less<MoveScorePair> {
-    bool operator()(const MoveScorePair& lhs, const MoveScorePair& rhs) const {
-        return lhs.score < rhs.score;
-    }
-};
+#define SCORE_MATE 21000
+#define IS_MATE_SCORE(x) (std::abs(x) > SCORE_MATE - 1000)
 
 class Engine {
 

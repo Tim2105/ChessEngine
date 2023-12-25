@@ -15,11 +15,11 @@
 
 #define _DEBUG_ 0
 
-#define MIN_SCORE -32000
-#define MAX_SCORE 32000
+#define SCORE_MIN -32000
+#define SCORE_MAX 32000
 
-#define MATE_SCORE 21000
-#define IS_MATE_SCORE(x) (std::abs(x) > MATE_SCORE - 1000)
+#define SCORE_MATE 21000
+#define IS_MATE_SCORE(x) (std::abs(x) > SCORE_MATE - 1000)
 
 #define PV_NODE 1
 #define CUT_NODE 2
@@ -34,18 +34,37 @@
 #define MVVLVA 0
 #define SEE 1
 
-#define ONE_PLY 6
-#define ONE_SIXTH_PLY 1
-#define ONE_THIRD_PLY 2
-#define ONE_HALF_PLY 3
-#define TWO_THIRDS_PLY 4
-#define FIVE_SIXTHS_PLY 5
+#define PLY_ONE 6
+#define PLY_ONE_SIXTH 1
+#define PLY_ONE_THIRD 2
+#define PLY_ONE_HALF 3
+#define PLY_TWO_THIRDS 4
+#define PLY_FIVE_SIXTHS 5
 
-#define MAX_PLY 256
+#define PLY_MAX 256
 
 #define NULL_MOVE_R_VALUE 2
 
 #define NODES_BETWEEN_CHECKUPS 1024
+
+struct MoveScorePair {
+    Move move;
+    int32_t score;
+};
+
+template<>
+struct std::greater<MoveScorePair> {
+    bool operator()(const MoveScorePair& lhs, const MoveScorePair& rhs) const {
+        return lhs.score > rhs.score;
+    }
+};
+
+template<>
+struct std::less<MoveScorePair> {
+    bool operator()(const MoveScorePair& lhs, const MoveScorePair& rhs) const {
+        return lhs.score < rhs.score;
+    }
+};
 
 /**
  * @brief Eine Fail-Soft Implementation des Scout-Algorithmus mit anschließender Quieszenzsuche.
@@ -117,7 +136,7 @@ class MinimaxEngine : public InterruptedEngine {
          * 
          * Killerzüge sind leise Züge, die in vorherigen Suchtiefen einen Beta-Schnitt verursacht haben.
         */
-        Move killerMoves[MAX_PLY][2];
+        Move killerMoves[PLY_MAX][2];
 
         /**
          * @brief Eine Tabelle, die für jede Figur und jedes Feld einen Zug speichert, der als Antwort auf diesen Zug
@@ -186,14 +205,14 @@ class MinimaxEngine : public InterruptedEngine {
 
         bool shouldPrune(int16_t depth, int16_t ply, int32_t moveCount, PruningVariables& pruningVars, bool isCheckEvasion = false);
 
-        constexpr bool isMateLine() { return mateDistance != MAX_PLY; }
+        constexpr bool isMateLine() { return mateDistance != PLY_MAX; }
 
     protected:
 
         virtual inline void checkup() override {
             InterruptedEngine::checkup();
 
-            if(getLastCheckupTime() >= endTime && currentMaxDepth > ONE_PLY)
+            if(getLastCheckupTime() >= endTime && currentMaxDepth > PLY_ONE)
                 searchRunning = false;
         }
 
@@ -205,7 +224,7 @@ class MinimaxEngine : public InterruptedEngine {
             currentMaxDepth = 0;
             currentAge = board->getPly();
             nodesSearched = 0;
-            mateDistance = MAX_PLY;
+            mateDistance = PLY_MAX;
             searchRunning = false;
         }
 
@@ -215,7 +234,7 @@ class MinimaxEngine : public InterruptedEngine {
 
         virtual void stop() override;
 
-        constexpr int16_t getLastSearchDepth() { return currentMaxDepth / ONE_PLY - 1; }
+        constexpr int16_t getLastSearchDepth() { return currentMaxDepth / PLY_ONE - 1; }
 
         constexpr uint32_t getNodesSearched() { return nodesSearched; }
 
@@ -237,7 +256,7 @@ class MinimaxEngine : public InterruptedEngine {
             details.variations = variations;
             details.nodesSearched = nodesSearched;
             details.timeTaken = std::chrono::duration_cast<std::chrono::milliseconds>(getLastCheckupTime() - startTime);
-            details.depth = currentMaxDepth / ONE_PLY - 1;
+            details.depth = currentMaxDepth / PLY_ONE - 1;
 
             return details;
         }

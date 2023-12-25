@@ -25,9 +25,9 @@ void ConsoleLiveAnalyzer::start() {
             if(Referee::isDraw(board))
                 details.variations[0].score = 0;
             else if(board.getSideToMove() == WHITE)
-                details.variations[0].score = -MATE_SCORE;
+                details.variations[0].score = -SCORE_MATE;
             else
-                details.variations[0].score = MATE_SCORE;
+                details.variations[0].score = SCORE_MATE;
 
             output(details);
 
@@ -144,7 +144,7 @@ void ConsoleLiveAnalyzer::output(SearchDetails details) {
         }
     } else {
         int32_t scoreAbs = std::abs(details.getBestMoveScore());
-        int32_t mateIn = (MATE_SCORE - scoreAbs + 1) / 2;
+        int32_t mateIn = (SCORE_MATE - scoreAbs + 1) / 2;
 
         if(mateIn == 0) {
             if(details.getBestMoveScore() > 0)
@@ -177,7 +177,7 @@ void ConsoleLiveAnalyzer::output(SearchDetails details) {
                 scoreStr = scoreStream.str();
             } else {
                 int32_t scoreAbs = std::abs(variation.score);
-                int32_t mateIn = (MATE_SCORE - scoreAbs + 1) / 2;
+                int32_t mateIn = (SCORE_MATE - scoreAbs + 1) / 2;
 
                 if(variation.score > 0)
                     scoreStr = "M" + std::to_string(mateIn);

@@ -50,8 +50,12 @@ void TimeControlledGame::start() {
             }
         }
 
-        if(!board.isMoveLegal(move))
-            throw std::runtime_error("Illegal move!");
+        if(!board.isMoveLegal(move)) {
+            std::string sideToMove = board.getSideToMove() == WHITE ? "White" : "Black";
+
+            throw std::runtime_error("Illegal move by " + sideToMove +
+                                     "! " + move.toString() + " on board " + board.toFen());
+        }
 
         board.makeMove(move);
     }

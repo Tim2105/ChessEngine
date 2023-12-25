@@ -76,7 +76,7 @@ int32_t Evaluator::see(Move& m) {
     return score;
 }
 
-int32_t Evaluator::evaluateMoveSEE(Move m) {
+int16_t Evaluator::evaluateMoveSEE(Move m) {
     int32_t moveScore = 0;
 
     if(m.isPromotion()) {
@@ -97,7 +97,7 @@ int32_t Evaluator::evaluateMoveSEE(Move m) {
     return moveScore;
 }
 
-int32_t Evaluator::evaluateMoveMVVLVA(Move m) {
+int16_t Evaluator::evaluateMoveMVVLVA(Move m) {
     int32_t moveScore = 0;
 
     if(m.isPromotion()) {

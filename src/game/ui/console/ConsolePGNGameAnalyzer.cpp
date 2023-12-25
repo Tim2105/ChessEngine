@@ -59,7 +59,7 @@ void ConsolePGNGameAnalyzer::output() {
             }
         } else {
             int32_t scoreAbs = std::abs(boardStateAnalyses[currentMoveIndex].score);
-            int32_t mateIn = (MATE_SCORE - scoreAbs + 1) / 2;
+            int32_t mateIn = (SCORE_MATE - scoreAbs + 1) / 2;
 
             if(mateIn == 0) {
                 if(boardStateAnalyses[currentMoveIndex].score > 0)
@@ -134,7 +134,7 @@ void ConsolePGNGameAnalyzer::output() {
                 else {
                     int32_t scoreAbs = std::abs(boardStateAnalyses[currentMoveIndex].variations[i].score);
 
-                    int32_t mateIn = (MATE_SCORE - scoreAbs + 1) / 2;
+                    int32_t mateIn = (SCORE_MATE - scoreAbs + 1) / 2;
 
                     if(boardStateAnalyses[currentMoveIndex].variations[i].score > 0)
                         scoreStr = "M" + std::to_string(mateIn);

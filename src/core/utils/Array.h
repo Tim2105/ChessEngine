@@ -58,6 +58,13 @@ class Array {
         }
 
         /**
+         * @brief Entfernt das letzte Element aus dem Array und gibt es zurück.
+         */
+        inline T pop_back() {
+            return array[--count];
+        }
+
+        /**
          * @brief Fügt ein Array hinten an den Array an.
          */
         template <size_t s2>

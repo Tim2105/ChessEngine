@@ -47,7 +47,7 @@ class Evaluator {
         /**
          * @brief Setzt das Spielfeld, auf dem die statische Bewertung ausgeführt werden soll.
          */
-        inline void setBoard(Board& b) {
+        virtual inline void setBoard(Board& b) {
             this->b = &b;
         }
 
@@ -74,12 +74,12 @@ class Evaluator {
         /**
          * @brief Führt eine statische Bewertung eines Zugs mit SEE durch.
          */
-        int32_t evaluateMoveSEE(Move m);
+        int16_t evaluateMoveSEE(Move m);
 
         /**
          * @brief Führt eine statische Bewertung eines Zugs mit MVVLVA durch.
          */
-        int32_t evaluateMoveMVVLVA(Move m);
+        int16_t evaluateMoveMVVLVA(Move m);
 
         /**
          * @brief Gibt eine Referenz auf das aktuelle Spielfeld zurück.

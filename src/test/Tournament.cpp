@@ -37,11 +37,11 @@ const std::vector<std::string> Tournament::openings = {
 };
 
 const std::vector<int32_t> Tournament::timeControls = {
-    1, 30, 120
+    300
 };
 
 const std::vector<int32_t> Tournament::numGames = {
-    100, 30, 10
+    1
 };
 
 enum class TournamentGameResult {
@@ -114,7 +114,21 @@ void Tournament::run() {
             Engine& p1 = engine1Starts ? st1 : st2;
             Engine& p2 = engine1Starts ? st2 : st1;
 
-            GameResult result = runGame(board, p1, p2, timeControl * 1000);
+            GameResult result;
+
+            try {result = runGame(board, p1, p2, timeControl * 1000);}
+            catch(std::exception& e) {
+                std::string engine1Color = (engine1White && engine1Starts) ||
+                        (!engine1White && !engine1Starts) ? "Black" : "White";
+                std::string engine2Color = (engine1White && !engine1Starts) ||
+                        (!engine1White && engine1Starts) ? "Black" : "White";
+                std::cout << "Exception in game with " + engineName1 + " as " + engine1Color +
+                             " and " + engineName2 + " as " + engine2Color + "!" << std::endl;
+                std::cout << e.what() << std::endl;
+
+                throw e;
+            }
+
             TournamentGameResult tournamentResult = TournamentGameResult::DRAW;
 
             switch(result) {
