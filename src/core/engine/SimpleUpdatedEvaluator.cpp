@@ -1,6 +1,6 @@
-#include "core/engine/UpdatedEvaluator.h"
+#include "core/engine/SimpleUpdatedEvaluator.h"
 
-void UpdatedEvaluator::updateBeforeMove(Move m) {
+void SimpleUpdatedEvaluator::updateBeforeMove(Move m) {
     evaluationHistory.push_back({currentScore, currentGamePhase, currentPhaseWeight});
 
     Score delta{0, 0};
@@ -93,14 +93,14 @@ void UpdatedEvaluator::updateBeforeMove(Move m) {
     currentGamePhase = std::clamp(currentGamePhase, 0.0, 1.0); // phase auf [0, 1] begrenzen
 }
 
-void UpdatedEvaluator::updateAfterUndo() {
+void SimpleUpdatedEvaluator::updateBeforeUndo() {
     EvaluationVariables scorePhasePair = evaluationHistory.pop_back();
     currentScore = scorePhasePair.score;
     currentGamePhase = scorePhasePair.phase;
     currentPhaseWeight = scorePhasePair.phaseWeight;
 }
 
-void UpdatedEvaluator::calculateScore() {
+void SimpleUpdatedEvaluator::calculateScore() {
     Score score{0, 0};
 
     // Material
@@ -138,7 +138,7 @@ void UpdatedEvaluator::calculateScore() {
     currentScore = score;
 }
 
-void UpdatedEvaluator::calculateGamePhase() {
+void SimpleUpdatedEvaluator::calculateGamePhase() {
     currentPhaseWeight = TOTAL_WEIGHT;
 
     currentPhaseWeight -= b->getPieceBitboard(WHITE_PAWN).getNumberOfSetBits() * PAWN_WEIGHT;

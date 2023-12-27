@@ -1,7 +1,7 @@
 #ifndef __EMSCRIPTEN__
 #include "core/chess/Board.h"
 #include "core/engine/StaticEvaluator.h"
-#include "core/engine/UpdatedEvaluator.h"
+#include "core/engine/SimpleUpdatedEvaluator.h"
 #include "core/engine/MinimaxEngine.h"
 #include "core/engine/PVSEngine.h"
 #include "core/utils/magics/Magics.h"
@@ -29,11 +29,11 @@ int main() {
 
     // navigator.navigate();
 
-    Board b("3r2k1/ppq2pp1/4p2p/3n3P/3N2P1/2P5/PP2QP2/K2R4 b - - 0 1");
-    UpdatedEvaluator evaluator(b);
+    Board b;
+    SimpleUpdatedEvaluator evaluator(b);
     PVSEngine engine(evaluator);
 
-    engine.search(40000);
+    engine.search(20000);
 
     // StaticEvaluator staticEvaluator(b);
     // MinimaxEngine minimax(staticEvaluator);

@@ -29,7 +29,7 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
         }
     }
 
-    if(depth <= 0)
+    if(depth <= 0 || ply >= (maxDepthReached + 1) * 6)
         return quiescence(ply, alpha, beta);
 
     int16_t staticEvaluation = evaluator.evaluate();
@@ -41,23 +41,26 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
         Move nullMove = Move::nullMove();
         boardCopy.makeMove(nullMove);
 
-        int16_t score = -pvs(depth - calculateNullMoveReduction(depth), ply + 1, -beta, -alpha, false, false);
+        int16_t score = -pvs(depth - calculateNullMoveReduction(depth), ply + 1, -alpha - 1, -alpha, false, false);
 
         boardCopy.undoMove();
 
         if(stopFlag)
             return 0;
 
-        if(score >= beta)
-            return score;
+        if(!isPVNode) {
+            if(score >= beta)
+                return score;
 
-        if(score > alpha)
-            alpha = score;
+            if(score > alpha)
+                alpha = score;
+        }
 
-        if(depth <= NULL_MOVE_MAX_EXTENSION_DEPTH &&
-           score < staticEvaluation - NULL_MOVE_EXTENSION_MARGIN) {
-            depth += ONE_HALF_PLY;
+        if(score < staticEvaluation - NULL_MOVE_EXTENSION_MARGIN) {
             isThreat = true;
+            if(depth <= NULL_MOVE_MAX_EXTENSION_DEPTH)
+                depth += ONE_HALF_PLY;
+            
         }
     }
 
@@ -71,10 +74,11 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
     while((move = selectNextMove(ply)).exists()) {
         evaluator.updateBeforeMove(move);
         boardCopy.makeMove(move);
+        evaluator.updateAfterMove();
 
         int16_t extension = determineExtension(isCheckEvasion);
         int16_t reduction = 0;
-        if(!isPVNode && extension == 0 && moveCount > 1 &&
+        if(!isPVNode && extension == 0 && moveCount > 3 &&
            !boardCopy.isCheck() && !isThreat)
             reduction = determineReduction(moveCount);
 
@@ -89,8 +93,9 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
                 score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, true, true);
         }
 
+        evaluator.updateBeforeUndo();
         boardCopy.undoMove();
-        evaluator.updateAfterUndo();
+        evaluator.updateAfterUndo(move);
 
         if(stopFlag)
             return 0;
@@ -106,11 +111,15 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
 
             transpositionTable.put(boardCopy.getHashValue(), entry);
 
-            if(!move.isCapture())
+            if(!move.isCapture()) {
                 addKillerMove(ply, move);
+                incrementHistoryScore(move, depth);
+            }
 
             return score;
         }
+
+        decrementHistoryScore(move, depth);
 
         if(score > bestScore) {
             bestScore = score;
@@ -148,6 +157,8 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
 
     transpositionTable.put(boardCopy.getHashValue(), entry);
 
+    incrementHistoryScore(bestMove, depth);
+
     return bestScore;
 }
 
@@ -178,11 +189,13 @@ int16_t PVSEngine::quiescence(int16_t ply, int16_t alpha, int16_t beta) {
     while((move = selectNextMoveInQuiescence(ply, NEUTRAL_SCORE)).exists()) {
         evaluator.updateBeforeMove(move);
         boardCopy.makeMove(move);
+        evaluator.updateAfterMove();
 
         int16_t score = -quiescence(ply + 1, -beta, -alpha);
 
+        evaluator.updateBeforeUndo();
         boardCopy.undoMove();
-        evaluator.updateAfterUndo();
+        evaluator.updateAfterUndo(move);
 
         if(score >= beta)
             return beta;
@@ -245,7 +258,12 @@ int16_t PVSEngine::determineExtension(bool isCheckEvasion) {
 int16_t PVSEngine::determineReduction(int16_t moveCount) {
     UNUSED(moveCount);
 
-    return ONE_HALF_PLY;
+    int16_t reduction = ONE_HALF_PLY;
+
+    Move lastMove = boardCopy.getLastMove();
+    reduction -= getHistoryScore(lastMove, boardCopy.getSideToMove() ^ COLOR_MASK) * ONE_PLY / 16384;
+
+    return std::clamp(reduction, ONE_HALF_PLY, (int16_t)(2 * ONE_PLY));
 }
 
 bool PVSEngine::deactivateNullMove() {
@@ -273,12 +291,10 @@ void PVSEngine::scoreMoves(Array<Move, 256>& moves, uint16_t ply) {
         if(move.isCapture())
             score = evaluator.evaluateMoveSEE(move);
         else {
-            int32_t piece = boardCopy.pieceAt(move.getOrigin());
-            score = evaluator.getTaperedPSQTValue(piece, move.getDestination()) -
-                    evaluator.getTaperedPSQTValue(piece, move.getOrigin());
-
             if(isKillerMove(ply, move))
                 score += KILLER_MOVE_SCORE;
+
+            score += std::clamp(getHistoryScore(move), (int16_t)-KILLER_MOVE_SCORE, KILLER_MOVE_SCORE);
         }
 
         moveStack[ply].moveScorePairs.push_back(MoveScorePair(move, score));
@@ -365,6 +381,7 @@ void PVSEngine::search(uint32_t time, bool treatAsTimeControl) {
     evaluator.setBoard(boardCopy);
 
     clearKillerMoves();
+    clearHistoryTable();
     clearPVTable();
     clearPVHistory();
     variations.clear();
@@ -372,8 +389,7 @@ void PVSEngine::search(uint32_t time, bool treatAsTimeControl) {
     startTime = std::chrono::system_clock::now();
     calculateTimeLimits(time, treatAsTimeControl);
 
-    int16_t alpha = MIN_SCORE;
-    int16_t beta = MAX_SCORE;
+    int16_t alpha = MIN_SCORE, beta = MAX_SCORE;
 
     for(int16_t depth = 1; depth <= MAX_PLY; depth++) {
         pvs(depth * ONE_PLY, 0, alpha, beta, false, true);

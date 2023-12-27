@@ -4,8 +4,8 @@
 #include <atomic>
 
 #include "core/engine/InterruptedEngine.h"
-#include "core/engine/UpdatedEvaluator.h"
 #include "core/engine/SearchDefinitions.h"
+#include "core/engine/UpdatedEvaluator.h"
 
 #include "core/utils/tables/TranspositionTable.h"
 
@@ -32,6 +32,7 @@ class PVSEngine: public InterruptedEngine {
 
         TranspositionTable<TRANSPOSITION_TABLE_SIZE, ttReplacementPredicate> transpositionTable;
         Move killerMoves[MAX_PLY][2];
+        int32_t historyTable[2][64][64];
         Array<Move, MAX_PLY> pvTable[MAX_PLY];
 
         UpdatedEvaluator& evaluator;
@@ -118,6 +119,38 @@ class PVSEngine: public InterruptedEngine {
 
         constexpr bool isKillerMove(uint16_t ply, Move move) {
             return move == killerMoves[ply][0] || move == killerMoves[ply][1];
+        }
+
+        constexpr void clearHistoryTable() {
+            for(uint16_t i = 0; i < 64; i++)
+                for(uint16_t j = 0; j < 64; j++) {
+                    historyTable[0][i][j] = 0;
+                    historyTable[1][i][j] = 0;
+                }
+        }
+
+        constexpr void incrementHistoryScore(Move move, int16_t depth) {
+            historyTable[boardCopy.getSideToMove() / COLOR_MASK]
+                        [move.getOrigin()]
+                        [move.getDestination()] += (depth / ONE_PLY) * (depth / ONE_PLY);
+        }
+
+        constexpr void decrementHistoryScore(Move move, int16_t depth) {
+            historyTable[boardCopy.getSideToMove() / COLOR_MASK]
+                        [move.getOrigin()]
+                        [move.getDestination()] -= (depth / ONE_PLY);
+        }
+
+        constexpr int16_t getHistoryScore(Move move) {
+            return historyTable[boardCopy.getSideToMove() / COLOR_MASK]
+                               [move.getOrigin()]
+                               [move.getDestination()];
+        }
+
+        constexpr int16_t getHistoryScore(Move move, int32_t side) {
+            return historyTable[side / COLOR_MASK]
+                               [move.getOrigin()]
+                               [move.getDestination()];
         }
 
         constexpr void clearPVTable() {
