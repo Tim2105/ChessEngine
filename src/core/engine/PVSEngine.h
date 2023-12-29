@@ -64,6 +64,7 @@ class PVSEngine: public InterruptedEngine {
         bool deactivateNullMove();
 
         void scoreMoves(Array<Move, 256>& moves, uint16_t ply);
+        void scoreMovesForQuiescence(Array<Move, 256>& moves, uint16_t ply);
         Move selectNextMove(uint16_t ply);
         Move selectNextMoveInQuiescence(uint16_t ply, int16_t minScore = MIN_SCORE + 1);
 
@@ -177,6 +178,8 @@ class PVSEngine: public InterruptedEngine {
         constexpr void clearPVHistory() {
             pvHistory.clear();
         }
+
+        static constexpr int16_t DELTA_MARGIN = 1000;
 
         /**
          * @brief Masken unm Sentry-Bauern zu erkennen.

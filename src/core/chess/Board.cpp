@@ -116,6 +116,10 @@ Board::Board(std::string fen) {
             }
             int square = FR2SQ(file, rank);
             pieces[square] = piece;
+
+            if(pieceList[piece].size() == 9)
+                throw std::invalid_argument("Invalid FEN string: There are more than 9 " + std::to_string(c) + "s on the board");
+
             pieceList[piece].push_back(square);
             file++;
         }

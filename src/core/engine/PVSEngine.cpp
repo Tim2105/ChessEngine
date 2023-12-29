@@ -12,7 +12,8 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
 
     nodesSearched++;
 
-    if(boardCopy.repetitionCount() >= 3)
+    uint8_t repetitionCount = boardCopy.repetitionCount();
+    if(repetitionCount >= 3 || boardCopy.getFiftyMoveCounter() >= 100)
         return DRAW_SCORE;
 
     TranspositionTableEntry entry;
@@ -32,7 +33,6 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
     if(depth <= 0 || ply >= (maxDepthReached + 1) * 6)
         return quiescence(ply, alpha, beta);
 
-    int16_t staticEvaluation = evaluator.evaluate();
     bool isThreat = false;
 
     if(allowNullMove && !boardCopy.isCheck() &&
@@ -56,6 +56,8 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
                 alpha = score;
         }
 
+        int16_t staticEvaluation = evaluator.evaluate();
+
         if(score < staticEvaluation - NULL_MOVE_EXTENSION_MARGIN) {
             isThreat = true;
             if(depth <= NULL_MOVE_MAX_EXTENSION_DEPTH)
@@ -78,9 +80,11 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
 
         int16_t extension = determineExtension(isCheckEvasion);
         int16_t reduction = 0;
-        if(!isPVNode && extension == 0 && moveCount > 3 &&
-           !boardCopy.isCheck() && !isThreat)
-            reduction = determineReduction(moveCount);
+        if(extension == 0 && moveCount >= 1 && !isThreat)
+            reduction = determineReduction(moveCount + 1);
+
+        if(isPVNode)
+            reduction /= 2;
 
         int16_t score;
 
@@ -92,6 +96,9 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
             if(score > alpha && (score < beta || reduction > 0))
                 score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, true, true);
         }
+
+        if(repetitionCount >= 2)
+            score /= 2;
 
         evaluator.updateBeforeUndo();
         boardCopy.undoMove();
@@ -165,13 +172,17 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
 int16_t PVSEngine::quiescence(int16_t ply, int16_t alpha, int16_t beta) {
     nodesSearched++;
 
-    if(boardCopy.repetitionCount() >= 3)
+    if(boardCopy.repetitionCount() >= 3 || boardCopy.getFiftyMoveCounter() >= 100)
         return DRAW_SCORE;
 
     int16_t standPat = evaluator.evaluate();
 
     if(standPat >= beta)
         return beta;
+
+    // Delta Pruning
+    if(standPat < alpha - DELTA_MARGIN)
+        return standPat;
 
     if(standPat > alpha)
         alpha = standPat;
@@ -236,10 +247,14 @@ int16_t PVSEngine::determineExtension(bool isCheckEvasion) {
     if(boardCopy.isCheck() || isCheckEvasion)
         extension += ONE_HALF_PLY;
 
-    // Erweiterung, wenn eine Figur geschlagen wird,
+    // Erweiterung, wenn eine Figur zurückgeschlagen wird,
     // ein Bauer promoviert oder ein Freibauer gezogen wird.
     Move lastMove = boardCopy.getLastMove();
-    if(lastMove.isCapture() || lastMove.isPromotion())
+    std::vector<MoveHistoryEntry> moveHistory = boardCopy.getMoveHistory();
+    Move secondLastMove = moveHistory.size() > 1 ? moveHistory[moveHistory.size() - 2].move : Move::nullMove();
+    if(lastMove.isCapture() && secondLastMove.exists() && secondLastMove.isCapture())
+        extension += ONE_HALF_PLY;
+    else if(lastMove.isPromotion())
         extension += ONE_THIRD_PLY;
     else {
         int32_t movedPieceType = TYPEOF(boardCopy.pieceAt(lastMove.getDestination()));
@@ -258,12 +273,15 @@ int16_t PVSEngine::determineExtension(bool isCheckEvasion) {
 int16_t PVSEngine::determineReduction(int16_t moveCount) {
     UNUSED(moveCount);
 
-    int16_t reduction = ONE_HALF_PLY;
+    int16_t reduction = 0;
 
     Move lastMove = boardCopy.getLastMove();
-    reduction -= getHistoryScore(lastMove, boardCopy.getSideToMove() ^ COLOR_MASK) * ONE_PLY / 16384;
+    reduction -= getHistoryScore(lastMove, boardCopy.getSideToMove() ^ COLOR_MASK) * ONE_PLY / 2048;
 
-    return std::clamp(reduction, ONE_HALF_PLY, (int16_t)(2 * ONE_PLY));
+    if(lastMove.isCapture())
+        reduction -= ONE_PLY;
+
+    return std::max(reduction, (int16_t)0);
 }
 
 bool PVSEngine::deactivateNullMove() {
@@ -297,6 +315,13 @@ void PVSEngine::scoreMoves(Array<Move, 256>& moves, uint16_t ply) {
             score += std::clamp(getHistoryScore(move), (int16_t)-KILLER_MOVE_SCORE, KILLER_MOVE_SCORE);
         }
 
+        moveStack[ply].moveScorePairs.push_back(MoveScorePair(move, score));
+    }
+}
+
+void PVSEngine::scoreMovesForQuiescence(Array<Move, 256>& moves, uint16_t ply) {
+    for(Move move : moves) {
+        int16_t score = evaluator.evaluateMoveSEE(move);
         moveStack[ply].moveScorePairs.push_back(MoveScorePair(move, score));
     }
 }
@@ -353,7 +378,7 @@ Move PVSEngine::selectNextMoveInQuiescence(uint16_t ply, int16_t minScore) {
         else
             moves = boardCopy.generateLegalCaptures();
 
-        scoreMoves(moves, ply);
+        scoreMovesForQuiescence(moves, ply);
     }
 
     Move bestMove = Move::nullMove();
@@ -411,22 +436,22 @@ void PVSEngine::search(uint32_t time, bool treatAsTimeControl) {
         if(!extendSearch(treatAsTimeControl))
             break;
 
-        std::chrono::milliseconds timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime);
-        std::cout << "info depth " << depth << " score cp " << getBestMoveScore() << " pv ";
-        for(Move move : variations[0].moves)
-            std::cout << move.toString() << " ";
+        // std::chrono::milliseconds timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime);
+        // std::cout << "info depth " << depth << " score cp " << getBestMoveScore() << " pv ";
+        // for(Move move : variations[0].moves)
+        //     std::cout << move.toString() << " ";
 
-        std::cout << "nodes " << nodesSearched << " time " << timeElapsed.count() << " nps " << (uint64_t)(nodesSearched / (timeElapsed.count() / 1000.0)) << std::endl;
+        // std::cout << "nodes " << nodesSearched << " time " << timeElapsed.count() << " nps " << (uint64_t)(nodesSearched / (timeElapsed.count() / 1000.0)) << std::endl;
     }
 
     evaluator.setBoard(*board);
 
-    std::chrono::milliseconds timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime);
-    std::cout << "info score cp " << getBestMoveScore() << " pv ";
-    for(Move move : variations[0].moves)
-        std::cout << move.toString() << " ";
+    // std::chrono::milliseconds timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime);
+    // std::cout << "info score cp " << getBestMoveScore() << " pv ";
+    // for(Move move : variations[0].moves)
+    //     std::cout << move.toString() << " ";
 
-    std::cout << "nodes " << nodesSearched << " time " << timeElapsed.count() << " nps " << (uint64_t)(nodesSearched / (timeElapsed.count() / 1000.0)) << std::endl;
+    // std::cout << "nodes " << nodesSearched << " time " << timeElapsed.count() << " nps " << (uint64_t)(nodesSearched / (timeElapsed.count() / 1000.0)) << std::endl;
 }
 
 void PVSEngine::calculateTimeLimits(uint32_t time, bool treatAsTimeControl) {

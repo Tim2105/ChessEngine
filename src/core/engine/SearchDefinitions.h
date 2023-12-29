@@ -1,6 +1,9 @@
 #ifndef SEARCH_DEFINITIONS_H
 #define SEARCH_DEFINITIONS_H
 
+#include <algorithm>
+#include <cmath>
+#include <cstddef>
 #include <stdint.h>
 
 static constexpr int16_t ONE_PLY = 6;

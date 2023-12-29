@@ -152,6 +152,21 @@ class Array {
             return array[0];
         }
 
+        inline T& front() {
+            return array[0];
+        }
+
+        /**
+         * @brief Gibt das letzte Element des Arrays zurück.
+         */
+        inline T back() const {
+            return array[count - 1];
+        }
+
+        inline T& back() {
+            return array[count - 1];
+        }
+
         /**
          * @brief Überprüft, ob ein Element im Array enthalten ist.
          * 

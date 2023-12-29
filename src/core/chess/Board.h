@@ -508,11 +508,11 @@ class Board {
         /**
          * @brief Gibt den neuesten Eintrag der Zughistorie zurück.
          */
-        inline MoveHistoryEntry getLastMoveHistoryEntry() const { 
+        inline const MoveHistoryEntry& getLastMoveHistoryEntry() const { 
             return moveHistory.back();
         };
 
-        inline std::vector<MoveHistoryEntry> getMoveHistory() const { return moveHistory; };
+        inline const std::vector<MoveHistoryEntry>& getMoveHistory() const { return moveHistory; };
 
         /**
          * @brief Gibt alle Positionen eines bestimmten Figurentyps zurück.

@@ -9,7 +9,7 @@
  * @brief Hash-Tabelle mit statischer Größe. Für Geschwindigkeit optimiert.
  * Bei einem Hash-Konflikt wird das älteste Element überschrieben.
  * 
- * @tparam K Der Schlüsseltyp. Muss std::hash<K>{}(key) unterstützen.
+ * @tparam K Der Schlüsseltyp.
  * @tparam V Der Wertetyp.
  * @tparam bucketCount Anzahl der Indizes(sollte ein Teiler der Anzahl der möglichen Hashwerte sein).
  * @tparam bucketSize  Anzahl der Elemente, die pro Index gespeichert werden können.
