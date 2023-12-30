@@ -188,16 +188,19 @@ int16_t PVSEngine::quiescence(int16_t ply, int16_t alpha, int16_t beta) {
         alpha = standPat;
 
     int16_t bestScore = MIN_SCORE;
+    int16_t minMoveScore = MIN_SCORE;
 
-    if(!boardCopy.isCheck())
+    if(!boardCopy.isCheck()) {
         bestScore = standPat;
+        minMoveScore = NEUTRAL_SCORE;
+    }
 
     clearMoveStack(ply);
 
     int16_t moveCount = 0;
     Move move;
 
-    while((move = selectNextMoveInQuiescence(ply, NEUTRAL_SCORE)).exists()) {
+    while((move = selectNextMoveInQuiescence(ply, minMoveScore)).exists()) {
         evaluator.updateBeforeMove(move);
         boardCopy.makeMove(move);
         evaluator.updateAfterMove();
@@ -302,24 +305,22 @@ bool PVSEngine::deactivateNullMove() {
     return true;
 }
 
-void PVSEngine::scoreMoves(Array<Move, 256>& moves, uint16_t ply) {
+void PVSEngine::scoreMoves(const Array<Move, 256>& moves, uint16_t ply) {
     for(Move move : moves) {
         int16_t score = 0;
 
         if(move.isCapture())
-            score = evaluator.evaluateMoveSEE(move);
-        else {
-            if(isKillerMove(ply, move))
-                score += KILLER_MOVE_SCORE;
+            score = std::max(evaluator.evaluateMoveMVVLVA(move), NEUTRAL_SCORE);
+        else if(isKillerMove(ply, move))
+            score += KILLER_MOVE_SCORE;
 
-            score += std::clamp(getHistoryScore(move), (int16_t)-KILLER_MOVE_SCORE, KILLER_MOVE_SCORE);
-        }
+        score += getHistoryScore(move);
 
         moveStack[ply].moveScorePairs.push_back(MoveScorePair(move, score));
     }
 }
 
-void PVSEngine::scoreMovesForQuiescence(Array<Move, 256>& moves, uint16_t ply) {
+void PVSEngine::scoreMovesForQuiescence(const Array<Move, 256>& moves, uint16_t ply) {
     for(Move move : moves) {
         int16_t score = evaluator.evaluateMoveSEE(move);
         moveStack[ply].moveScorePairs.push_back(MoveScorePair(move, score));
@@ -340,7 +341,8 @@ Move PVSEngine::selectNextMove(uint16_t ply) {
             }
         }
 
-        Array<Move, 256> moves = boardCopy.generateLegalMoves();
+        Array<Move, 256> moves;
+        boardCopy.generateLegalMoves(moves);
         scoreMoves(moves, ply);
 
         if(moveStack[ply].hashMove.exists()) {
@@ -374,9 +376,9 @@ Move PVSEngine::selectNextMoveInQuiescence(uint16_t ply, int16_t minScore) {
     if(moveStack[ply].moveScorePairs.size() == 0) {
         Array<Move, 256> moves;
         if(boardCopy.isCheck())
-            moves = boardCopy.generateLegalMoves();
+            boardCopy.generateLegalMoves(moves);
         else
-            moves = boardCopy.generateLegalCaptures();
+            boardCopy.generateLegalCaptures(moves);
 
         scoreMovesForQuiescence(moves, ply);
     }
@@ -392,7 +394,7 @@ Move PVSEngine::selectNextMoveInQuiescence(uint16_t ply, int16_t minScore) {
             bestIndex = i;
         }
 
-    moveStack[ply].moveScorePairs[bestIndex].score = MIN_SCORE;
+    moveStack[ply].moveScorePairs[bestIndex].score = MIN_SCORE - 1;
 
     return bestMove;
 }
@@ -436,22 +438,22 @@ void PVSEngine::search(uint32_t time, bool treatAsTimeControl) {
         if(!extendSearch(treatAsTimeControl))
             break;
 
-        // std::chrono::milliseconds timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime);
-        // std::cout << "info depth " << depth << " score cp " << getBestMoveScore() << " pv ";
-        // for(Move move : variations[0].moves)
-        //     std::cout << move.toString() << " ";
+        std::chrono::milliseconds timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime);
+        std::cout << "info depth " << depth << " score cp " << getBestMoveScore() << " pv ";
+        for(Move move : variations[0].moves)
+            std::cout << move.toString() << " ";
 
-        // std::cout << "nodes " << nodesSearched << " time " << timeElapsed.count() << " nps " << (uint64_t)(nodesSearched / (timeElapsed.count() / 1000.0)) << std::endl;
+        std::cout << "nodes " << nodesSearched << " time " << timeElapsed.count() << " nps " << (uint64_t)(nodesSearched / (timeElapsed.count() / 1000.0)) << std::endl;
     }
 
     evaluator.setBoard(*board);
 
-    // std::chrono::milliseconds timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime);
-    // std::cout << "info score cp " << getBestMoveScore() << " pv ";
-    // for(Move move : variations[0].moves)
-    //     std::cout << move.toString() << " ";
+    std::chrono::milliseconds timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime);
+    std::cout << "info score cp " << getBestMoveScore() << " pv ";
+    for(Move move : variations[0].moves)
+        std::cout << move.toString() << " ";
 
-    // std::cout << "nodes " << nodesSearched << " time " << timeElapsed.count() << " nps " << (uint64_t)(nodesSearched / (timeElapsed.count() / 1000.0)) << std::endl;
+    std::cout << "nodes " << nodesSearched << " time " << timeElapsed.count() << " nps " << (uint64_t)(nodesSearched / (timeElapsed.count() / 1000.0)) << std::endl;
 }
 
 void PVSEngine::calculateTimeLimits(uint32_t time, bool treatAsTimeControl) {

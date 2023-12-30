@@ -10,7 +10,7 @@
  * Diese Klasse deklariert die Methode int32_t evaluate(), die eine statische Bewertung der Spielposition ausführt.
  * Diese Methode muss von allen abgeleiteten Klassen implementiert werden.
  * 
- * Diese Klasse deklariert und implpementiert auch die Methode bool isDraw(), die überprüft, ob das Spiel ein Unentschieden ist.
+ * Diese Klasse deklariert und implementiert auch die Methode bool isDraw(), die überprüft, ob das Spiel ein Unentschieden ist.
  * Außerdem existieren bereits Methoden zur statischen Bewertung eines Zuges mit SEE und MVVLVA.
  */
 class Evaluator {

@@ -8,7 +8,8 @@
             "defines": [
                 "_DEBUG",
                 "UNICODE",
-                "_UNICODE"
+                "_UNICODE",
+                "__AVX2__",
             ],
             "windowsSdkVersion": "10.0.17763.0",
             "compilerPath": "C:/MinGW/bin/g++.exe",

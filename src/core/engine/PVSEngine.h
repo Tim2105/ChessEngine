@@ -63,8 +63,8 @@ class PVSEngine: public InterruptedEngine {
 
         bool deactivateNullMove();
 
-        void scoreMoves(Array<Move, 256>& moves, uint16_t ply);
-        void scoreMovesForQuiescence(Array<Move, 256>& moves, uint16_t ply);
+        void scoreMoves(const Array<Move, 256>& moves, uint16_t ply);
+        void scoreMovesForQuiescence(const Array<Move, 256>& moves, uint16_t ply);
         Move selectNextMove(uint16_t ply);
         Move selectNextMoveInQuiescence(uint16_t ply, int16_t minScore = MIN_SCORE + 1);
 

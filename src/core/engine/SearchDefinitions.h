@@ -33,7 +33,7 @@ static constexpr uint8_t TT_TYPE_CUT_NODE = 1;
 static constexpr int16_t KILLER_MOVE_SCORE = 80;
 
 static constexpr int16_t NULL_MOVE_MARGIN = 150;
-static constexpr int16_t NULL_MOVE_MAX_EXTENSION_DEPTH = 3 * ONE_PLY;
+static constexpr int16_t NULL_MOVE_MAX_EXTENSION_DEPTH = 4 * ONE_PLY;
 static constexpr int16_t NULL_MOVE_EXTENSION_MARGIN = 300;
 
 static constexpr int16_t calculateNullMoveReduction(int16_t depth) {

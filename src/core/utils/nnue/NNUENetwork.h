@@ -29,6 +29,9 @@ namespace NNUE {
             uint32_t version, hash, headerSize;
             uint32_t halfKPHash, layer1Hash;
 
+            void initializeFromBoard(const Board& board, int32_t color) noexcept;
+            void updateAfterOppKingMove(const Board& board, int32_t color, Move move) noexcept;
+
         public:
             Network();
             ~Network();

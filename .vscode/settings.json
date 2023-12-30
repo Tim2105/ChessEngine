@@ -80,6 +80,7 @@
         "cwctype": "cpp",
         "memory_resource": "cpp",
         "numeric": "cpp",
-        "numbers": "cpp"
+        "numbers": "cpp",
+        "unordered_set": "cpp"
     }
 }

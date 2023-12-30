@@ -62,12 +62,87 @@ int32_t getHalfKPIndex(int32_t kingSq, int32_t pieceSq, int32_t piece) noexcept 
     return pieceSq + KP_INDICES[pieceType][pieceColor / COLOR_MASK] + kingSq * 641;
 }
 
-void Network::initializeFromBoard(const Board& board) noexcept {
-    std::vector<int32_t> activeFeaturesWhite;
-    std::vector<int32_t> activeFeaturesBlack;
+void Network::initializeFromBoard(const Board& board, int32_t color) noexcept {
+    Array<int32_t, 63> activeFeatures;
 
-    activeFeaturesWhite.reserve(30);
-    activeFeaturesBlack.reserve(30);
+    int32_t kingSq = board.getKingSquare(color);
+
+    // Weiße Figuren
+    if(color == WHITE) {
+        for(int32_t piece = (WHITE | PAWN); piece <= (WHITE | QUEEN); piece++) {
+            for(int32_t sq : board.getPieceList(piece)) {
+                activeFeatures.push_back(getHalfKPIndex<WHITE>(kingSq, sq, piece));
+            }
+        }
+
+        // Schwarze Figuren
+        for(int32_t piece = (BLACK | PAWN); piece <= (BLACK | QUEEN); piece++) {
+            for(int32_t sq : board.getPieceList(piece)) {
+                activeFeatures.push_back(getHalfKPIndex<WHITE>(kingSq, sq, piece));
+            }
+        }
+    } else {
+        for(int32_t piece = (WHITE | PAWN); piece <= (WHITE | QUEEN); piece++) {
+            for(int32_t sq : board.getPieceList(piece)) {
+                activeFeatures.push_back(getHalfKPIndex<BLACK>(kingSq, sq, piece));
+            }
+        }
+
+        // Schwarze Figuren
+        for(int32_t piece = (BLACK | PAWN); piece <= (BLACK | QUEEN); piece++) {
+            for(int32_t sq : board.getPieceList(piece)) {
+                activeFeatures.push_back(getHalfKPIndex<BLACK>(kingSq, sq, piece));
+            }
+        }
+    }
+
+    accumulator.refresh(activeFeatures, color);
+}
+
+void Network::updateAfterOppKingMove(const Board& board, int32_t color, Move move) noexcept {
+    int32_t colorMoved = color ^ COLOR_MASK;
+
+    Array<int32_t, 3> addedFeatures;
+    Array<int32_t, 3> removedFeatures;
+
+    if(move.isCapture()) {
+        int32_t capturedPiece = board.getLastMoveHistoryEntry().capturedPiece;
+        int32_t otherKingSq = board.getKingSquare(colorMoved ^ COLOR_MASK);
+
+        if(colorMoved == WHITE)
+            removedFeatures.push_back(getHalfKPIndex<BLACK>(otherKingSq, move.getDestination(), capturedPiece));
+        else
+            removedFeatures.push_back(getHalfKPIndex<WHITE>(otherKingSq, move.getDestination(), capturedPiece));
+
+        accumulator.update(addedFeatures, removedFeatures, color);
+    } else if(move.isCastle()) {
+        int32_t kingSq = board.getKingSquare(colorMoved);
+        int32_t otherKingSq = board.getKingSquare(colorMoved ^ COLOR_MASK);
+        int32_t rookOrigin, rookDestination;
+
+        if(move.isKingsideCastle()) {
+            rookOrigin = kingSq + EAST;
+            rookDestination = kingSq + WEST;
+        } else {
+            rookOrigin = kingSq + WEST * 2;
+            rookDestination = kingSq + EAST;
+        }
+
+        if(colorMoved == WHITE) {
+            removedFeatures.push_back(getHalfKPIndex<BLACK>(otherKingSq, rookOrigin, colorMoved | ROOK));
+            addedFeatures.push_back(getHalfKPIndex<BLACK>(otherKingSq, rookDestination, colorMoved | ROOK));
+        } else {
+            removedFeatures.push_back(getHalfKPIndex<WHITE>(otherKingSq, rookOrigin, colorMoved | ROOK));
+            addedFeatures.push_back(getHalfKPIndex<WHITE>(otherKingSq, rookDestination, colorMoved | ROOK));
+        }
+
+        accumulator.update(addedFeatures, removedFeatures, color);
+    }
+}
+
+void Network::initializeFromBoard(const Board& board) noexcept {
+    Array<int32_t, 63> activeFeaturesWhite;
+    Array<int32_t, 63> activeFeaturesBlack;
 
     // Weiße Figuren
     for(int32_t piece = (WHITE | PAWN); piece <= (WHITE | QUEEN); piece++) {
@@ -95,25 +170,25 @@ void Network::updateAfterMove(const Board& board) noexcept {
     std::copy(accumulator.getOutput(BLACK), accumulator.getOutput(BLACK) + SINGLE_SUBNET_SIZE, pastAccumulators.back().begin() + SINGLE_SUBNET_SIZE);
 
     Move move = board.getLastMove();
-    int32_t movedPiece = board.pieceAt(move.getDestination());
 
-    // Wenn der König gezogen wurde, muss das Netzwerk neu initialisiert werden
+    int32_t movedPiece = board.pieceAt(move.getDestination());
+    int32_t colorMoved = movedPiece & COLOR_MASK;
+
     if(TYPEOF(movedPiece) == KING) {
-        initializeFromBoard(board);
+        // Wenn der König gezogen wurde,
+        // muss das Netzwerk der Farbe des Königs neu initialisiert werden
+        initializeFromBoard(board, colorMoved);
+        updateAfterOppKingMove(board, colorMoved ^ COLOR_MASK, move);
         return;
     }
 
-    std::vector<int32_t> addedFeaturesWhite;
-    std::vector<int32_t> addedFeaturesBlack;
-    std::vector<int32_t> removedFeaturesWhite;
-    std::vector<int32_t> removedFeaturesBlack;
-
-    removedFeaturesWhite.reserve(2);
-    removedFeaturesBlack.reserve(2);
+    Array<int32_t, 3> addedFeaturesWhite;
+    Array<int32_t, 3> addedFeaturesBlack;
+    Array<int32_t, 3> removedFeaturesWhite;
+    Array<int32_t, 3> removedFeaturesBlack;
 
     int32_t whiteKingSq = board.getKingSquare(WHITE);
     int32_t blackKingSq = board.getKingSquare(BLACK);
-    int32_t colorMoved = movedPiece & COLOR_MASK;
 
     // Wenn der Zug eine Promotion ist, wäre die gezogene Figur sonst
     // die aufgewertete Figur

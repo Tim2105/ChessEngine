@@ -1,9 +1,9 @@
 #ifndef ARRAY_H
 #define ARRAY_H
 
-#include <type_traits>
-#include <cstring> // memcpy & memmove
 #include <initializer_list>
+#include <type_traits>
+#include <stdalign.h>
 #include <stdint.h>
 #include <vector>
 
@@ -17,22 +17,29 @@
 template <typename T, size_t s>
 class Array {
 
+    static constexpr size_t NEXT_POWER_OF_TWO(size_t n) {
+        size_t power = 1;
+        while(power < n)
+            power *= 2;
+
+        return power;
+    }
+
     public:
-        T array[s];
+        alignas(std::min(NEXT_POWER_OF_TWO(s * sizeof(T)), (size_t)64)) T array[s];
         size_t count;
 
         constexpr Array() : count(0) {}
 
         Array(const Array<T, s>& other) {
             count = other.count;
-            memcpy(array, other.array, count * sizeof(T));
+            std::copy(other.array, other.array + count, array);
         }
 
         constexpr Array(const std::initializer_list<T>& list) {
             count = 0;
-            for(T elem : list) {
+            for(const T& elem : list)
                 array[count++] = elem;
-            }
 
             for(size_t i = count; i < s; i++)
                 array[i] = T();
@@ -42,7 +49,7 @@ class Array {
 
         constexpr Array& operator=(const Array& other) {
             count = other.count;
-            memcpy(array, other.array, count * sizeof(T));
+            std::copy(other.array, other.array + count, array);
 
             return *this;
         }
@@ -69,7 +76,7 @@ class Array {
          */
         template <size_t s2>
         inline void push_back(Array<T, s2>& other) {
-            memmove(array + count, other.array, other.count * sizeof(T));
+            std::copy(other.array, other.array + other.count, array + count);
             count += other.count;
         }
 
@@ -77,7 +84,7 @@ class Array {
          * @brief Fügt ein Element an der angegebenen Position ein.
          */
         inline void insert(size_t index, T elem) {
-            memmove(array + index + 1, array + index, (count - index) * sizeof(T));
+            std::copy_backward(array + index, array + count, array + count + 1);
             array[index] = elem;
             count++;
         }
@@ -88,7 +95,7 @@ class Array {
         inline void remove(T elem) {
             for(size_t i = 0; i < count; i++) {
                 if(array[i] == elem) {
-                    memmove(array + i, array + i + 1, (count - i - 1) * sizeof(T));
+                    std::copy(array + i + 1, array + count, array + i);
                     count--;
                     return;
                 }
@@ -99,7 +106,7 @@ class Array {
          * @brief Entfernt das Element an der angegebenen Position aus dem Array.
          */
         inline void remove(size_t index) {
-            memmove(array + index, array + index + 1, (count - index - 1) * sizeof(T));
+            std::copy(array + index + 1, array + count, array + index);
 
             count--;
         }
@@ -116,7 +123,7 @@ class Array {
          * Das erste Element wird überschrieben.
          */
         inline void shiftLeft(size_t index) {
-            memmove(array + index, array + index + 1, (count - index - 1) * sizeof(T));
+            std::copy(array + index + 1, array + count, array + index);
             count--;
         }
 
@@ -126,9 +133,9 @@ class Array {
          */
         inline void shiftRight(size_t index) {
             if(count == s)
-                memmove(array + index + 1, array + index, (s - index - 1) * sizeof(T));
+                std::copy_backward(array + index, array + count - 1, array + count);
             else {
-                memmove(array + index + 1, array + index, (count - index) * sizeof(T));
+                std::copy_backward(array + index, array + count, array + count + 1);
                 count++;
             }
         }

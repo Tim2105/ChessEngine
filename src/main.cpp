@@ -32,7 +32,8 @@ int main() {
 
     // navigator.navigate();
 
-    Board b;
+    Board b("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
+
     std::ifstream is("network.nnue", std::ios::binary);
 
     NNUEEvaluator evaluator(b, is);
@@ -40,11 +41,11 @@ int main() {
 
     engine.search(20000);
 
-    StaticEvaluator staticEvaluator(b);
-    MinimaxEngine minimax(staticEvaluator);
+    // StaticEvaluator staticEvaluator(b);
+    // MinimaxEngine minimax(staticEvaluator);
 
-    Tournament tournament(engine, minimax, "PVS", "Minimax");
-    tournament.run();
+    // Tournament tournament(engine, minimax, "PVS", "Minimax");
+    // tournament.run();
 
     return 0;
 }

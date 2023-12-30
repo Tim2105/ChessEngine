@@ -442,6 +442,10 @@ bool Board::isMoveLegal(Move move) {
     // Überprüfe, ob der Zug eine eigene Figur schlägt
     if(pieces[destination] != EMPTY && (pieces[destination] & COLOR_MASK) == side)
         return false; // Zug schlägt eine eigene Figur
+
+    // Wenn der Zug ein Schlagzug ist, überprüfe, ob er eine gegnerische Figur schlägt
+    if(move.isCapture() && pieces[destination] == EMPTY)
+        return false;
     
     // Wenn der Zug eine Rochade ist, überprüfe, ob die Rochade erlaubt ist
     if(move.isCastle()) {
@@ -1245,7 +1249,11 @@ void Board::generatePinnedPiecesBitboards(int32_t side, Bitboard& pinnedPiecesBi
 
 Array<Move, 256> Board::generatePseudoLegalMoves() const {
     Array<Move, 256> moves;
+    generatePseudoLegalMoves(moves);
+    return moves;
+}
 
+void Board::generatePseudoLegalMoves(Array<Move, 256>& moves) const {
     if(side == WHITE) {
         Movegen::generatePseudoLegalWhitePawnMoves(moves, *this);
         Movegen::generatePseudoLegalWhiteKnightMoves(moves, *this);
@@ -1261,13 +1269,15 @@ Array<Move, 256> Board::generatePseudoLegalMoves() const {
         Movegen::generatePseudoLegalBlackQueenMoves(moves, *this);
         Movegen::generatePseudoLegalBlackKingMoves(moves, *this);
     }
-
-    return moves;
 }
 
 Array<Move, 256> Board::generateLegalMoves() const {
     Array<Move, 256> legalMoves;
+    generateLegalMoves(legalMoves);
+    return legalMoves;
+}
 
+void Board::generateLegalMoves(Array<Move, 256>& legalMoves) const {
     if(side == WHITE) {
         Bitboard attackedSquares = blackAttackBitboard;
 
@@ -1307,13 +1317,15 @@ Array<Move, 256> Board::generateLegalMoves() const {
         Movegen::generateBlackQueenMoves(legalMoves, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
         Movegen::generateBlackKingMoves(legalMoves, *this, attackedSquares);
     }
-
-    return legalMoves;
 }
 
 Array<Move, 256> Board::generateLegalCaptures() const {
     Array<Move, 256> legalCaptures;
+    generateLegalCaptures(legalCaptures);
+    return legalCaptures;
+}
 
+void Board::generateLegalCaptures(Array<Move, 256>& legalCaptures) const {
     if(side == WHITE) {
         Bitboard attackingRays;
         int32_t numAttackers = 0;
@@ -1349,8 +1361,6 @@ Array<Move, 256> Board::generateLegalCaptures() const {
         Movegen::generateBlackQueenCaptures(legalCaptures, *this, numAttackers, attackingRays, pinnedPieces, pinnedDirections);
         Movegen::generateBlackKingCaptures(legalCaptures, *this);
     }
-
-    return legalCaptures;
 }
 
 std::string Board::toFen() const {

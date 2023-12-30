@@ -409,15 +409,38 @@ class Board {
         Array<Move, 256> generatePseudoLegalMoves() const;
 
         /**
+         * @brief Generiert alle Pseudo-Legalen Züge.
+         * Pseudo-Legale Züge sind Züge, die auf dem Schachbrett möglich sind, aber eventuell den eigenen König im Schach lassen.
+         * 
+         * @param moves Das Array, in das die Züge gespeichert werden sollen.
+         */
+        void generatePseudoLegalMoves(Array<Move, 256>& moves) const;
+
+        /**
          * @brief Generiert alle legalen Züge.
          * Legale Züge sind Züge, die auf dem Schachbrett möglich sind und den eigenen König nicht im Schach lassen.
          */
         Array<Move, 256> generateLegalMoves() const;
 
         /**
+         * @brief Generiert alle legalen Züge.
+         * Legale Züge sind Züge, die auf dem Schachbrett möglich sind und den eigenen König nicht im Schach lassen.
+         *
+         * @param moves Das Array, in das die Züge gespeichert werden sollen.
+         */
+        void generateLegalMoves(Array<Move, 256>& moves) const;
+
+        /**
          * @brief Generiert alle legalen Züge, die eine Figur schlagen
          */
         Array<Move, 256> generateLegalCaptures() const;
+
+        /**
+         * @brief Generiert alle legalen Züge, die eine Figur schlagen
+         *
+         * @param moves Das Array, in das die Züge gespeichert werden sollen.
+         */
+        void generateLegalCaptures(Array<Move, 256>& moves) const;
 
         /**
          * @brief Führt einen Zug aus.
