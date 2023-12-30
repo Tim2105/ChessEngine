@@ -2127,10 +2127,15 @@ void Movegen::generateWhiteBishopCaptures(Array<Move, 256>& moves, const Board& 
 
                     // Eine Abbruchbedingung ist hier nicht nötig, da in beide Fesselrichtungen eine Figur stehen muss
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY){
+                            n_sq += SOUTH_WEST;
+                            continue;
+                        }
+
                         if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += SOUTH_WEST;
@@ -2139,10 +2144,15 @@ void Movegen::generateWhiteBishopCaptures(Array<Move, 256>& moves, const Board& 
                     n_sq = sq + NORTH_EAST;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY){
+                            n_sq += NORTH_EAST;
+                            continue;
+                        }
+
                         if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += NORTH_EAST;
@@ -2152,10 +2162,15 @@ void Movegen::generateWhiteBishopCaptures(Array<Move, 256>& moves, const Board& 
                     int n_sq = sq + SOUTH_EAST;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY){
+                            n_sq += SOUTH_EAST;
+                            continue;
+                        }
+
                         if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += SOUTH_EAST;
@@ -2164,10 +2179,15 @@ void Movegen::generateWhiteBishopCaptures(Array<Move, 256>& moves, const Board& 
                     n_sq = sq + NORTH_WEST;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY){
+                            n_sq += NORTH_WEST;
+                            continue;
+                        }
+
                         if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += NORTH_WEST;
@@ -2230,10 +2250,15 @@ void Movegen::generateBlackBishopCaptures(Array<Move, 256>& moves, const Board& 
 
                     // Eine Abbruchbedingung ist hier nicht nötig, da in beide Fesselrichtungen eine Figur stehen muss
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY){
+                            n_sq += NORTH_EAST;
+                            continue;
+                        }
+
                         if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += NORTH_EAST;
@@ -2242,10 +2267,15 @@ void Movegen::generateBlackBishopCaptures(Array<Move, 256>& moves, const Board& 
                     n_sq = sq + SOUTH_WEST;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY){
+                            n_sq += SOUTH_WEST;
+                            continue;
+                        }
+
                         if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += SOUTH_WEST;
@@ -2255,10 +2285,15 @@ void Movegen::generateBlackBishopCaptures(Array<Move, 256>& moves, const Board& 
                     int n_sq = sq + NORTH_WEST;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY){
+                            n_sq += NORTH_WEST;
+                            continue;
+                        }
+
                         if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += NORTH_WEST;
@@ -2267,10 +2302,15 @@ void Movegen::generateBlackBishopCaptures(Array<Move, 256>& moves, const Board& 
                     n_sq = sq + SOUTH_EAST;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY){
+                            n_sq += SOUTH_EAST;
+                            continue;
+                        }
+
                         if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += SOUTH_EAST;
@@ -2332,10 +2372,15 @@ void Movegen::generateWhiteRookCaptures(Array<Move, 256>& moves, const Board& b,
                     int n_sq = sq + NORTH;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY) {
+                            n_sq += NORTH;
+                            continue;
+                        }
+
                         if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += NORTH;
@@ -2344,10 +2389,15 @@ void Movegen::generateWhiteRookCaptures(Array<Move, 256>& moves, const Board& b,
                     n_sq = sq + SOUTH;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY) {
+                            n_sq += SOUTH;
+                            continue;
+                        }
+
                         if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += SOUTH;
@@ -2358,10 +2408,15 @@ void Movegen::generateWhiteRookCaptures(Array<Move, 256>& moves, const Board& b,
                     int n_sq = sq + EAST;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY) {
+                            n_sq += EAST;
+                            continue;
+                        }
+
                         if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += EAST;
@@ -2370,10 +2425,15 @@ void Movegen::generateWhiteRookCaptures(Array<Move, 256>& moves, const Board& b,
                     n_sq = sq + WEST;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY) {
+                            n_sq += WEST;
+                            continue;
+                        }
+
                         if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += WEST;
@@ -2435,10 +2495,15 @@ void Movegen::generateBlackRookCaptures(Array<Move, 256>& moves, const Board& b,
                     int n_sq = sq + NORTH;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY) {
+                            n_sq += NORTH;
+                            continue;
+                        }
+
                         if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += NORTH;
@@ -2447,10 +2512,15 @@ void Movegen::generateBlackRookCaptures(Array<Move, 256>& moves, const Board& b,
                     n_sq = sq + SOUTH;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY) {
+                            n_sq += SOUTH;
+                            continue;
+                        }
+
                         if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += SOUTH;
@@ -2461,10 +2531,15 @@ void Movegen::generateBlackRookCaptures(Array<Move, 256>& moves, const Board& b,
                     int n_sq = sq + EAST;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY) {
+                            n_sq += EAST;
+                            continue;
+                        }
+
                         if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += EAST;
@@ -2473,10 +2548,15 @@ void Movegen::generateBlackRookCaptures(Array<Move, 256>& moves, const Board& b,
                     n_sq = sq + WEST;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY) {
+                            n_sq += WEST;
+                            continue;
+                        }
+
                         if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += WEST;
@@ -2544,10 +2624,15 @@ void Movegen::generateWhiteQueenCaptures(Array<Move, 256>& moves, const Board& b
 
                     // Eine Abbruchbedingung ist hier nicht nötig, da in beide Fesselrichtungen eine Figur stehen muss
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY) {
+                            n_sq += NORTH_WEST;
+                            continue;
+                        }
+
                         if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += NORTH_WEST;
@@ -2556,10 +2641,15 @@ void Movegen::generateWhiteQueenCaptures(Array<Move, 256>& moves, const Board& b
                     n_sq = sq + SOUTH_EAST;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY) {
+                            n_sq += SOUTH_EAST;
+                            continue;
+                        }
+
                         if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += SOUTH_EAST;
@@ -2568,10 +2658,15 @@ void Movegen::generateWhiteQueenCaptures(Array<Move, 256>& moves, const Board& b
                     int n_sq = sq + NORTH_EAST;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY) {
+                            n_sq += NORTH_EAST;
+                            continue;
+                        }
+
                         if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += NORTH_EAST;
@@ -2580,10 +2675,15 @@ void Movegen::generateWhiteQueenCaptures(Array<Move, 256>& moves, const Board& b
                     n_sq = sq + SOUTH_WEST;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY) {
+                            n_sq += SOUTH_WEST;
+                            continue;
+                        }
+
                         if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += SOUTH_WEST;
@@ -2593,10 +2693,15 @@ void Movegen::generateWhiteQueenCaptures(Array<Move, 256>& moves, const Board& b
                     int n_sq = sq + NORTH;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY) {
+                            n_sq += NORTH;
+                            continue;
+                        }
+
                         if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += NORTH;
@@ -2605,10 +2710,15 @@ void Movegen::generateWhiteQueenCaptures(Array<Move, 256>& moves, const Board& b
                     n_sq = sq + SOUTH;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY) {
+                            n_sq += SOUTH;
+                            continue;
+                        }
+
                         if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += SOUTH;
@@ -2618,10 +2728,15 @@ void Movegen::generateWhiteQueenCaptures(Array<Move, 256>& moves, const Board& b
                     int n_sq = sq + EAST;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY) {
+                            n_sq += EAST;
+                            continue;
+                        }
+
                         if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += EAST;
@@ -2630,10 +2745,15 @@ void Movegen::generateWhiteQueenCaptures(Array<Move, 256>& moves, const Board& b
                     n_sq = sq + WEST;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY) {
+                            n_sq += WEST;
+                            continue;
+                        }
+                        
                         if((b.pieces[n_sq] & COLOR_MASK) == BLACK) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += WEST;
@@ -2709,10 +2829,15 @@ void Movegen::generateBlackQueenCaptures(Array<Move, 256>& moves, const Board& b
 
                     // Eine Abbruchbedingung ist hier nicht nötig, da in beide Fesselrichtungen eine Figur stehen muss
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY) {
+                            n_sq += NORTH_WEST;
+                            continue;
+                        }
+                        
                         if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += NORTH_WEST;
@@ -2721,10 +2846,15 @@ void Movegen::generateBlackQueenCaptures(Array<Move, 256>& moves, const Board& b
                     n_sq = sq + SOUTH_EAST;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY) {
+                            n_sq += SOUTH_EAST;
+                            continue;
+                        }
+                        
                         if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += SOUTH_EAST;
@@ -2733,10 +2863,15 @@ void Movegen::generateBlackQueenCaptures(Array<Move, 256>& moves, const Board& b
                     int n_sq = sq + NORTH_EAST;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY) {
+                            n_sq += NORTH_EAST;
+                            continue;
+                        }
+                        
                         if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += NORTH_EAST;
@@ -2745,10 +2880,15 @@ void Movegen::generateBlackQueenCaptures(Array<Move, 256>& moves, const Board& b
                     n_sq = sq + SOUTH_WEST;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY) {
+                            n_sq += SOUTH_WEST;
+                            continue;
+                        }
+                        
                         if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += SOUTH_WEST;
@@ -2758,10 +2898,15 @@ void Movegen::generateBlackQueenCaptures(Array<Move, 256>& moves, const Board& b
                     int n_sq = sq + NORTH;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY) {
+                            n_sq += NORTH;
+                            continue;
+                        }
+                        
                         if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += NORTH;
@@ -2770,10 +2915,15 @@ void Movegen::generateBlackQueenCaptures(Array<Move, 256>& moves, const Board& b
                     n_sq = sq + SOUTH;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY) {
+                            n_sq += SOUTH;
+                            continue;
+                        }
+                        
                         if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += SOUTH;
@@ -2783,10 +2933,15 @@ void Movegen::generateBlackQueenCaptures(Array<Move, 256>& moves, const Board& b
                     int n_sq = sq + EAST;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY) {
+                            n_sq += EAST;
+                            continue;
+                        }
+                        
                         if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += EAST;
@@ -2795,10 +2950,15 @@ void Movegen::generateBlackQueenCaptures(Array<Move, 256>& moves, const Board& b
                     n_sq = sq + WEST;
 
                     while(true) {
+                        if(b.pieces[n_sq] == EMPTY) {
+                            n_sq += WEST;
+                            continue;
+                        }
+                        
                         if((b.pieces[n_sq] & COLOR_MASK) == WHITE) {
                             moves.push_back(Move(sq, n_sq, MOVE_CAPTURE));
                             break;
-                        } else if(b.pieces[n_sq] != EMPTY)
+                        } else
                             break;
 
                         n_sq += WEST;
