@@ -18,9 +18,8 @@ namespace NNUE {
     template <size_t IN_SIZE, size_t OUT_SIZE, Numeric IN_T, Numeric OUT_T,
             Numeric WEIGHT_T = IN_T, Numeric BIAS_T = OUT_T>
     class ColMajorLinearLayer {
-        alignas(64) BIAS_T bias[OUT_SIZE];
-
-        alignas(64) WEIGHT_T weights[IN_SIZE][OUT_SIZE];
+        alignas(CACHE_LINE_ALIGNMENT) BIAS_T bias[OUT_SIZE];
+        alignas(CACHE_LINE_ALIGNMENT) WEIGHT_T weights[IN_SIZE][OUT_SIZE];
 
         public:
             constexpr ColMajorLinearLayer() {}
@@ -82,9 +81,8 @@ namespace NNUE {
     template <size_t IN_SIZE, size_t OUT_SIZE, Numeric IN_T, Numeric OUT_T,
               Numeric WEIGHT_T = IN_T, Numeric BIAS_T = OUT_T>
     class RowMajorLinearLayer {
-        alignas(64) BIAS_T bias[OUT_SIZE];
-
-        alignas(64) WEIGHT_T weights[OUT_SIZE][IN_SIZE];
+        alignas(CACHE_LINE_ALIGNMENT) BIAS_T bias[OUT_SIZE];
+        alignas(CACHE_LINE_ALIGNMENT) WEIGHT_T weights[OUT_SIZE][IN_SIZE];
 
         public:
             constexpr RowMajorLinearLayer() {}
@@ -145,29 +143,22 @@ namespace NNUE {
 
     template <size_t IN_SIZE, size_t OUT_SIZE>
     class RowMajorLinearLayerI8ToI32 {
-        alignas(64) int32_t bias[OUT_SIZE];
-
-        alignas(64) int16_t weights[OUT_SIZE][IN_SIZE];
+        alignas(CACHE_LINE_ALIGNMENT) int32_t bias[OUT_SIZE];
+        alignas(CACHE_LINE_ALIGNMENT) int8_t weights[OUT_SIZE][IN_SIZE];
 
         public:
             constexpr RowMajorLinearLayerI8ToI32() {}
             constexpr ~RowMajorLinearLayerI8ToI32() {}
 
             inline void forward(const int8_t input[IN_SIZE], int32_t output[OUT_SIZE]) const noexcept {
-                // Setze Biases
-                std::copy(bias, bias + OUT_SIZE, output);
-
-                // Skalarprodukte
-                for(size_t i = 0; i < OUT_SIZE; i++)
-                    for(size_t j = 0; j < IN_SIZE; j++)
-                        output[i] += input[j] * weights[i][j];
+                linearI8ToI32<IN_SIZE, OUT_SIZE>(input, (int8_t*)&weights, bias, output);
             }
 
             inline int32_t getBias(size_t i) const noexcept {
                 return bias[i];
             }
 
-            inline int16_t getWeight(size_t in, size_t out) const noexcept {
+            inline int8_t getWeight(size_t in, size_t out) const noexcept {
                 return weights[out][in];
             }
 
@@ -175,7 +166,7 @@ namespace NNUE {
                 return bias[i];
             }
 
-            constexpr int16_t& getWeight(size_t in, size_t out) noexcept {
+            constexpr int8_t& getWeight(size_t in, size_t out) noexcept {
                 return weights[out][in];
             }
 
@@ -183,7 +174,7 @@ namespace NNUE {
                 return bias;
             }
 
-            constexpr const int16_t* getWeightPtr(size_t in) noexcept {
+            constexpr const int8_t* getWeightPtr(size_t in) noexcept {
                 return weights[in];
             }
     };

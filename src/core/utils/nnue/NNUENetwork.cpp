@@ -16,12 +16,12 @@ Network::~Network() {
 }
 
 int32_t Network::evaluate(int32_t color) const noexcept {
-    int8_t kpActivationOutput[512];
-    int32_t layer1Output[32];
-    int8_t activation1Output[32];
-    int32_t layer2Output[32];
-    int8_t activation2Output[32];
-    int32_t output[1];
+    alignas(REQUIRED_ALIGNMENT) int8_t kpActivationOutput[512];
+    alignas(REQUIRED_ALIGNMENT) int32_t layer1Output[32];
+    alignas(REQUIRED_ALIGNMENT) int8_t activation1Output[32];
+    alignas(REQUIRED_ALIGNMENT) int32_t layer2Output[32];
+    alignas(REQUIRED_ALIGNMENT) int8_t activation2Output[32];
+    alignas(REQUIRED_ALIGNMENT) int32_t output[1];
 
     halfKPActivation.forward(accumulator.getOutput(color), kpActivationOutput);
     halfKPActivation.forward(accumulator.getOutput(color ^ COLOR_MASK), kpActivationOutput + SINGLE_SUBNET_SIZE);

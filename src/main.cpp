@@ -32,7 +32,7 @@ int main() {
 
     // navigator.navigate();
 
-    Board b("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
+    Board b;
 
     std::ifstream is("network.nnue", std::ios::binary);
 
