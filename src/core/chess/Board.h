@@ -6,6 +6,7 @@
 #include "core/utils/Array.h"
 #include "core/utils/Bitboard.h"
 
+#include <stdalign.h>
 #include <stdint.h>
 #include <string>
 #include <vector>
@@ -143,66 +144,17 @@ class MoveHistoryEntry {
 };
 
 /**
- * @brief Speichert die Anzahl der Wiederholungen für alle, bereits gesehenen, Stellungen.
- */
-class RepetitionTable {
-    private:
-        struct Entry {
-            uint64_t key;
-            uint8_t count;
-        };
-
-        std::vector<Entry> entries;
-    
-    public:
-        inline void increment(uint64_t key) {
-            for(auto it = entries.rbegin(); it != entries.rend(); it++) {
-                if (it->key == key) {
-                    it->count++;
-                    return;
-                }
-            }
-
-            entries.push_back({key, 1});
-        }
-
-        inline void decrement(uint64_t key) {
-            for(auto it = entries.rbegin(); it != entries.rend(); it++) {
-                if (it->key == key) {
-                    it->count--;
-                    if (it->count == 0) {
-                        entries.erase(std::next(it).base());
-                    }
-                    
-                    return;
-                }
-            }
-        }
-
-        inline uint8_t get(uint64_t key) const {
-            for(auto it = entries.rbegin(); it != entries.rend(); it++) {
-                if (it->key == key) {
-                    return it->count;
-                }
-            }
-
-            return 0;
-        }
-};
-
-/**
  * @brief Stellt ein Schachbrett dar.
  * Die Klasse Board stellt ein Schachbrett dar und enthält Methoden zur Zuggeneration.
  */
 class Board {
-    friend class OldMovegen;
     friend class Movegen;
     
     private:
          /**
           * @brief Stellt das Schachbrett in 8x8 Notation dar.
           */
-        int32_t pieces[64] = {
+        alignas(64) int32_t pieces[64] = {
             WHITE_ROOK, WHITE_KNIGHT, WHITE_BISHOP, WHITE_QUEEN, WHITE_KING, WHITE_BISHOP, WHITE_KNIGHT, WHITE_ROOK,
             WHITE_PAWN,   WHITE_PAWN,   WHITE_PAWN,  WHITE_PAWN, WHITE_PAWN,   WHITE_PAWN,   WHITE_PAWN, WHITE_PAWN,
                  EMPTY,        EMPTY,        EMPTY,       EMPTY,      EMPTY,        EMPTY,        EMPTY,      EMPTY,
@@ -214,27 +166,24 @@ class Board {
         };
 
         /**
-         * @brief Enthält eine Liste aller Figuren für jeden Figurentyp auf dem Schachbrett.
-         * Speichert den Index der Position.
-         * Figurenlisten haben die Größe 9,
-         * weil ein(e) Springer/Läufer/Dame mit 8 Bauernaufwertungen 9-mal auf dem Schachbrett sein kann.
+         * @brief Speichert Belegbitboards für alle Figurentypen.
          */
-        Array<int32_t, 9> pieceList[15] = {
-            {},
-            {A2, B2, C2, D2, E2, F2, G2, H2},
-            {B1, G1},
-            {C1, F1},
-            {A1, H1},
-            {D1},
-            {E1},
-            {},
-            {},
-            {A7, B7, C7, D7, E7, F7, G7, H7},
-            {B8, G8}, 
-            {C8, F8},
-            {A8, H8},
-            {D8},
-            {E8}
+        alignas(64) Bitboard pieceBitboard[15] = {
+            0x0ULL,
+            0xff00ULL,
+            0x42ULL,
+            0x24ULL,
+            0x81ULL,
+            0x8ULL,
+            0x10ULL,
+            0x0ULL,
+            0x0ULL,
+            0xff000000000000ULL,
+            0x4200000000000000ULL,
+            0x2400000000000000ULL,
+            0x8100000000000000ULL,
+            0x800000000000000ULL,
+            0x1000000000000000ULL
         };
 
         /**
@@ -284,11 +233,6 @@ class Board {
         Bitboard blackPiecesBitboard;
 
         /**
-         * @brief Speichert alle Felder, auf denen sich Figuren befinden.
-         */
-        Bitboard pieceBitboard[15];
-
-        /**
          * @brief Speichert alle Felder, die Weiß angreift(In Pseudo-Legalen Zügen).
          */
         Bitboard whiteAttackBitboard;
@@ -309,19 +253,15 @@ class Board {
         std::vector<MoveHistoryEntry> moveHistory = {};
 
         /**
-         * @brief Enthält alle, bereits gesehenen, Positionen und ihre Häufigkeit
-         */
-        RepetitionTable repetitionTable;
-
-        /**
          * @brief Generiert einen Zobrist-Hash für das aktuelle Schachbrett.
          */
         uint64_t generateHashValue();
 
         /**
-         * @brief Generiert ein Bitboard, das alle besetzten Felder enthält(König ausgeschlossen).
+         * @brief Aktualisiert die Angriffsbitboards der Figuren und
+         * die allgemeinen Figurenbitboards von beiden Seiten.
          */
-        void generateBitboards();
+        void generateSpecialBitboards();
 
         /**
          * @brief Generiert ein Bitboard mit allen Feldern, die von einer Seite angegriffen werden.
@@ -522,12 +462,7 @@ class Board {
             return moveHistory.back();
         };
 
-        inline const std::vector<MoveHistoryEntry>& getMoveHistory() const { return moveHistory; };
-
-        /**
-         * @brief Gibt alle Positionen eines bestimmten Figurentyps zurück.
-         */
-        inline Array<int32_t, 9> getPieceList(int32_t piece) const { return pieceList[piece]; };
+        constexpr const std::vector<MoveHistoryEntry>& getMoveHistory() const { return moveHistory; };
 
         /**
          * @brief Gibt alle Positionen eines bestimmten Figurentyps als Bitboard zurück.
@@ -562,7 +497,7 @@ class Board {
         /**
          * @brief Überprüft, wie häufig die momentane Position schon aufgetreten ist. 
          */
-        uint8_t repetitionCount() const;
+        uint16_t repetitionCount() const;
 
         /**
          * @brief Gibt die Anzahl der Halbzüge zurück, die gespielt wurden.
@@ -582,17 +517,17 @@ class Board {
         /**
          * @brief Gibt das Feld zurück, auf dem der weiße König steht.
          */
-        inline int32_t getWhiteKingSquare() const { return pieceList[WHITE_KING].front(); };
+        constexpr int32_t getWhiteKingSquare() const { return pieceBitboard[WHITE_KING].getFirstSetBit(); };
 
         /**
          * @brief Gibt das Feld zurück, auf dem der schwarze König steht.
          */
-        inline int32_t getBlackKingSquare() const { return pieceList[BLACK_KING].front(); };
+        constexpr int32_t getBlackKingSquare() const { return pieceBitboard[BLACK_KING].getFirstSetBit(); };
 
         /**
          * @brief Gibt das Feld zurück, auf dem der König einer bestimmten Seite steht.
          */
-        inline int32_t getKingSquare(int32_t side) const { return pieceList[side | KING].front(); };
+        constexpr int32_t getKingSquare(int32_t side) const { return pieceBitboard[side | KING].getFirstSetBit(); };
 };
 
 #endif

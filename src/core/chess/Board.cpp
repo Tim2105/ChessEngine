@@ -17,19 +17,17 @@ Board::Board() {
 
     moveHistory.reserve(256);
 
-    generateBitboards();
+    generateSpecialBitboards();
 
     hashValue = generateHashValue();
-
-    repetitionTable.increment(hashValue);
 }
 
 Board::Board(const Board& b) {
-    for(int i = 0; i < 15; i++)
-        pieceList[i] = b.pieceList[i];
-    
-    for(int i = 0; i < 64; i++)
+    for(int32_t i = 0; i < 64; i++)
         pieces[i] = b.pieces[i];
+
+    for(int32_t i = 0; i < 15; i++)
+        pieceBitboard[i] = b.pieceBitboard[i];
 
     side = b.side;
     enPassantSquare = b.enPassantSquare;
@@ -38,19 +36,18 @@ Board::Board(const Board& b) {
     ply = b.ply;
 
     moveHistory = b.moveHistory;
-    repetitionTable = b.repetitionTable;
 
     hashValue = b.hashValue;
 
-    generateBitboards();
+    generateSpecialBitboards();
 }
 
 Board& Board::operator=(const Board& b) {
-    for(int i = 0; i < 15; i++)
-        pieceList[i] = b.pieceList[i];
-    
-    for(int i = 0; i < 64; i++)
+    for(int32_t i = 0; i < 64; i++)
         pieces[i] = b.pieces[i];
+
+    for(int32_t i = 0; i < 15; i++)
+        pieceBitboard[i] = b.pieceBitboard[i];
 
     side = b.side;
     enPassantSquare = b.enPassantSquare;
@@ -59,11 +56,10 @@ Board& Board::operator=(const Board& b) {
     ply = b.ply;
 
     moveHistory = b.moveHistory;
-    repetitionTable = b.repetitionTable;
 
     hashValue = b.hashValue;
 
-    generateBitboards();
+    generateSpecialBitboards();
 
     return *this;
 }
@@ -73,15 +69,15 @@ Board::Board(std::string fen) {
     fen.erase(0, fen.find_first_not_of(' '));
     fen.erase(fen.find_last_not_of(' ') + 1);
 
-    // Spielfeld-Array und Figurlisten leeren
-    for(int i = 0; i < 15; i++)
-        pieceList[i].clear();
+    // Initialisiere die Bitboards
+    for(int32_t i = 0; i < 15; i++)
+        pieceBitboard[i] = Bitboard(0ULL);
     
-    for(int i = 0; i < 64; i++)
+    for(int32_t i = 0; i < 64; i++)
         pieces[i] = EMPTY;
 
-    int file = FILE_A;
-    int rank = RANK_8;
+    int32_t file = FILE_A;
+    int32_t rank = RANK_8;
     size_t indexNextSection = fen.find(' ');
 
     if(indexNextSection == std::string::npos)
@@ -98,7 +94,7 @@ Board::Board(std::string fen) {
             file += c - '0';
         }
         else {
-            int piece = EMPTY;
+            int32_t piece = EMPTY;
             switch(c) {
                 case 'p': piece = BLACK_PAWN; break;
                 case 'n': piece = BLACK_KNIGHT; break;
@@ -114,28 +110,32 @@ Board::Board(std::string fen) {
                 case 'K': piece = WHITE_KING; break;
                 default: throw std::invalid_argument("Invalid FEN string: " + std::to_string(c) + " is not a valid piece character");
             }
-            int square = FR2SQ(file, rank);
+            int32_t square = FR2SQ(file, rank);
             pieces[square] = piece;
 
-            if(pieceList[piece].size() == 9)
-                throw std::invalid_argument("Invalid FEN string: There are more than 9 " + std::to_string(c) + "s on the board");
-
-            pieceList[piece].push_back(square);
+            pieceBitboard[piece].setBit(square);
             file++;
         }
     }
 
     // Überprüfe, zwei Könige vorhanden sind und keine Bauern auf der 1. oder 8. Reihe stehen
-    if(pieceList[WHITE_KING].size() != 1 || pieceList[BLACK_KING].size() != 1)
+    if(pieceBitboard[WHITE_KING].getNumberOfSetBits() != 1 || 
+       pieceBitboard[BLACK_KING].getNumberOfSetBits() != 1)
         throw std::invalid_argument("Invalid FEN string: There must be exactly one white and one black king");
-    
-    for(int32_t square : pieceList[WHITE_PAWN])
+
+    Bitboard whitePawns = pieceBitboard[WHITE_PAWN];
+    while(whitePawns) {
+        int32_t square = whitePawns.popFirstSetBit();
         if(SQ2R(square) == RANK_1 || SQ2R(square) == RANK_8)
             throw std::invalid_argument("Invalid FEN string: There must not be any white pawns on the first or eighth rank");
+    }
     
-    for(int32_t square : pieceList[BLACK_PAWN])
+    Bitboard blackPawns = pieceBitboard[BLACK_PAWN];
+    while(blackPawns) {
+        int32_t square = blackPawns.popFirstSetBit();
         if(SQ2R(square) == RANK_1 || SQ2R(square) == RANK_8)
             throw std::invalid_argument("Invalid FEN string: There must not be any black pawns on the first or eighth rank");
+    }
     
     fen = fen.substr(indexNextSection + 1);
     indexNextSection = fen.find(' ');
@@ -179,8 +179,8 @@ Board::Board(std::string fen) {
     // En Passant Feld auslesen
     std::string fenEnPassant = fen.substr(0, indexNextSection);
     if(fenEnPassant.length() == 2) {
-        int file = fenEnPassant[0] - 'a';
-        int rank = fenEnPassant[1] - '1';
+        int32_t file = fenEnPassant[0] - 'a';
+        int32_t rank = fenEnPassant[1] - '1';
         enPassantSquare = FR2SQ(file, rank);
 
         if(enPassantSquare < A1 || enPassantSquare > H8)
@@ -216,23 +216,21 @@ Board::Board(std::string fen) {
         ply = side == WHITE ? 0 : 1;
     else {
         // Anzahl der bereits gespielten Züge auslesen
-        int plyAdd = side == WHITE ? 0 : 1;
-        int plyFen = std::stoi(fen);
+        int32_t plyAdd = side == WHITE ? 0 : 1;
+        int32_t plyFen = std::stoi(fen);
         if(plyFen < 1)
             throw std::invalid_argument("Invalid FEN string: Number of played moves is zero or negative");
 
         ply = (plyFen - 1) * 2 + plyAdd;
     }
 
-    generateBitboards();
+    generateSpecialBitboards();
 
     // Überprüfe, ob der König des Spielers, der nicht am Zug ist, im Schach steht
-    if(squareAttacked(pieceList[(side ^ COLOR_MASK) | KING].front(), side))
+    if(squareAttacked(pieceBitboard[(side ^ COLOR_MASK) | KING].getFirstSetBit(), side))
         throw std::invalid_argument("Invalid FEN string: King of player not moving is in check");
 
     hashValue = generateHashValue();
-
-    repetitionTable.increment(hashValue);
 }
 
 
@@ -294,8 +292,8 @@ uint64_t Board::generateHashValue() {
     uint64_t hash = 0ULL;
 
     // Figuren
-    for(int i = 0; i < 64; i++) {
-        int piece = pieces[i];
+    for(int32_t i = 0; i < 64; i++) {
+        int32_t piece = pieces[i];
         if(piece != EMPTY)
             hash ^= Zobrist::zobristPieceKeys[piece][i];
     }
@@ -309,7 +307,7 @@ uint64_t Board::generateHashValue() {
 
     // En Passant
     if(enPassantSquare != NO_SQ) {
-        int file = SQ2F(enPassantSquare);
+        int32_t file = SQ2F(enPassantSquare);
         hash ^= Zobrist::zobristEnPassantKeys[file];
     }
 
@@ -317,91 +315,7 @@ uint64_t Board::generateHashValue() {
 }
 
 
-void Board::generateBitboards() {
-    // weißer Bauer
-    uint64_t res = 0ULL;
-    for(int i : pieceList[WHITE_PAWN])
-        res |= (1ULL << i);
-    
-    pieceBitboard[WHITE_PAWN] = Bitboard(res);
-
-    // weißer Springer
-    res = 0ULL;
-    for(int i : pieceList[WHITE_KNIGHT])
-        res |= (1ULL << i);
-
-    pieceBitboard[WHITE_KNIGHT] = Bitboard(res);
-
-    // weißer Läufer
-    res = 0ULL;
-    for(int i : pieceList[WHITE_BISHOP])
-        res |= (1ULL << i);
-
-    pieceBitboard[WHITE_BISHOP] = Bitboard(res);
-
-    // weißer Turm
-    res = 0ULL;
-    for(int i : pieceList[WHITE_ROOK])
-        res |= (1ULL << i);
-
-    pieceBitboard[WHITE_ROOK] = Bitboard(res);
-
-    // weiße Dame
-    res = 0ULL;
-    for(int i : pieceList[WHITE_QUEEN])
-        res |= (1ULL << i);
-
-    pieceBitboard[WHITE_QUEEN] = Bitboard(res);
-
-    // weißer König
-    res = 0ULL;
-    for(int i : pieceList[WHITE_KING])
-        res |= (1ULL << i);
-
-    pieceBitboard[WHITE_KING] = Bitboard(res);
-
-    // schwarzer Bauer
-    res = 0ULL;
-    for(int i : pieceList[BLACK_PAWN])
-        res |= (1ULL << i);
-
-    pieceBitboard[BLACK_PAWN] = Bitboard(res);
-
-    // schwarzer Springer
-    res = 0ULL;
-    for(int i : pieceList[BLACK_KNIGHT])
-        res |= (1ULL << i);
-
-    pieceBitboard[BLACK_KNIGHT] = Bitboard(res);
-
-    // schwarzer Läufer
-    res = 0ULL;
-    for(int i : pieceList[BLACK_BISHOP])
-        res |= (1ULL << i);
-
-    pieceBitboard[BLACK_BISHOP] = Bitboard(res);
-
-    // schwarzer Turm
-    res = 0ULL;
-    for(int i : pieceList[BLACK_ROOK])
-        res |= (1ULL << i);
-
-    pieceBitboard[BLACK_ROOK] = Bitboard(res);
-
-    // schwarze Dame
-    res = 0ULL;
-    for(int i : pieceList[BLACK_QUEEN])
-        res |= (1ULL << i);
-
-    pieceBitboard[BLACK_QUEEN] = Bitboard(res);
-
-    // schwarzer König
-    res = 0ULL;
-    for(int i : pieceList[BLACK_KING])
-        res |= (1ULL << i);
-
-    pieceBitboard[BLACK_KING] = Bitboard(res);
-
+void Board::generateSpecialBitboards() {
     // alle weißen Figuren
     whitePiecesBitboard = pieceBitboard[WHITE_PAWN] |
                   pieceBitboard[WHITE_KNIGHT] |
@@ -603,7 +517,7 @@ bool Board::isMoveLegal(Move move) {
     // Überprüfe, ob der Zug den eigenen König in Schach setzt/lässt
     makeMove(move);
 
-    bool isCheck = squareAttacked(pieceList[side | KING].front(), otherSide);
+    bool isCheck = squareAttacked(pieceBitboard[side | KING].getFirstSetBit(), otherSide);
 
     undoMove();
 
@@ -611,7 +525,7 @@ bool Board::isMoveLegal(Move move) {
 }
 
 bool Board::isCheck() const {
-    return squareAttacked(pieceList[side | KING].front(), side ^ COLOR_MASK);
+    return squareAttacked(pieceBitboard[side | KING].getFirstSetBit(), side ^ COLOR_MASK);
 }
 
 void Board::makeMove(Move m) {
@@ -634,13 +548,13 @@ void Board::makeMove(Move m) {
     entry.whitePiecesBitboard = whitePiecesBitboard;
     entry.blackPiecesBitboard = blackPiecesBitboard;
 
-    for(int i = 0; i < 15; i++)
+    for(int32_t i = 0; i < 15; i++)
         entry.pieceBitboard[i] = pieceBitboard[i];
 
     entry.whiteAttackBitboard = whiteAttackBitboard;
     entry.blackAttackBitboard = blackAttackBitboard;
     
-    for(int i = 0; i < 15; i++)
+    for(int32_t i = 0; i < 15; i++)
         entry.pieceAttackBitboard[i] = pieceAttackBitboard[i];
 
     moveHistory.push_back(entry);
@@ -666,8 +580,6 @@ void Board::makeMove(Move m) {
         hashValue ^= Zobrist::zobristBlackToMove;
         ply++;
 
-        repetitionTable.increment(hashValue);
-
         return;
     }
 
@@ -675,7 +587,6 @@ void Board::makeMove(Move m) {
     if(m.isEnPassant()) {
         // Entferne den geschlagenen Bauern
         pieces[enPassantCaptureSq] = EMPTY;
-        pieceList[capturedPieceType].remove(enPassantCaptureSq);
         pieceBitboard[capturedPieceType].clearBit(enPassantCaptureSq);
         allPiecesBitboard.clearBit(enPassantCaptureSq);
         if(side == WHITE)
@@ -692,8 +603,6 @@ void Board::makeMove(Move m) {
             // Turm auf Königsseite bewegen
             pieces[origin + 3] = EMPTY;
             pieces[origin + 1] = side | ROOK;
-            pieceList[side | ROOK].remove(origin + 3);
-            pieceList[side | ROOK].push_back(origin + 1);
             pieceBitboard[side | ROOK].clearBit(origin + 3);
             pieceBitboard[side | ROOK].setBit(origin + 1);
             allPiecesBitboard.clearBit(origin + 3);
@@ -713,8 +622,6 @@ void Board::makeMove(Move m) {
             // Turm auf Damenseite bewegen
             pieces[origin - 4] = EMPTY;
             pieces[origin - 1] = side | ROOK;
-            pieceList[side | ROOK].remove(origin - 4);
-            pieceList[side | ROOK].push_back(origin - 1);
             pieceBitboard[side | ROOK].clearBit(origin - 4);
             pieceBitboard[side | ROOK].setBit(origin - 1);
             allPiecesBitboard.clearBit(origin - 4);
@@ -736,8 +643,6 @@ void Board::makeMove(Move m) {
     // Bewege die Figur
     pieces[origin] = EMPTY;
     pieces[destination] = pieceType;
-    pieceList[pieceType].remove(origin);
-    pieceList[pieceType].push_back(destination);
     pieceBitboard[pieceType].clearBit(origin);
     pieceBitboard[pieceType].setBit(destination);
 
@@ -758,7 +663,6 @@ void Board::makeMove(Move m) {
 
     // Spezialfall: Schlagen
     if(capturedPieceType != EMPTY && !m.isEnPassant()) {
-        pieceList[capturedPieceType].remove(destination);
         pieceBitboard[capturedPieceType].clearBit(destination);
         if(side == WHITE)
             blackPiecesBitboard.clearBit(destination);
@@ -785,14 +689,12 @@ void Board::makeMove(Move m) {
             promotedPieceType = KNIGHT;
 
         // Entferne den Bauern, die allgemeinen Bitboards müssen nicht angepasst werden
-        pieceList[side | PAWN].remove(destination);
         pieceBitboard[side | PAWN].clearBit(destination);
 
         hashValue ^= Zobrist::zobristPieceKeys[side | PAWN][destination];
 
         // Füge die neue Figur hinzu
         pieces[destination] = side | promotedPieceType;
-        pieceList[side | promotedPieceType].push_back(destination);
         pieceBitboard[side | promotedPieceType].setBit(destination);
 
         hashValue ^= Zobrist::zobristPieceKeys[side | promotedPieceType][destination];
@@ -877,9 +779,6 @@ void Board::makeMove(Move m) {
     side = side ^ COLOR_MASK;
     hashValue ^= Zobrist::zobristBlackToMove;
     ply++;
-
-    // Aktualisiere die Wiederholungstabelle
-    repetitionTable.increment(hashValue);
 }
 
 void Board::undoMove() {
@@ -892,9 +791,6 @@ void Board::undoMove() {
     int32_t pieceType = pieces[destination];
     int32_t capturedPieceType = moveEntry.capturedPiece;
 
-    // Aktualisiere die Wiederholungstabelle
-    repetitionTable.decrement(hashValue);
-
     // Mache den Spielzustand rückgängig
     ply--;
     side = side ^ COLOR_MASK;
@@ -904,14 +800,14 @@ void Board::undoMove() {
     hashValue = moveEntry.hashValue;
     whitePiecesBitboard = moveEntry.whitePiecesBitboard;
     blackPiecesBitboard = moveEntry.blackPiecesBitboard;
-    for(int i = 0; i < 15; i++)
+    for(int32_t i = 0; i < 15; i++)
         pieceBitboard[i] = moveEntry.pieceBitboard[i];
 
     allPiecesBitboard = whitePiecesBitboard | blackPiecesBitboard;
 
     whiteAttackBitboard = moveEntry.whiteAttackBitboard;
     blackAttackBitboard = moveEntry.blackAttackBitboard;
-    for(int i = 0; i < 15; i++)
+    for(int32_t i = 0; i < 15; i++)
         pieceAttackBitboard[i] = moveEntry.pieceAttackBitboard[i];
     
     // Spezialfall: Nullzug
@@ -921,38 +817,16 @@ void Board::undoMove() {
     int32_t enPassantCaptureSq = enPassantSquare + (side == WHITE ? SOUTH : NORTH);
 
     // Spezialfall: Bauernumwandlung
-    if(move.isPromotion()) {
-        int32_t promotedPieceType = EMPTY;
-        if(move.isPromotionQueen())
-            promotedPieceType = QUEEN;
-        else if(move.isPromotionRook())
-            promotedPieceType = ROOK;
-        else if(move.isPromotionBishop())
-            promotedPieceType = BISHOP;
-        else if(move.isPromotionKnight())
-            promotedPieceType = KNIGHT;
-        
+    if(move.isPromotion())
         pieceType = side | PAWN;
-
-        // Entferne die neue Figur, die allgemeinen Bitboards müssen nicht angepasst werden
-        pieceList[side | promotedPieceType].remove(destination);
-
-        // Füge den Bauern hinzu
-        pieces[destination] = side | PAWN;
-        pieceList[side | PAWN].push_back(destination);
-    }
 
     // Mache den Zug rückgängig
     pieces[origin] = pieceType;
     pieces[destination] = EMPTY;
-    pieceList[pieceType].remove(destination);
-    pieceList[pieceType].push_back(origin);
 
     // Spezialfall: Schlagen
-    if(capturedPieceType != EMPTY && !move.isEnPassant()) {
+    if(capturedPieceType != EMPTY && !move.isEnPassant())
         pieces[destination] = capturedPieceType;
-        pieceList[capturedPieceType].push_back(destination);
-    }
 
     // Spezialfall: Rochade
     if(move.isCastle()) {
@@ -960,22 +834,16 @@ void Board::undoMove() {
             // Rochade auf Königsseite
             pieces[origin + 3] = side | ROOK;
             pieces[origin + 1] = EMPTY;
-            pieceList[side | ROOK].remove(origin + 1);
-            pieceList[side | ROOK].push_back(origin + 3);
         } else {
             // Rochade auf Damenseite
             pieces[origin - 4] = side | ROOK;
             pieces[origin - 1] = EMPTY;
-            pieceList[side | ROOK].remove(origin - 1);
-            pieceList[side | ROOK].push_back(origin - 4);
         }
     }
 
     // Spezialfall: En Passant
-    if(move.isEnPassant()) {
+    if(move.isEnPassant())
         pieces[enPassantCaptureSq] = capturedPieceType;
-        pieceList[capturedPieceType].push_back(enPassantCaptureSq);
-    }
 }
 
 bool Board::squareAttacked(int32_t sq, int32_t ownSide) const {
@@ -1078,45 +946,59 @@ Bitboard Board::generateAttackBitboard(int32_t side) {
     Bitboard attackBitboard;
     Bitboard piecesPlusOwnKing = allPiecesBitboard | pieceBitboard[side | KING];
 
-    for(int i = (side | PAWN); i <= (side | KING); i++)
+    for(int32_t i = (side | PAWN); i <= (side | KING); i++)
         pieceAttackBitboard[i] = 0;
     
     // Diagonale Angriffe
-    for(int sq : pieceList[side | BISHOP]) {
+    Bitboard bishopBitboard = pieceBitboard[side | BISHOP];
+    while(bishopBitboard) {
+        int32_t sq = bishopBitboard.popFirstSetBit();
         pieceAttackBitboard[side | BISHOP] |= diagonalAttackBitboard(sq, piecesPlusOwnKing);
         attackBitboard |= pieceAttackBitboard[side | BISHOP];
     }
 
-    for(int sq : pieceList[side | QUEEN]) {
+    Bitboard queenBitboard = pieceBitboard[side | QUEEN];
+    while(queenBitboard) {
+        int32_t sq = queenBitboard.popFirstSetBit();
         pieceAttackBitboard[side | QUEEN] |= diagonalAttackBitboard(sq, piecesPlusOwnKing);
         attackBitboard |= pieceAttackBitboard[side | QUEEN];
     }
 
     // Waagerechte Angriffe
-    for(int sq : pieceList[side | ROOK]) {
+    Bitboard rookBitboard = pieceBitboard[side | ROOK];
+    while(rookBitboard) {
+        int32_t sq = rookBitboard.popFirstSetBit();
         pieceAttackBitboard[side | ROOK] |= horizontalAttackBitboard(sq, piecesPlusOwnKing);
         attackBitboard |= pieceAttackBitboard[side | ROOK];
     }
 
-    for(int sq : pieceList[side | QUEEN]) {
+    queenBitboard = pieceBitboard[side | QUEEN];
+    while(queenBitboard) {
+        int32_t sq = queenBitboard.popFirstSetBit();
         pieceAttackBitboard[side | QUEEN] |= horizontalAttackBitboard(sq, piecesPlusOwnKing);
         attackBitboard |= pieceAttackBitboard[side | QUEEN];
     }
 
     // Springer Angriffe
-    for(int sq : pieceList[side | KNIGHT]) {
+    Bitboard knightBitboard = pieceBitboard[side | KNIGHT];
+    while(knightBitboard) {
+        int32_t sq = knightBitboard.popFirstSetBit();
         pieceAttackBitboard[side | KNIGHT] |= knightAttackBitboard(sq);
         attackBitboard |= pieceAttackBitboard[side | KNIGHT];
     }
 
     // Bauer Angriffe
-    for(int sq : pieceList[side | PAWN]) {
+    Bitboard pawnBitboard = pieceBitboard[side | PAWN];
+    while(pawnBitboard) {
+        int32_t sq = pawnBitboard.popFirstSetBit();
         pieceAttackBitboard[side | PAWN] |= pawnAttackBitboard(sq, side);
         attackBitboard |= pieceAttackBitboard[side | PAWN];
     }
 
     // König Angriffe
-    for(int sq : pieceList[side | KING]) {
+    Bitboard kingBitboard = pieceBitboard[side | KING];
+    while(kingBitboard) {
+        int32_t sq = kingBitboard.popFirstSetBit();
         pieceAttackBitboard[side | KING] |= kingAttackBitboard(sq);
         attackBitboard |= pieceAttackBitboard[side | KING];
     }
@@ -1131,9 +1013,12 @@ Bitboard Board::generateAttackBitboard(int32_t side, Bitboard updatedSquares, in
     if(capturedPiece == (side | BISHOP) ||
        updatedSquares & (pieceAttackBitboard[side | BISHOP] | pieceBitboard[side | BISHOP])) {
         Bitboard bishopAttackBitboard;
+        Bitboard bishopBitboard = pieceBitboard[side | BISHOP];
 
-        for(int sq : pieceList[side | BISHOP])
+        while(bishopBitboard) {
+            int32_t sq = bishopBitboard.popFirstSetBit();
             bishopAttackBitboard |= diagonalAttackBitboard(sq, piecesPlusOwnKing);
+        }
 
         pieceAttackBitboard[side | BISHOP] = bishopAttackBitboard;
     }
@@ -1142,9 +1027,12 @@ Bitboard Board::generateAttackBitboard(int32_t side, Bitboard updatedSquares, in
     if(capturedPiece == (side | ROOK) ||
        updatedSquares & (pieceAttackBitboard[side | ROOK] | pieceBitboard[side | ROOK])) {
         Bitboard rookAttackBitboard;
+        Bitboard rookBitboard = pieceBitboard[side | ROOK];
 
-        for(int sq : pieceList[side | ROOK])
+        while(rookBitboard) {
+            int32_t sq = rookBitboard.popFirstSetBit();
             rookAttackBitboard |= horizontalAttackBitboard(sq, piecesPlusOwnKing);
+        }
 
         pieceAttackBitboard[side | ROOK] = rookAttackBitboard;
     }
@@ -1153,9 +1041,13 @@ Bitboard Board::generateAttackBitboard(int32_t side, Bitboard updatedSquares, in
     if(capturedPiece == (side | QUEEN) ||
        updatedSquares & (pieceAttackBitboard[side | QUEEN] | pieceBitboard[side | QUEEN])) {
         Bitboard queenAttackBitboard;
+        Bitboard queenBitboard = pieceBitboard[side | QUEEN];
 
-        for(int sq : pieceList[side | QUEEN])
-            queenAttackBitboard |= diagonalAttackBitboard(sq, piecesPlusOwnKing) | horizontalAttackBitboard(sq, piecesPlusOwnKing);
+        while(queenBitboard) {
+            int32_t sq = queenBitboard.popFirstSetBit();
+            queenAttackBitboard |= diagonalAttackBitboard(sq, piecesPlusOwnKing);
+            queenAttackBitboard |= horizontalAttackBitboard(sq, piecesPlusOwnKing);
+        }
 
         pieceAttackBitboard[side | QUEEN] = queenAttackBitboard;
     }
@@ -1163,38 +1055,47 @@ Bitboard Board::generateAttackBitboard(int32_t side, Bitboard updatedSquares, in
     // Springer-Angriffe
     if(capturedPiece == (side | KNIGHT) ||
        updatedSquares & pieceBitboard[side | KNIGHT]) {
-        Bitboard knightBitboard;
+        Bitboard knightAttacks;
+        Bitboard knightBitboard = pieceBitboard[side | KNIGHT];
 
-        for(int sq : pieceList[side | KNIGHT])
-            knightBitboard |= knightAttackBitboard(sq);
+        while(knightBitboard) {
+            int32_t sq = knightBitboard.popFirstSetBit();
+            knightAttacks |= knightAttackBitboard(sq);
+        }
 
-        pieceAttackBitboard[side | KNIGHT] = knightBitboard;
+        pieceAttackBitboard[side | KNIGHT] = knightAttacks;
     }
 
     // Bauer-Angriffe
     if(capturedPiece == (side | PAWN) || wasPromotion ||
        updatedSquares & pieceBitboard[side | PAWN]) {
-        Bitboard pawnBitboard;
+        Bitboard pawnAttacks;
+        Bitboard pawnBitboard = pieceBitboard[side | PAWN];
 
-        for(int sq : pieceList[side | PAWN])
-            pawnBitboard |= pawnAttackBitboard(sq, side);
+        while(pawnBitboard) {
+            int32_t sq = pawnBitboard.popFirstSetBit();
+            pawnAttacks |= pawnAttackBitboard(sq, side);
+        }
 
-        pieceAttackBitboard[side | PAWN] = pawnBitboard;
+        pieceAttackBitboard[side | PAWN] = pawnAttacks;
     }
 
     // König-Angriffe
     if(updatedSquares & pieceBitboard[side | KING]) {
-        Bitboard kingBitboard;
+        Bitboard kingAttacks;
+        Bitboard kingBitboard = pieceBitboard[side | KING];
 
-        for(int sq : pieceList[side | KING])
-            kingBitboard |= kingAttackBitboard(sq);
+        while(kingBitboard) {
+            int32_t sq = kingBitboard.popFirstSetBit();
+            kingAttacks |= kingAttackBitboard(sq);
+        }
 
-        pieceAttackBitboard[side | KING] = kingBitboard;
+        pieceAttackBitboard[side | KING] = kingAttacks;
     }
 
     // Erstelle ein zentrales Angriffsbitboard
     Bitboard attackBitboard;
-    for(int i = (side | PAWN); i <= (side | KING); i++)
+    for(int32_t i = (side | PAWN); i <= (side | KING); i++)
         attackBitboard |= pieceAttackBitboard[i];
 
     return attackBitboard;
@@ -1203,7 +1104,7 @@ Bitboard Board::generateAttackBitboard(int32_t side, Bitboard updatedSquares, in
 void Board::generatePinnedPiecesBitboards(int32_t side, Bitboard& pinnedPiecesBitboard,
                                           int32_t* pinnedPiecesDirection) const {
 
-    int32_t kingSquare = pieceList[side | KING].front();
+    int32_t kingSquare = pieceBitboard[side | KING].getFirstSetBit();
     int32_t otherSide = side ^ COLOR_MASK;
     Bitboard enemyPiecesPlusKing;
     if(side == WHITE)
@@ -1214,8 +1115,8 @@ void Board::generatePinnedPiecesBitboards(int32_t side, Bitboard& pinnedPiecesBi
     Bitboard ownPieces = side == WHITE ? whitePiecesBitboard : blackPiecesBitboard;
 
     // Diagonale Angriffe
-    int diagonalPins[4];
-    int diagonalPinDirections[4];
+    int32_t diagonalPins[4];
+    int32_t diagonalPinDirections[4];
 
     int32_t numDiagonalPins = getDiagonallyPinnedToSquare(kingSquare,
                                 ownPieces,
@@ -1225,8 +1126,8 @@ void Board::generatePinnedPiecesBitboards(int32_t side, Bitboard& pinnedPiecesBi
                                 diagonalPinDirections);
     
     // Waaagerechte Angriffe
-    int straightPins[4];
-    int straightPinDirections[4];
+    int32_t straightPins[4];
+    int32_t straightPinDirections[4];
 
     int32_t numStraightPins = getHorizontallyPinnedToSquare(kingSquare,
                               ownPieces,
@@ -1236,12 +1137,12 @@ void Board::generatePinnedPiecesBitboards(int32_t side, Bitboard& pinnedPiecesBi
                               straightPinDirections);
     
     // Pins zusammenfassen
-    for(int i = 0; i < numDiagonalPins; i++) {
+    for(int32_t i = 0; i < numDiagonalPins; i++) {
         pinnedPiecesBitboard.setBit(diagonalPins[i]);
         pinnedPiecesDirection[diagonalPins[i]] = diagonalPinDirections[i];
     }
 
-    for(int i = 0; i < numStraightPins; i++) {
+    for(int32_t i = 0; i < numStraightPins; i++) {
         pinnedPiecesBitboard.setBit(straightPins[i]);
         pinnedPiecesDirection[straightPins[i]] = straightPinDirections[i];
     }
@@ -1308,11 +1209,11 @@ void Board::generateLegalCaptures(Array<Move, 256>& legalCaptures) const noexcep
 std::string Board::toFen() const {
     std::string fen = "";
 
-    int emptySquares = 0;
+    int32_t emptySquares = 0;
 
-    for(int r = RANK_8; r >= RANK_1; r--) {
-        for(int f = FILE_A; f <= FILE_H; f++) {
-            int square = FR2SQ(f, r);
+    for(int32_t r = RANK_8; r >= RANK_1; r--) {
+        for(int32_t f = FILE_A; f <= FILE_H; f++) {
+            int32_t square = FR2SQ(f, r);
 
             if(pieces[square] == EMPTY) {
                 emptySquares++;
@@ -1416,7 +1317,7 @@ std::string Board::toFen() const {
 
     fen += " ";
 
-    int fullMoves = (ply / 2) + 1;
+    int32_t fullMoves = (ply / 2) + 1;
 
     fen += std::to_string(fullMoves);
 
@@ -1458,6 +1359,15 @@ std::string Board::toPgn() const {
     return pgn;
 }
 
-uint8_t Board::repetitionCount() const {
-    return repetitionTable.get(hashValue);
+uint16_t Board::repetitionCount() const {
+    uint16_t count = 1;
+
+    for(int32_t i = moveHistory.size() - 2; i >= (int32_t)(moveHistory.size() - fiftyMoveRule); i -= 2) {
+        if(moveHistory[i].hashValue == hashValue) {
+            if(++count == 3)
+                return count;
+        }
+    }
+
+    return count;
 }

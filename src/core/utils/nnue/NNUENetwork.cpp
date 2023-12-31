@@ -70,27 +70,35 @@ void Network::initializeFromBoard(const Board& board, int32_t color) noexcept {
     // Weiße Figuren
     if(color == WHITE) {
         for(int32_t piece = (WHITE | PAWN); piece <= (WHITE | QUEEN); piece++) {
-            for(int32_t sq : board.getPieceList(piece)) {
+            Bitboard pieceBitboard = board.getPieceBitboard(piece);
+            while(pieceBitboard) {
+                int32_t sq = pieceBitboard.popFirstSetBit();
                 activeFeatures.push_back(getHalfKPIndex<WHITE>(kingSq, sq, piece));
             }
         }
 
         // Schwarze Figuren
         for(int32_t piece = (BLACK | PAWN); piece <= (BLACK | QUEEN); piece++) {
-            for(int32_t sq : board.getPieceList(piece)) {
+            Bitboard pieceBitboard = board.getPieceBitboard(piece);
+            while(pieceBitboard) {
+                int32_t sq = pieceBitboard.popFirstSetBit();
                 activeFeatures.push_back(getHalfKPIndex<WHITE>(kingSq, sq, piece));
             }
         }
     } else {
         for(int32_t piece = (WHITE | PAWN); piece <= (WHITE | QUEEN); piece++) {
-            for(int32_t sq : board.getPieceList(piece)) {
+            Bitboard pieceBitboard = board.getPieceBitboard(piece);
+            while(pieceBitboard) {
+                int32_t sq = pieceBitboard.popFirstSetBit();
                 activeFeatures.push_back(getHalfKPIndex<BLACK>(kingSq, sq, piece));
             }
         }
 
         // Schwarze Figuren
         for(int32_t piece = (BLACK | PAWN); piece <= (BLACK | QUEEN); piece++) {
-            for(int32_t sq : board.getPieceList(piece)) {
+            Bitboard pieceBitboard = board.getPieceBitboard(piece);
+            while(pieceBitboard) {
+                int32_t sq = pieceBitboard.popFirstSetBit();
                 activeFeatures.push_back(getHalfKPIndex<BLACK>(kingSq, sq, piece));
             }
         }
@@ -146,7 +154,9 @@ void Network::initializeFromBoard(const Board& board) noexcept {
 
     // Weiße Figuren
     for(int32_t piece = (WHITE | PAWN); piece <= (WHITE | QUEEN); piece++) {
-        for(int32_t sq : board.getPieceList(piece)) {
+        Bitboard pieceBitboard = board.getPieceBitboard(piece);
+        while(pieceBitboard) {
+            int32_t sq = pieceBitboard.popFirstSetBit();
             activeFeaturesWhite.push_back(getHalfKPIndex<WHITE>(board.getKingSquare(WHITE), sq, piece));
             activeFeaturesBlack.push_back(getHalfKPIndex<BLACK>(board.getKingSquare(BLACK), sq, piece));
         }
@@ -154,7 +164,9 @@ void Network::initializeFromBoard(const Board& board) noexcept {
 
     // Schwarze Figuren
     for(int32_t piece = (BLACK | PAWN); piece <= (BLACK | QUEEN); piece++) {
-        for(int32_t sq : board.getPieceList(piece)) {
+        Bitboard pieceBitboard = board.getPieceBitboard(piece);
+        while(pieceBitboard) {
+            int32_t sq = pieceBitboard.popFirstSetBit();
             activeFeaturesWhite.push_back(getHalfKPIndex<WHITE>(board.getKingSquare(WHITE), sq, piece));
             activeFeaturesBlack.push_back(getHalfKPIndex<BLACK>(board.getKingSquare(BLACK), sq, piece));
         }

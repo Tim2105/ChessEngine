@@ -7,14 +7,14 @@
 #include "core/utils/MoveNotations.h"
 
 void perftImpl(Board& board, int depth, uint64_t& count) {
-    board.generateLegalCaptures();
-
     if(depth <= 1) {
         count += board.generateLegalMoves().size();
         return;
     }
-
-    for(Move m : board.generateLegalMoves()) {
+    
+    Array<Move, 256> moves;
+    board.generateLegalMoves(moves);
+    for(Move m : moves) {
         board.makeMove(m);
         perftImpl(board, depth - 1, count);
         board.undoMove();
@@ -47,7 +47,9 @@ void printPerftResults(Board& board, int depth) {
 
     uint64_t accumulatedNodes = 0;
 
-    for(Move m : board.generateLegalMoves()) {
+    Array<Move, 256> moves;
+    board.generateLegalMoves(moves);
+    for(Move m : moves) {
         board.makeMove(m);
         uint64_t nodes = perft(board, depth - 1);
         board.undoMove();

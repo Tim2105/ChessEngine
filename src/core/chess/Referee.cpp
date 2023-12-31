@@ -51,8 +51,8 @@ bool Referee::isDrawByMaterial(Board& b) {
         if(whiteKnights == 0 && blackKnights == 0 &&
         whiteBishops == 1 && blackBishops == 1) {
             
-            int32_t whiteBishopSq = b.getPieceList(WHITE_BISHOP).front();
-            int32_t blackBishopSq = b.getPieceList(BLACK_BISHOP).front();
+            int32_t whiteBishopSq = b.getPieceBitboard(WHITE_BISHOP).getFirstSetBit();
+            int32_t blackBishopSq = b.getPieceBitboard(BLACK_BISHOP).getFirstSetBit();
 
             int32_t whiteBishopColor = whiteBishopSq % 20 < 10 ? whiteBishopSq % 2 : 1 - whiteBishopSq % 2;
             int32_t blackBishopColor = blackBishopSq % 20 < 10 ? blackBishopSq % 2 : 1 - blackBishopSq % 2;

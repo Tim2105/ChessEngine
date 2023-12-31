@@ -12,7 +12,7 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
 
     nodesSearched++;
 
-    uint8_t repetitionCount = boardCopy.repetitionCount();
+    uint16_t repetitionCount = boardCopy.repetitionCount();
     if(repetitionCount >= 3 || boardCopy.getFiftyMoveCounter() >= 100)
         return DRAW_SCORE;
 

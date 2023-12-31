@@ -1,6 +1,7 @@
 #ifndef PERSISTENT_HASH_TABLE_H
 #define PERSISTENT_HASH_TABLE_H
 
+#include <cstddef>
 #include <vector>
 
 template <typename K, typename V, size_t bucketCount, size_t bucketSize>
