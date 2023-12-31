@@ -30,7 +30,7 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
         }
     }
 
-    if(depth <= 0 || ply >= (maxDepthReached + 1) * 6)
+    if(depth <= 0 || ply >= (maxDepthReached + 1) * 4)
         return quiescence(ply, alpha, beta);
 
     bool isThreat = false;
@@ -97,6 +97,8 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
                 score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, true, true);
         }
 
+        // Skaliere die Bewertung in Richtung 0,
+        // wenn der Zug einmal wiederholt wurde.
         if(repetitionCount >= 2)
             score /= 2;
 
@@ -276,15 +278,15 @@ int16_t PVSEngine::determineExtension(bool isCheckEvasion) {
 int16_t PVSEngine::determineReduction(int16_t moveCount) {
     UNUSED(moveCount);
 
-    int16_t reduction = 0;
+    int32_t reduction = 0;
 
     Move lastMove = boardCopy.getLastMove();
     reduction -= getHistoryScore(lastMove, boardCopy.getSideToMove() ^ COLOR_MASK) * ONE_PLY / 2048;
 
     if(lastMove.isCapture())
-        reduction -= ONE_PLY;
+        reduction = std::min(reduction, (int32_t)ONE_PLY);
 
-    return std::max(reduction, (int16_t)0);
+    return std::clamp(reduction, 0, (maxDepthReached + 1) * ONE_PLY / 3);
 }
 
 bool PVSEngine::deactivateNullMove() {
@@ -310,11 +312,15 @@ void PVSEngine::scoreMoves(const Array<Move, 256>& moves, uint16_t ply) {
         int16_t score = 0;
 
         if(move.isCapture())
-            score = std::max(evaluator.evaluateMoveMVVLVA(move), NEUTRAL_SCORE);
-        else if(isKillerMove(ply, move))
-            score += KILLER_MOVE_SCORE;
+            score = std::max(evaluator.evaluateMoveSEE(move), NEUTRAL_SCORE);
+        else{
+            if(isKillerMove(ply, move))
+                score += KILLER_MOVE_SCORE;
 
-        score += getHistoryScore(move);
+            score += std::clamp(getHistoryScore(move),
+                                MIN_SCORE + 1,
+                                KILLER_MOVE_SCORE - 1);
+        }
 
         moveStack[ply].moveScorePairs.push_back(MoveScorePair(move, score));
     }

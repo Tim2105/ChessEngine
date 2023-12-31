@@ -9,25 +9,17 @@ class NNUEEvaluator: public UpdatedEvaluator {
 
     private:
         NNUE::Network network;
-        HeapHashTable<uint64_t, int32_t, 131072, 2> evaluationCache;
 
     public:
         NNUEEvaluator(Board& board, std::istream& networkStream) : UpdatedEvaluator(board) {
             networkStream >> network;
+            network.initializeFromBoard(board);
         }
 
         ~NNUEEvaluator() {}
 
         inline int32_t evaluate() override {
-            uint64_t hash = b->getHashValue();
-            int32_t evaluation;
-
-            if(!evaluationCache.probe(hash, evaluation)) {
-                evaluation = network.evaluate(b->getSideToMove());
-                evaluationCache.put(hash, evaluation);
-            }
-
-            return evaluation;
+            return network.evaluate(b->getSideToMove());
         }
 
         inline void updateAfterMove() override {

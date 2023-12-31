@@ -142,13 +142,13 @@ class PVSEngine: public InterruptedEngine {
                         [move.getDestination()] -= (depth / ONE_PLY);
         }
 
-        constexpr int16_t getHistoryScore(Move move) {
+        constexpr int32_t getHistoryScore(Move move) {
             return historyTable[boardCopy.getSideToMove() / COLOR_MASK]
                                [move.getOrigin()]
                                [move.getDestination()];
         }
 
-        constexpr int16_t getHistoryScore(Move move, int32_t side) {
+        constexpr int32_t getHistoryScore(Move move, int32_t side) {
             return historyTable[side / COLOR_MASK]
                                [move.getOrigin()]
                                [move.getDestination()];
