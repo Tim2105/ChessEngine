@@ -195,6 +195,7 @@ class RepetitionTable {
  * Die Klasse Board stellt ein Schachbrett dar und enthält Methoden zur Zuggeneration.
  */
 class Board {
+    friend class OldMovegen;
     friend class Movegen;
     
     private:
@@ -403,24 +404,10 @@ class Board {
         bool isCheck() const;
 
         /**
-         * @brief Generiert alle Pseudo-Legalen Züge.
-         * Pseudo-Legale Züge sind Züge, die auf dem Schachbrett möglich sind, aber eventuell den eigenen König im Schach lassen.
-         */
-        Array<Move, 256> generatePseudoLegalMoves() const;
-
-        /**
-         * @brief Generiert alle Pseudo-Legalen Züge.
-         * Pseudo-Legale Züge sind Züge, die auf dem Schachbrett möglich sind, aber eventuell den eigenen König im Schach lassen.
-         * 
-         * @param moves Das Array, in das die Züge gespeichert werden sollen.
-         */
-        void generatePseudoLegalMoves(Array<Move, 256>& moves) const;
-
-        /**
          * @brief Generiert alle legalen Züge.
          * Legale Züge sind Züge, die auf dem Schachbrett möglich sind und den eigenen König nicht im Schach lassen.
          */
-        Array<Move, 256> generateLegalMoves() const;
+        Array<Move, 256> generateLegalMoves() const noexcept;
 
         /**
          * @brief Generiert alle legalen Züge.
@@ -428,19 +415,19 @@ class Board {
          *
          * @param moves Das Array, in das die Züge gespeichert werden sollen.
          */
-        void generateLegalMoves(Array<Move, 256>& moves) const;
+        void generateLegalMoves(Array<Move, 256>& moves) const noexcept;
 
         /**
          * @brief Generiert alle legalen Züge, die eine Figur schlagen
          */
-        Array<Move, 256> generateLegalCaptures() const;
+        Array<Move, 256> generateLegalCaptures() const noexcept;
 
         /**
          * @brief Generiert alle legalen Züge, die eine Figur schlagen
          *
          * @param moves Das Array, in das die Züge gespeichert werden sollen.
          */
-        void generateLegalCaptures(Array<Move, 256>& moves) const;
+        void generateLegalCaptures(Array<Move, 256>& moves) const noexcept;
 
         /**
          * @brief Führt einen Zug aus.

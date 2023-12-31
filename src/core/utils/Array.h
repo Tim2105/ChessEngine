@@ -55,7 +55,13 @@ class Array {
         }
 
         constexpr T& operator[](size_t index) { return array[index]; };
+        constexpr const T& operator[](size_t index) const { return array[index]; };
+
+        constexpr T& operator[](int32_t index) { return array[index]; };
+        constexpr const T& operator[](int32_t index) const { return array[index]; };
+
         constexpr operator T*() { return array; };
+        constexpr operator const T*() const { return array; };
 
         /**
          * @brief Fügt ein Element hinten an den Array an.
@@ -150,6 +156,15 @@ class Array {
          */
         constexpr void clear() {
             count = 0;
+        }
+
+        /**
+         * @brief Ändert die Größe des Arrays.
+         * 
+         * @param newSize Die neue Größe des Arrays.
+         */
+        constexpr void resize(size_t newSize) {
+            count = newSize;
         }
 
         /**

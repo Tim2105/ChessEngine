@@ -7,6 +7,8 @@
 #include "core/utils/MoveNotations.h"
 
 void perftImpl(Board& board, int depth, uint64_t& count) {
+    board.generateLegalCaptures();
+
     if(depth <= 1) {
         count += board.generateLegalMoves().size();
         return;
@@ -58,5 +60,6 @@ void printPerftResults(Board& board, int depth) {
     std::cout << "Total: " << accumulatedNodes << std::endl;
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     std::cout << " Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "ms" << std::endl;
-    std::cout << "  N/s: " << accumulatedNodes / std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() * 1000 << std::endl;
+    std::cout << "  N/s: " << accumulatedNodes / std::max((uint64_t)std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count(),
+                            (uint64_t)1) * 1000 << std::endl;
 }
