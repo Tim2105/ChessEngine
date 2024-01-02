@@ -32,9 +32,12 @@ endif
 # Quelldateien
 SRC = $(call rwildcard,src/,*.cpp)
 
+# Einzubettende Ressourcen
+RES = $(call rwildcard,resources/,*);
+
 # Objektdateien
 # Werden in den Ordner bin/obj erstellt
-OBJ = $(SRC:src/%.cpp=bin/obj/%.o)
+OBJ = $(SRC:src/%.cpp=bin/obj/%.o) $(RES:resources/%=bin/embed/%.o)
 
 # Ausführbare Datei
 # Wird in den Ordner bin erstellt
@@ -48,12 +51,19 @@ $(EXEC): $(OBJ)
 # mkdir -p für Windows
 MKDIR = $(if $(filter $(OS),Windows_NT),if not exist $(subst /,\,$1) mkdir $(subst /,\,$1),mkdir -p $1)
 
-# Erstellt die Objektdateien
+# Erstellt die Objektdateien aus den Quelldateien
 # Fehlende Ordner werden erstellt
 bin/obj/%.o: src/%.cpp
 	$(info Compiling $<)
 	@$(call MKDIR,$(dir $@))
 	@$(CC) $(CFLAGS) -c -o $@ $<
+
+# Erstellt die Objektdateien aus den Ressourcen
+# Fehlende Ordner werden erstellt
+bin/embed/%.o: resources/%
+	$(info Embedding $<)
+	@$(call MKDIR,$(dir $@))
+	@$(LD) -r -b binary -o $@ $<
 
 # Löscht alle erstellten Dateien
 clean:

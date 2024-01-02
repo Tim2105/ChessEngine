@@ -9,6 +9,9 @@ std::ostream& operator<<(std::ostream &os, const Move &m) {
 }
 
 std::string Move::toString() const {
+    if(isNullMove())
+        return "0000";
+
     std::string origin = "";
     std::string destination = "";
     std::string promotionType = "";

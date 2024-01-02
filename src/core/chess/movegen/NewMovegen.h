@@ -26,7 +26,7 @@ class Movegen {
                                 Bitboard pinnedPieces, const Array<int32_t, 64>& pinDirections) noexcept;
 
     private:
-        template <int32_t color>
+        template <int32_t color, bool checkEnPassant>
         static inline void generatePawnMoves(const Board& board, Array<Move, 256>& moves) noexcept;
 
         template <int32_t color>
@@ -41,7 +41,7 @@ class Movegen {
         template <int32_t color>
         static inline void generateKingMoves(const Board& board, Array<Move, 256>& moves) noexcept;
 
-        template <int32_t color>
+        template <int32_t color, bool checkEnPassant>
         static inline void generatePawnCaptures(const Board& board, Array<Move, 256>& moves) noexcept;
 
         template <int32_t color>
@@ -66,7 +66,12 @@ void Movegen::generateLegalMoves(const Board& board, Array<Move, 256>& moves,
     precomputedInfo = &info;
 
     if(numAttackers < 2) {
-        generatePawnMoves<color>(board, moves);
+        bool checkEnPassant = board.getEnPassantSquare() != NO_SQ;
+        if(checkEnPassant)
+            generatePawnMoves<color, true>(board, moves);
+        else
+            generatePawnMoves<color, false>(board, moves);
+        
         generateKnightMoves<color>(board, moves);
         generateDiagonalSlidingMoves<color>(board, moves);
         generateHorizontalSlidingMoves<color>(board, moves);
@@ -86,7 +91,12 @@ void Movegen::generateLegalCaptures(const Board& board, Array<Move, 256>& moves,
     precomputedInfo = &info;
 
     if(numAttackers < 2) {
-        generatePawnCaptures<color>(board, moves);
+        bool checkEnPassant = board.getEnPassantSquare() != NO_SQ;
+        if(checkEnPassant)
+            generatePawnCaptures<color, true>(board, moves);
+        else
+            generatePawnCaptures<color, true>(board, moves);
+        
         generateKnightCaptures<color>(board, moves);
         generateDiagonalSlidingCaptures<color>(board, moves);
         generateHorizontalSlidingCaptures<color>(board, moves);
@@ -97,7 +107,7 @@ void Movegen::generateLegalCaptures(const Board& board, Array<Move, 256>& moves,
     precomputedInfo = nullptr;
 }
 
-template <int32_t color>
+template <int32_t color, bool checkEnPassant>
 inline void Movegen::generatePawnMoves(const Board& board, Array<Move, 256>& moves) noexcept {
     constexpr int32_t pawnPiece = color == WHITE ? WHITE_PAWN : BLACK_PAWN;
     constexpr int32_t forw = color == WHITE ? NORTH : SOUTH;
@@ -123,17 +133,18 @@ inline void Movegen::generatePawnMoves(const Board& board, Array<Move, 256>& mov
             if(precomputedInfo->pinnedPieces.getBit(sq))
                 continue;
 
-            // En-Passant könnte den Angreifer blockieren oder schlagen
-            if(board.getEnPassantSquare() != NO_SQ &&
-               rank == enPasRankReq) {
-                int32_t captureSq = board.getEnPassantSquare();
-                int32_t enPasSq = captureSq - forw;
-                Bitboard captureSqBB = Bitboard(1ULL << captureSq);
-                Bitboard enPasSqBB = Bitboard(1ULL << enPasSq);
+            if constexpr(checkEnPassant) {
+                // En-Passant könnte den Angreifer blockieren oder schlagen
+                if(rank == enPasRankReq) {
+                    int32_t captureSq = board.getEnPassantSquare();
+                    int32_t enPasSq = captureSq - forw;
+                    Bitboard captureSqBB = Bitboard(1ULL << captureSq);
+                    Bitboard enPasSqBB = Bitboard(1ULL << enPasSq);
 
-                if((pawnAttackBitboard(sq, ownColor) & captureSqBB) &&
-                   (captureSqBB | enPasSqBB) & precomputedInfo->attackingRays)
-                    moves.push_back(Move(sq, captureSq, MOVE_EN_PASSANT));
+                    if((pawnAttackBitboard(sq, ownColor) & captureSqBB) &&
+                    (captureSqBB | enPasSqBB) & precomputedInfo->attackingRays)
+                        moves.push_back(Move(sq, captureSq, MOVE_EN_PASSANT));
+                }
             }
 
             // Der Bauer könnte sich dazwischen stellen
@@ -181,52 +192,53 @@ inline void Movegen::generatePawnMoves(const Board& board, Array<Move, 256>& mov
 
             bool isPinned = precomputedInfo->pinnedPieces.getBit(sq);
 
-            // En-Passant
-            if(board.getEnPassantSquare() != NO_SQ &&
-               rank == enPasRankReq) {
-                int32_t captureSq = board.getEnPassantSquare();
-                Bitboard enPassantCaptures = pawnAttackBitboard(sq, ownColor) &
-                                             Bitboard(1ULL << captureSq);
+            if constexpr(checkEnPassant) {
+                // En-Passant
+                if(rank == enPasRankReq) {
+                    int32_t captureSq = board.getEnPassantSquare();
+                    Bitboard enPassantCaptures = pawnAttackBitboard(sq, ownColor) &
+                                                Bitboard(1ULL << captureSq);
 
-                // Es kann maximal ein En-Passant pro Zug geben, also ist das hier sicher
-                if(enPassantCaptures) {
-                    int32_t enPasSq = enPassantCaptures.getFirstSetBit();
-                    int32_t captureDir = std::abs(enPasSq - sq);
-                    
-                    if(isPinned) {
-                        // Überprüfe, ob der Zug entlang der Pin-Richtung verläuft
-                        if(captureDir == precomputedInfo->pinDirections[sq] ||
-                           captureDir == -precomputedInfo->pinDirections[sq])
-                            moves.push_back(Move(sq, enPasSq, MOVE_EN_PASSANT));
-                    } else {
-                        // En-Passant entfernt zwei Figuren von einem
-                        // Rang, also muss manuell überprüft werden, ob der
-                        // König danach im Schach steht
-
-                        int32_t ownKingSq = color == WHITE ?
-                            board.pieceBitboard[WHITE_KING].getFirstSetBit() :
-                            board.pieceBitboard[BLACK_KING].getFirstSetBit();
-
-                        int32_t ownKingRank = SQ2R(ownKingSq);
-                        constexpr int32_t dangerousKingRank = color == WHITE ?
-                            RANK_5 : RANK_4;
-
-                        Bitboard enemyKing = color == WHITE ?
-                            board.pieceBitboard[BLACK_KING] : board.pieceBitboard[WHITE_KING];
-
-                        Bitboard enemyQueensAndRooks = color == WHITE ?
-                            board.pieceBitboard[BLACK_QUEEN] | board.pieceBitboard[BLACK_ROOK] :
-                            board.pieceBitboard[WHITE_QUEEN] | board.pieceBitboard[WHITE_ROOK];
-
-                        Bitboard piecesAfterMove = board.allPiecesBitboard | enemyKing;
-                        piecesAfterMove.clearBit(sq);
-                        piecesAfterMove.clearBit(captureSq - forw);
-                        piecesAfterMove.setBit(enPasSq);
-
-                        if(ownKingRank != dangerousKingRank ||
-                          !(horizontalAttackBitboard(ownKingSq, piecesAfterMove) & enemyQueensAndRooks))
-                            moves.push_back(Move(sq, enPasSq, MOVE_EN_PASSANT));
+                    // Es kann maximal ein En-Passant pro Zug geben, also ist das hier sicher
+                    if(enPassantCaptures) {
+                        int32_t enPasSq = enPassantCaptures.getFirstSetBit();
+                        int32_t captureDir = std::abs(enPasSq - sq);
                         
+                        if(isPinned) {
+                            // Überprüfe, ob der Zug entlang der Pin-Richtung verläuft
+                            if(captureDir == precomputedInfo->pinDirections[sq] ||
+                            captureDir == -precomputedInfo->pinDirections[sq])
+                                moves.push_back(Move(sq, enPasSq, MOVE_EN_PASSANT));
+                        } else {
+                            // En-Passant entfernt zwei Figuren von einem
+                            // Rang, also muss manuell überprüft werden, ob der
+                            // König danach im Schach steht
+
+                            int32_t ownKingSq = color == WHITE ?
+                                board.pieceBitboard[WHITE_KING].getFirstSetBit() :
+                                board.pieceBitboard[BLACK_KING].getFirstSetBit();
+
+                            int32_t ownKingRank = SQ2R(ownKingSq);
+                            constexpr int32_t dangerousKingRank = color == WHITE ?
+                                RANK_5 : RANK_4;
+
+                            Bitboard enemyKing = color == WHITE ?
+                                board.pieceBitboard[BLACK_KING] : board.pieceBitboard[WHITE_KING];
+
+                            Bitboard enemyQueensAndRooks = color == WHITE ?
+                                board.pieceBitboard[BLACK_QUEEN] | board.pieceBitboard[BLACK_ROOK] :
+                                board.pieceBitboard[WHITE_QUEEN] | board.pieceBitboard[WHITE_ROOK];
+
+                            Bitboard piecesAfterMove = board.allPiecesBitboard | enemyKing;
+                            piecesAfterMove.clearBit(sq);
+                            piecesAfterMove.clearBit(captureSq - forw);
+                            piecesAfterMove.setBit(enPasSq);
+
+                            if(ownKingRank != dangerousKingRank ||
+                            !(horizontalAttackBitboard(ownKingSq, piecesAfterMove) & enemyQueensAndRooks))
+                                moves.push_back(Move(sq, enPasSq, MOVE_EN_PASSANT));
+                            
+                        }
                     }
                 }
             }
@@ -566,7 +578,7 @@ inline void Movegen::generateKingMoves(const Board& board, Array<Move, 256>& mov
     }
 }
 
-template <int32_t color>
+template <int32_t color, bool checkEnPassant>
 inline void Movegen::generatePawnCaptures(const Board& board, Array<Move, 256>& moves) noexcept {
     constexpr int32_t pawnPiece = color == WHITE ? WHITE_PAWN : BLACK_PAWN;
     constexpr int32_t forw = color == WHITE ? NORTH : SOUTH;
@@ -588,17 +600,18 @@ inline void Movegen::generatePawnCaptures(const Board& board, Array<Move, 256>& 
             if(precomputedInfo->pinnedPieces.getBit(sq))
                 continue;
 
-            // En-Passant könnte den Angreifer blockieren oder schlagen
-            if(board.getEnPassantSquare() != NO_SQ &&
-               rank == enPasRankReq) {
-                int32_t captureSq = board.getEnPassantSquare();
-                int32_t enPasSq = captureSq - forw;
-                Bitboard captureSqBB = Bitboard(1ULL << captureSq);
-                Bitboard enPasSqBB = Bitboard(1ULL << enPasSq);
+            if constexpr(checkEnPassant) {
+                // En-Passant könnte den Angreifer blockieren oder schlagen
+                if(rank == enPasRankReq) {
+                    int32_t captureSq = board.getEnPassantSquare();
+                    int32_t enPasSq = captureSq - forw;
+                    Bitboard captureSqBB = Bitboard(1ULL << captureSq);
+                    Bitboard enPasSqBB = Bitboard(1ULL << enPasSq);
 
-                if((pawnAttackBitboard(sq, ownColor) & captureSqBB) &&
-                   (captureSqBB | enPasSqBB) & precomputedInfo->attackingRays)
-                    moves.push_back(Move(sq, captureSq, MOVE_EN_PASSANT));
+                    if((pawnAttackBitboard(sq, ownColor) & captureSqBB) &&
+                    (captureSqBB | enPasSqBB) & precomputedInfo->attackingRays)
+                        moves.push_back(Move(sq, captureSq, MOVE_EN_PASSANT));
+                }
             }
 
             // Der Bauer könnte den Angreifer schlagen
@@ -626,50 +639,51 @@ inline void Movegen::generatePawnCaptures(const Board& board, Array<Move, 256>& 
             bool isPinned = precomputedInfo->pinnedPieces.getBit(sq);
 
             // En-Passant
-            if(board.getEnPassantSquare() != NO_SQ &&
-               rank == enPasRankReq) {
-                int32_t captureSq = board.getEnPassantSquare();
-                Bitboard enPassantCaptures = pawnAttackBitboard(sq, ownColor) &
-                                             Bitboard(1ULL << captureSq);
+            if constexpr(checkEnPassant) {
+                if(rank == enPasRankReq) {
+                    int32_t captureSq = board.getEnPassantSquare();
+                    Bitboard enPassantCaptures = pawnAttackBitboard(sq, ownColor) &
+                                                Bitboard(1ULL << captureSq);
 
-                // Es kann maximal ein En-Passant pro Zug geben, also ist das hier sicher
-                if(enPassantCaptures) {
-                    int32_t enPasSq = enPassantCaptures.getFirstSetBit();
-                    int32_t captureDir = std::abs(enPasSq - sq);
-                    
-                    if(isPinned) {
-                        // Überprüfe, ob der Zug entlang der Pin-Richtung verläuft
-                        if(captureDir == precomputedInfo->pinDirections[sq] ||
-                           captureDir == -precomputedInfo->pinDirections[sq])
-                            moves.push_back(Move(sq, enPasSq, MOVE_EN_PASSANT));
-                    } else {
-                        // En-Passant entfernt zwei Figuren von einem
-                        // Rang, also muss manuell überprüft werden, ob der
-                        // König danach im Schach steht
+                    // Es kann maximal ein En-Passant pro Zug geben, also ist das hier sicher
+                    if(enPassantCaptures) {
+                        int32_t enPasSq = enPassantCaptures.getFirstSetBit();
+                        int32_t captureDir = std::abs(enPasSq - sq);
+                        
+                        if(isPinned) {
+                            // Überprüfe, ob der Zug entlang der Pin-Richtung verläuft
+                            if(captureDir == precomputedInfo->pinDirections[sq] ||
+                            captureDir == -precomputedInfo->pinDirections[sq])
+                                moves.push_back(Move(sq, enPasSq, MOVE_EN_PASSANT));
+                        } else {
+                            // En-Passant entfernt zwei Figuren von einem
+                            // Rang, also muss manuell überprüft werden, ob der
+                            // König danach im Schach steht
 
-                        int32_t ownKingSq = color == WHITE ?
-                            board.pieceBitboard[WHITE_KING].getFirstSetBit() :
-                            board.pieceBitboard[BLACK_KING].getFirstSetBit();
+                            int32_t ownKingSq = color == WHITE ?
+                                board.pieceBitboard[WHITE_KING].getFirstSetBit() :
+                                board.pieceBitboard[BLACK_KING].getFirstSetBit();
 
-                        int32_t ownKingRank = SQ2R(ownKingSq);
-                        constexpr int32_t dangerousKingRank = color == WHITE ?
-                            RANK_5 : RANK_4;
+                            int32_t ownKingRank = SQ2R(ownKingSq);
+                            constexpr int32_t dangerousKingRank = color == WHITE ?
+                                RANK_5 : RANK_4;
 
-                        Bitboard enemyKing = color == WHITE ?
-                            board.pieceBitboard[BLACK_KING] : board.pieceBitboard[WHITE_KING];
+                            Bitboard enemyKing = color == WHITE ?
+                                board.pieceBitboard[BLACK_KING] : board.pieceBitboard[WHITE_KING];
 
-                        Bitboard enemyQueensAndRooks = color == WHITE ?
-                            board.pieceBitboard[BLACK_QUEEN] | board.pieceBitboard[BLACK_ROOK] :
-                            board.pieceBitboard[WHITE_QUEEN] | board.pieceBitboard[WHITE_ROOK];
+                            Bitboard enemyQueensAndRooks = color == WHITE ?
+                                board.pieceBitboard[BLACK_QUEEN] | board.pieceBitboard[BLACK_ROOK] :
+                                board.pieceBitboard[WHITE_QUEEN] | board.pieceBitboard[WHITE_ROOK];
 
-                        Bitboard piecesAfterMove = board.allPiecesBitboard | enemyKing;
-                        piecesAfterMove.clearBit(sq);
-                        piecesAfterMove.clearBit(captureSq - forw);
-                        piecesAfterMove.setBit(enPasSq);
+                            Bitboard piecesAfterMove = board.allPiecesBitboard | enemyKing;
+                            piecesAfterMove.clearBit(sq);
+                            piecesAfterMove.clearBit(captureSq - forw);
+                            piecesAfterMove.setBit(enPasSq);
 
-                        if(ownKingRank != dangerousKingRank ||
-                          !(horizontalAttackBitboard(ownKingSq, piecesAfterMove) & enemyQueensAndRooks))
-                            moves.push_back(Move(sq, enPasSq, MOVE_EN_PASSANT));
+                            if(ownKingRank != dangerousKingRank ||
+                            !(horizontalAttackBitboard(ownKingSq, piecesAfterMove) & enemyQueensAndRooks))
+                                moves.push_back(Move(sq, enPasSq, MOVE_EN_PASSANT));
+                        }
                     }
                 }
             }

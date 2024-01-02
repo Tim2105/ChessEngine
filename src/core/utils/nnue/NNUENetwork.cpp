@@ -1,14 +1,27 @@
+#include "core/utils/nnue/NNUEData.h"
 #include "core/utils/nnue/NNUENetwork.h"
 
 #include <iomanip>
 #include <sstream>
+#include <streambuf>
 
 using namespace NNUE;
+
+struct membuf : std::streambuf {
+    membuf(char* begin, char* end) {
+        this->setg(begin, begin, end);
+    }
+};
 
 Network::Network() {
     halfKPLayer = new HalfKPLayer;
     accumulator.setLayer(halfKPLayer);
     pastAccumulators.reserve(128);
+
+    membuf buf(_binary_resources_network_nnue_start, _binary_resources_network_nnue_end);
+    std::istream is(&buf);
+
+    is >> *this;
 }
 
 Network::~Network() {

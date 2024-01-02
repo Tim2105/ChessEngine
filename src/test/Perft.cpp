@@ -30,18 +30,18 @@ uint64_t perft(Board& board, int depth) {
 void printPerftResults(Board& board, int depth) {
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
-    std::cout << std::endl << std::endl << "Perft results for "
-        << board.toFen() << " at depth " << depth << std::endl;
+    std::cout << "Perft results for "
+        << board.toFen() << " at depth " << depth << "\n";
 
     if(depth <= 1) {
         Array<Move, 256> moves = board.generateLegalMoves();
         for(Move m : moves)
-            std::cout << std::setw(5) << m.toString() << ": 1" << std::endl;
+            std::cout << std::setw(5) << m.toString() << ": 1" << "\n";
 
-        std::cout << "Total: " << moves.size() << std::endl;
+        std::cout << "Total: " << moves.size() << "\n";
 
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-        std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "ms" << std::endl;
+        std::cout << "Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "ms\n" << std::endl;
         return;
     }
 
@@ -58,10 +58,10 @@ void printPerftResults(Board& board, int depth) {
         std::cout << std::setw(5) << m.toString() << ": " << nodes << std::endl;
     }
 
-    std::cout << std::endl;
-    std::cout << "Total: " << accumulatedNodes << std::endl;
+    std::cout << "\n";
+    std::cout << "Total: " << accumulatedNodes << "\n";
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::cout << " Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "ms" << std::endl;
+    std::cout << " Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "ms" << "\n";
     std::cout << "  N/s: " << accumulatedNodes / std::max((uint64_t)std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count(),
                             (uint64_t)1) * 1000 << std::endl;
 }

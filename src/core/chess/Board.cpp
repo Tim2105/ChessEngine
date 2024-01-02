@@ -254,6 +254,9 @@ Board Board::fromPGN(std::string pgn) {
             section += c;
     }
 
+    if(section != "")
+        sections.push_back(section);
+
     std::vector<std::string> stringHistory;
 
     for(std::string s : sections) {  
@@ -356,10 +359,6 @@ bool Board::isMoveLegal(Move move) {
     // Überprüfe, ob der Zug eine eigene Figur schlägt
     if(pieces[destination] != EMPTY && (pieces[destination] & COLOR_MASK) == side)
         return false; // Zug schlägt eine eigene Figur
-
-    // Wenn der Zug ein Schlagzug ist, überprüfe, ob er eine gegnerische Figur schlägt
-    if(move.isCapture() && pieces[destination] == EMPTY)
-        return false;
     
     // Wenn der Zug eine Rochade ist, überprüfe, ob die Rochade erlaubt ist
     if(move.isCastle()) {
