@@ -35,8 +35,8 @@ static constexpr uint8_t TT_TYPE_CUT_NODE = 1;
 
 static constexpr int16_t KILLER_MOVE_SCORE = 80;
 
-static constexpr int16_t NULL_MOVE_MAX_EXTENSION_DEPTH = 4 * ONE_PLY;
-static constexpr int16_t NULL_MOVE_THREAT_MARGIN = 300;
+static constexpr int16_t NULL_MOVE_MAX_EXTENSION_DEPTH = 6 * ONE_PLY;
+static constexpr int16_t NULL_MOVE_THREAT_MARGIN = 200;
 
 static constexpr int16_t calculateNullMoveReduction(int16_t depth) {
     return std::clamp(depth / 2, 2 * ONE_PLY, 4 * ONE_PLY);

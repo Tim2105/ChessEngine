@@ -60,8 +60,7 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
 
         if(score < staticEvaluation - NULL_MOVE_THREAT_MARGIN) {
             isThreat = true;
-            if(depth <= NULL_MOVE_MAX_EXTENSION_DEPTH)
-                depth += ONE_HALF_PLY;
+            depth += ONE_SIXTH_PLY;
         }
     }
 
@@ -79,7 +78,7 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
 
         int16_t extension = determineExtension(isCheckEvasion);
         int16_t reduction = 0;
-        if(extension == 0 && moveCount >= 1 && !isThreat && !isKillerMove(ply, move))
+        if(extension == 0 && !isThreat)
             reduction = determineReduction(moveCount + 1);
 
         int16_t score;
@@ -277,12 +276,13 @@ int16_t PVSEngine::determineReduction(int16_t moveCount) {
     int32_t reduction = ONE_PLY;
 
     Move lastMove = boardCopy.getLastMove();
-    reduction -= getHistoryScore(lastMove, boardCopy.getSideToMove() ^ COLOR_MASK) * ONE_PLY / 4096;
+    int32_t historyScore = getHistoryScore(lastMove, boardCopy.getSideToMove() ^ COLOR_MASK);
+    reduction -= historyScore * ONE_PLY / 16384;
 
     if(lastMove.isCapture())
         reduction -= 2 * ONE_PLY;
 
-    return std::clamp(reduction, 0, (maxDepthReached + 1) * ONE_PLY / 4);
+    return std::clamp(reduction, 0, (maxDepthReached + 1) * ONE_PLY / 2);
 }
 
 bool PVSEngine::deactivateNullMove() {
@@ -477,7 +477,7 @@ void PVSEngine::search(uint32_t time, bool treatAsTimeControl) {
     }
 
     std::chrono::milliseconds timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime);
-    std::cout << "info score " << scoreStr << " nodes " << nodesSearched <<
+    std::cout << "info depth " << maxDepthReached << " score " << scoreStr << " nodes " << nodesSearched <<
                 " time " << timeElapsed.count() << " nps " << (uint64_t)(nodesSearched / (timeElapsed.count() / 1000.0)) <<
                 " pv ";
     for(Move move : variations[0].moves)

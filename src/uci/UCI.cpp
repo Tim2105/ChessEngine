@@ -255,7 +255,13 @@ void handlePositionCommand(std::string args) {
         if(debug)
             std::cout << "info string fen: " << fen << std::endl;
 
-        temp = Board(fen);
+        try { temp = Board(fen); }
+        catch(std::invalid_argument& e) {
+            if(debug)
+                std::cout << "info string " << e.what() << std::endl;
+
+            return;
+        }
     } else if(token == "startpos") {
         if(debug)
             std::cout << "info string startpos" << std::endl;
