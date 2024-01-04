@@ -91,9 +91,13 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
         if(repetitionCount >= 2)
             score /= 2;
 
-        // TODO:
         // Skaliere die Bewertung in Richtung 0,
         // wenn sich der Fünfzig-Züge-Zähler erhöht.
+        // (Erst nach 10 Zügen, da sonst die Bewertung
+        // zu früh skaliert wird.)
+        int32_t fiftyMoveCounter = boardCopy.getFiftyMoveCounter();
+        if(fiftyMoveCounter > 20)
+            score = (int32_t)score * (100 - fiftyMoveCounter) / 80;
 
         evaluator.updateBeforeUndo();
         boardCopy.undoMove();
@@ -278,7 +282,7 @@ int16_t PVSEngine::determineReduction(int16_t moveCount) {
     reduction -= historyScore * ONE_PLY / 16384;
 
     if(lastMove.isCapture())
-        reduction -= 2 * ONE_PLY;
+        reduction -= ONE_PLY;
 
     return std::clamp(reduction, 0, (maxDepthReached + 1) * ONE_PLY / 2);
 }
@@ -306,7 +310,7 @@ void PVSEngine::scoreMoves(const Array<Move, 256>& moves, uint16_t ply) {
         int16_t score = 0;
 
         if(move.isCapture())
-            score = std::max(evaluator.evaluateMoveSEE(move), NEUTRAL_SCORE);
+            score = std::max(evaluator.evaluateMoveSEE(move), (int16_t)-(KILLER_MOVE_SCORE - 1)) + KILLER_MOVE_SCORE - 1;
         else{
             if(isKillerMove(ply, move))
                 score += KILLER_MOVE_SCORE;
