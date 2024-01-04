@@ -33,8 +33,6 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
     if(depth <= 0 || ply >= (maxDepthReached + 1) * 4)
         return quiescence(ply, alpha, beta);
 
-    bool isThreat = false;
-
     if(allowNullMove && !boardCopy.isCheck() &&
        depth > ONE_PLY && !deactivateNullMove()) {
         
@@ -48,20 +46,16 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
         if(stopFlag)
             return 0;
 
-        if(!isPVNode) {
-            if(score >= beta)
-                return score;
+        if(score >= beta)
+            return score;
 
-            if(score > alpha)
-                alpha = score;
-        }
+        if(score > alpha)
+            alpha = score;
 
         int16_t staticEvaluation = evaluator.evaluate();
 
-        if(score < staticEvaluation - NULL_MOVE_THREAT_MARGIN) {
-            isThreat = true;
-            depth += ONE_SIXTH_PLY;
-        }
+        if(score < staticEvaluation - NULL_MOVE_THREAT_MARGIN)
+            depth += ONE_THIRD_PLY;
     }
 
     clearPVTable(ply + 1);
@@ -78,24 +72,28 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
 
         int16_t extension = determineExtension(isCheckEvasion);
         int16_t reduction = 0;
-        if(extension == 0 && !isThreat)
+        if(extension == 0)
             reduction = determineReduction(moveCount + 1);
 
         int16_t score;
 
         if(moveCount == 0) {
-            score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, true, true);
+            score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, !isPVNode, isPVNode);
         } else {
             score = -pvs(depth - ONE_PLY + extension - reduction, ply + 1, -alpha - 1, -alpha, true, false);
 
-            if(score > alpha && (score < beta || reduction > 0))
-                score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, true, true);
+            if(score > alpha && (reduction > 0 || isPVNode))
+                score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, !isPVNode, isPVNode);
         }
 
         // Skaliere die Bewertung in Richtung 0,
         // wenn der Zug einmal wiederholt wurde.
         if(repetitionCount >= 2)
             score /= 2;
+
+        // TODO:
+        // Skaliere die Bewertung in Richtung 0,
+        // wenn sich der Fünfzig-Züge-Zähler erhöht.
 
         evaluator.updateBeforeUndo();
         boardCopy.undoMove();
