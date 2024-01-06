@@ -67,7 +67,7 @@ class Bitboard {
          */
         constexpr int32_t popFirstSetBit() {
             int32_t index = getFirstSetBit();
-            clearBit(index);
+            bitboard &= bitboard - 1;
             return index;
         }
 

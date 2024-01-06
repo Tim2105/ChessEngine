@@ -62,7 +62,7 @@ HeapHashTable<K, V, bucketCount, bucketSize>::HeapHashTable() {
     table = new Entry[bucketCount * bucketSize];
     bucketSizes = new uint8_t[bucketCount];
 
-    for (size_t i = 0; i < bucketCount; i++) {
+    for(size_t i = 0; i < bucketCount; i++) {
         bucketSizes[i] = 0;
     }
 }
@@ -104,25 +104,30 @@ void HeapHashTable<K, V, bucketCount, bucketSize>::put(K key, V value) {
     size_t index = key % bucketCount;
     Entry* bucket = table + index * bucketSize;
 
-    // Überprüfe, ob der Schlüssel bereits existiert.
-    for (size_t i = 0; i < bucketSizes[index]; i++) {
-        if (bucket[i].key == key) {
-            bucket[i].value = value;
-            return;
-        }
-    }
-
-    // Wenn der Schlüssel nicht existiert, füge ihn hinzu.
-    if (bucketSizes[index] < bucketSize) {
-        bucket[bucketSizes[index]].key = key;
-        bucket[bucketSizes[index]].value = value;
-        bucketSizes[index]++;
+    if constexpr(bucketSize == 1) {
+        bucket[0].key = key;
+        bucket[0].value = value;
     } else {
-        // Wenn der Bucket voll ist, überschreibe das älteste Element.
-        memmove(bucket, bucket + 1, sizeof(Entry) * (bucketSize - 1));
+        // Überprüfe, ob der Schlüssel bereits existiert.
+        for(size_t i = 0; i < bucketSizes[index]; i++) {
+            if (bucket[i].key == key) {
+                bucket[i].value = value;
+                return;
+            }
+        }
 
-        bucket[bucketSize - 1].key = key;
-        bucket[bucketSize - 1].value = value;
+        // Wenn der Schlüssel nicht existiert, füge ihn hinzu.
+        if(bucketSizes[index] < bucketSize) {
+            bucket[bucketSizes[index]].key = key;
+            bucket[bucketSizes[index]].value = value;
+            bucketSizes[index]++;
+        } else {
+            // Wenn der Bucket voll ist, überschreibe das älteste Element.
+            std::copy(bucket + 1, bucket + bucketSize, bucket);
+
+            bucket[bucketSize - 1].key = key;
+            bucket[bucketSize - 1].value = value;
+        }
     }
 }
 
@@ -130,11 +135,18 @@ template <typename K, typename V, size_t bucketCount, size_t bucketSize>
 bool HeapHashTable<K, V, bucketCount, bucketSize>::probe(K key, V& value) {
     size_t index = key % bucketCount;
     Entry* bucket = table + index * bucketSize;
-    
-    for (size_t i = 0; i < bucketSizes[index]; i++) {
-        if (bucket[i].key == key) {
-            value = bucket[i].value;
+
+    if constexpr(bucketSize == 1) {
+        if(bucket[0].key == key) {
+            value = bucket[0].value;
             return true;
+        }
+    } else {
+        for(size_t i = 0; i < bucketSizes[index]; i++) {
+            if(bucket[i].key == key) {
+                value = bucket[i].value;
+                return true;
+            }
         }
     }
 
@@ -143,7 +155,7 @@ bool HeapHashTable<K, V, bucketCount, bucketSize>::probe(K key, V& value) {
 
 template <typename K, typename V, size_t bucketCount, size_t bucketSize>
 void HeapHashTable<K, V, bucketCount, bucketSize>::clear() {
-    for (size_t i = 0; i < bucketCount; i++) {
+    for(size_t i = 0; i < bucketCount; i++) {
         bucketSizes[i] = 0;
     }
 }
