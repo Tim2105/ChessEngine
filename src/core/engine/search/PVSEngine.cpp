@@ -33,6 +33,7 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
     if(depth <= 0 || ply >= (maxDepthReached + 1) * 4)
         return quiescence(ply, alpha, beta);
 
+    bool isThreat = false;
     if(allowNullMove && !boardCopy.isCheck() &&
        depth > ONE_PLY && !deactivateNullMove()) {
         
@@ -54,8 +55,10 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
 
         int16_t staticEvaluation = evaluator.evaluate();
 
-        if(score < staticEvaluation - NULL_MOVE_THREAT_MARGIN)
+        if(score < staticEvaluation - NULL_MOVE_THREAT_MARGIN) {
             depth += ONE_THIRD_PLY;
+            isThreat = true;
+        }
     }
 
     clearPVTable(ply + 1);
@@ -72,8 +75,12 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
 
         int16_t extension = determineExtension(isCheckEvasion);
         int16_t reduction = 0;
-        if(extension == 0)
+        if(extension == 0) {
             reduction = determineReduction(moveCount + 1);
+
+            if(isThreat)
+                reduction = std::min(reduction, ONE_PLY);
+        }
 
         int16_t score;
 
@@ -96,7 +103,7 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
         // (Erst nach 10 Zügen, da sonst die Bewertung
         // zu früh skaliert wird.)
         int32_t fiftyMoveCounter = boardCopy.getFiftyMoveCounter();
-        if(fiftyMoveCounter > 20)
+        if(fiftyMoveCounter > 20 && !isMateScore(score))
             score = (int32_t)score * (100 - fiftyMoveCounter) / 80;
 
         evaluator.updateBeforeUndo();
@@ -249,15 +256,17 @@ int16_t PVSEngine::determineExtension(bool isCheckEvasion) {
     if(boardCopy.isCheck() || isCheckEvasion)
         extension += ONE_HALF_PLY;
 
-    // Erweiterung, wenn eine Figur zurückgeschlagen wird,
-    // ein Bauer promoviert oder ein Freibauer gezogen wird.
+    return extension;
+}
+
+int16_t PVSEngine::determineReduction(int16_t moveCount) {
     Move lastMove = boardCopy.getLastMove();
     std::vector<MoveHistoryEntry> moveHistory = boardCopy.getMoveHistory();
     Move secondLastMove = moveHistory.size() > 1 ? moveHistory[moveHistory.size() - 2].move : Move::nullMove();
     if(lastMove.isCapture() && secondLastMove.exists() && secondLastMove.isCapture())
-        extension += ONE_THIRD_PLY;
+        return 0;
     else if(lastMove.isPromotion())
-        extension += ONE_THIRD_PLY;
+        return 0;
     else {
         int32_t movedPieceType = TYPEOF(boardCopy.pieceAt(lastMove.getDestination()));
         if(movedPieceType == PAWN) {
@@ -265,24 +274,19 @@ int16_t PVSEngine::determineExtension(bool isCheckEvasion) {
             int32_t otherSide = side ^ COLOR_MASK;
             if(!(sentryMasks[side / COLOR_MASK][lastMove.getDestination()]
                 & boardCopy.getPieceBitboard(otherSide | PAWN)))
-                extension += ONE_THIRD_PLY;
+                return 0;
         }
     }
 
-    return extension;
-}
-
-int16_t PVSEngine::determineReduction(int16_t moveCount) {
-    UNUSED(moveCount);
-
     int32_t reduction = ONE_PLY;
 
-    Move lastMove = boardCopy.getLastMove();
     int32_t historyScore = getHistoryScore(lastMove, boardCopy.getSideToMove() ^ COLOR_MASK);
     reduction -= historyScore * ONE_PLY / 16384;
 
     if(lastMove.isCapture())
         reduction -= ONE_PLY;
+    else
+        reduction += ONE_HALF_PLY * (std::log2(moveCount) - 1.0);
 
     return std::clamp(reduction, 0, (maxDepthReached + 1) * ONE_PLY / 2);
 }
