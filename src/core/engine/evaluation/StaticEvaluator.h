@@ -21,6 +21,10 @@ class StaticEvaluator : public UpdatedEvaluator {
         // Weil Bauernstrukturen sich nicht zu häufig ändern, bekommt man hier eine hohe Trefferquote.
         HeapHashTable<uint64_t, Score, 16384, 4> pawnStructureTable;
 
+        double gamePhase = 0.0;
+
+        int32_t materialWeight = 0;
+
         /**
          * @brief Überprüft ob eine Position anhand des Materials wahrscheinlich ein Unentschieden ist.
          * Die Methode wird false zurückgeben, solange mindestens ein Bauer auf dem Spielfeld ist.
@@ -179,7 +183,9 @@ class StaticEvaluator : public UpdatedEvaluator {
     public:
         StaticEvaluator() = delete;
 
-        StaticEvaluator(Board& b) : UpdatedEvaluator(b) {};
+        StaticEvaluator(Board& b) : UpdatedEvaluator(b) {
+            initGamePhase();
+        }
 
         ~StaticEvaluator() {}
 
@@ -188,6 +194,10 @@ class StaticEvaluator : public UpdatedEvaluator {
 
         StaticEvaluator(StaticEvaluator&& other);
         StaticEvaluator& operator=(StaticEvaluator&& other);
+
+        void updateBeforeMove(Move move) override;
+        void updateAfterUndo(Move move) override;
+        void initGamePhase();
 
         /**
          * @brief Führt eine statische Bewertung für das Midgame der
@@ -231,6 +241,12 @@ class StaticEvaluator : public UpdatedEvaluator {
          * Ein Wert von 0 bedeutet Mittelspiel, ein Wert von 1 bedeutet Endspiel.
          */
         double getGamePhase() const;
+
+        inline void setBoard(Board& b) override {
+            Evaluator::setBoard(b);
+            pawnStructureTable.clear();
+            initGamePhase();
+        }
 
     private:
         /**
@@ -363,8 +379,8 @@ class StaticEvaluator : public UpdatedEvaluator {
                 0x200000000000000,0x500000000000000,0xA00000000000000,0x1400000000000000,0x2800000000000000,0x5000000000000000,0xA000000000000000,0x4000000000000000,
         };
 
-        static constexpr int32_t MG_PAWN_CONNECTED_VALUE = 5;
-        static constexpr int32_t EG_PAWN_CONNECTED_VALUE = 3;
+        static constexpr int32_t MG_PAWN_CONNECTED_VALUE = 42;
+        static constexpr int32_t EG_PAWN_CONNECTED_VALUE = 26;
 
         // Bonus für jeden Bauern, der mindestens einen anderen Bauern deckt
         static constexpr Bitboard pawnChainMasks[2][64] = {
@@ -392,16 +408,16 @@ class StaticEvaluator : public UpdatedEvaluator {
                 }
         };
 
-        static constexpr int32_t MG_PAWN_CHAIN_VALUE = 10;
-        static constexpr int32_t EG_PAWN_CHAIN_VALUE = 5;
+        static constexpr int32_t MG_PAWN_CHAIN_VALUE = 26;
+        static constexpr int32_t EG_PAWN_CHAIN_VALUE = 19;
 
         // Bestrafung für zwei oder mehrere Bauern in einer Spalte (doppelte Bauern)
-        static constexpr int32_t MG_PAWN_DOUBLED_VALUE = -12;
-        static constexpr int32_t EG_PAWN_DOUBLED_VALUE = -20;
+        static constexpr int32_t MG_PAWN_DOUBLED_VALUE = -17;
+        static constexpr int32_t EG_PAWN_DOUBLED_VALUE = -29;
 
         // Bestrafung für einen Bauern, der keine Nachbarn hat(keine Bauern in einer Nachbarspalte)
-        static constexpr int32_t MG_PAWN_ISOLATED_VALUE = -8;
-        static constexpr int32_t EG_PAWN_ISOLATED_VALUE = -10;
+        static constexpr int32_t MG_PAWN_ISOLATED_VALUE = -17;
+        static constexpr int32_t EG_PAWN_ISOLATED_VALUE = -34;
 
         // Bonus für jeden Freibauern(passed pawn)
         static constexpr Bitboard sentryMasks[2][64] = {
@@ -438,18 +454,18 @@ class StaticEvaluator : public UpdatedEvaluator {
 
         // Zusätzlicher Bonus für jeden Freibauern, der von einem anderen Bauern gedeckt wird
         static constexpr int32_t MG_PASSED_PAWN_PROTECTION_VALUE = 7;
-        static constexpr int32_t EG_PASSED_PAWN_PROTECTION_VALUE = 32;
+        static constexpr int32_t EG_PASSED_PAWN_PROTECTION_VALUE = 15;
 
         // Bonus für jedes Feld, dass von einer Figur angegriffen wird.
         // Felder, die von generischen Bauern angegriffen werden, werden ausgenommen.
         static constexpr int32_t MG_PAWN_MOBILITY_VALUE = 0;
         static constexpr int32_t EG_PAWN_MOBILITY_VALUE = 0;
-        static constexpr int32_t MG_KNIGHT_MOBILITY_VALUE = 2;
+        static constexpr int32_t MG_KNIGHT_MOBILITY_VALUE = 1;
         static constexpr int32_t EG_KNIGHT_MOBILITY_VALUE = 1;
-        static constexpr int32_t MG_BISHOP_MOBILITY_VALUE = 3;
-        static constexpr int32_t EG_BISHOP_MOBILITY_VALUE = 2;
-        static constexpr int32_t MG_ROOK_MOBILITY_VALUE = 3;
-        static constexpr int32_t EG_ROOK_MOBILITY_VALUE = 3;
+        static constexpr int32_t MG_BISHOP_MOBILITY_VALUE = 1;
+        static constexpr int32_t EG_BISHOP_MOBILITY_VALUE = 1;
+        static constexpr int32_t MG_ROOK_MOBILITY_VALUE = 2;
+        static constexpr int32_t EG_ROOK_MOBILITY_VALUE = 1;
         static constexpr int32_t MG_QUEEN_MOBILITY_VALUE = 0;
         static constexpr int32_t EG_QUEEN_MOBILITY_VALUE = 0;
 
@@ -503,7 +519,7 @@ class StaticEvaluator : public UpdatedEvaluator {
         static constexpr int32_t MG_KING_SAFETY_KNIGHT_THREAT_VALUE = 2;
         static constexpr int32_t MG_KING_SAFETY_BISHOP_THREAT_VALUE = 2;
         static constexpr int32_t MG_KING_SAFETY_ROOK_THREAT_VALUE = 3;
-        static constexpr int32_t MG_KING_SAFETY_QUEEN_THREAT_VALUE = 5;
+        static constexpr int32_t MG_KING_SAFETY_QUEEN_THREAT_VALUE = 4;
 
         /**
          * @brief Bauernschilder und -stürme werden nur für das Midgame bewertet.
@@ -590,6 +606,8 @@ class StaticEvaluator : public UpdatedEvaluator {
         static constexpr int32_t BISHOP_WEIGHT = 1;
         static constexpr int32_t ROOK_WEIGHT = 2;
         static constexpr int32_t QUEEN_WEIGHT = 4;
+        static constexpr int32_t PIECE_WEIGHTS[] = {0, PAWN_WEIGHT, KNIGHT_WEIGHT, BISHOP_WEIGHT, ROOK_WEIGHT, QUEEN_WEIGHT, 0};
+        static constexpr int32_t TOTAL_WEIGHT = PAWN_WEIGHT * 16 + KNIGHT_WEIGHT * 4 + BISHOP_WEIGHT * 4 + ROOK_WEIGHT * 4 + QUEEN_WEIGHT * 2;
 
         // Phasengrenzen, können unter 0 oder über 1 sein,
         // die berechnete Phase wird aber zwischen 0 und 1 eingeschränkt

@@ -47,14 +47,28 @@ class NNUEEvaluator: public UpdatedEvaluator {
 
         inline void updateBeforeMove(Move move) override {
             int32_t capturedPiece = b->pieceAt(move.getDestination());
+            int32_t promotedPieceType = EMPTY;
 
-            if(capturedPiece != EMPTY) {
-                materialDifference -= SIMPLE_PIECE_VALUES[capturedPiece];
-                pieceWeight -= PIECE_WEIGHTS[TYPEOF(capturedPiece)];
-                gamePhase = (double)pieceWeight / TOTAL_WEIGHT;
-                gamePhase = gamePhase * (MAX_PHASE - MIN_PHASE) + MIN_PHASE;
-                gamePhase = std::clamp(gamePhase, 0.0, 1.0);
-            }
+            materialDifference -= SIMPLE_PIECE_VALUES[capturedPiece];
+
+            if(move.isPromotion()) {
+                if(move.isPromotionQueen())
+                    promotedPieceType = QUEEN;
+                else if(move.isPromotionRook())
+                    promotedPieceType = ROOK;
+                else if(move.isPromotionBishop())
+                    promotedPieceType = BISHOP;
+                else
+                    promotedPieceType = KNIGHT;
+            } else if(move.isEnPassant())
+                capturedPiece = PAWN;
+
+            pieceWeight += PIECE_WEIGHTS[TYPEOF(capturedPiece)];
+            pieceWeight -= PIECE_WEIGHTS[promotedPieceType] - PAWN_WEIGHT;
+
+            gamePhase = (double)pieceWeight / TOTAL_WEIGHT;
+            gamePhase = gamePhase * (MAX_PHASE - MIN_PHASE) + MIN_PHASE; // phase in [MIN_PHASE, MAX_PHASE]
+            gamePhase = std::clamp(gamePhase, 0.0, 1.0); // phase auf [0, 1] begrenzen
         }
 
         inline void updateAfterMove() override {
@@ -67,14 +81,28 @@ class NNUEEvaluator: public UpdatedEvaluator {
 
         inline void updateAfterUndo(Move move) override {
             int32_t capturedPiece = b->pieceAt(move.getDestination());
+            int32_t promotedPieceType = EMPTY;
 
-            if(capturedPiece != EMPTY) {
-                materialDifference += SIMPLE_PIECE_VALUES[capturedPiece];
-                pieceWeight += PIECE_WEIGHTS[TYPEOF(capturedPiece)];
-                gamePhase = (double)pieceWeight / TOTAL_WEIGHT;
-                gamePhase = gamePhase * (MAX_PHASE - MIN_PHASE) + MIN_PHASE;
-                gamePhase = std::clamp(gamePhase, 0.0, 1.0);
-            }
+            materialDifference += SIMPLE_PIECE_VALUES[capturedPiece];
+
+            if(move.isPromotion()) {
+                if(move.isPromotionQueen())
+                    promotedPieceType = QUEEN;
+                else if(move.isPromotionRook())
+                    promotedPieceType = ROOK;
+                else if(move.isPromotionBishop())
+                    promotedPieceType = BISHOP;
+                else
+                    promotedPieceType = KNIGHT;
+            } else if(move.isEnPassant())
+                capturedPiece = PAWN;
+
+            pieceWeight -= PIECE_WEIGHTS[TYPEOF(capturedPiece)];
+            pieceWeight += PIECE_WEIGHTS[promotedPieceType] - PAWN_WEIGHT;
+
+            gamePhase = (double)pieceWeight / TOTAL_WEIGHT;
+            gamePhase = gamePhase * (MAX_PHASE - MIN_PHASE) + MIN_PHASE; // phase in [MIN_PHASE, MAX_PHASE]
+            gamePhase = std::clamp(gamePhase, 0.0, 1.0); // phase auf [0, 1] begrenzen
         }
 
         inline void setBoard(Board& board) override {

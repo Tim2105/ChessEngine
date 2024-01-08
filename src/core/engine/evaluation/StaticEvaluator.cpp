@@ -15,26 +15,75 @@ StaticEvaluator& StaticEvaluator::operator=(StaticEvaluator&& other) {
     return *this;
 }
 
+void StaticEvaluator::updateBeforeMove(Move move) {
+    int32_t capturedPieceType = TYPEOF(b->pieceAt(move.getDestination()));
+    int32_t promotedPieceType = EMPTY;
+
+    if(move.isPromotion()) {
+        if(move.isPromotionQueen())
+            promotedPieceType = QUEEN;
+        else if(move.isPromotionRook())
+            promotedPieceType = ROOK;
+        else if(move.isPromotionBishop())
+            promotedPieceType = BISHOP;
+        else
+            promotedPieceType = KNIGHT;
+    } else if(move.isEnPassant())
+        capturedPieceType = PAWN;
+
+    materialWeight += PIECE_WEIGHTS[capturedPieceType];
+    materialWeight -= PIECE_WEIGHTS[promotedPieceType] - PAWN_WEIGHT;
+
+    gamePhase = (double)materialWeight / TOTAL_WEIGHT;
+    gamePhase = gamePhase * (MAX_PHASE - MIN_PHASE) + MIN_PHASE; // phase in [MIN_PHASE, MAX_PHASE]
+    gamePhase = std::clamp(gamePhase, 0.0, 1.0); // phase auf [0, 1] begrenzen
+}
+
+void StaticEvaluator::updateAfterUndo(Move move) {
+    int32_t capturedPieceType = TYPEOF(b->pieceAt(move.getDestination()));
+    int32_t promotedPieceType = EMPTY;
+
+    if(move.isPromotion()) {
+        if(move.isPromotionQueen())
+            promotedPieceType = QUEEN;
+        else if(move.isPromotionRook())
+            promotedPieceType = ROOK;
+        else if(move.isPromotionBishop())
+            promotedPieceType = BISHOP;
+        else
+            promotedPieceType = KNIGHT;
+    } else if(move.isEnPassant())
+        capturedPieceType = PAWN;
+
+    materialWeight -= PIECE_WEIGHTS[capturedPieceType];
+    materialWeight += PIECE_WEIGHTS[promotedPieceType] - PAWN_WEIGHT;
+
+    gamePhase = (double)materialWeight / TOTAL_WEIGHT;
+    gamePhase = gamePhase * (MAX_PHASE - MIN_PHASE) + MIN_PHASE; // phase in [MIN_PHASE, MAX_PHASE]
+    gamePhase = std::clamp(gamePhase, 0.0, 1.0); // phase auf [0, 1] begrenzen
+}
+
+void StaticEvaluator::initGamePhase() {
+    materialWeight = TOTAL_WEIGHT;
+
+    materialWeight -= b->getPieceBitboard(WHITE_PAWN).getNumberOfSetBits() * PAWN_WEIGHT;
+    materialWeight -= b->getPieceBitboard(BLACK_PAWN).getNumberOfSetBits() * PAWN_WEIGHT;
+    materialWeight -= b->getPieceBitboard(WHITE_KNIGHT).getNumberOfSetBits() * KNIGHT_WEIGHT;
+    materialWeight -= b->getPieceBitboard(BLACK_KNIGHT).getNumberOfSetBits() * KNIGHT_WEIGHT;
+    materialWeight -= b->getPieceBitboard(WHITE_BISHOP).getNumberOfSetBits() * BISHOP_WEIGHT;
+    materialWeight -= b->getPieceBitboard(BLACK_BISHOP).getNumberOfSetBits() * BISHOP_WEIGHT;
+    materialWeight -= b->getPieceBitboard(WHITE_ROOK).getNumberOfSetBits() * ROOK_WEIGHT;
+    materialWeight -= b->getPieceBitboard(BLACK_ROOK).getNumberOfSetBits() * ROOK_WEIGHT;
+    materialWeight -= b->getPieceBitboard(WHITE_QUEEN).getNumberOfSetBits() * QUEEN_WEIGHT;
+    materialWeight -= b->getPieceBitboard(BLACK_QUEEN).getNumberOfSetBits() * QUEEN_WEIGHT;
+
+    gamePhase = (double)materialWeight / TOTAL_WEIGHT;
+    gamePhase = gamePhase * (MAX_PHASE - MIN_PHASE) + MIN_PHASE; // phase in [MIN_PHASE, MAX_PHASE]
+    gamePhase = std::clamp(gamePhase, 0.0, 1.0); // phase auf [0, 1] begrenzen
+}
+
 double StaticEvaluator::getGamePhase() const {
-    double totalWeight = PAWN_WEIGHT * 16 + KNIGHT_WEIGHT * 4 + BISHOP_WEIGHT * 4 + ROOK_WEIGHT * 4 + QUEEN_WEIGHT * 2;
-    double phase = totalWeight;
-
-    phase -= b->getPieceBitboard(WHITE_PAWN).getNumberOfSetBits() * PAWN_WEIGHT;
-    phase -= b->getPieceBitboard(BLACK_PAWN).getNumberOfSetBits() * PAWN_WEIGHT;
-    phase -= b->getPieceBitboard(WHITE_KNIGHT).getNumberOfSetBits() * KNIGHT_WEIGHT;
-    phase -= b->getPieceBitboard(BLACK_KNIGHT).getNumberOfSetBits() * KNIGHT_WEIGHT;
-    phase -= b->getPieceBitboard(WHITE_BISHOP).getNumberOfSetBits() * BISHOP_WEIGHT;
-    phase -= b->getPieceBitboard(BLACK_BISHOP).getNumberOfSetBits() * BISHOP_WEIGHT;
-    phase -= b->getPieceBitboard(WHITE_ROOK).getNumberOfSetBits() * ROOK_WEIGHT;
-    phase -= b->getPieceBitboard(BLACK_ROOK).getNumberOfSetBits() * ROOK_WEIGHT;
-    phase -= b->getPieceBitboard(WHITE_QUEEN).getNumberOfSetBits() * QUEEN_WEIGHT;
-    phase -= b->getPieceBitboard(BLACK_QUEEN).getNumberOfSetBits() * QUEEN_WEIGHT;
-
-    phase = phase / totalWeight;
-    phase = phase * (MAX_PHASE - MIN_PHASE) + MIN_PHASE; // phase in [MIN_PHASE, MAX_PHASE]
-    phase = std::clamp(phase, 0.0, 1.0); // phase auf [0, 1] begrenzen
-
-    return phase;
+    return gamePhase;
 }
 
 int32_t StaticEvaluator::evaluate() {
