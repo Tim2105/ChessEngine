@@ -35,7 +35,9 @@ Board::Board(const Board& b) {
     castlingPermission = b.castlingPermission;
     ply = b.ply;
 
-    moveHistory = b.moveHistory;
+    moveHistory.reserve(b.moveHistory.capacity());
+    for(MoveHistoryEntry entry : b.moveHistory)
+        moveHistory.push_back(entry);
 
     hashValue = b.hashValue;
 
@@ -55,7 +57,9 @@ Board& Board::operator=(const Board& b) {
     castlingPermission = b.castlingPermission;
     ply = b.ply;
 
-    moveHistory = b.moveHistory;
+    moveHistory.reserve(b.moveHistory.capacity());
+    for(MoveHistoryEntry entry : b.moveHistory)
+        moveHistory.push_back(entry);
 
     hashValue = b.hashValue;
 
@@ -1361,7 +1365,7 @@ std::string Board::toPgn() const {
 uint16_t Board::repetitionCount() const {
     uint16_t count = 1;
 
-    for(int32_t i = moveHistory.size() - 2; i >= (int32_t)(moveHistory.size() - fiftyMoveRule); i -= 2) {
+    for(int32_t i = moveHistory.size() - 2; i >= (int32_t)moveHistory.size() - fiftyMoveRule; i -= 2) {
         if(moveHistory[i].hashValue == hashValue) {
             if(++count == 3)
                 return count;

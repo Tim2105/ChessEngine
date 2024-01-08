@@ -3,7 +3,7 @@
 
 #include "core/chess/Board.h"
 #include "core/engine/evaluation/EvaluationDefinitons.h"
-#include "core/engine/evaluation/Evaluator.h"
+#include "core/engine/evaluation/UpdatedEvaluator.h"
 #include "core/utils/Bitboard.h"
 #include "core/utils/tables/HashTable.h"
 #include "core/utils/tables/HeapHashTable.h"
@@ -12,7 +12,7 @@
  * @brief Die Klasse BoardEvaluator ist für die statische Bewertung eines Spielfeldes zuständig.
  * Parameter können in den Dateien "EvaluationDefinitions.h" und "EvaluationDefinitions.cpp" angepasst werden.
  */
-class StaticEvaluator : public Evaluator {
+class StaticEvaluator : public UpdatedEvaluator {
 
     private:
         // Die Bewertung von Bauernstrukturen ist sehr aufwendig,
@@ -179,7 +179,7 @@ class StaticEvaluator : public Evaluator {
     public:
         StaticEvaluator() = delete;
 
-        StaticEvaluator(Board& b) : Evaluator(b) {};
+        StaticEvaluator(Board& b) : UpdatedEvaluator(b) {};
 
         ~StaticEvaluator() {}
 

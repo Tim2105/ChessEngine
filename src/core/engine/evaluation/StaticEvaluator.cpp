@@ -4,7 +4,7 @@
 
 #include <algorithm>
 
-StaticEvaluator::StaticEvaluator(StaticEvaluator&& other) : Evaluator(*(other.b)) {
+StaticEvaluator::StaticEvaluator(StaticEvaluator&& other) : UpdatedEvaluator(*(other.b)) {
     this->pawnStructureTable = std::move(other.pawnStructureTable);
 }
 

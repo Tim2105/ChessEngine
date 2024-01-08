@@ -1,5 +1,6 @@
 #include "core/engine/search/PVSEngine.h"
 #include "core/engine/evaluation/NNUEEvaluator.h"
+#include "core/engine/evaluation/StaticEvaluator.h"
 
 #include "uci/PortabilityHelper.h"
 #include "uci/UCI.h"
@@ -54,7 +55,13 @@ Option<bool> ponderOption("Ponder", false, false, true);
 Option<int> multiPVOption("MultiPV", 1, 1, 256);
 
 Board board;
+
+#if defined(USE_HCE)
+StaticEvaluator evaluator(board);
+#else
 NNUEEvaluator evaluator(board);
+#endif
+
 PVSEngine engine(evaluator);
 
 static int64_t TIME_BETWEEN_NODE_OUTPUT = 3000;
