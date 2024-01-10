@@ -10,7 +10,7 @@ namespace NNUE {
     class Accumulator {
 
         private:
-            int16_t accumulator[2][OUT_SIZE];
+            alignas(CACHE_LINE_ALIGNMENT) int16_t accumulator[2][OUT_SIZE];
             ColMajorLinearLayer<IN_SIZE, OUT_SIZE, int16_t, int16_t>* layer;
 
         public:

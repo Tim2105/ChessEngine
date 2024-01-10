@@ -261,7 +261,7 @@ int16_t PVSEngine::determineExtension(bool isCheckEvasion) {
 
 int16_t PVSEngine::determineReduction(int16_t moveCount) {
     Move lastMove = boardCopy.getLastMove();
-    std::vector<MoveHistoryEntry> moveHistory = boardCopy.getMoveHistory();
+    const std::vector<MoveHistoryEntry>& moveHistory = boardCopy.getMoveHistory();
     Move secondLastMove = moveHistory.size() > 1 ? moveHistory[moveHistory.size() - 2].move : Move::nullMove();
     if(lastMove.isCapture() && secondLastMove.exists() && secondLastMove.isCapture())
         return 0;

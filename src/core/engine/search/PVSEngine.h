@@ -147,7 +147,7 @@ class PVSEngine: public InterruptedEngine {
         }
 
         constexpr void clearKillerMoves() {
-            for(uint16_t i = 0; i < MAX_PLY; i++) {
+            for(size_t i = 0; i < MAX_PLY; i++) {
                 killerMoves[i][0] = Move::nullMove();
                 killerMoves[i][1] = Move::nullMove();
             }
@@ -165,8 +165,8 @@ class PVSEngine: public InterruptedEngine {
         }
 
         constexpr void clearHistoryTable() {
-            for(uint16_t i = 0; i < 64; i++)
-                for(uint16_t j = 0; j < 64; j++) {
+            for(size_t i = 0; i < 64; i++)
+                for(size_t j = 0; j < 64; j++) {
                     historyTable[0][i][j] = 0;
                     historyTable[1][i][j] = 0;
                 }
@@ -197,7 +197,7 @@ class PVSEngine: public InterruptedEngine {
         }
 
         constexpr void clearPVTable() {
-            for(uint16_t i = 0; i < MAX_PLY; i++)
+            for(size_t i = 0; i < MAX_PLY; i++)
                 pvTable[i].clear();
         }
 
