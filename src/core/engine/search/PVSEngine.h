@@ -88,6 +88,9 @@ class PVSEngine: public InterruptedEngine {
                         checkupCallback();
                 }), evaluator(evaluator) {}
 
+        PVSEngine(const PVSEngine& other) = delete;
+        PVSEngine& operator=(const PVSEngine& other) = delete;
+
         void search(uint32_t time, bool treatAsTimeControl = false) override;
 
         inline void stop() override {

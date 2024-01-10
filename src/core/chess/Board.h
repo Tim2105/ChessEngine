@@ -307,6 +307,11 @@ class Board {
         Board(const Board& other);
 
         /**
+         * @brief Movekonstruktor.
+         */
+        Board(Board&& other);
+
+        /**
          * @brief Erstellt ausgehend von einem FEN-String ein neues Schachbrett.
          * @param fen Die FEN-Notation des Schachbretts.
          */
@@ -323,6 +328,11 @@ class Board {
          * @param other Das andere Schachbrett.
          */
         Board& operator=(const Board& other);
+
+        /**
+         * @brief Movezuweisungsoperator.
+         */
+        Board& operator=(Board&& other);
 
         virtual ~Board();
 

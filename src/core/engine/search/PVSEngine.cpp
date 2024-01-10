@@ -50,9 +50,6 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
         if(score >= beta)
             return score;
 
-        if(score > alpha)
-            alpha = score;
-
         int16_t staticEvaluation = evaluator.evaluate();
 
         if(score < staticEvaluation - NULL_MOVE_THREAT_MARGIN) {

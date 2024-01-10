@@ -35,9 +35,27 @@ Board::Board(const Board& b) {
     castlingPermission = b.castlingPermission;
     ply = b.ply;
 
-    moveHistory.reserve(b.moveHistory.capacity());
-    for(MoveHistoryEntry entry : b.moveHistory)
-        moveHistory.push_back(entry);
+    moveHistory = b.moveHistory;
+
+    hashValue = b.hashValue;
+
+    generateSpecialBitboards();
+}
+
+Board::Board(Board&& b) {
+    for(int32_t i = 0; i < 64; i++)
+        pieces[i] = b.pieces[i];
+
+    for(int32_t i = 0; i < 15; i++)
+        pieceBitboard[i] = b.pieceBitboard[i];
+
+    side = b.side;
+    enPassantSquare = b.enPassantSquare;
+    fiftyMoveRule = b.fiftyMoveRule;
+    castlingPermission = b.castlingPermission;
+    ply = b.ply;
+
+    moveHistory = std::move(b.moveHistory);
 
     hashValue = b.hashValue;
 
@@ -57,9 +75,29 @@ Board& Board::operator=(const Board& b) {
     castlingPermission = b.castlingPermission;
     ply = b.ply;
 
-    moveHistory.reserve(b.moveHistory.capacity());
-    for(MoveHistoryEntry entry : b.moveHistory)
-        moveHistory.push_back(entry);
+    moveHistory = b.moveHistory;
+
+    hashValue = b.hashValue;
+
+    generateSpecialBitboards();
+
+    return *this;
+}
+
+Board& Board::operator=(Board&& b) {
+    for(int32_t i = 0; i < 64; i++)
+        pieces[i] = b.pieces[i];
+
+    for(int32_t i = 0; i < 15; i++)
+        pieceBitboard[i] = b.pieceBitboard[i];
+
+    side = b.side;
+    enPassantSquare = b.enPassantSquare;
+    fiftyMoveRule = b.fiftyMoveRule;
+    castlingPermission = b.castlingPermission;
+    ply = b.ply;
+
+    moveHistory = std::move(b.moveHistory);
 
     hashValue = b.hashValue;
 
