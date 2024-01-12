@@ -123,7 +123,7 @@ class NNUEEvaluator: public UpdatedEvaluator {
         static constexpr int32_t SIMPLE_PIECE_VALUES[] = {0, 100, 300, 300, 500, 900, 0, 0,
                                                           0, -100, -300, -300, -500, -900, 0};
 
-        static constexpr double STATIC_EVAL_MULTIPLIER = 2.5;
+        static constexpr double STATIC_EVAL_MULTIPLIER = 2.0;
 
         // Figurengewichte
         static constexpr int32_t PAWN_WEIGHT = 0;

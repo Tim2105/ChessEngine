@@ -33,7 +33,6 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
     if(depth <= 0 || ply >= (maxDepthReached + 1) * 4)
         return quiescence(ply, alpha, beta);
 
-    bool isThreat = false;
     if(allowNullMove && !boardCopy.isCheck() &&
        depth > ONE_PLY && !deactivateNullMove()) {
         
@@ -52,32 +51,29 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
 
         int16_t staticEvaluation = evaluator.evaluate();
 
-        if(score < staticEvaluation - NULL_MOVE_THREAT_MARGIN) {
+        if(score < staticEvaluation - NULL_MOVE_THREAT_MARGIN)
             depth += ONE_THIRD_PLY;
-            isThreat = true;
-        }
     }
 
     clearPVTable(ply + 1);
     clearMoveStack(ply);
 
     int16_t bestScore = MIN_SCORE, moveCount = 0;
+    MoveScorePair pair;
     Move move, bestMove;
     bool isCheckEvasion = boardCopy.isCheck();
 
-    while((move = selectNextMove(ply)).exists()) {
+    while((pair = selectNextMove(ply)).move.exists()) {
+        move = pair.move;
+
         evaluator.updateBeforeMove(move);
         boardCopy.makeMove(move);
         evaluator.updateAfterMove();
 
         int16_t extension = determineExtension(isCheckEvasion);
         int16_t reduction = 0;
-        if(extension == 0) {
-            reduction = determineReduction(moveCount + 1);
-
-            if(isThreat)
-                reduction = std::min(reduction, ONE_PLY);
-        }
+        if(extension == 0)
+            reduction = determineReduction(moveCount + 1, pair.score);
 
         int16_t score;
 
@@ -87,7 +83,7 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
             score = -pvs(depth - ONE_PLY + extension - reduction, ply + 1, -alpha - 1, -alpha, true, false);
 
             if(score > alpha && (reduction > 0 || isPVNode))
-                score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, !isPVNode, isPVNode);
+                score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, false, isPVNode);
         }
 
         // Skaliere die Bewertung in Richtung 0,
@@ -112,7 +108,7 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
 
         if(score >= beta) {
             TranspositionTableEntry entry {
-                board->getPly(),
+                boardCopy.getPly(),
                 depth,
                 score,
                 TT_TYPE_CUT_NODE,
@@ -158,7 +154,7 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
     }
 
     entry = {
-        board->getPly(),
+        boardCopy.getPly(),
         depth,
         bestScore,
         TT_TYPE_EXACT,
@@ -201,9 +197,12 @@ int16_t PVSEngine::quiescence(int16_t ply, int16_t alpha, int16_t beta) {
     clearMoveStack(ply);
 
     int16_t moveCount = 0;
+    MoveScorePair pair;
     Move move;
 
-    while((move = selectNextMoveInQuiescence(ply, minMoveScore)).exists()) {
+    while((pair = selectNextMoveInQuiescence(ply, minMoveScore)).move.exists()) {
+        move = pair.move;
+
         evaluator.updateBeforeMove(move);
         boardCopy.makeMove(move);
         evaluator.updateAfterMove();
@@ -256,7 +255,10 @@ int16_t PVSEngine::determineExtension(bool isCheckEvasion) {
     return extension;
 }
 
-int16_t PVSEngine::determineReduction(int16_t moveCount) {
+int16_t PVSEngine::determineReduction(int16_t moveCount, int16_t moveScore) {
+    if(moveScore >= KILLER_MOVE_SCORE)
+        return 0;
+
     Move lastMove = boardCopy.getLastMove();
     const std::vector<MoveHistoryEntry>& moveHistory = boardCopy.getMoveHistory();
     Move secondLastMove = moveHistory.size() > 1 ? moveHistory[moveHistory.size() - 2].move : Move::nullMove();
@@ -290,20 +292,12 @@ int16_t PVSEngine::determineReduction(int16_t moveCount) {
 
 bool PVSEngine::deactivateNullMove() {
     // Deaktiviere den Null-Zug, wenn der Spieler nur noch
-    // eine Leichtfigur oder weniger hat.
+    // einen König und Bauern hat.
     int32_t side = boardCopy.getSideToMove();
 
-    if(boardCopy.getPieceBitboard(side | QUEEN).getNumberOfSetBits() > 0)
-        return false;
+    Bitboard ownPieces = side == WHITE ? boardCopy.getWhiteOccupiedBitboard() : boardCopy.getBlackOccupiedBitboard();
 
-    if(boardCopy.getPieceBitboard(side | ROOK).getNumberOfSetBits() > 0)
-        return false;
-
-    if(boardCopy.getPieceBitboard(side | BISHOP).getNumberOfSetBits() +
-       boardCopy.getPieceBitboard(side | KNIGHT).getNumberOfSetBits() > 1)
-        return false;
-
-    return true;
+    return ownPieces == boardCopy.getPieceBitboard(side | PAWN);
 }
 
 void PVSEngine::scoreMoves(const Array<Move, 256>& moves, uint16_t ply) {
@@ -311,7 +305,7 @@ void PVSEngine::scoreMoves(const Array<Move, 256>& moves, uint16_t ply) {
         int16_t score = 0;
 
         if(move.isCapture())
-            score = std::max(evaluator.evaluateMoveSEE(move), (int16_t)-(KILLER_MOVE_SCORE - 1)) + KILLER_MOVE_SCORE - 1;
+            score = std::max(evaluator.evaluateMoveSEE(move), (int16_t)-(KILLER_MOVE_SCORE + 1)) + KILLER_MOVE_SCORE + 1;
         else{
             if(isKillerMove(ply, move))
                 score += KILLER_MOVE_SCORE;
@@ -332,7 +326,7 @@ void PVSEngine::scoreMovesForQuiescence(const Array<Move, 256>& moves, uint16_t 
     }
 }
 
-Move PVSEngine::selectNextMove(uint16_t ply) {
+PVSEngine::MoveScorePair PVSEngine::selectNextMove(uint16_t ply) {
     if(moveStack[ply].moveScorePairs.size() == 0) {
         if(!moveStack[ply].hashMove.exists()) {
             Move hashMove = Move::nullMove();
@@ -342,7 +336,7 @@ Move PVSEngine::selectNextMove(uint16_t ply) {
 
             if(hashMove.exists()) {
                 moveStack[ply].hashMove = hashMove;
-                return hashMove;
+                return { hashMove, MAX_SCORE };
             }
         }
 
@@ -374,10 +368,10 @@ Move PVSEngine::selectNextMove(uint16_t ply) {
 
     moveStack[ply].moveScorePairs[bestIndex].score = MIN_SCORE;
 
-    return bestMove;
+    return { bestMove, bestScore };
 }
 
-Move PVSEngine::selectNextMoveInQuiescence(uint16_t ply, int16_t minScore) {
+PVSEngine::MoveScorePair PVSEngine::selectNextMoveInQuiescence(uint16_t ply, int16_t minScore) {
     if(moveStack[ply].moveScorePairs.size() == 0) {
         Array<Move, 256> moves;
         if(boardCopy.isCheck())
@@ -401,7 +395,7 @@ Move PVSEngine::selectNextMoveInQuiescence(uint16_t ply, int16_t minScore) {
 
     moveStack[ply].moveScorePairs[bestIndex].score = MIN_SCORE - 1;
 
-    return bestMove;
+    return { bestMove, bestScore };
 }
 
 void PVSEngine::search(uint32_t time, bool treatAsTimeControl) {

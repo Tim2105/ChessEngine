@@ -27,7 +27,7 @@ class PVSEngine: public InterruptedEngine {
         static constexpr bool ttReplacementPredicate(const TranspositionTableEntry& lhs,
                                                      const TranspositionTableEntry& rhs) {
             
-            return lhs.depth + lhs.age * ONE_PLY > rhs.depth + rhs.age * ONE_PLY;
+            return lhs.depth * 11 / 10 + lhs.age * ONE_PLY > rhs.depth * 11 / 10 + rhs.age * ONE_PLY;
         };
 
         TranspositionTable<ttReplacementPredicate> transpositionTable;
@@ -60,14 +60,14 @@ class PVSEngine: public InterruptedEngine {
 
         void collectPVLine(int16_t score);
         int16_t determineExtension(bool isCheckEvasion);
-        int16_t determineReduction(int16_t moveCount);
+        int16_t determineReduction(int16_t moveCount, int16_t moveScore);
 
         bool deactivateNullMove();
 
         void scoreMoves(const Array<Move, 256>& moves, uint16_t ply);
         void scoreMovesForQuiescence(const Array<Move, 256>& moves, uint16_t ply);
-        Move selectNextMove(uint16_t ply);
-        Move selectNextMoveInQuiescence(uint16_t ply, int16_t minScore = MIN_SCORE + 1);
+        MoveScorePair selectNextMove(uint16_t ply);
+        MoveScorePair selectNextMoveInQuiescence(uint16_t ply, int16_t minScore = MIN_SCORE + 1);
 
         void calculateTimeLimits(uint32_t time, bool treatAsTimeControl);
         bool extendSearch(bool isTimeControlled);
