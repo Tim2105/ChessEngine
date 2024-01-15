@@ -1403,7 +1403,7 @@ std::string Board::toPgn() const {
 uint16_t Board::repetitionCount() const {
     uint16_t count = 1;
 
-    for(int32_t i = moveHistory.size() - 2; i >= (int32_t)moveHistory.size() - fiftyMoveRule; i -= 2) {
+    for(int32_t i = moveHistory.size() - 2; i >= std::max((int32_t)moveHistory.size() - fiftyMoveRule, 0); i -= 2) {
         if(moveHistory[i].hashValue == hashValue) {
             if(++count == 3)
                 return count;
