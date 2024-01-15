@@ -55,12 +55,12 @@ class PVSEngine: public InterruptedEngine {
         Array<MoveStackEntry, MAX_PLY> moveStack;
         Array<MoveScorePair, 5> pvHistory;
 
-        int16_t pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta, bool allowNullMove, bool isPVNode);
+        int16_t pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta, bool allowNullMove, uint8_t nodeType);
         int16_t quiescence(int16_t ply, int16_t alpha, int16_t beta);
 
         void collectPVLine(int16_t score);
         int16_t determineExtension(bool isCheckEvasion);
-        int16_t determineReduction(int16_t moveCount, int16_t moveScore);
+        int16_t determineReduction(int16_t moveCount, int16_t moveScore, uint8_t nodeType);
 
         bool deactivateNullMove();
 

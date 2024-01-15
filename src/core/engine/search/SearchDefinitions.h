@@ -30,9 +30,11 @@ static constexpr int16_t MIN_SCORE = -30000;
 static constexpr int16_t MAX_SCORE = 30000;
 static constexpr int16_t NEUTRAL_SCORE = 0;
 
-static constexpr uint8_t TT_TYPE_EXACT = 0;
-static constexpr uint8_t TT_TYPE_CUT_NODE = 1;
+static constexpr uint8_t PV_NODE = 0;
+static constexpr uint8_t CUT_NODE = 1;
+static constexpr uint8_t ALL_NODE = 2;
 
+static constexpr int16_t HASH_MOVE_SCORE = MAX_SCORE;
 static constexpr int16_t KILLER_MOVE_SCORE = 80;
 
 static constexpr int16_t NULL_MOVE_THREAT_MARGIN = 200;

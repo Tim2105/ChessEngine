@@ -3,12 +3,15 @@
 
 #include <math.h>
 
-int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta, bool allowNullMove, bool isPVNode) {
+int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta, bool allowNullMove, uint8_t nodeType) {
     if(nodesSearched % NODES_PER_CHECKUP == 0 && isCheckupTime())
         checkup();
 
     if(stopFlag)
         return 0;
+
+    if(depth <= 0)
+        return quiescence(ply, alpha, beta);
 
     nodesSearched++;
 
@@ -17,21 +20,19 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
         return DRAW_SCORE;
 
     TranspositionTableEntry entry;
-    if(!isPVNode && transpositionTable.probe(boardCopy.getHashValue(), entry)) {
+    if(nodeType != PV_NODE && transpositionTable.probe(boardCopy.getHashValue(), entry)) {
         if(entry.depth >= depth) {
-            if(entry.type == TT_TYPE_EXACT) {
+            if(entry.type == PV_NODE) {
                 return entry.score;
-            } else if(entry.type == TT_TYPE_CUT_NODE) {
+            } else if(entry.type == CUT_NODE) {
                 if(entry.score >= beta)
                     return entry.score;
-                else
-                    alpha = std::max(alpha, entry.score);
+            } else if(entry.type == ALL_NODE) {
+                if(entry.score <= alpha)
+                    return entry.score;
             }
         }
     }
-
-    if(depth <= 0 || ply >= (maxDepthReached + 1) * 4)
-        return quiescence(ply, alpha, beta);
 
     if(allowNullMove && !boardCopy.isCheck() &&
        depth > ONE_PLY && !deactivateNullMove()) {
@@ -39,7 +40,7 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
         Move nullMove = Move::nullMove();
         boardCopy.makeMove(nullMove);
 
-        int16_t score = -pvs(depth - calculateNullMoveReduction(depth), ply + 1, -alpha - 1, -alpha, false, false);
+        int16_t score = -pvs(depth - calculateNullMoveReduction(depth), ply + 1, -beta, -alpha, false, CUT_NODE);
 
         boardCopy.undoMove();
 
@@ -48,16 +49,12 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
 
         if(score >= beta)
             return score;
-
-        int16_t staticEvaluation = evaluator.evaluate();
-
-        if(score < staticEvaluation - NULL_MOVE_THREAT_MARGIN)
-            depth += ONE_THIRD_PLY;
     }
 
     clearPVTable(ply + 1);
     clearMoveStack(ply);
 
+    uint8_t actualNodeType = ALL_NODE;
     int16_t bestScore = MIN_SCORE, moveCount = 0;
     MoveScorePair pair;
     Move move, bestMove;
@@ -70,20 +67,32 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
         boardCopy.makeMove(move);
         evaluator.updateAfterMove();
 
+        int16_t score;
+        uint8_t childType = CUT_NODE;
+
+        if(nodeType == PV_NODE && moveCount == 0)
+            childType = PV_NODE;
+        else if(nodeType == CUT_NODE && moveCount == 0)
+            childType = ALL_NODE;
+
         int16_t extension = determineExtension(isCheckEvasion);
         int16_t reduction = 0;
-        if(extension == 0)
-            reduction = determineReduction(moveCount + 1, pair.score);
-
-        int16_t score;
+        if(extension == 0 && depth >= 3 * ONE_PLY)
+            reduction = determineReduction(moveCount + 1, pair.score, nodeType);
 
         if(moveCount == 0) {
-            score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, !isPVNode, isPVNode);
+            score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, childType == CUT_NODE, childType);
         } else {
-            score = -pvs(depth - ONE_PLY + extension - reduction, ply + 1, -alpha - 1, -alpha, true, false);
+            score = -pvs(depth - ONE_PLY + extension - reduction, ply + 1, -alpha - 1, -alpha, childType == CUT_NODE, childType);
 
-            if(score > alpha && (reduction > 0 || isPVNode))
-                score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, false, isPVNode);
+            if(score > alpha && (reduction > 0 || nodeType == PV_NODE)) {
+                if(nodeType == PV_NODE)
+                    childType = PV_NODE;
+                else
+                    childType = ALL_NODE;
+
+                score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, false, childType);
+            }
         }
 
         // Skaliere die Bewertung in Richtung 0,
@@ -111,7 +120,7 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
                 boardCopy.getPly(),
                 depth,
                 score,
-                TT_TYPE_CUT_NODE,
+                CUT_NODE,
                 move
             };
 
@@ -132,6 +141,7 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
             bestMove = move;
 
             if(score > alpha) {
+                actualNodeType = PV_NODE;
                 alpha = score;
                 addPVMove(ply, move);
 
@@ -157,7 +167,7 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
         boardCopy.getPly(),
         depth,
         bestScore,
-        TT_TYPE_EXACT,
+        actualNodeType,
         bestMove
     };
 
@@ -255,16 +265,12 @@ int16_t PVSEngine::determineExtension(bool isCheckEvasion) {
     return extension;
 }
 
-int16_t PVSEngine::determineReduction(int16_t moveCount, int16_t moveScore) {
-    if(moveScore >= KILLER_MOVE_SCORE)
+int16_t PVSEngine::determineReduction(int16_t moveCount, int16_t moveScore, uint8_t nodeType) {
+    if(moveScore > KILLER_MOVE_SCORE || moveCount == 1)
         return 0;
 
     Move lastMove = boardCopy.getLastMove();
-    const std::vector<MoveHistoryEntry>& moveHistory = boardCopy.getMoveHistory();
-    Move secondLastMove = moveHistory.size() > 1 ? moveHistory[moveHistory.size() - 2].move : Move::nullMove();
-    if(lastMove.isCapture() && secondLastMove.exists() && secondLastMove.isCapture())
-        return 0;
-    else if(lastMove.isPromotion())
+    if(lastMove.isCapture() || lastMove.isPromotion())
         return 0;
     else {
         int32_t movedPieceType = TYPEOF(boardCopy.pieceAt(lastMove.getDestination()));
@@ -277,17 +283,12 @@ int16_t PVSEngine::determineReduction(int16_t moveCount, int16_t moveScore) {
         }
     }
 
-    int32_t reduction = ONE_PLY;
+    int32_t reduction = ONE_PLY * std::log2(moveCount);
 
-    int32_t historyScore = getHistoryScore(lastMove, boardCopy.getSideToMove() ^ COLOR_MASK);
-    reduction -= historyScore * ONE_PLY / 16384;
+    if(nodeType == CUT_NODE)
+        reduction += 2 * ONE_PLY;
 
-    if(lastMove.isCapture())
-        reduction -= ONE_PLY;
-    else
-        reduction += ONE_HALF_PLY * (std::log2(moveCount) - 1.0);
-
-    return std::clamp(reduction, 0, (maxDepthReached + 1) * ONE_PLY / 2);
+    return reduction;
 }
 
 bool PVSEngine::deactivateNullMove() {
@@ -336,7 +337,7 @@ PVSEngine::MoveScorePair PVSEngine::selectNextMove(uint16_t ply) {
 
             if(hashMove.exists()) {
                 moveStack[ply].hashMove = hashMove;
-                return { hashMove, MAX_SCORE };
+                return { hashMove, HASH_MOVE_SCORE };
             }
         }
 
@@ -419,7 +420,31 @@ void PVSEngine::search(uint32_t time, bool treatAsTimeControl) {
     int16_t alpha = MIN_SCORE, beta = MAX_SCORE;
 
     for(int16_t depth = 1; depth <= MAX_PLY; depth++) {
-        pvs(depth * ONE_PLY, 0, alpha, beta, false, true);
+        int16_t score = pvs(depth * ONE_PLY, 0, alpha, beta, false, PV_NODE);
+
+        bool alphaAlreadyWidened = false, betaAlreadyWidened = false;
+        while(score <= alpha || score >= beta) {
+            if(score <= alpha) {
+                if(alphaAlreadyWidened)
+                    alpha = MIN_SCORE;
+                else {
+                    alphaAlreadyWidened = true;
+                    alpha -= 75;
+                }
+            } else {
+                if(betaAlreadyWidened)
+                    beta = MAX_SCORE;
+                else {
+                    betaAlreadyWidened = true;
+                    beta += 75;
+                }
+            }
+
+            score = pvs(depth * ONE_PLY, 0, alpha, beta, false, PV_NODE);
+        }
+
+        alpha = score - 25;
+        beta = score + 25;
 
         if(stopFlag)
             break;
@@ -435,7 +460,7 @@ void PVSEngine::search(uint32_t time, bool treatAsTimeControl) {
             });
         }
 
-        int16_t score = getBestMoveScore();
+        score = getBestMoveScore();
         std::string scoreStr;
         if(isMateScore(score)) {
             scoreStr = "mate ";
