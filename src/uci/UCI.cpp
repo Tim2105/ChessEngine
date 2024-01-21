@@ -218,6 +218,7 @@ void handleSetOptionCommand(std::string args) {
     if(name == hashOption.getName()) {
         int valueInt = std::stoi(value);
         hashOption.setValue(valueInt);
+        engine.setHashTableSize((int64_t)valueInt * 1000000 / TT_ENTRY_SIZE);
     } else if(name == ponderOption.getName()) {
         bool valueBool = value == "true";
         ponderOption.setValue(valueBool);
