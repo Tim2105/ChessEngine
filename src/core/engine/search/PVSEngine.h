@@ -59,7 +59,7 @@ class PVSEngine: public InterruptedEngine {
         int16_t quiescence(int16_t ply, int16_t alpha, int16_t beta);
 
         void collectPVLine(int16_t score);
-        int16_t determineExtension(bool isCheckEvasion);
+        int16_t determineExtension();
         int16_t determineReduction(int16_t moveCount, int16_t moveScore, uint8_t nodeType);
 
         bool deactivateNullMove();

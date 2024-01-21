@@ -40,7 +40,10 @@ static constexpr int16_t KILLER_MOVE_SCORE = 80;
 static constexpr int16_t NULL_MOVE_THREAT_MARGIN = 200;
 
 static constexpr int16_t calculateNullMoveReduction(int16_t depth) {
-    return std::max(depth / 2, 2 * ONE_PLY);
+    if(depth <= 8 * ONE_PLY)
+        return 3 * ONE_PLY;
+    else
+        return 4 * ONE_PLY;
 }
 
 #endif

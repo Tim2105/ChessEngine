@@ -75,10 +75,26 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
         else if(nodeType == CUT_NODE && moveCount == 0)
             childType = ALL_NODE;
 
-        int16_t extension = determineExtension(isCheckEvasion);
+        int16_t extension = determineExtension();
         int16_t reduction = 0;
-        if(extension == 0 && depth >= 3 * ONE_PLY)
-            reduction = determineReduction(moveCount + 1, pair.score, nodeType);
+        if(extension == 0 && !isCheckEvasion) {
+            if(depth >= 3 * ONE_PLY)
+                reduction = determineReduction(moveCount + 1, pair.score, nodeType);
+            else if(depth == 2 * ONE_PLY && nodeType == ALL_NODE) {
+                int16_t staticEvaluation = evaluator.evaluate();
+
+                if(staticEvaluation <= alpha) {
+                    evaluator.updateBeforeUndo();
+                    boardCopy.undoMove();
+                    evaluator.updateAfterUndo(move);
+
+                    nodesSearched++;
+                    moveCount++;
+
+                    continue;
+                }
+            }
+        }
 
         if(moveCount == 0) {
             score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, childType == CUT_NODE, childType);
@@ -254,19 +270,20 @@ void PVSEngine::collectPVLine(int16_t score) {
     variations.push_back(Variation(variation, score));
 }
 
-int16_t PVSEngine::determineExtension(bool isCheckEvasion) {
+int16_t PVSEngine::determineExtension() {
     int16_t extension = 0;
 
-    // Erweiterung, wenn ein Spieler im Schach steht
-    // oder aus dem Schach zieht.
-    if(boardCopy.isCheck() || isCheckEvasion)
-        extension += ONE_HALF_PLY;
+    // Erweiterung, wenn ein Spieler im Schach steht.
+    if(boardCopy.isCheck())
+        extension += ONE_PLY;
 
     return extension;
 }
 
 int16_t PVSEngine::determineReduction(int16_t moveCount, int16_t moveScore, uint8_t nodeType) {
-    if(moveScore > KILLER_MOVE_SCORE || moveCount == 1)
+    UNUSED(moveScore);
+
+    if(moveCount == 1)
         return 0;
 
     Move lastMove = boardCopy.getLastMove();
@@ -283,7 +300,11 @@ int16_t PVSEngine::determineReduction(int16_t moveCount, int16_t moveScore, uint
         }
     }
 
-    int32_t reduction = ONE_PLY * std::log2(moveCount);
+    int32_t reduction = ONE_PLY;
+
+    int32_t historyScore = getHistoryScore(lastMove, boardCopy.getSideToMove() ^ COLOR_MASK);
+    reduction -= historyScore / 16384 * ONE_PLY;
+    reduction = std::max(reduction, 0);
 
     if(nodeType == CUT_NODE)
         reduction += 2 * ONE_PLY;
@@ -305,15 +326,19 @@ void PVSEngine::scoreMoves(const Array<Move, 256>& moves, uint16_t ply) {
     for(Move move : moves) {
         int16_t score = 0;
 
-        if(move.isCapture())
-            score = std::max(evaluator.evaluateMoveSEE(move), (int16_t)-(KILLER_MOVE_SCORE + 1)) + KILLER_MOVE_SCORE + 1;
-        else{
+        if(move.isCapture()) {
+            int16_t seeEvaluation = evaluator.evaluateMoveSEE(move);
+            if(seeEvaluation >= 0)
+                score += seeEvaluation + KILLER_MOVE_SCORE + 1;
+            else
+                score += KILLER_MOVE_SCORE - 1;
+        } else {
             if(isKillerMove(ply, move))
                 score += KILLER_MOVE_SCORE;
-
-            score += std::clamp(getHistoryScore(move),
-                                MIN_SCORE + 1,
-                                KILLER_MOVE_SCORE - 1);
+            else
+                score += std::clamp(getHistoryScore(move) / (maxDepthReached + 1),
+                                    MIN_SCORE + 1,
+                                    KILLER_MOVE_SCORE - 2);
         }
 
         moveStack[ply].moveScorePairs.push_back(MoveScorePair(move, score));
@@ -429,22 +454,22 @@ void PVSEngine::search(uint32_t time, bool treatAsTimeControl) {
                     alpha = MIN_SCORE;
                 else {
                     alphaAlreadyWidened = true;
-                    alpha -= 75;
+                    alpha -= 135;
                 }
             } else {
                 if(betaAlreadyWidened)
                     beta = MAX_SCORE;
                 else {
                     betaAlreadyWidened = true;
-                    beta += 75;
+                    beta += 135;
                 }
             }
 
             score = pvs(depth * ONE_PLY, 0, alpha, beta, false, PV_NODE);
         }
 
-        alpha = score - 25;
-        beta = score + 25;
+        alpha = score - 15;
+        beta = score + 15;
 
         if(stopFlag)
             break;
