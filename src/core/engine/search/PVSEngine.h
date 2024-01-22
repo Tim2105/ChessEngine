@@ -60,13 +60,13 @@ class PVSEngine: public InterruptedEngine {
 
         void collectPVLine(int16_t score);
         int16_t determineExtension();
-        int16_t determineReduction(int16_t moveCount, int16_t moveScore, uint8_t nodeType);
+        int16_t determineReduction(int16_t moveCount, uint8_t nodeType);
 
         bool deactivateNullMove();
 
         void scoreMoves(const Array<Move, 256>& moves, uint16_t ply);
         void scoreMovesForQuiescence(const Array<Move, 256>& moves, uint16_t ply);
-        MoveScorePair selectNextMove(uint16_t ply);
+        MoveScorePair selectNextMove(uint16_t ply, bool useIID, int16_t depth);
         MoveScorePair selectNextMoveInQuiescence(uint16_t ply, int16_t minScore = MIN_SCORE + 1);
 
         void calculateTimeLimits(uint32_t time, bool treatAsTimeControl);

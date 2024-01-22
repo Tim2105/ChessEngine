@@ -1,6 +1,7 @@
 #include "core/engine/search/PVSEngine.h"
 #include "core/chess/Referee.h"
 
+#include <algorithm>
 #include <math.h>
 
 int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta, bool allowNullMove, uint8_t nodeType) {
@@ -60,7 +61,7 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
     Move move, bestMove;
     bool isCheckEvasion = boardCopy.isCheck();
 
-    while((pair = selectNextMove(ply)).move.exists()) {
+    while((pair = selectNextMove(ply, nodeType != ALL_NODE && depth >= 6 * ONE_PLY, depth)).move.exists()) {
         move = pair.move;
 
         evaluator.updateBeforeMove(move);
@@ -79,7 +80,7 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
         int16_t reduction = 0;
         if(extension == 0 && !isCheckEvasion) {
             if(depth >= 3 * ONE_PLY)
-                reduction = determineReduction(moveCount + 1, pair.score, nodeType);
+                reduction = determineReduction(moveCount + 1, nodeType);
             else if(depth == 2 * ONE_PLY && nodeType == ALL_NODE) {
                 int16_t staticEvaluation = evaluator.evaluate();
 
@@ -280,9 +281,7 @@ int16_t PVSEngine::determineExtension() {
     return extension;
 }
 
-int16_t PVSEngine::determineReduction(int16_t moveCount, int16_t moveScore, uint8_t nodeType) {
-    UNUSED(moveScore);
-
+int16_t PVSEngine::determineReduction(int16_t moveCount, uint8_t nodeType) {
     if(moveCount == 1)
         return 0;
 
@@ -303,11 +302,13 @@ int16_t PVSEngine::determineReduction(int16_t moveCount, int16_t moveScore, uint
     int32_t reduction = ONE_PLY;
 
     int32_t historyScore = getHistoryScore(lastMove, boardCopy.getSideToMove() ^ COLOR_MASK);
-    reduction -= historyScore / 16384 * ONE_PLY;
+    reduction -= historyScore / 8192 * ONE_PLY;
     reduction = std::max(reduction, 0);
 
     if(nodeType == CUT_NODE)
         reduction += 2 * ONE_PLY;
+    else if(nodeType == PV_NODE)
+        reduction = std::min(reduction, 2 * ONE_PLY);
 
     return reduction;
 }
@@ -352,7 +353,7 @@ void PVSEngine::scoreMovesForQuiescence(const Array<Move, 256>& moves, uint16_t 
     }
 }
 
-PVSEngine::MoveScorePair PVSEngine::selectNextMove(uint16_t ply) {
+PVSEngine::MoveScorePair PVSEngine::selectNextMove(uint16_t ply, bool useIID, int16_t depth) {
     if(moveStack[ply].moveScorePairs.size() == 0) {
         if(!moveStack[ply].hashMove.exists()) {
             Move hashMove = Move::nullMove();
@@ -363,6 +364,59 @@ PVSEngine::MoveScorePair PVSEngine::selectNextMove(uint16_t ply) {
             if(hashMove.exists()) {
                 moveStack[ply].hashMove = hashMove;
                 return { hashMove, HASH_MOVE_SCORE };
+            } else if(useIID) {
+                Array<MoveScorePair, 256> moveScorePairs;
+
+                MoveScorePair pair;
+                Move move, iidMove;
+                int16_t iidScore = MIN_SCORE, moveCount = 0;
+
+                int16_t reducedDepth = (depth / (2 * ONE_PLY)) * ONE_PLY;
+
+                while((pair = selectNextMove(ply, reducedDepth >= 6 * ONE_PLY, reducedDepth)).move.exists()) {
+                    move = pair.move;
+
+                    evaluator.updateBeforeMove(move);
+                    boardCopy.makeMove(move);
+                    evaluator.updateAfterMove();
+
+                    int16_t reduction = determineReduction(moveCount + 1, PV_NODE);
+                    int16_t score;
+
+                    if(moveCount == 0) {
+                        score = -pvs(reducedDepth, ply + 1, -MAX_SCORE, -iidScore, false, PV_NODE);
+                    } else {
+                        score = -pvs(reducedDepth - reduction, ply + 1, -iidScore - 1, -iidScore, true, CUT_NODE);
+
+                        if(score > iidScore)
+                            score = -pvs(reducedDepth, ply + 1, -MAX_SCORE, -iidScore, false, PV_NODE);
+                    }
+
+                    evaluator.updateBeforeUndo();
+                    boardCopy.undoMove();
+                    evaluator.updateAfterUndo(move);
+
+                    if(score > iidScore) {
+                        iidScore = score;
+                        iidMove = move;
+                    }
+
+                    moveScorePairs.push_back(MoveScorePair(move, score));
+
+                    moveCount++;
+                }
+
+                clearMoveStack(ply);
+
+                if(iidMove.exists()) {
+                    for(MoveScorePair& pair : moveScorePairs)
+                        if(pair.move == iidMove)
+                            pair.score = MIN_SCORE;
+
+                    moveStack[ply].moveScorePairs = moveScorePairs;
+                    moveStack[ply].hashMove = iidMove;
+                    return { iidMove, HASH_MOVE_SCORE };
+                }
             }
         }
 
