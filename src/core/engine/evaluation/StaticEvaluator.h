@@ -3,24 +3,16 @@
 
 #include "core/chess/Board.h"
 #include "core/engine/evaluation/EvaluationDefinitons.h"
-#include "core/engine/evaluation/UpdatedEvaluator.h"
+#include "core/engine/evaluation/Evaluator.h"
 #include "core/utils/Bitboard.h"
-#include "core/utils/tables/HashTable.h"
-#include "core/utils/tables/HeapHashTable.h"
 
 /**
  * @brief Die Klasse BoardEvaluator ist für die statische Bewertung eines Spielfeldes zuständig.
  * Parameter können in den Dateien "EvaluationDefinitions.h" und "EvaluationDefinitions.cpp" angepasst werden.
  */
-class StaticEvaluator : public UpdatedEvaluator {
+class StaticEvaluator : public Evaluator {
 
     private:
-        // Die Bewertung von Bauernstrukturen ist sehr aufwendig,
-        // weshalb berechnete Bewertungen von Bauernstrukturen in einer Hash-Tabelle gespeichert werden,
-        // um sie bei der nächsten Bewertung(bei gleicher Bauernstruktur) wieder zu verwenden.
-        // Weil Bauernstrukturen sich nicht zu häufig ändern, bekommt man hier eine hohe Trefferquote.
-        HeapHashTable<uint64_t, Score, 16384, 4> pawnStructureTable;
-
         double gamePhase = 0.0;
 
         int32_t materialWeight = 0;
@@ -128,24 +120,6 @@ class StaticEvaluator : public UpdatedEvaluator {
         inline int32_t evalEG_PSQT();
 
         /**
-         * @brief Versucht die Bewertung einer Bauernstruktur aus der Hash-Tabelle zu laden.
-         * 
-         * @param b Das aktuelle Spielfeld.
-         * @param score Hier wird die Bewertung der Bauernstruktur(falls gefunden) gespeichert.
-         * @return true, wenn die Bewertung gefunden wurde.
-         * @return false, wenn die Bewertung nicht gefunden wurde.
-         */
-        bool probePawnStructure(Score& score);
-
-        /**
-         * @brief Speichert die Bewertung einer Bauernstruktur in der Hash-Tabelle.
-         * 
-         * @param b Das aktuelle Spielfeld.
-         * @param score Die Bewertung der Bauernstruktur.
-         */
-        void storePawnStructure(const Score& score);
-
-        /**
          * @brief Die Methode evalPawnStructure bewertet die Bauernstruktur der beiden Spieler.
          */
         Score evalPawnStructure(int32_t side);
@@ -183,7 +157,7 @@ class StaticEvaluator : public UpdatedEvaluator {
     public:
         StaticEvaluator() = delete;
 
-        StaticEvaluator(Board& b) : UpdatedEvaluator(b) {
+        StaticEvaluator(Board& b) : Evaluator(b) {
             initGamePhase();
         }
 
@@ -244,7 +218,6 @@ class StaticEvaluator : public UpdatedEvaluator {
 
         inline void setBoard(Board& b) override {
             Evaluator::setBoard(b);
-            pawnStructureTable.clear();
             initGamePhase();
         }
 

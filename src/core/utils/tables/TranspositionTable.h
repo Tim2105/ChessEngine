@@ -3,39 +3,90 @@
 
 #include "core/chess/Move.h"
 
-#include <cstring>
+#include <atomic>
 #include <stdint.h>
-#include <functional>
 
+/**
+ * @brief 8-Byte Datenkomponente eines Eintrags in der Transpositionstabelle.
+ */
 struct TranspositionTableEntry {
-    int32_t age;
-    int16_t depth;
-    int16_t score;
-    uint8_t type;
-    Move hashMove;
+    Move hashMove; // 2 Byte
+    int16_t score; // 2 Byte
+    uint16_t age; // 2 Byte
+    uint8_t depth; // 1 Byte
+    uint8_t type; // 1 Byte
+
+    constexpr TranspositionTableEntry() {}
+
+    /**
+     * @brief Komponentenweise Initialisierung.
+     */
+    constexpr TranspositionTableEntry(Move hashMove, int16_t score, uint16_t age,
+                                      uint8_t depth, uint8_t type) :
+        hashMove(hashMove),
+        score(score),
+        age(age),
+        depth(depth),
+        type(type) {}
+
+    /**
+     * @brief Bitweise Initialisierung.
+     */
+    constexpr TranspositionTableEntry(uint64_t bits) :
+        hashMove(bits & 0xFFFF),
+        score((bits >> 16) & 0xFFFF),
+        age((bits >> 32) & 0xFFFF),
+        depth((bits >> 48) & 0xFF),
+        type((bits >> 56) & 0xFF) {}
+
+    /**
+     * @brief Implizite Konvertierung in u64.
+     */
+    constexpr operator uint64_t() const {
+        return *reinterpret_cast<const uint64_t*>(this);
+    }
+
+    /**
+     * @brief Ersetzungsprädikat für die Transpositionstabelle.
+     * 
+     * @param other Der andere Eintrag.
+     * 
+     * @return true, wenn dieser Eintrag den anderen Eintrag ersetzen soll.
+     */
+    constexpr bool operator>(const TranspositionTableEntry& other) const {
+        return depth + age >= other.depth + other.age;
+    }
 };
 
+/**
+ * @brief 16-Byte Eintrag in der Transpositionstabelle.
+ * Besteht aus einem 8-Byte Hash und einem 8-Byte Datenfeld.
+ */
 struct Entry {
     uint64_t hash;
-    TranspositionTableEntry entry;
-    bool exists;
+    TranspositionTableEntry data;
 };
 
 static constexpr size_t TT_ENTRY_SIZE = sizeof(Entry);
+static constexpr size_t TT_DEFAULT_CAPACITY = 1 << 20;
 
-template<bool (*replacementPredicate)(const TranspositionTableEntry&, const TranspositionTableEntry&)>
+/**
+ * @brief Eine, nicht synchronisierte aber thread-sichere (put und probe),
+ * flüchtige Hash-Tabelle für die Speicherung von Knoteninformationen
+ * in einer Hauptvariantensuche.
+ * 
+ * Die Tabelle ist nicht synchronisiert. Dass bedeutet, es besteht die Möglichkeit,
+ * dass zwei Threads gleichzeitig in denselben Eintrag schreiben.
+ * Ungültige Einträge werden aber (in der Regel) erkannt und nicht zurückgegeben.
+ */
 class TranspositionTable {
     private:
-        static constexpr auto equalityPredicate = [](const Entry& lhs, const uint64_t& rhs) {
-            return lhs.hash == rhs;
-        };
-
-        Entry* predicateBucket;
-        Entry* alwaysReplaceBucket;
-        size_t bucketCount;
+        Entry* entries;
+        size_t capacity;
+        std::atomic<size_t> entriesWritten;
     
     public:
-        TranspositionTable(size_t bucketCount = 1 << 19);
+        TranspositionTable(size_t capacity = TT_DEFAULT_CAPACITY);
         ~TranspositionTable();
 
         TranspositionTable(const TranspositionTable& other) = delete;
@@ -44,122 +95,52 @@ class TranspositionTable {
         TranspositionTable(TranspositionTable&& other);
         TranspositionTable& operator=(TranspositionTable&& other);
 
-        constexpr size_t getBucketCount() const {
-            return bucketCount;
+        constexpr size_t getCapacity() const {
+            return capacity;
         }
 
+        inline size_t getEntriesWritten() const {
+            return entriesWritten.load();
+        }
+
+        /**
+         * @brief Speichert einen Eintrag in der Transpositionstabelle,
+         * wenn der zugehörige Bucket leer ist oder der Eintrag nach dem
+         * Ersetzungsprädikat eine höhere Priorität als der bisherige Eintrag hat.
+         * 
+         * @param hash Der Hashwert des Knotens.
+         * @param entry Der Eintrag.
+         */
         void put(uint64_t hash, const TranspositionTableEntry& entry);
 
+        /**
+         * @brief Sucht einen Eintrag in der Transpositionstabelle
+         * und schreibt ihn in das übergebene Entry-Objekt.
+         * 
+         * @param hash Der Hashwert des Knotens.
+         * @param entry Das Entry-Objekt, in das der Eintrag geschrieben werden soll.
+         * 
+         * @return true, wenn ein Eintrag gefunden wurde.
+         */
         bool probe(uint64_t hash, TranspositionTableEntry& entry);
 
+        /**
+         * @brief Entfernt alle Einträge aus der Transpositionstabelle.
+         * 
+         * @note Diese Methode ist nicht thread-sicher und sollte nie während
+         * einer laufenden Suche aufgerufen werden.
+         */
         void clear();
 
-        void resize(size_t bucketCount);
+        /**
+         * @brief Ändert die Kapazität der Transpositionstabelle.
+         * 
+         * @note Diese Methode ist nicht thread-sicher. Eine Verwendung
+         * während einer laufenden Suche wird mit Sicherheit zu einem
+         * Absturz führen, weil diese Methode den Speicherblock der
+         * Transpositionstabelle austauscht.
+         */
+        void resize(size_t capacity);
 };
-
-template<bool (*replacementPredicate)(const TranspositionTableEntry&, const TranspositionTableEntry&)>
-TranspositionTable<replacementPredicate>::TranspositionTable(size_t bucketCount) {
-    this->bucketCount = bucketCount;
-
-    predicateBucket = new Entry[bucketCount];
-    alwaysReplaceBucket = new Entry[bucketCount];
-
-    clear();
-}
-
-template<bool (*replacementPredicate)(const TranspositionTableEntry&, const TranspositionTableEntry&)>
-TranspositionTable<replacementPredicate>::~TranspositionTable() {
-    delete[] predicateBucket;
-    delete[] alwaysReplaceBucket;
-}
-
-template<bool (*replacementPredicate)(const TranspositionTableEntry&, const TranspositionTableEntry&)>
-TranspositionTable<replacementPredicate>::TranspositionTable(TranspositionTable&& other) {
-    bucketCount = other.bucketCount;
-
-    predicateBucket = other.predicateBucket;
-    other.predicateBucket = nullptr;
-
-    alwaysReplaceBucket = other.alwaysReplaceBucket;
-    other.alwaysReplaceBucket = nullptr;
-}
-
-template<bool (*replacementPredicate)(const TranspositionTableEntry&, const TranspositionTableEntry&)>
-TranspositionTable<replacementPredicate>& TranspositionTable<replacementPredicate>::operator=(TranspositionTable&& other) {
-    delete[] predicateBucket;
-    delete[] alwaysReplaceBucket;
-
-    bucketCount = other.bucketCount;
-
-    predicateBucket = other.predicateBucket;
-    other.predicateBucket = nullptr;
-
-    alwaysReplaceBucket = other.alwaysReplaceBucket;
-    other.alwaysReplaceBucket = nullptr;
-
-    return *this;
-}
-
-template<bool (*replacementPredicate)(const TranspositionTableEntry&, const TranspositionTableEntry&)>
-void TranspositionTable<replacementPredicate>::put(uint64_t hash, const TranspositionTableEntry& entry) {
-    size_t index = hash % bucketCount;
-
-    // Überprüfe, ob der Bucket mit Ersetzungsprädikat leer ist.
-    if(!predicateBucket[index].exists)
-        predicateBucket[index] = { hash, entry, true };
-    else if(replacementPredicate(entry, predicateBucket[index].entry)) {
-        // Wenn der Bucket mit Ersetzungsprädikat nicht leer ist,
-        // bestimme, ob der Eintrag ersetzt werden soll.
-        predicateBucket[index] = { hash, entry, true };
-    }
-
-    // Ersetze den Eintrag im Bucket ohne Ersetzungsprädikat.
-    alwaysReplaceBucket[index] = { hash, entry, true };
-}
-
-template<bool (*replacementPredicate)(const TranspositionTableEntry&, const TranspositionTableEntry&)>
-bool TranspositionTable<replacementPredicate>::probe(uint64_t hash, TranspositionTableEntry& entry) {
-    size_t index = hash % bucketCount;
-
-    // Überprüfe den Bucket mit Ersetzungsprädikat.
-    if(predicateBucket[index].exists && predicateBucket[index].hash == hash) {
-        entry = predicateBucket[index].entry;
-        return true;
-    }
-
-    // Überprüfe den Bucket ohne Ersetzungsprädikat.
-    if(alwaysReplaceBucket[index].exists && alwaysReplaceBucket[index].hash == hash) {
-        entry = alwaysReplaceBucket[index].entry;
-        return true;
-    }
-
-    return false;
-}
-
-template<bool (*replacementPredicate)(const TranspositionTableEntry&, const TranspositionTableEntry&)>
-void TranspositionTable<replacementPredicate>::clear() {
-    // Setze alle Einträge auf nicht existent.
-    for(size_t i = 0; i < bucketCount; i++) {
-        predicateBucket[i].exists = false;
-        alwaysReplaceBucket[i].exists = false;
-    }
-}
-
-template<bool (*replacementPredicate)(const TranspositionTableEntry&, const TranspositionTableEntry&)>
-void TranspositionTable<replacementPredicate>::resize(size_t bucketCount) {
-    bucketCount = std::max((size_t)1, bucketCount);
-
-    // Lösche die alten Buckets.
-    delete[] predicateBucket;
-    delete[] alwaysReplaceBucket;
-
-    // Erstelle neue Buckets.
-    this->bucketCount = bucketCount;
-
-    predicateBucket = new Entry[bucketCount];
-    alwaysReplaceBucket = new Entry[bucketCount];
-
-    clear();
-}
 
 #endif

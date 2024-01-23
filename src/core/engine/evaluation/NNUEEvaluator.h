@@ -4,10 +4,9 @@
 #include "core/chess/Referee.h"
 #include "core/engine/evaluation/EndgameEvaluator.h"
 #include "core/engine/evaluation/SimpleUpdatedEvaluator.h"
-#include "core/utils/tables/HeapHashTable.h"
 #include "core/utils/nnue/NNUENetwork.h"
 
-class NNUEEvaluator: public UpdatedEvaluator {
+class NNUEEvaluator: public Evaluator {
 
     private:
         NNUE::Network network;
@@ -18,12 +17,12 @@ class NNUEEvaluator: public UpdatedEvaluator {
         double gamePhase = 0.0;
 
     public:
-        NNUEEvaluator(Board& board) : UpdatedEvaluator(board), endgameEvaluator(board) {
+        NNUEEvaluator(Board& board) : Evaluator(board), endgameEvaluator(board) {
             initializeMaterialDifference();
             initializeGamePhase();
         }
 
-        NNUEEvaluator(Board& board, std::istream& networkStream) : UpdatedEvaluator(board), endgameEvaluator(board) {
+        NNUEEvaluator(Board& board, std::istream& networkStream) : Evaluator(board), endgameEvaluator(board) {
             networkStream >> network;
             network.initializeFromBoard(board);
             initializeMaterialDifference();

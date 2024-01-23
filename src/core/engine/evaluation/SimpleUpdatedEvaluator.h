@@ -3,10 +3,10 @@
 
 #include "core/engine/evaluation/EvaluationDefinitons.h"
 #include "core/engine/evaluation/PSQT.h"
-#include "core/engine/evaluation/UpdatedEvaluator.h"
+#include "core/engine/evaluation/Evaluator.h"
 #include "core/engine/search/SearchDefinitions.h"
 
-class SimpleUpdatedEvaluator: public UpdatedEvaluator {
+class SimpleUpdatedEvaluator: public Evaluator {
     private:
         Score currentScore;
         double currentGamePhase;
@@ -25,7 +25,7 @@ class SimpleUpdatedEvaluator: public UpdatedEvaluator {
         void calculateGamePhase();
 
     public:
-        SimpleUpdatedEvaluator(Board& b) : UpdatedEvaluator(b) {
+        SimpleUpdatedEvaluator(Board& b) : Evaluator(b) {
             calculateScore();
             calculateGamePhase();
         };

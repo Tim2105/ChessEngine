@@ -2,7 +2,8 @@
 #define EVALUATOR_H
 
 #include "core/chess/Board.h"
-#include "core/utils/tables/HeapHashTable.h"
+
+#define UNUSED(x) (void)(x)
 
 /**
  * @brief Eine Basisklasse für alle statische Evaluatoren von Schachpositionen.
@@ -50,6 +51,11 @@ class Evaluator {
         virtual inline void setBoard(Board& b) {
             this->b = &b;
         }
+
+        virtual void updateBeforeMove(Move m) { UNUSED(m); }
+        virtual void updateAfterMove() {}
+        virtual void updateBeforeUndo() {}
+        virtual void updateAfterUndo(Move m) { UNUSED(m); }
 
         /**
          * @brief Überprüft, ob das Spiel zwangsläufig ein Unentschieden ist.

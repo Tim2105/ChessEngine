@@ -4,13 +4,10 @@
 
 #include <algorithm>
 
-StaticEvaluator::StaticEvaluator(StaticEvaluator&& other) : UpdatedEvaluator(*(other.b)) {
-    this->pawnStructureTable = std::move(other.pawnStructureTable);
-}
+StaticEvaluator::StaticEvaluator(StaticEvaluator&& other) : Evaluator(*(other.b)) {}
 
 StaticEvaluator& StaticEvaluator::operator=(StaticEvaluator&& other) {
     this->b = other.b;
-    this->pawnStructureTable = std::move(other.pawnStructureTable);
 
     return *this;
 }
@@ -105,15 +102,10 @@ int32_t StaticEvaluator::evaluate() {
         score += endgameEvaluation() * endgameWeight;
 
     Score pawnStructureScore = {0, 0};
-    bool pawnStructureFound = probePawnStructure(pawnStructureScore);
+    Score whitePawnStructureScore = evalPawnStructure(WHITE);
+    Score blackPawnStructureScore = evalPawnStructure(BLACK);
 
-    if(!pawnStructureFound) {
-        Score whitePawnStructureScore = evalPawnStructure(WHITE);
-        Score blackPawnStructureScore = evalPawnStructure(BLACK);
-
-        pawnStructureScore = whitePawnStructureScore - blackPawnStructureScore;
-        storePawnStructure(pawnStructureScore);
-    }
+    pawnStructureScore = whitePawnStructureScore - blackPawnStructureScore;
 
     if(side == BLACK)
         pawnStructureScore *= -1;
@@ -600,28 +592,6 @@ inline int32_t StaticEvaluator::evalEG_PSQT() {
     }
 
     return score;
-}
-
-bool StaticEvaluator::probePawnStructure(Score& score) {  
-    PawnBitboards pawnsBitboards = PawnBitboards {
-        b->getPieceBitboard(WHITE | PAWN),
-        b->getPieceBitboard(BLACK | PAWN)
-    };
-
-    uint64_t hash = std::hash<PawnBitboards>{}(pawnsBitboards);
-
-    return pawnStructureTable.probe(hash, score);
-}
-
-void StaticEvaluator::storePawnStructure(const Score& score) {
-    PawnBitboards pawnsBitboards = PawnBitboards {
-        b->getPieceBitboard(WHITE | PAWN),
-        b->getPieceBitboard(BLACK | PAWN)
-    };
-
-    uint64_t hash = std::hash<PawnBitboards>{}(pawnsBitboards);
-
-    pawnStructureTable.put(hash, score);
 }
 
 Score StaticEvaluator::evalPawnStructure(int32_t side) {

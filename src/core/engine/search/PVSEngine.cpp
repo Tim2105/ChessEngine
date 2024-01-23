@@ -5,16 +5,16 @@
 #include <math.h>
 
 int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta, bool allowNullMove, uint8_t nodeType) {
-    if(nodesSearched % NODES_PER_CHECKUP == 0 && isCheckupTime())
+    if(nodesSearched.load() % NODES_PER_CHECKUP == 0 && isCheckupTime())
         checkup();
 
-    if(stopFlag)
+    if(stopFlag.load())
         return 0;
 
     if(depth <= 0)
         return quiescence(ply, alpha, beta);
 
-    nodesSearched++;
+    nodesSearched.fetch_add(1);
 
     uint16_t repetitionCount = boardCopy.repetitionCount();
     if(repetitionCount >= 3 || boardCopy.getFiftyMoveCounter() >= 100)
@@ -45,7 +45,7 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
 
         boardCopy.undoMove();
 
-        if(stopFlag)
+        if(stopFlag.load())
             return 0;
 
         if(score >= beta)
@@ -89,7 +89,7 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
                     boardCopy.undoMove();
                     evaluator.updateAfterUndo(move);
 
-                    nodesSearched++;
+                    nodesSearched.fetch_add(1);
                     moveCount++;
 
                     continue;
@@ -129,17 +129,17 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
         boardCopy.undoMove();
         evaluator.updateAfterUndo(move);
 
-        if(stopFlag)
+        if(stopFlag.load())
             return 0;
 
         if(score >= beta) {
-            TranspositionTableEntry entry {
-                boardCopy.getPly(),
-                depth,
+            TranspositionTableEntry entry(
+                move,
                 score,
-                CUT_NODE,
-                move
-            };
+                boardCopy.getPly(),
+                (uint8_t)depth,
+                CUT_NODE
+            );
 
             transpositionTable.put(boardCopy.getHashValue(), entry);
 
@@ -181,11 +181,11 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
     }
 
     entry = {
-        boardCopy.getPly(),
-        depth,
+        bestMove,
         bestScore,
-        actualNodeType,
-        bestMove
+        boardCopy.getPly(),
+        (uint8_t)depth,
+        actualNodeType
     };
 
     transpositionTable.put(boardCopy.getHashValue(), entry);
@@ -196,7 +196,7 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
 }
 
 int16_t PVSEngine::quiescence(int16_t ply, int16_t alpha, int16_t beta) {
-    nodesSearched++;
+    nodesSearched.fetch_add(1);
 
     if(boardCopy.repetitionCount() >= 3 || boardCopy.getFiftyMoveCounter() >= 100)
         return DRAW_SCORE;
@@ -479,9 +479,9 @@ PVSEngine::MoveScorePair PVSEngine::selectNextMoveInQuiescence(uint16_t ply, int
 }
 
 void PVSEngine::search(uint32_t time, bool treatAsTimeControl) {
-    stopFlag = false;
-    isTimeControlled = treatAsTimeControl;
-    nodesSearched = 0;
+    stopFlag.store(false);
+    isTimeControlled.store(treatAsTimeControl);
+    nodesSearched.store(0);
     maxDepthReached = 0;
 
     boardCopy = Board(*board);
@@ -525,7 +525,7 @@ void PVSEngine::search(uint32_t time, bool treatAsTimeControl) {
         alpha = score - 15;
         beta = score + 15;
 
-        if(stopFlag)
+        if(stopFlag.load())
             break;
         else {
             maxDepthReached = depth;
@@ -551,20 +551,20 @@ void PVSEngine::search(uint32_t time, bool treatAsTimeControl) {
         }
 
         std::chrono::milliseconds timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime);
-        std::cout << "info depth " << depth << " score " << scoreStr << " nodes " << nodesSearched <<
-                    " time " << timeElapsed.count() << " nps " << (uint64_t)(nodesSearched / (timeElapsed.count() / 1000.0)) <<
+        std::cout << "info depth " << depth << " score " << scoreStr << " nodes " << nodesSearched.load() <<
+                    " time " << timeElapsed.count() << " nps " << (uint64_t)(nodesSearched.load() / (timeElapsed.count() / 1000.0)) <<
                     " pv ";
         for(Move move : variations[0].moves)
             std::cout << move.toString() << " ";
 
         std::cout << std::endl;
 
-        if(!extendSearch(isTimeControlled))
+        if(!extendSearch(isTimeControlled.load()))
             break;
     }
 
     evaluator.setBoard(*board);
-    stopFlag = false;
+    stopFlag.store(false);
 
     int16_t score = getBestMoveScore();
     std::string scoreStr;
@@ -578,8 +578,8 @@ void PVSEngine::search(uint32_t time, bool treatAsTimeControl) {
     }
 
     std::chrono::milliseconds timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime);
-    std::cout << "info depth " << maxDepthReached << " score " << scoreStr << " nodes " << nodesSearched <<
-                " time " << timeElapsed.count() << " nps " << (uint64_t)(nodesSearched / (timeElapsed.count() / 1000.0)) <<
+    std::cout << "info depth " << maxDepthReached << " score " << scoreStr << " nodes " << nodesSearched.load() <<
+                " time " << timeElapsed.count() << " nps " << (uint64_t)(nodesSearched.load() / (timeElapsed.count() / 1000.0)) <<
                 " pv ";
     for(Move move : variations[0].moves)
         std::cout << move.toString() << " ";
@@ -619,7 +619,7 @@ void PVSEngine::calculateTimeLimits(uint32_t time, bool treatAsTimeControl) {
 }
 
 bool PVSEngine::extendSearch(bool isTimeControlled) {
-    if(stopFlag)
+    if(stopFlag.load())
         return false;
 
     std::chrono::milliseconds timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime);

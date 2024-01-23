@@ -50,7 +50,7 @@ class Option {
         };
 };
 
-Option<int> hashOption("Hash", (1 << 19) * 2 * TT_ENTRY_SIZE / 1000000, 0, 2048);
+Option<int> hashOption("Hash", TT_DEFAULT_CAPACITY * TT_ENTRY_SIZE / (1 << 20), 1, 4096);
 Option<bool> ponderOption("Ponder", false, false, true);
 Option<int> multiPVOption("MultiPV", 1, 1, 256);
 
@@ -218,7 +218,7 @@ void handleSetOptionCommand(std::string args) {
     if(name == hashOption.getName()) {
         int valueInt = std::stoi(value);
         hashOption.setValue(valueInt);
-        engine.setHashTableSize((int64_t)valueInt * 1000000 / TT_ENTRY_SIZE);
+        engine.setHashTableCapacity((size_t)valueInt * (1 << 20) / TT_ENTRY_SIZE);
     } else if(name == ponderOption.getName()) {
         bool valueBool = value == "true";
         ponderOption.setValue(valueBool);
@@ -402,6 +402,7 @@ void handleGoCommand(std::string args) {
 
             std::cout << "info nodes " << nodesSearched <<
             " nps " << (uint64_t)(nodesSearched / (timeElapsed / 1000.0))
+            << " hashfull " << (uint64_t)((double)engine.getHashTableSize() / engine.getHashTableCapacity() * 1000.0)
             << std::endl;
         }
 

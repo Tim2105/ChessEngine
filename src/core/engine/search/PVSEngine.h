@@ -2,14 +2,15 @@
 #define PVS_ENGINE_H
 
 #include <atomic>
+#include <chrono>
 
-#include "core/engine/search/InterruptedEngine.h"
 #include "core/engine/search/SearchDefinitions.h"
-#include "core/engine/evaluation/UpdatedEvaluator.h"
+#include "core/engine/search/Variation.h"
+#include "core/engine/evaluation/Evaluator.h"
 
 #include "core/utils/tables/TranspositionTable.h"
 
-class PVSEngine: public InterruptedEngine {
+class PVSEngine {
     public:
         struct MoveScorePair {
             Move move;
@@ -17,26 +18,23 @@ class PVSEngine: public InterruptedEngine {
         };
 
     private:
-        /**
-         * @brief Das Ersetzungsprädikat für die Transpositionstabelle.
-         * Ein Eintrag wird ersetzt, wenn die Funktion true zurückgibt.
-         * 
-         * @param lhs Der neue Eintrag.
-         * @param rhs Der alte Eintrag.
-         */
-        static constexpr bool ttReplacementPredicate(const TranspositionTableEntry& lhs,
-                                                     const TranspositionTableEntry& rhs) {
-            
-            return lhs.depth * 11 / 10 + lhs.age * ONE_PLY > rhs.depth * 11 / 10 + rhs.age * ONE_PLY;
-        };
+        Board* board;
+        Evaluator& evaluator;
 
-        TranspositionTable<ttReplacementPredicate> transpositionTable;
+        std::vector<Variation> variations;
+        uint32_t numVariations = 0;
+
+        TranspositionTable transpositionTable;
         Move killerMoves[MAX_PLY][2];
         int32_t historyTable[2][64][64];
         Array<Move, MAX_PLY> pvTable[MAX_PLY];
 
-        UpdatedEvaluator& evaluator;
         Board boardCopy;
+
+        std::chrono::system_clock::time_point lastCheckupTime;
+        std::chrono::milliseconds checkupInterval;
+
+        std::function<void()> checkupCallback;
 
         std::atomic_bool stopFlag = true;
         std::atomic_bool isTimeControlled = false;
@@ -44,7 +42,7 @@ class PVSEngine: public InterruptedEngine {
         std::chrono::milliseconds timeMin;
         std::chrono::milliseconds timeMax;
 
-        uint64_t nodesSearched = 0;
+        std::atomic<uint64_t> nodesSearched = 0;
         int16_t maxDepthReached = 0;
 
         struct MoveStackEntry {
@@ -72,63 +70,96 @@ class PVSEngine: public InterruptedEngine {
         void calculateTimeLimits(uint32_t time, bool treatAsTimeControl);
         bool extendSearch(bool isTimeControlled);
 
+        inline bool isCheckupTime() {
+            return std::chrono::system_clock::now() >= lastCheckupTime + checkupInterval;
+        }
+
         inline void updateStopFlag() {
             if(std::chrono::system_clock::now() >= startTime + timeMax &&
                maxDepthReached > 0)
-                stopFlag = true;
+                stopFlag.store(true);
+        }
+
+        inline void checkup() {
+            lastCheckupTime = std::chrono::system_clock::now();
+
+            updateStopFlag();
+
+            if(checkupCallback)
+                checkupCallback();
         }
 
     public:
-        PVSEngine(UpdatedEvaluator& evaluator, uint32_t numVariations = 1,
+        PVSEngine(Evaluator& evaluator, uint32_t numVariations = 1,
                   uint32_t checkupInterval = 2, std::function<void()> checkupCallback = nullptr)
-                : InterruptedEngine(evaluator, numVariations, checkupInterval, [this, checkupCallback]{
-                    updateStopFlag();
-
-                    if(checkupCallback)
-                        checkupCallback();
-                }), evaluator(evaluator) {}
+                : board(&evaluator.getBoard()), evaluator(evaluator), numVariations(numVariations),
+                  checkupInterval(checkupInterval), checkupCallback(checkupCallback) {}
 
         PVSEngine(const PVSEngine& other) = delete;
         PVSEngine& operator=(const PVSEngine& other) = delete;
 
-        void search(uint32_t time, bool treatAsTimeControl = false) override;
+        void search(uint32_t time, bool treatAsTimeControl = false);
 
-        inline void stop() override {
-            stopFlag = true;
+        inline void stop() {
+            stopFlag.store(true);
         }
 
-        inline void setTime(uint32_t time, bool treatAsTimeControl = false) override {
-            isTimeControlled = treatAsTimeControl;
+        inline void setTime(uint32_t time, bool treatAsTimeControl = false) {
+            isTimeControlled.store(treatAsTimeControl);
             calculateTimeLimits(time, treatAsTimeControl);
         }
 
-        inline void setHashTableSize(uint32_t size) override {
-            transpositionTable.resize(size / 2);
+        inline void setHashTableCapacity(size_t capacity) {
+            transpositionTable.resize(capacity);
         }
 
-        inline size_t getHashTableSize() override {
-            return transpositionTable.getBucketCount() * 2;
+        inline size_t getHashTableCapacity() {
+            return transpositionTable.getCapacity();
         }
 
-        inline void clearHashTable() override {
+        inline size_t getHashTableSize() {
+            return transpositionTable.getEntriesWritten();
+        }
+
+        inline void clearHashTable() {
             transpositionTable.clear();
         }
 
-        inline void setBoard(Board& board) override {
-            Engine::setBoard(board);
+        inline void setBoard(Board& board) {
+            this->board = &board;
+            evaluator.setBoard(board);
         }
 
-        inline void setCheckupCallback(std::function<void()> checkupCallback) override {
-            InterruptedEngine::setCheckupCallback([this, checkupCallback]{
-                updateStopFlag();
-
-                if(checkupCallback)
-                    checkupCallback();
-            });
+        inline void setNumVariations(uint32_t numVariations) {
+            this->numVariations = numVariations;
         }
 
-        constexpr uint64_t getNodesSearched() const {
-            return nodesSearched;
+        inline void setCheckupCallback(std::function<void()> checkupCallback) {
+            this->checkupCallback = checkupCallback;
+        }
+
+        inline Board& getBoard() {
+            return *board;
+        }
+
+        inline Move getBestMove() {
+            return variations.empty() ? Move() : variations[0].moves[0];
+        }
+
+        inline int16_t getBestMoveScore() {
+            return variations.empty() ? 0 : variations[0].score;
+        }
+
+        inline std::vector<Variation> getVariations() {
+            return variations;
+        }
+
+        inline std::vector<Move> getPrincipalVariation() {
+            return variations.empty() ? std::vector<Move>() : variations[0].moves;
+        }
+
+        inline uint64_t getNodesSearched() const {
+            return nodesSearched.load();
         }
 
         constexpr int16_t getMaxDepthReached() const {
@@ -140,7 +171,7 @@ class PVSEngine: public InterruptedEngine {
         }
 
         inline bool isSearching() const {
-            return !stopFlag;
+            return !stopFlag.load();
         }
 
     private:
