@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <math.h>
 
-int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta, bool allowNullMove, uint8_t nodeType) {
+int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta, bool allowNullMove, uint8_t nodeType, const Array<Move, 256>& searchMoves) {
     if(nodesSearched.load() % NODES_PER_CHECKUP == 0 && isCheckupTime())
         checkup();
 
@@ -61,7 +61,7 @@ int16_t PVSEngine::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta,
     Move move, bestMove;
     bool isCheckEvasion = boardCopy.isCheck();
 
-    while((pair = selectNextMove(ply, nodeType != ALL_NODE && depth >= 6 * ONE_PLY, depth)).move.exists()) {
+    while((pair = selectNextMove(searchMoves, ply, nodeType != ALL_NODE && depth >= 6 * ONE_PLY, depth)).move.exists()) {
         move = pair.move;
 
         evaluator.updateBeforeMove(move);
@@ -325,6 +325,9 @@ bool PVSEngine::deactivateNullMove() {
 
 void PVSEngine::scoreMoves(const Array<Move, 256>& moves, uint16_t ply) {
     for(Move move : moves) {
+        if(!move.exists())
+            continue;
+
         int16_t score = 0;
 
         if(move.isCapture()) {
@@ -353,7 +356,7 @@ void PVSEngine::scoreMovesForQuiescence(const Array<Move, 256>& moves, uint16_t 
     }
 }
 
-PVSEngine::MoveScorePair PVSEngine::selectNextMove(uint16_t ply, bool useIID, int16_t depth) {
+PVSEngine::MoveScorePair PVSEngine::selectNextMove(const Array<Move, 256>& searchMoves, uint16_t ply, bool useIID, int16_t depth) {
     if(moveStack[ply].moveScorePairs.size() == 0) {
         if(!moveStack[ply].hashMove.exists()) {
             Move hashMove = Move::nullMove();
@@ -361,7 +364,7 @@ PVSEngine::MoveScorePair PVSEngine::selectNextMove(uint16_t ply, bool useIID, in
             if(transpositionTable.probe(boardCopy.getHashValue(), entry))
                 hashMove = entry.hashMove;
 
-            if(hashMove.exists()) {
+            if(hashMove.exists() && (searchMoves.size() == 0 || searchMoves.contains(hashMove))) {
                 moveStack[ply].hashMove = hashMove;
                 return { hashMove, HASH_MOVE_SCORE };
             } else if(useIID) {
@@ -373,7 +376,7 @@ PVSEngine::MoveScorePair PVSEngine::selectNextMove(uint16_t ply, bool useIID, in
 
                 int16_t reducedDepth = (depth / (2 * ONE_PLY)) * ONE_PLY;
 
-                while((pair = selectNextMove(ply, reducedDepth >= 6 * ONE_PLY, reducedDepth)).move.exists()) {
+                while((pair = selectNextMove(searchMoves, ply, reducedDepth >= 6 * ONE_PLY, reducedDepth)).move.exists()) {
                     move = pair.move;
 
                     evaluator.updateBeforeMove(move);
@@ -421,7 +424,11 @@ PVSEngine::MoveScorePair PVSEngine::selectNextMove(uint16_t ply, bool useIID, in
         }
 
         Array<Move, 256> moves;
-        boardCopy.generateLegalMoves(moves);
+        if(searchMoves.size() == 0)
+            boardCopy.generateLegalMoves(moves);
+        else
+            moves = searchMoves;
+        
         scoreMoves(moves, ply);
 
         if(moveStack[ply].hashMove.exists()) {
@@ -478,9 +485,10 @@ PVSEngine::MoveScorePair PVSEngine::selectNextMoveInQuiescence(uint16_t ply, int
     return { bestMove, bestScore };
 }
 
-void PVSEngine::search(uint32_t time, bool treatAsTimeControl) {
+void PVSEngine::search(const UCI::SearchParams& params) {
     stopFlag.store(false);
-    isTimeControlled.store(treatAsTimeControl);
+    isTimeControlled = params.useWBTime;
+    isPondering.store(params.ponder);
     nodesSearched.store(0);
     maxDepthReached = 0;
 
@@ -494,12 +502,12 @@ void PVSEngine::search(uint32_t time, bool treatAsTimeControl) {
     variations.clear();
 
     startTime = std::chrono::system_clock::now();
-    calculateTimeLimits(time, treatAsTimeControl);
+    calculateTimeLimits(params);
 
     int16_t alpha = MIN_SCORE, beta = MAX_SCORE;
 
     for(int16_t depth = 1; depth <= MAX_PLY; depth++) {
-        int16_t score = pvs(depth * ONE_PLY, 0, alpha, beta, false, PV_NODE);
+        int16_t score = pvs(depth * ONE_PLY, 0, alpha, beta, false, PV_NODE, params.searchmoves);
 
         bool alphaAlreadyWidened = false, betaAlreadyWidened = false;
         while(score <= alpha || score >= beta) {
@@ -519,7 +527,7 @@ void PVSEngine::search(uint32_t time, bool treatAsTimeControl) {
                 }
             }
 
-            score = pvs(depth * ONE_PLY, 0, alpha, beta, false, PV_NODE);
+            score = pvs(depth * ONE_PLY, 0, alpha, beta, false, PV_NODE, params.searchmoves);
         }
 
         alpha = score - 15;
@@ -559,7 +567,7 @@ void PVSEngine::search(uint32_t time, bool treatAsTimeControl) {
 
         std::cout << std::endl;
 
-        if(!extendSearch(isTimeControlled.load()))
+        if(!isPondering.load() && !extendSearch(isTimeControlled))
             break;
     }
 
@@ -593,29 +601,31 @@ void PVSEngine::search(uint32_t time, bool treatAsTimeControl) {
     std::cout << std::endl;
 }
 
-void PVSEngine::calculateTimeLimits(uint32_t time, bool treatAsTimeControl) {
-    if(time == 0)
-        time = std::numeric_limits<uint32_t>::max();
+void PVSEngine::calculateTimeLimits(const UCI::SearchParams& params) {
+    if(params.infinite) {
+        timeMin = std::chrono::milliseconds(std::numeric_limits<uint64_t>::max());
+        timeMax = std::chrono::milliseconds(std::numeric_limits<uint64_t>::max());
+        return;
+    }
 
-    std::chrono::milliseconds alreadySearched = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime);
-
-    if(!treatAsTimeControl) {
-        timeMin = std::chrono::milliseconds(time + alreadySearched.count());
-        timeMax = std::chrono::milliseconds(time + alreadySearched.count());
+    if(params.useMovetime) {
+        timeMin = std::chrono::milliseconds(params.movetime);
+        timeMax = std::chrono::milliseconds(params.movetime);
         return;
     }
 
     // Berechne die minimale und maximale Zeit, die die Suche dauern soll
-    int32_t numLegalMoves = board->generateLegalMoves().size();
+    uint32_t time = board->getSideToMove() == WHITE ? params.wtime : params.btime;
+    size_t numLegalMoves = board->generateLegalMoves().size();
 
     double oneThirtiethOfTime = time * 0.0333;
     double oneFourthOfTime = time * 0.25;
 
-    uint64_t minTime = oneThirtiethOfTime - oneThirtiethOfTime * std::exp(-0.05  * numLegalMoves);
-    uint64_t maxTime = oneFourthOfTime - oneFourthOfTime * std::exp(-0.05  * numLegalMoves);
+    uint32_t minTime = oneThirtiethOfTime - oneThirtiethOfTime * std::exp(-0.05  * numLegalMoves);
+    uint32_t maxTime = oneFourthOfTime - oneFourthOfTime * std::exp(-0.05  * numLegalMoves);
 
-    timeMin = std::chrono::milliseconds(minTime + alreadySearched.count());
-    timeMax = std::chrono::milliseconds(maxTime + alreadySearched.count());
+    timeMin = std::chrono::milliseconds(minTime);
+    timeMax = std::chrono::milliseconds(maxTime);
 }
 
 bool PVSEngine::extendSearch(bool isTimeControlled) {

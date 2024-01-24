@@ -10,6 +10,8 @@
 
 #include "core/utils/tables/TranspositionTable.h"
 
+#include "uci/UCI.h"
+
 class PVSEngine {
     public:
         struct MoveScorePair {
@@ -37,7 +39,8 @@ class PVSEngine {
         std::function<void()> checkupCallback;
 
         std::atomic_bool stopFlag = true;
-        std::atomic_bool isTimeControlled = false;
+        bool isTimeControlled = false;
+        std::atomic_bool isPondering = false;
         std::chrono::system_clock::time_point startTime;
         std::chrono::milliseconds timeMin;
         std::chrono::milliseconds timeMax;
@@ -53,7 +56,7 @@ class PVSEngine {
         Array<MoveStackEntry, MAX_PLY> moveStack;
         Array<MoveScorePair, 5> pvHistory;
 
-        int16_t pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta, bool allowNullMove, uint8_t nodeType);
+        int16_t pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta, bool allowNullMove, uint8_t nodeType, const Array<Move, 256>& searchMoves = {});
         int16_t quiescence(int16_t ply, int16_t alpha, int16_t beta);
 
         void collectPVLine(int16_t score);
@@ -64,10 +67,11 @@ class PVSEngine {
 
         void scoreMoves(const Array<Move, 256>& moves, uint16_t ply);
         void scoreMovesForQuiescence(const Array<Move, 256>& moves, uint16_t ply);
-        MoveScorePair selectNextMove(uint16_t ply, bool useIID, int16_t depth);
+
+        MoveScorePair selectNextMove(const Array<Move, 256>& searchMoves, uint16_t ply, bool useIID, int16_t depth);
         MoveScorePair selectNextMoveInQuiescence(uint16_t ply, int16_t minScore = MIN_SCORE + 1);
 
-        void calculateTimeLimits(uint32_t time, bool treatAsTimeControl);
+        void calculateTimeLimits(const UCI::SearchParams& params);
         bool extendSearch(bool isTimeControlled);
 
         inline bool isCheckupTime() {
@@ -98,15 +102,10 @@ class PVSEngine {
         PVSEngine(const PVSEngine& other) = delete;
         PVSEngine& operator=(const PVSEngine& other) = delete;
 
-        void search(uint32_t time, bool treatAsTimeControl = false);
+        void search(const UCI::SearchParams& params);
 
         inline void stop() {
             stopFlag.store(true);
-        }
-
-        inline void setTime(uint32_t time, bool treatAsTimeControl = false) {
-            isTimeControlled.store(treatAsTimeControl);
-            calculateTimeLimits(time, treatAsTimeControl);
         }
 
         inline void setHashTableCapacity(size_t capacity) {
@@ -136,6 +135,10 @@ class PVSEngine {
 
         inline void setCheckupCallback(std::function<void()> checkupCallback) {
             this->checkupCallback = checkupCallback;
+        }
+
+        inline void setPondering(bool isPondering) {
+            this->isPondering.store(isPondering);
         }
 
         inline Board& getBoard() {

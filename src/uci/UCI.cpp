@@ -2,6 +2,7 @@
 #include "core/engine/evaluation/NNUEEvaluator.h"
 #include "core/engine/evaluation/StaticEvaluator.h"
 
+#include "uci/Options.h"
 #include "uci/PortabilityHelper.h"
 #include "uci/UCI.h"
 
@@ -9,50 +10,6 @@
 
 #include <iostream>
 #include <sstream>
-
-template<typename T>
-class Option {
-    private:
-        std::string name;
-        T value;
-        T minValue;
-        T maxValue;
-
-    public:
-        Option(const std::string& name, const T& value,
-                const T& minValue,
-                const T& maxValue) {
-    
-                this->name = name;
-                this->value = value;
-                this->minValue = minValue;
-                this->maxValue = maxValue;
-          };
-
-        std::string getName() const {
-            return name;
-        };
-
-        void setValue(const T& value) {
-            this->value = std::clamp(value, minValue, maxValue);
-        };
-
-        T getValue() const {
-            return value;
-        };
-
-        T getMinValue() const {
-            return minValue;
-        };
-
-        T getMaxValue() const {
-            return maxValue;
-        };
-};
-
-Option<int> hashOption("Hash", TT_DEFAULT_CAPACITY * TT_ENTRY_SIZE / (1 << 20), 1, 4096);
-Option<bool> ponderOption("Ponder", false, false, true);
-Option<int> multiPVOption("MultiPV", 1, 1, 256);
 
 Board board;
 
@@ -64,8 +21,19 @@ NNUEEvaluator evaluator(board);
 
 PVSEngine engine(evaluator);
 
-static int64_t TIME_BETWEEN_NODE_OUTPUT = 3000;
-int64_t lastNodeOutput = 0;
+void changeHashSize(std::string value) {
+    engine.setHashTableCapacity(std::stoull(value) * (1 << 20) / TT_ENTRY_SIZE);
+}
+
+UCI::Options options = {
+    UCI::Option("Hash", std::to_string(TT_DEFAULT_CAPACITY * TT_ENTRY_SIZE / (1 << 20)), "1", "16384", changeHashSize),
+    UCI::Option("Threads", "1", "1", "128"),
+    UCI::Option("MultiPV", "1", "1", "256"),
+    UCI::Option("Ponder", "false")
+};
+
+const std::chrono::duration TIME_BETWEEN_NODE_OUTPUT = std::chrono::milliseconds(2000);
+std::chrono::time_point<std::chrono::steady_clock> lastNodeOutput = std::chrono::steady_clock::now();
 
 bool quitFlag = false;
 bool debug = false;
@@ -141,7 +109,7 @@ std::string getNextToken(std::istream& is) {
     while(is.good() && (is.peek() == ' ' || is.peek() == '\t' || is.peek() == '\n'))
         is.get();
 
-    while(is.good() && !(is.peek() == ' ' || is.peek() == '\t' || is.peek() == '\n'))
+    while(is.good() && !(is.peek() == ' ' || is.peek() == '\t' || is.peek() == '\n' || is.peek() == EOF))
         ss << (char)is.get();
 
     while(is.good() && (is.peek() == ' ' || is.peek() == '\t'))
@@ -165,16 +133,17 @@ void handleUCICommand() {
     std::cout << "id author " << UCI::ENGINE_AUTHOR << std::endl;
 
     // Gebe alle Optionen aus
-    std::cout << "option name " << hashOption.getName() << " type spin default " <<
-        hashOption.getValue() << " min " << hashOption.getMinValue() << " max " <<
-        hashOption.getMaxValue() << std::endl;
+    for(UCI::Option& option : options) {
+        std::cout << "option name " << option.getName();
 
-    std::cout << "option name " << ponderOption.getName() << " type check default " <<
-        (ponderOption.getValue() ? "true" : "false") << std::endl;
+        if(option.getType() == UCI::OptionType::Check)
+            std::cout << " type check default " << option.getValue<std::string>();
+        else if(option.getType() == UCI::OptionType::Spin)
+            std::cout << " type spin default " << option.getValue<std::string>() <<
+                " min " << option.getMinValue() << " max " << option.getMaxValue();
 
-    std::cout << "option name " << multiPVOption.getName() << " type spin default " <<
-        multiPVOption.getValue() << " min " << multiPVOption.getMinValue() << " max " <<
-        multiPVOption.getMaxValue() << std::endl;
+        std::cout << std::endl;
+    }
 
     std::cout << "uciok" << std::endl;
 }
@@ -212,19 +181,21 @@ void handleSetOptionCommand(std::string args) {
             value = getNextToken(ss);
     }
 
-    if(debug)
-        std::cout << "info string name: " << name << ", value: " << value << std::endl;
+    try {
+        UCI::Option& option = options[name];
 
-    if(name == hashOption.getName()) {
-        int valueInt = std::stoi(value);
-        hashOption.setValue(valueInt);
-        engine.setHashTableCapacity((size_t)valueInt * (1 << 20) / TT_ENTRY_SIZE);
-    } else if(name == ponderOption.getName()) {
-        bool valueBool = value == "true";
-        ponderOption.setValue(valueBool);
-    } else if(name == multiPVOption.getName()) {
-        int valueInt = std::stoi(value);
-        multiPVOption.setValue(valueInt);
+        std::cout << option.getName() << std::endl;
+
+        if(option.getType() == UCI::OptionType::Check)
+            option = value == "true";
+        else if(option.getType() == UCI::OptionType::Spin)
+            option = std::stoll(value);
+
+        if(debug)
+            std::cout << "info string Set option " << name << " to " << option.getValue<std::string>() << std::endl;
+    } catch(std::exception& e) {
+        if(debug)
+            std::cout << "info string Error setting option " << name << " to " << value << std::endl;
     }
 }
 
@@ -319,18 +290,7 @@ void handleGoCommand(std::string args) {
     std::stringstream ss(args + "\n"); // Füge ein Zeilenende hinzu, damit getNextToken() "funktioniert"
     std::string token;
 
-    uint16_t depth = std::numeric_limits<uint16_t>::max();
-    uint64_t nodes = std::numeric_limits<uint64_t>::max();
-    int movetime = -1;
-    int wtime = -1;
-    int btime = -1;
-    int winc = -1;
-    int binc = -1;
-    int movestogo = -1;
-    int mate = -1;
-
-    bool infinite = false;
-    bool ponder = false;
+    UCI::SearchParams params;
 
     while(ss.good()) {
         token = getNextToken(ss);
@@ -347,115 +307,102 @@ void handleGoCommand(std::string args) {
         }
 
         if(token == "depth")
-            depth = std::stoi(getNextToken(ss));
+            params.depth = std::stoul(getNextToken(ss));
         else if(token == "nodes")
-            nodes = std::stoull(getNextToken(ss));
-        else if(token == "movetime")
-            movetime = std::stoi(getNextToken(ss));
-        else if(token == "wtime")
-            wtime = std::stoi(getNextToken(ss));
-        else if(token == "btime")
-            btime = std::stoi(getNextToken(ss));
-        else if(token == "winc")
-            winc = std::stoi(getNextToken(ss));
-        else if(token == "binc")
-            binc = std::stoi(getNextToken(ss));
-        else if(token == "movestogo")
-            movestogo = std::stoi(getNextToken(ss));
-        else if(token == "mate")
-            mate = std::stoi(getNextToken(ss));
-        else if(token == "infinite")
-            infinite = true;
-        else if(token == "ponder")
-            ponder = true;
+            params.nodes = std::stoull(getNextToken(ss));
+        else if(token == "searchmoves") {
+            Array<Move, 256> legalMoves;
+            board.generateLegalMoves(legalMoves);
+
+            size_t ssPos = ss.tellg();
+            token = getNextToken(ss);
+
+            params.searchmoves.clear();
+
+            while(ss.good()) {
+                Move move;
+                for(Move m : legalMoves) {
+                    if(m.toString() == token) {
+                        move = m;
+                        break;
+                    }
+                }
+
+                if(move.exists())
+                    params.searchmoves.push_back(move);
+                else
+                    break;
+
+                ssPos = ss.tellg();
+                token = getNextToken(ss);
+            }
+
+            ss.seekg(ssPos);
+            
+            params.useSearchmoves = true;
+        } else if(token == "movetime") {
+            params.movetime = std::stoul(getNextToken(ss));
+            params.useMovetime = true;
+            params.useWBTime = false;
+            params.infinite = false;
+        } else if(token == "wtime") {
+            params.wtime = std::stoul(getNextToken(ss));
+            params.useWBTime = true;
+            params.useMovetime = false;
+            params.infinite = false;
+        } else if(token == "btime") {
+            params.btime = std::stoul(getNextToken(ss));
+            params.useWBTime = true;
+            params.useMovetime = false;
+            params.infinite = false;
+        } else if(token == "winc") {
+            params.winc = std::stoul(getNextToken(ss));
+            params.useWBTime = true;
+            params.useMovetime = false;
+            params.infinite = false;
+        } else if(token == "binc") {
+            params.binc = std::stoul(getNextToken(ss));
+            params.useWBTime = true;
+            params.useMovetime = false;
+            params.infinite = false;
+        } else if(token == "movestogo") {
+            params.movestogo = std::stoul(getNextToken(ss));
+            params.useWBTime = true;
+            params.useMovetime = false;
+            params.infinite = false;
+        } else if(token == "mate") {
+            params.mate = std::stoul(getNextToken(ss));
+            params.useMovetime = false;
+            params.useWBTime = false;
+            params.infinite = false;
+        } else if(token == "infinite") {
+            params.infinite = true;
+            params.ponder = false;
+            params.useMovetime = false;
+            params.useWBTime = false;
+        } else if(token == "ponder") {
+            params.ponder = true;
+            params.infinite = false;
+        }
     }
 
     if(debug) {
-        std::cout << "info string depth: " << depth << std::endl;
-        std::cout << "info string nodes: " << nodes << std::endl;
-        std::cout << "info string movetime: " << movetime << std::endl;
-        std::cout << "info string wtime: " << wtime << std::endl;
-        std::cout << "info string btime: " << btime << std::endl;
-        std::cout << "info string winc: " << winc << std::endl;
-        std::cout << "info string binc: " << binc << std::endl;
-        std::cout << "info string movestogo: " << movestogo << std::endl;
-        std::cout << "info string mate: " << mate << std::endl;
-        std::cout << "info string infinite: " << infinite << std::endl;
-        std::cout << "info string ponder: " << ponder << std::endl;
+        std::cout << "info string depth: " << params.depth << std::endl;
+        std::cout << "info string nodes: " << params.nodes << std::endl;
+        std::cout << "info string movetime: " << params.movetime << std::endl;
+        std::cout << "info string wtime: " << params.wtime << std::endl;
+        std::cout << "info string btime: " << params.btime << std::endl;
+        std::cout << "info string winc: " << params.winc << std::endl;
+        std::cout << "info string binc: " << params.binc << std::endl;
+        std::cout << "info string movestogo: " << params.movestogo << std::endl;
+        std::cout << "info string mate: " << params.mate << std::endl;
+        std::cout << "info string infinite: " << params.infinite << std::endl;
+        std::cout << "info string ponder: " << params.ponder << std::endl;
     }
 
-    int time = movetime;
-    bool timeControl = false;
+    lastNodeOutput = std::chrono::steady_clock::now();
 
-    if(time == -1) {
-        time = board.getSideToMove() == WHITE ? wtime : btime;
-        timeControl = true;
-    }
-
-    auto callback = [depth, nodes, mate, time, timeControl]() {
-        uint64_t nodesSearched = engine.getNodesSearched();
-        int16_t maxDepthReached = engine.getMaxDepthReached();
-        int64_t timeElapsed = engine.getElapsedTime();
-
-        if(lastNodeOutput + TIME_BETWEEN_NODE_OUTPUT < timeElapsed) {
-            lastNodeOutput = timeElapsed;
-
-            std::cout << "info nodes " << nodesSearched <<
-            " nps " << (uint64_t)(nodesSearched / (timeElapsed / 1000.0))
-            << " hashfull " << (uint64_t)((double)engine.getHashTableSize() / engine.getHashTableCapacity() * 1000.0)
-            << std::endl;
-        }
-
-        if(nodesSearched >= nodes) {
-            engine.stop();
-            return;
-        } else if(maxDepthReached >= depth) {
-            engine.stop();
-            return;
-        }
-
-        int16_t score = engine.getBestMoveScore();
-        if(isMateScore(score)) {
-            int16_t mateIn = isMateIn(score);
-            if(mateIn <= mate) {
-                engine.stop();
-                return;
-            }
-        }
-
-        // Überprüfe, ob neue Befehle vorliegen
-        if(hasReceivedInput()) {
-            std::string command = getSkippedInput();
-
-            if(command == "stop") {
-                handleStopCommand();
-            } else if(command == "isready") {
-                handleIsReadyCommand();
-            } else if(command == "ponderhit") {
-                if(debug)
-                    std::cout << "info string new time " << time <<
-                        ", timeControl " << timeControl << std::endl;
-                
-                engine.setTime(time, timeControl);
-
-                handlePonderHitCommand();
-            } else if(command == "quit") {
-                quitFlag = true;
-                engine.stop();
-            }
-        }
-    };
-
-    engine.setCheckupCallback(callback);
-
-    lastNodeOutput = 0;
-
-    if(infinite || ponder) {
-        time = 0;
-        timeControl = false;
-    }
-
-    engine.search(time, timeControl);
+    engine.search(params);
 }
 
 void handleStopCommand() {
