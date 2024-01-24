@@ -12,10 +12,10 @@ TranspositionTable::TranspositionTable(size_t capacity) {
 
     // Wir reservieren den Speicher für die Tabelle.
     // Falls SSE4.1 verfügbar ist, reservieren wir den Speicher
-    // mit 32-Byte Ausrichtung, damit wir die Einträge mit
+    // mit 16-Byte Ausrichtung, damit wir die Einträge mit
     // einer Vektorinstruktion laden und speichern können.
     #if defined(__SSE4_1__)
-        entries = new (std::align_val_t(32)) Entry[capacity];
+        entries = new (std::align_val_t(16)) Entry[capacity];
     #else
         entries = new Entry[capacity];
     #endif
@@ -139,10 +139,10 @@ void TranspositionTable::resize(size_t capacity) {
 
     // Wir reservieren neuen Speicher für die Tabelle.
     // Falls SSE4.1 verfügbar ist, reservieren wir den Speicher
-    // mit 32-Byte Ausrichtung, damit wir die Einträge mit
+    // mit 16-Byte Ausrichtung, damit wir die Einträge mit
     // einer Vektorinstruktion laden und speichern können.
     #if defined(__SSE4_1__)
-        entries = new (std::align_val_t(32)) Entry[capacity];
+        entries = new (std::align_val_t(16)) Entry[capacity];
     #else
         entries = new Entry[capacity];
     #endif
