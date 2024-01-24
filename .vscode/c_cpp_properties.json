@@ -10,6 +10,9 @@
                 "UNICODE",
                 "_UNICODE",
                 "__AVX2__",
+                "__AVX__",
+                "__SSE4_2__",
+                "__SSE4_1__"
             ],
             "windowsSdkVersion": "10.0.17763.0",
             "compilerPath": "C:/MinGW/bin/g++.exe",
