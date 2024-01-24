@@ -1,8 +1,11 @@
 #ifndef PVS_ENGINE_H
 #define PVS_ENGINE_H
 
+#include <array>
 #include <atomic>
 #include <chrono>
+#include <mutex>
+#include <thread>
 
 #include "core/engine/search/SearchDefinitions.h"
 #include "core/engine/search/Variation.h"
@@ -13,25 +16,13 @@
 #include "uci/UCI.h"
 
 class PVSEngine {
-    public:
-        struct MoveScorePair {
-            Move move;
-            int16_t score;
-        };
-
     private:
-        Board* board;
-        Evaluator& evaluator;
+        Board& board;
 
         std::vector<Variation> variations;
         uint32_t numVariations = 0;
 
         TranspositionTable transpositionTable;
-        Move killerMoves[MAX_PLY][2];
-        int32_t historyTable[2][64][64];
-        Array<Move, MAX_PLY> pvTable[MAX_PLY];
-
-        Board boardCopy;
 
         std::chrono::system_clock::time_point lastCheckupTime;
         std::chrono::milliseconds checkupInterval;
@@ -41,7 +32,8 @@ class PVSEngine {
         std::atomic_bool stopFlag = true;
         bool isTimeControlled = false;
         std::atomic_bool isPondering = false;
-        std::chrono::system_clock::time_point startTime;
+        std::atomic<std::chrono::system_clock::time_point> startTime;
+        std::atomic<std::chrono::system_clock::time_point> stopTime;
         std::chrono::milliseconds timeMin;
         std::chrono::milliseconds timeMax;
 
@@ -56,20 +48,12 @@ class PVSEngine {
         Array<MoveStackEntry, MAX_PLY> moveStack;
         Array<MoveScorePair, 5> pvHistory;
 
-        int16_t pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta, bool allowNullMove, uint8_t nodeType, const Array<Move, 256>& searchMoves = {});
-        int16_t quiescence(int16_t ply, int16_t alpha, int16_t beta);
+        std::vector<std::thread> threads;
 
-        void collectPVLine(int16_t score);
-        int16_t determineExtension();
-        int16_t determineReduction(int16_t moveCount, uint8_t nodeType);
+        void startHelperThreads(size_t numThreads, const UCI::SearchParams& params,
+                                int16_t depth, int16_t alpha, int16_t beta);
 
-        bool deactivateNullMove();
-
-        void scoreMoves(const Array<Move, 256>& moves, uint16_t ply);
-        void scoreMovesForQuiescence(const Array<Move, 256>& moves, uint16_t ply);
-
-        MoveScorePair selectNextMove(const Array<Move, 256>& searchMoves, uint16_t ply, bool useIID, int16_t depth);
-        MoveScorePair selectNextMoveInQuiescence(uint16_t ply, int16_t minScore = MIN_SCORE + 1);
+        void stopHelperThreads();
 
         void calculateTimeLimits(const UCI::SearchParams& params);
         bool extendSearch(bool isTimeControlled);
@@ -79,7 +63,7 @@ class PVSEngine {
         }
 
         inline void updateStopFlag() {
-            if(std::chrono::system_clock::now() >= startTime + timeMax &&
+            if(std::chrono::system_clock::now() >= startTime.load() + timeMax &&
                maxDepthReached > 0)
                 stopFlag.store(true);
         }
@@ -94,9 +78,9 @@ class PVSEngine {
         }
 
     public:
-        PVSEngine(Evaluator& evaluator, uint32_t numVariations = 1,
+        PVSEngine(Board& board, uint32_t numVariations = 1,
                   uint32_t checkupInterval = 2, std::function<void()> checkupCallback = nullptr)
-                : board(&evaluator.getBoard()), evaluator(evaluator), numVariations(numVariations),
+                : board(board), numVariations(numVariations),
                   checkupInterval(checkupInterval), checkupCallback(checkupCallback) {}
 
         PVSEngine(const PVSEngine& other) = delete;
@@ -125,8 +109,7 @@ class PVSEngine {
         }
 
         inline void setBoard(Board& board) {
-            this->board = &board;
-            evaluator.setBoard(board);
+            this->board = board;
         }
 
         inline void setNumVariations(uint32_t numVariations) {
@@ -142,7 +125,7 @@ class PVSEngine {
         }
 
         inline Board& getBoard() {
-            return *board;
+            return board;
         }
 
         inline Move getBestMove() {
@@ -170,7 +153,7 @@ class PVSEngine {
         }
 
         inline int64_t getElapsedTime() const {
-            return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime).count();
+            return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime.load()).count();
         }
 
         inline bool isSearching() const {
@@ -178,130 +161,9 @@ class PVSEngine {
         }
 
     private:
-        constexpr void clearMoveStack(uint16_t ply) {
-            moveStack[ply].moveScorePairs.clear();
-            moveStack[ply].hashMove = Move::nullMove();
-        }
-
-        constexpr void clearKillerMoves() {
-            for(size_t i = 0; i < MAX_PLY; i++) {
-                killerMoves[i][0] = Move::nullMove();
-                killerMoves[i][1] = Move::nullMove();
-            }
-        }
-
-        constexpr void addKillerMove(uint16_t ply, Move move) {
-            if(move != killerMoves[ply][0]) {
-                killerMoves[ply][1] = killerMoves[ply][0];
-                killerMoves[ply][0] = move;
-            }
-        }
-
-        constexpr bool isKillerMove(uint16_t ply, Move move) {
-            return move == killerMoves[ply][0] || move == killerMoves[ply][1];
-        }
-
-        constexpr void clearHistoryTable() {
-            for(size_t i = 0; i < 64; i++)
-                for(size_t j = 0; j < 64; j++) {
-                    historyTable[0][i][j] = 0;
-                    historyTable[1][i][j] = 0;
-                }
-        }
-
-        constexpr void incrementHistoryScore(Move move, int16_t depth) {
-            historyTable[boardCopy.getSideToMove() / COLOR_MASK]
-                        [move.getOrigin()]
-                        [move.getDestination()] += (depth / ONE_PLY) * (depth / ONE_PLY);
-        }
-
-        constexpr void decrementHistoryScore(Move move, int16_t depth) {
-            historyTable[boardCopy.getSideToMove() / COLOR_MASK]
-                        [move.getOrigin()]
-                        [move.getDestination()] -= (depth / ONE_PLY);
-        }
-
-        constexpr int32_t getHistoryScore(Move move) {
-            return historyTable[boardCopy.getSideToMove() / COLOR_MASK]
-                               [move.getOrigin()]
-                               [move.getDestination()];
-        }
-
-        constexpr int32_t getHistoryScore(Move move, int32_t side) {
-            return historyTable[side / COLOR_MASK]
-                               [move.getOrigin()]
-                               [move.getDestination()];
-        }
-
-        constexpr void clearPVTable() {
-            for(size_t i = 0; i < MAX_PLY; i++)
-                pvTable[i].clear();
-        }
-
-        constexpr void clearPVTable(uint16_t ply) {
-            pvTable[ply].clear();
-        }
-
-        inline void addPVMove(uint16_t ply, Move move) {
-            pvTable[ply].clear();
-            pvTable[ply].push_back(move);
-
-            if(ply < MAX_PLY - 1)
-                pvTable[ply].push_back(pvTable[ply + 1]);
-        }
-
-        constexpr Array<Move, MAX_PLY>& getPVLine() {
-            return pvTable[0];
-        }
-
         constexpr void clearPVHistory() {
             pvHistory.clear();
         }
-
-        static constexpr int16_t DELTA_MARGIN = 1000;
-
-        /**
-         * @brief Masken unm Sentry-Bauern zu erkennen.
-         * Sentry-Bauern sind Bauern, die gegnerische Bauern auf dem Weg zur Aufwertung blockieren oder schlagen können.
-         */
-        static constexpr Bitboard sentryMasks[2][64] = {
-            // White
-            {
-                    0x303030303030300,0x707070707070700,0xE0E0E0E0E0E0E00,0x1C1C1C1C1C1C1C00,0x3838383838383800,0x7070707070707000,0xE0E0E0E0E0E0E000,0xC0C0C0C0C0C0C000,
-                    0x303030303030000,0x707070707070000,0xE0E0E0E0E0E0000,0x1C1C1C1C1C1C0000,0x3838383838380000,0x7070707070700000,0xE0E0E0E0E0E00000,0xC0C0C0C0C0C00000,
-                    0x303030303000000,0x707070707000000,0xE0E0E0E0E000000,0x1C1C1C1C1C000000,0x3838383838000000,0x7070707070000000,0xE0E0E0E0E0000000,0xC0C0C0C0C0000000,
-                    0x303030300000000,0x707070700000000,0xE0E0E0E00000000,0x1C1C1C1C00000000,0x3838383800000000,0x7070707000000000,0xE0E0E0E000000000,0xC0C0C0C000000000,
-                    0x303030000000000,0x707070000000000,0xE0E0E0000000000,0x1C1C1C0000000000,0x3838380000000000,0x7070700000000000,0xE0E0E00000000000,0xC0C0C00000000000,
-                    0x303000000000000,0x707000000000000,0xE0E000000000000,0x1C1C000000000000,0x3838000000000000,0x7070000000000000,0xE0E0000000000000,0xC0C0000000000000,
-                    0x300000000000000,0x700000000000000,0xE00000000000000,0x1C00000000000000,0x3800000000000000,0x7000000000000000,0xE000000000000000,0xC000000000000000,
-                    0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
-            },
-            // Black
-            {
-                    0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,
-                    0x3,0x7,0xE,0x1C,0x38,0x70,0xE0,0xC0,
-                    0x303,0x707,0xE0E,0x1C1C,0x3838,0x7070,0xE0E0,0xC0C0,
-                    0x30303,0x70707,0xE0E0E,0x1C1C1C,0x383838,0x707070,0xE0E0E0,0xC0C0C0,
-                    0x3030303,0x7070707,0xE0E0E0E,0x1C1C1C1C,0x38383838,0x70707070,0xE0E0E0E0,0xC0C0C0C0,
-                    0x303030303,0x707070707,0xE0E0E0E0E,0x1C1C1C1C1C,0x3838383838,0x7070707070,0xE0E0E0E0E0,0xC0C0C0C0C0,
-                    0x30303030303,0x70707070707,0xE0E0E0E0E0E,0x1C1C1C1C1C1C,0x383838383838,0x707070707070,0xE0E0E0E0E0E0,0xC0C0C0C0C0C0,
-                    0x3030303030303,0x7070707070707,0xE0E0E0E0E0E0E,0x1C1C1C1C1C1C1C,0x38383838383838,0x70707070707070,0xE0E0E0E0E0E0E0,0xC0C0C0C0C0C0C0,
-            }
-        };
-};
-
-template<>
-struct std::greater<PVSEngine::MoveScorePair> {
-    bool operator()(const PVSEngine::MoveScorePair& lhs, const PVSEngine::MoveScorePair& rhs) const {
-        return lhs.score > rhs.score;
-    }
-};
-
-template<>
-struct std::less<PVSEngine::MoveScorePair> {
-    bool operator()(const PVSEngine::MoveScorePair& lhs, const PVSEngine::MoveScorePair& rhs) const {
-        return lhs.score < rhs.score;
-    }
 };
 
 #endif

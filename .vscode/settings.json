@@ -82,6 +82,9 @@
         "numeric": "cpp",
         "numbers": "cpp",
         "unordered_set": "cpp",
-        "optional": "cpp"
+        "optional": "cpp",
+        "condition_variable": "cpp",
+        "semaphore": "cpp",
+        "stop_token": "cpp"
     }
 }

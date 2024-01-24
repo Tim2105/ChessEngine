@@ -12,20 +12,13 @@
 #include <sstream>
 
 Board board;
-
-#if defined(USE_HCE)
-StaticEvaluator evaluator(board);
-#else
-NNUEEvaluator evaluator(board);
-#endif
-
-PVSEngine engine(evaluator);
+PVSEngine engine(board);
 
 void changeHashSize(std::string value) {
     engine.setHashTableCapacity(std::stoull(value) * (1 << 20) / TT_ENTRY_SIZE);
 }
 
-UCI::Options options = {
+UCI::Options UCI::options = {
     UCI::Option("Hash", std::to_string(TT_DEFAULT_CAPACITY * TT_ENTRY_SIZE / (1 << 20)), "1", "16384", changeHashSize),
     UCI::Option("Threads", "1", "1", "128"),
     UCI::Option("MultiPV", "1", "1", "256"),
@@ -133,7 +126,7 @@ void handleUCICommand() {
     std::cout << "id author " << UCI::ENGINE_AUTHOR << std::endl;
 
     // Gebe alle Optionen aus
-    for(UCI::Option& option : options) {
+    for(UCI::Option& option : UCI::options) {
         std::cout << "option name " << option.getName();
 
         if(option.getType() == UCI::OptionType::Check)
@@ -182,9 +175,7 @@ void handleSetOptionCommand(std::string args) {
     }
 
     try {
-        UCI::Option& option = options[name];
-
-        std::cout << option.getName() << std::endl;
+        UCI::Option& option = UCI::options[name];
 
         if(option.getType() == UCI::OptionType::Check)
             option = value == "true";

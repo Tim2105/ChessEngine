@@ -17,6 +17,7 @@ class NNUEEvaluator: public Evaluator {
 
     public:
         NNUEEvaluator(Board& board) : Evaluator(board), endgameEvaluator(board) {
+            networkInstance.initializeFromBoard(board);
             initializeMaterialDifference();
             initializeGamePhase();
         }
