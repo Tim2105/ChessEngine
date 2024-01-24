@@ -86,6 +86,13 @@ class TranspositionTable {
         std::atomic<size_t> entriesWritten;
     
     public:
+        /**
+         * @brief Konstruktor für Transpositionstabellen mit gegebener Kapazität.
+         * 
+         * @param capacity Die Kapazität der Tabelle.
+         * 
+         * @throws Wenn nicht genügend Speicher verfügbar ist.
+         */
         TranspositionTable(size_t capacity = TT_DEFAULT_CAPACITY);
         ~TranspositionTable();
 
@@ -95,11 +102,11 @@ class TranspositionTable {
         TranspositionTable(TranspositionTable&& other);
         TranspositionTable& operator=(TranspositionTable&& other);
 
-        constexpr size_t getCapacity() const {
+        constexpr size_t getCapacity() const noexcept {
             return capacity;
         }
 
-        inline size_t getEntriesWritten() const {
+        inline size_t getEntriesWritten() const noexcept {
             return entriesWritten.load();
         }
 
@@ -111,7 +118,7 @@ class TranspositionTable {
          * @param hash Der Hashwert des Knotens.
          * @param entry Der Eintrag.
          */
-        void put(uint64_t hash, const TranspositionTableEntry& entry);
+        void put(uint64_t hash, const TranspositionTableEntry& entry) noexcept;
 
         /**
          * @brief Sucht einen Eintrag in der Transpositionstabelle
@@ -122,15 +129,17 @@ class TranspositionTable {
          * 
          * @return true, wenn ein Eintrag gefunden wurde.
          */
-        bool probe(uint64_t hash, TranspositionTableEntry& entry);
+        bool probe(uint64_t hash, TranspositionTableEntry& entry) const noexcept;
 
         /**
          * @brief Entfernt alle Einträge aus der Transpositionstabelle.
          * 
+         * @throws Wenn nicht genügend Speicher verfügbar ist.
+         * 
          * @note Diese Methode ist nicht thread-sicher und sollte nie während
          * einer laufenden Suche aufgerufen werden.
          */
-        void clear();
+        void clear() noexcept;
 
         /**
          * @brief Ändert die Kapazität der Transpositionstabelle.

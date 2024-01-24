@@ -1,7 +1,8 @@
 #include "core/utils/tables/TranspositionTable.h"
 
-#include <stdalign.h>
 #include <immintrin.h>
+#include <new>
+#include <stdalign.h>
 
 TranspositionTable::TranspositionTable(size_t capacity) {
     // Die Kapazität muss mindestens 1 sein (sonst rechnen wir später Modulo 0).
@@ -52,7 +53,7 @@ TranspositionTable& TranspositionTable::operator=(TranspositionTable&& other) {
     return *this;
 }
 
-void TranspositionTable::put(uint64_t hash, const TranspositionTableEntry& entry) {
+void TranspositionTable::put(uint64_t hash, const TranspositionTableEntry& entry) noexcept {
     // Wir berechnen den Index des Buckets, in dem wir den Eintrag speichern wollen.
     size_t index = hash % capacity;
     
@@ -91,7 +92,7 @@ void TranspositionTable::put(uint64_t hash, const TranspositionTableEntry& entry
     }
 }
 
-bool TranspositionTable::probe(uint64_t hash, TranspositionTableEntry& entry) {
+bool TranspositionTable::probe(uint64_t hash, TranspositionTableEntry& entry) const noexcept {
     // Wir berechnen den Index des Buckets, in dem ein Eintrag zu dem Hashwert
     // gespeichert sein würde (wenn er existiert).
     size_t index = hash % capacity;
@@ -126,7 +127,7 @@ bool TranspositionTable::probe(uint64_t hash, TranspositionTableEntry& entry) {
     return false;
 }
 
-void TranspositionTable::clear() {
+void TranspositionTable::clear() noexcept {
     std::fill(entries, entries + capacity, Entry{0, 0});
     entriesWritten.store(0);
 }
@@ -137,15 +138,35 @@ void TranspositionTable::resize(size_t capacity) {
 
     delete[] entries;
 
-    // Wir reservieren neuen Speicher für die Tabelle.
-    // Falls SSE4.1 verfügbar ist, reservieren wir den Speicher
-    // mit 16-Byte Ausrichtung, damit wir die Einträge mit
-    // einer Vektorinstruktion laden und speichern können.
-    #if defined(__SSE4_1__)
-        entries = new (std::align_val_t(16)) Entry[capacity];
-    #else
-        entries = new Entry[capacity];
-    #endif
+    try {
+        // Wir reservieren neuen Speicher für die Tabelle.
+        // Falls SSE4.1 verfügbar ist, reservieren wir den Speicher
+        // mit 16-Byte Ausrichtung, damit wir die Einträge mit
+        // einer Vektorinstruktion laden und speichern können.
+        #if defined(__SSE4_1__)
+            entries = new (std::align_val_t(16)) Entry[capacity];
+        #else
+            entries = new Entry[capacity];
+        #endif
+    } catch(std::bad_alloc& e) {
+        // Es ist nicht genügend Speicher verfügbar.
+        
+        // Wir stellen sicher, dass wir die Kapazität der alten Tabelle wiederherstellen.
+        // Wir haben jetzt zwar alle alten Einträge verloren, aber das ist besser als
+        // überhaupt keine Tabelle zu haben.
+        #if defined(__SSE4_1__)
+            entries = new (std::align_val_t(16)) Entry[this->capacity];
+        #else
+            entries = new Entry[this->capacity];
+        #endif
+
+        entriesWritten.store(0);
+        // Initialisiere den neuen Speicher mit leeren Einträgen.
+        std::fill(entries, entries + this->capacity, Entry{0, 0});
+
+        // Leite die Exception weiter.
+        throw e;
+    }
 
     this->capacity = capacity;
     entriesWritten.store(0);
