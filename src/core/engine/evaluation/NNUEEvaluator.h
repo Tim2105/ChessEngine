@@ -4,12 +4,11 @@
 #include "core/chess/Referee.h"
 #include "core/engine/evaluation/EndgameEvaluator.h"
 #include "core/engine/evaluation/SimpleUpdatedEvaluator.h"
-#include "core/utils/nnue/NNUENetwork.h"
+#include "core/utils/nnue/NNUEInstance.h"
 
 class NNUEEvaluator: public Evaluator {
-
     private:
-        NNUE::Network network;
+        NNUE::Instance networkInstance;
         EndgameEvaluator endgameEvaluator;
 
         int32_t materialDifference = 0;
@@ -18,13 +17,6 @@ class NNUEEvaluator: public Evaluator {
 
     public:
         NNUEEvaluator(Board& board) : Evaluator(board), endgameEvaluator(board) {
-            initializeMaterialDifference();
-            initializeGamePhase();
-        }
-
-        NNUEEvaluator(Board& board, std::istream& networkStream) : Evaluator(board), endgameEvaluator(board) {
-            networkStream >> network;
-            network.initializeFromBoard(board);
             initializeMaterialDifference();
             initializeGamePhase();
         }
@@ -41,7 +33,7 @@ class NNUEEvaluator: public Evaluator {
             if(gamePhase >= 1.0 && std::abs(materialDifference) >= 400)
                 return endgameEvaluator.evaluate() * STATIC_EVAL_MULTIPLIER;
 
-            return network.evaluate(b->getSideToMove());
+            return networkInstance.evaluate(b->getSideToMove());
         }
 
         inline void updateBeforeMove(Move move) override {
@@ -71,11 +63,11 @@ class NNUEEvaluator: public Evaluator {
         }
 
         inline void updateAfterMove() override {
-            network.updateAfterMove(*b);
+            networkInstance.updateAfterMove(*b);
         }
 
         inline void updateBeforeUndo() override {
-            network.undoMove();
+            networkInstance.undoMove();
         }
 
         inline void updateAfterUndo(Move move) override {
@@ -107,15 +99,10 @@ class NNUEEvaluator: public Evaluator {
         inline void setBoard(Board& board) override {
             Evaluator::setBoard(board);
             endgameEvaluator.setBoard(board);
-            network.clearPastAccumulators();
-            network.initializeFromBoard(board);
+            networkInstance.clearPastAccumulators();
+            networkInstance.initializeFromBoard(board);
             initializeMaterialDifference();
             initializeGamePhase();
-        }
-
-        friend std::istream& operator>>(std::istream& is, NNUEEvaluator& evaluator) {
-            is >> evaluator.network;
-            return is;
         }
 
     private:

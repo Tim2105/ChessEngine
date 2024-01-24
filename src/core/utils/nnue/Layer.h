@@ -51,11 +51,11 @@ namespace NNUE {
                 return weights[in][out];
             }
 
-            constexpr const BIAS_T* getBiasPtr() noexcept {
+            constexpr const BIAS_T* getBiasPtr() const noexcept {
                 return bias;
             }
 
-            constexpr const WEIGHT_T* getWeightPtr(size_t in) noexcept {
+            constexpr const WEIGHT_T* getWeightPtr(size_t in) const noexcept {
                 return weights[in];
             }
     };
@@ -114,11 +114,11 @@ namespace NNUE {
                 return weights[out][in];
             }
 
-            constexpr const BIAS_T* getBiasPtr() noexcept {
+            constexpr const BIAS_T* getBiasPtr() const noexcept {
                 return bias;
             }
 
-            constexpr const WEIGHT_T* getWeightPtr(size_t in) noexcept {
+            constexpr const WEIGHT_T* getWeightPtr(size_t in) const noexcept {
                 return weights[in];
             }
     };
@@ -170,11 +170,11 @@ namespace NNUE {
                 return weights[out][in];
             }
 
-            constexpr const int32_t* getBiasPtr() noexcept {
+            constexpr const int32_t* getBiasPtr() const noexcept {
                 return bias;
             }
 
-            constexpr const int8_t* getWeightPtr(size_t in) noexcept {
+            constexpr const int8_t* getWeightPtr(size_t in) const noexcept {
                 return weights[in];
             }
     };
@@ -242,16 +242,6 @@ namespace NNUE {
     
     template <size_t IN_SIZE, size_t OUT_SIZE>
     using DenseLayer = RowMajorLinearLayerI8ToI32<IN_SIZE, OUT_SIZE>;
-
-    constexpr int8_t clippedReLU(int16_t x) noexcept {
-        return std::clamp(x, (int16_t)0, (int16_t)127);
-    }
-
-    constexpr int8_t scaledClippedReLU(int32_t x) noexcept {
-        return std::clamp(x >> 6, 0, 127);
-    }
-
-    // using ScaledClippedReLULayer = ActivationLayer<32, int32_t, int8_t, scaledClippedReLU>;
 }
 
 #endif

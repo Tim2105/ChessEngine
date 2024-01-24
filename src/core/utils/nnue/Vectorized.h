@@ -45,6 +45,21 @@ inline void linearI8ToI32(const int8_t* in, const int8_t* weights, const int32_t
 
 constexpr size_t REQUIRED_ALIGNMENT = 32;
 
+inline void copy32i8(const int8_t* src, int8_t* dst) noexcept {
+    __m256i srcVec = _mm256_load_si256((__m256i*)src);
+    _mm256_store_si256((__m256i*)dst, srcVec);
+}
+
+inline void copy16i16(const int16_t* src, int16_t* dst) noexcept {
+    __m256i srcVec = _mm256_load_si256((__m256i*)src);
+    _mm256_store_si256((__m256i*)dst, srcVec);
+}
+
+inline void copy8i32(const int32_t* src, int32_t* dst) noexcept {
+    __m256i srcVec = _mm256_load_si256((__m256i*)src);
+    _mm256_store_si256((__m256i*)dst, srcVec);
+}
+
 inline void add32i8(const int8_t* src, int8_t* dst) noexcept {
     __m256i srcVec = _mm256_load_si256((__m256i*)src);
     __m256i dstVec = _mm256_load_si256((__m256i*)dst);
@@ -239,6 +254,27 @@ inline void linearI8ToI32(const int8_t* in, const int8_t* weights,
 #include <smmintrin.h>
 
 constexpr size_t REQUIRED_ALIGNMENT = 16;
+
+inline void copy32i8(const int8_t* src, int8_t* dst) noexcept {
+    __m128i srcVec1 = _mm_load_si128((__m128i*)src);
+    __m128i srcVec2 = _mm_load_si128((__m128i*)(src + 16));
+    _mm_store_si128((__m128i*)dst, srcVec1);
+    _mm_store_si128((__m128i*)(dst + 16), srcVec2);
+}
+
+inline void copy16i16(const int16_t* src, int16_t* dst) noexcept {
+    __m128i srcVec1 = _mm_load_si128((__m128i*)src);
+    __m128i srcVec2 = _mm_load_si128((__m128i*)(src + 8));
+    _mm_store_si128((__m128i*)dst, srcVec1);
+    _mm_store_si128((__m128i*)(dst + 8), srcVec2);
+}
+
+inline void copy8i32(const int32_t* src, int32_t* dst) noexcept {
+    __m128i srcVec1 = _mm_load_si128((__m128i*)src);
+    __m128i srcVec2 = _mm_load_si128((__m128i*)(src + 4));
+    _mm_store_si128((__m128i*)dst, srcVec1);
+    _mm_store_si128((__m128i*)(dst + 4), srcVec2);
+}
 
 inline void add32i8(const int8_t* src, int8_t* dst) noexcept {
     __m128i srcVec1 = _mm_load_si128((__m128i*)src);
@@ -457,6 +493,21 @@ inline void linearI8ToI32(const int8_t* in, const int8_t* weights,
 #include <algorithm>
 
 constexpr size_t REQUIRED_ALIGNMENT = 1;
+
+inline void copy32i8(const int8_t* src, int8_t* dst) noexcept {
+    for(size_t i = 0; i < 32; i++)
+        dst[i] = src[i];
+}
+
+inline void copy16i16(const int16_t* src, int16_t* dst) noexcept {
+    for(size_t i = 0; i < 16; i++)
+        dst[i] = src[i];
+}
+
+inline void copy8i32(const int32_t* src, int32_t* dst) noexcept {
+    for(size_t i = 0; i < 8; i++)
+        dst[i] = src[i];
+}
 
 inline void add32i8(const int8_t* src, int8_t* dst) noexcept {
     for(size_t i = 0; i < 32; i++)
