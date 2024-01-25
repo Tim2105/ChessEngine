@@ -7,6 +7,7 @@
 #include <mutex>
 #include <thread>
 
+#include "core/engine/search/PVSSearchInstance.h"
 #include "core/engine/search/SearchDefinitions.h"
 #include "core/engine/search/Variation.h"
 #include "core/engine/evaluation/Evaluator.h"
@@ -37,7 +38,7 @@ class PVSEngine {
         std::chrono::milliseconds timeMin;
         std::chrono::milliseconds timeMax;
 
-        std::atomic<uint64_t> nodesSearched = 0;
+        std::atomic_uint64_t nodesSearched = 0;
         int16_t maxDepthReached = 0;
 
         struct MoveStackEntry {
@@ -49,10 +50,12 @@ class PVSEngine {
         Array<MoveScorePair, 5> pvHistory;
 
         std::vector<std::thread> threads;
+        std::vector<PVSSearchInstance*> instances;
 
-        void startHelperThreads(size_t numThreads, const UCI::SearchParams& params,
-                                int16_t depth, int16_t alpha, int16_t beta);
+        void createHelperThreads(size_t numThreads, const UCI::SearchParams& params);
+        void destroyHelperThreads();
 
+        void startHelperThreads(int16_t depth, int16_t alpha, int16_t beta);
         void stopHelperThreads();
 
         void calculateTimeLimits(const UCI::SearchParams& params);

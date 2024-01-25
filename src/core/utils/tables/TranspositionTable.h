@@ -68,7 +68,7 @@ struct Entry {
 };
 
 static constexpr size_t TT_ENTRY_SIZE = sizeof(Entry);
-static constexpr size_t TT_DEFAULT_CAPACITY = 1 << 20;
+static constexpr size_t TT_DEFAULT_CAPACITY = 1 << 22;
 
 /**
  * @brief Eine, nicht synchronisierte aber thread-sichere (put und probe),

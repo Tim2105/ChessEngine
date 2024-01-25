@@ -19,7 +19,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
     TranspositionTableEntry entry;
     if(nodeType != PV_NODE && transpositionTable.probe(board.getHashValue(), entry)) {
-        if(entry.depth >= depth) {
+        if(entry.depth * ONE_PLY >= depth) {
             if(entry.type == PV_NODE) {
                 return entry.score;
             } else if(entry.type == CUT_NODE) {
@@ -135,7 +135,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
                 move,
                 score,
                 board.getPly(),
-                (uint8_t)depth,
+                (uint8_t)(depth / ONE_PLY),
                 CUT_NODE
             );
 
@@ -180,7 +180,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
         bestMove,
         bestScore,
         board.getPly(),
-        (uint8_t)depth,
+        (uint8_t)(depth / ONE_PLY),
         actualNodeType
     };
 
@@ -327,7 +327,7 @@ void PVSSearchInstance::scoreMoves(const Array<Move, 256>& moves, uint16_t ply) 
             if(isKillerMove(ply, move))
                 score += KILLER_MOVE_SCORE;
             else
-                score += std::clamp(getHistoryScore(move) / (maxDepthReached + 1),
+                score += std::clamp(getHistoryScore(move) / currentSearchDepth,
                                     MIN_SCORE + 1,
                                     KILLER_MOVE_SCORE - 2);
         }

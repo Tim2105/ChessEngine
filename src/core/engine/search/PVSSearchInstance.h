@@ -13,6 +13,7 @@
 #include <atomic>
 #include <chrono>
 #include <functional>
+#include <cstdalign>
 
 class PVSSearchInstance {
     private:
@@ -32,9 +33,9 @@ class PVSSearchInstance {
 
         TranspositionTable& transpositionTable;
 
-        Move killerMoves[MAX_PLY][2];
-        int32_t historyTable[2][64][64];
-        Array<Move, MAX_PLY> pvTable[MAX_PLY];
+        alignas(64) Move killerMoves[MAX_PLY][2];
+        alignas(64) int32_t historyTable[2][64][64];
+        alignas(64) Array<Move, MAX_PLY> pvTable[MAX_PLY];
 
         std::atomic_bool& stopFlag;
 
@@ -43,7 +44,7 @@ class PVSSearchInstance {
 
         std::atomic_uint64_t& nodesSearched;
         uint64_t locallySearchedNodes = 0;
-        int16_t maxDepthReached = 0;
+        int16_t currentSearchDepth = 0;
 
         Array<MoveStackEntry, MAX_PLY> moveStack;
 
@@ -90,6 +91,10 @@ class PVSSearchInstance {
 
         inline void setMainThread(bool isMainThread) {
             this->isMainThread = isMainThread;
+        }
+
+        inline void setCurrentSearchDepth(int16_t currentSearchDepth) {
+            this->currentSearchDepth = currentSearchDepth;
         }
 
         inline Array<Move, MAX_PLY>& getPV() {
