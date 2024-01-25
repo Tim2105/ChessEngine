@@ -20,7 +20,11 @@ void changeHashSize(std::string value) {
 
 UCI::Options UCI::options = {
     UCI::Option("Hash", std::to_string(TT_DEFAULT_CAPACITY * TT_ENTRY_SIZE / (1 << 20)), "1", "16384", changeHashSize),
-    UCI::Option("Threads", "1", "1", "128"),
+    #if defined(DISABLE_THREADS)
+        UCI::Option("Threads", "1", "1", "1"),
+    #else
+        UCI::Option("Threads", std::to_string(std::max(std::thread::hardware_concurrency(), 1u)), "1", "128"),
+    #endif
     UCI::Option("MultiPV", "1", "1", "256"),
     UCI::Option("Ponder", "false")
 };
