@@ -30,11 +30,44 @@ void PVSEngine::destroyHelperThreads() {
     #endif
 }
 
+void helperThreadLoop(PVSSearchInstance* instance, int16_t depth, int16_t alpha, int16_t beta) {
+    int16_t score;
+
+    do {
+        score = instance->pvs(depth * ONE_PLY, 0, alpha, beta, false, PV_NODE);
+
+        bool alphaAlreadyWidened = false, betaAlreadyWidened = false;
+
+        while(score <= alpha || score >= beta) {
+            if(score <= alpha) {
+                if(alphaAlreadyWidened)
+                    alpha = MIN_SCORE;
+                else {
+                    alphaAlreadyWidened = true;
+                    alpha -= PVSEngine::WIDENED_ASPIRATION_WINDOW - PVSEngine::ASPIRATION_WINDOW;
+                }
+            } else {
+                if(betaAlreadyWidened)
+                    beta = MAX_SCORE;
+                else {
+                    betaAlreadyWidened = true;
+                    beta += PVSEngine::WIDENED_ASPIRATION_WINDOW - PVSEngine::ASPIRATION_WINDOW;
+                }
+            }
+
+            score = instance->pvs(depth * ONE_PLY, 0, alpha, beta, false, PV_NODE);
+        }
+
+        alpha = score - PVSEngine::ASPIRATION_WINDOW;
+        beta = score + PVSEngine::ASPIRATION_WINDOW;
+    } while(!instance->shouldStop());
+}
+
 void PVSEngine::startHelperThreads(int16_t depth, int16_t alpha, int16_t beta) {
     #if not defined(DISABLE_THREADS)
         for(PVSSearchInstance* instance : instances) {
             instance->setCurrentSearchDepth(depth);
-            threads.push_back(std::thread(&PVSSearchInstance::pvs, instance, depth * ONE_PLY, 0, alpha, beta, false, PV_NODE));
+            threads.push_back(std::thread(helperThreadLoop, instance, depth, alpha, beta));
         }
     #else
         UNUSED(depth);
@@ -47,7 +80,7 @@ void PVSEngine::stopHelperThreads() {
     #if not defined(DISABLE_THREADS)
         if(stopFlag.load()) {
             for(std::thread& thread: threads)
-            thread.join();
+                thread.join();
 
             threads.clear();
         } else {
@@ -103,7 +136,6 @@ void PVSEngine::search(const UCI::SearchParams& params) {
 
         startHelperThreads(depth, alpha, beta);
         int16_t score = mainInstance.pvs(depth * ONE_PLY, 0, alpha, beta, false, PV_NODE);
-        stopHelperThreads();
 
         bool alphaAlreadyWidened = false, betaAlreadyWidened = false;
         while(score <= alpha || score >= beta) {
@@ -112,24 +144,24 @@ void PVSEngine::search(const UCI::SearchParams& params) {
                     alpha = MIN_SCORE;
                 else {
                     alphaAlreadyWidened = true;
-                    alpha -= 135;
+                    alpha -= WIDENED_ASPIRATION_WINDOW - ASPIRATION_WINDOW;
                 }
             } else {
                 if(betaAlreadyWidened)
                     beta = MAX_SCORE;
                 else {
                     betaAlreadyWidened = true;
-                    beta += 135;
+                    beta += WIDENED_ASPIRATION_WINDOW - ASPIRATION_WINDOW;
                 }
             }
 
-            startHelperThreads(depth, alpha, beta);
             score = mainInstance.pvs(depth * ONE_PLY, 0, alpha, beta, false, PV_NODE);
-            stopHelperThreads();
         }
 
-        alpha = score - 15;
-        beta = score + 15;
+        stopHelperThreads();
+
+        alpha = score - ASPIRATION_WINDOW;
+        beta = score + ASPIRATION_WINDOW;
 
         if(stopFlag.load() && maxDepthReached > 0)
             break;

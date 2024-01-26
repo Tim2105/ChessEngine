@@ -165,6 +165,9 @@ class PVSEngine {
             return !stopFlag.load();
         }
 
+        static constexpr int16_t ASPIRATION_WINDOW = 25;
+        static constexpr int16_t WIDENED_ASPIRATION_WINDOW = 150;
+
     private:
         constexpr void clearPVHistory() {
             pvHistory.clear();

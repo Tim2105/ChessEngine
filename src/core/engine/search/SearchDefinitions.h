@@ -46,7 +46,7 @@ static constexpr int16_t MIN_SCORE = -30000;
 static constexpr int16_t MAX_SCORE = 30000;
 static constexpr int16_t NEUTRAL_SCORE = 0;
 
-static constexpr int16_t MAX_MOVE_SCORE_DISTORTION = 150;
+static constexpr int16_t MAX_MOVE_SCORE_DISTORTION = 200;
 
 static constexpr int32_t QUIET_MOVES_MIN = MIN_SCORE + 1;
 static constexpr int32_t QUIET_MOVES_NEUTRAL = NEUTRAL_SCORE;
@@ -71,11 +71,11 @@ static constexpr uint8_t PV_NODE = 0;
 static constexpr uint8_t CUT_NODE = 1;
 static constexpr uint8_t ALL_NODE = 2;
 
-static constexpr int16_t calculateNullMoveReduction(int16_t depth) {
-    if(depth <= 8 * ONE_PLY)
-        return 3 * ONE_PLY;
-    else
-        return 4 * ONE_PLY;
+static constexpr int16_t calculateNullMoveReduction(int16_t depth, int16_t staticEval, int16_t beta) {
+    int16_t reduction = 2 * ONE_PLY + depth / 4 + std::min((staticEval - beta) / 128, 3 * ONE_PLY);
+
+    // Runde auf nächstes Vielfaches von ONE_PLY
+    return (reduction + ONE_PLY / 2) / ONE_PLY * ONE_PLY;
 }
 
 #endif

@@ -9,6 +9,8 @@
 
 #include "core/utils/tables/TranspositionTable.h"
 
+#include "uci/Options.h"
+
 #include <array>
 #include <atomic>
 #include <chrono>
@@ -50,6 +52,8 @@ class PVSSearchInstance {
 
         bool isMainThread = false;
 
+        size_t numThreads = 1;
+
         std::mt19937 mersenneTwister;
 
         std::function<void()> checkupFunction;
@@ -57,7 +61,7 @@ class PVSSearchInstance {
         int16_t quiescence(int16_t ply, int16_t alpha, int16_t beta);
 
         int16_t determineExtension();
-        int16_t determineReduction(int16_t moveCount, uint8_t nodeType);
+        int16_t determineReduction(int16_t moveCount, int16_t moveScore, uint8_t nodeType);
 
         bool deactivateNullMove();
 
@@ -88,6 +92,8 @@ class PVSSearchInstance {
             for(int16_t i = 0; i < MAX_PLY; i++)
                 pvTable[i].clear();
 
+            numThreads = UCI::options["Threads"].getValue<size_t>();
+
             mersenneTwister.seed(0);
         }
 
@@ -97,16 +103,20 @@ class PVSSearchInstance {
             this->currentSearchDepth = currentSearchDepth;
         }
 
-        inline Array<Move, MAX_PLY>& getPV() {
-            return pvTable[0];
-        }
-
         inline void setMainThread(bool isMainThread) {
             this->isMainThread = isMainThread;
         }
 
         inline void setMersenneTwisterSeed(uint_fast32_t mersenneTwisterSeed) {
             mersenneTwister.seed(mersenneTwisterSeed);
+        }
+
+        inline bool shouldStop() {
+            return stopFlag.load();
+        }
+
+        inline Array<Move, MAX_PLY>& getPV() {
+            return pvTable[0];
         }
 
     private:

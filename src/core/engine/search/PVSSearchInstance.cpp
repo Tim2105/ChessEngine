@@ -36,32 +36,37 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
     if(allowNullMove && !board.isCheck() &&
        depth > ONE_PLY && !deactivateNullMove()) {
-        
-        Move nullMove = Move::nullMove();
-        board.makeMove(nullMove);
 
-        int16_t score = -pvs(depth - calculateNullMoveReduction(depth), ply + 1, -beta, -alpha, false, CUT_NODE);
+        int16_t staticEvaluation = evaluator.evaluate();
+        if(staticEvaluation > beta) {
+            Move nullMove = Move::nullMove();
+            board.makeMove(nullMove);
 
-        board.undoMove();
+            int16_t score = -pvs(depth - calculateNullMoveReduction(depth, staticEvaluation, beta),
+                                ply + 1, -beta, -alpha, false, CUT_NODE);
 
-        if(stopFlag.load())
-            return 0;
+            board.undoMove();
 
-        if(score >= beta)
-            return score;
+            if(stopFlag.load())
+                return 0;
+
+            if(score >= beta)
+                return score;
+        }
     }
 
     clearPVTable(ply + 1);
     clearMoveStack(ply);
 
     uint8_t actualNodeType = ALL_NODE;
-    int16_t bestScore = MIN_SCORE, moveCount = 0;
+    int16_t bestScore = MIN_SCORE, moveCount = 0, moveScore;
     MoveScorePair pair;
     Move move, bestMove;
     bool isCheckEvasion = board.isCheck();
 
     while((pair = selectNextMove(ply, nodeType != ALL_NODE && depth >= 6 * ONE_PLY, depth)).move.exists()) {
         move = pair.move;
+        moveScore = pair.score;
 
         evaluator.updateBeforeMove(move);
         board.makeMove(move);
@@ -78,18 +83,16 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
         int16_t extension = determineExtension();
         int16_t reduction = 0;
         if(extension == 0 && !isCheckEvasion) {
-            if(depth >= 3 * ONE_PLY)
-                reduction = determineReduction(moveCount + 1, nodeType);
-            else if(depth == 2 * ONE_PLY && nodeType == ALL_NODE) {
-                int16_t staticEvaluation = evaluator.evaluate();
+            if(depth > 3 * ONE_PLY)
+                reduction = determineReduction(moveCount + 1, moveScore, nodeType);
+            else if(depth == 2 * ONE_PLY && moveCount > 0 && nodeType == ALL_NODE) {
+                int16_t quiescenceScore = quiescence(ply + 1, alpha, beta);
 
-                if(staticEvaluation <= alpha) {
+                if(quiescenceScore <= alpha) {
                     evaluator.updateBeforeUndo();
                     board.undoMove();
                     evaluator.updateAfterUndo(move);
-
-                    nodesSearched.fetch_add(1);
-                    locallySearchedNodes++;
+                
                     moveCount++;
 
                     continue;
@@ -143,10 +146,10 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
             transpositionTable.put(board.getHashValue(), entry);
 
-            if(!move.isCapture()) {
+            if(!move.isCapture() && !move.isPromotion())
                 addKillerMove(ply, move);
-                incrementHistoryScore(move, depth);
-            }
+
+            incrementHistoryScore(move, depth);
 
             return score;
         }
@@ -275,12 +278,12 @@ int16_t PVSSearchInstance::determineExtension() {
     return extension;
 }
 
-int16_t PVSSearchInstance::determineReduction(int16_t moveCount, uint8_t nodeType) {
+int16_t PVSSearchInstance::determineReduction(int16_t moveCount, int16_t moveScore, uint8_t nodeType) {
     if(moveCount == 1)
         return 0;
 
     Move lastMove = board.getLastMove();
-    if(lastMove.isCapture() || lastMove.isPromotion())
+    if(moveScore >= GOOD_CAPTURE_MOVES_MIN || lastMove.isPromotion())
         return 0;
     else {
         int32_t movedPieceType = TYPEOF(board.pieceAt(lastMove.getDestination()));
@@ -296,13 +299,11 @@ int16_t PVSSearchInstance::determineReduction(int16_t moveCount, uint8_t nodeTyp
     int32_t reduction = ONE_PLY;
 
     int32_t historyScore = getHistoryScore(lastMove, board.getSideToMove() ^ COLOR_MASK);
-    reduction -= historyScore / 8192 * ONE_PLY;
+    reduction -= historyScore / 16384 * ONE_PLY;
     reduction = std::max(reduction, 0);
 
     if(nodeType == CUT_NODE)
-        reduction += 2 * ONE_PLY;
-    else if(nodeType == PV_NODE)
-        reduction = std::min(reduction, 2 * ONE_PLY);
+        reduction += ONE_PLY;
 
     return reduction;
 }
@@ -387,18 +388,19 @@ MoveScorePair PVSSearchInstance::selectNextMove(uint16_t ply, bool useIID, int16
 
                 MoveScorePair pair;
                 Move move, iidMove;
-                int16_t iidScore = MIN_SCORE, moveCount = 0;
+                int16_t iidScore = MIN_SCORE, moveCount = 0, moveScore;
 
                 int16_t reducedDepth = (depth / (2 * ONE_PLY)) * ONE_PLY;
 
                 while((pair = selectNextMove(ply, reducedDepth >= 6 * ONE_PLY, reducedDepth)).move.exists()) {
                     move = pair.move;
+                    moveScore = pair.score;
 
                     evaluator.updateBeforeMove(move);
                     board.makeMove(move);
                     evaluator.updateAfterMove();
 
-                    int16_t reduction = determineReduction(moveCount + 1, PV_NODE);
+                    int16_t reduction = determineReduction(moveCount + 1, moveScore, PV_NODE);
                     int16_t score;
 
                     if(moveCount == 0) {
