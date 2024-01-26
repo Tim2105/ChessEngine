@@ -16,6 +16,8 @@
 
 #include "uci/UCI.h"
 
+#define UNUSED(x) (void)(x)
+
 class PVSEngine {
     private:
         Board& board;

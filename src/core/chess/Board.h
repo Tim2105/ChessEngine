@@ -6,6 +6,7 @@
 #include "core/utils/Array.h"
 #include "core/utils/Bitboard.h"
 
+#include <cstring>
 #include <stdalign.h>
 #include <stdint.h>
 #include <string>
@@ -16,11 +17,6 @@
  */
 class MoveHistoryEntry {
     public:
-        /**
-         * @brief Der Zug der rückgängig gemacht werden soll.
-         */
-        Move move;
-
         /**
          * @brief Speichert den Typ der geschlagenen Figur.
          */
@@ -77,6 +73,11 @@ class MoveHistoryEntry {
         Bitboard pieceAttackBitboard[15];
 
         /**
+         * @brief Der Zug der rückgängig gemacht werden soll.
+         */
+        Move move;
+
+        /**
          * @brief Erstellt einen neuen MoveHistoryEntry.
          * @param move Der Zug der rückgängig gemacht werden soll.
          * @param capturedPiece Speichert den Typ der geschlagenen Figur.
@@ -91,7 +92,7 @@ class MoveHistoryEntry {
          * @param blackAttackBitboard Speichert das schwarze Angriffsbitboard vor diesem Zug.
          * @param pieceAttackBitboards Speichert die Angriffsbitboards der Figuren vor diesem Zug.
          */
-        MoveHistoryEntry(Move move, int32_t capturedPiece, int32_t castlePermission,
+        constexpr MoveHistoryEntry(Move move, int32_t capturedPiece, int32_t castlePermission,
                         int32_t enPassantSquare, int32_t fiftyMoveRule, uint64_t hashValue,
                         Bitboard whitePiecesBitboard, Bitboard blackPiecesBitboard, Bitboard pieceBitboards[15],
                         Bitboard whiteAttackBitboard, Bitboard blackAttackBitboard, Bitboard pieceAttackBitboards[15]) {
@@ -104,42 +105,20 @@ class MoveHistoryEntry {
             this->whitePiecesBitboard = whitePiecesBitboard;
             this->blackPiecesBitboard = blackPiecesBitboard;
 
-            for (int i = 0; i < 15; i++) {
-                this->pieceBitboard[i] = pieceBitboards[i];
-            }
+            memcpy(this->pieceBitboard, pieceBitboards, sizeof(Bitboard) * 15);
 
             this->whiteAttackBitboard = whiteAttackBitboard;
             this->blackAttackBitboard = blackAttackBitboard;
             
-            for (int i = 0; i < 15; i++) {
-                this->pieceAttackBitboard[i] = pieceAttackBitboards[i];
-            }
+            memcpy(this->pieceAttackBitboard, pieceAttackBitboards, sizeof(Bitboard) * 15);
         }
 
         /**
          * @brief Erstellt einen neuen MoveHistoryEntry.
          * @param move Der Zug der rückgängig gemacht werden soll.
          */
-        MoveHistoryEntry(Move move) {
+        constexpr MoveHistoryEntry(Move move) {
             this->move = move;
-            this->capturedPiece = EMPTY;
-            this->castlingPermission = 0;
-            this->enPassantSquare = 0;
-            this->fiftyMoveRule = 0;
-            this->hashValue = 0;
-            this->whitePiecesBitboard = 0;
-            this->blackPiecesBitboard = 0;
-
-            for (int i = 0; i < 15; i++) {
-                this->pieceBitboard[i] = 0;
-            }
-
-            this->whiteAttackBitboard = 0;
-            this->blackAttackBitboard = 0;
-
-            for (int i = 0; i < 15; i++) {
-                this->pieceAttackBitboard[i] = 0;
-            }
         }
 };
 
@@ -147,14 +126,14 @@ class MoveHistoryEntry {
  * @brief Stellt ein Schachbrett dar.
  * Die Klasse Board stellt ein Schachbrett dar und enthält Methoden zur Zuggeneration.
  */
-class Board {
+class alignas(64) Board {
     friend class Movegen;
     
     private:
          /**
           * @brief Stellt das Schachbrett in 8x8 Notation dar.
           */
-        alignas(64) int32_t pieces[64] = {
+        int32_t pieces[64] = {
             WHITE_ROOK, WHITE_KNIGHT, WHITE_BISHOP, WHITE_QUEEN, WHITE_KING, WHITE_BISHOP, WHITE_KNIGHT, WHITE_ROOK,
             WHITE_PAWN,   WHITE_PAWN,   WHITE_PAWN,  WHITE_PAWN, WHITE_PAWN,   WHITE_PAWN,   WHITE_PAWN, WHITE_PAWN,
                  EMPTY,        EMPTY,        EMPTY,       EMPTY,      EMPTY,        EMPTY,        EMPTY,      EMPTY,
@@ -168,7 +147,7 @@ class Board {
         /**
          * @brief Speichert Belegbitboards für alle Figurentypen.
          */
-        alignas(64) Bitboard pieceBitboard[15] = {
+        Bitboard pieceBitboard[15] = {
             0x0ULL,
             0xff00ULL,
             0x42ULL,
@@ -207,12 +186,7 @@ class Board {
         int32_t castlingPermission;
 
         /**
-         * @brief Speichert die Anzahl der Halbzüge, die seit dem Anfang des Spiels vergangen sind.
-         */
-        uint16_t ply;
-
-        /**
-         * @brief Der Zobristhash des Schachbretts.
+         * @brief Ein Zobristhash des Schachbretts.
          * https://www.chessprogramming.org/Zobrist_Hashing
          */
         uint64_t hashValue;
@@ -251,6 +225,11 @@ class Board {
          * @brief Speichert alle gespielten Züge und notwendige Informationen um diesen effizient rückgängig zu machen.
          */
         std::vector<MoveHistoryEntry> moveHistory = {};
+
+        /**
+         * @brief Speichert die Anzahl der Halbzüge, die seit dem Anfang des Spiels vergangen sind.
+         */
+        uint16_t ply;
 
         /**
          * @brief Generiert einen Zobrist-Hash für das aktuelle Schachbrett.
@@ -334,8 +313,11 @@ class Board {
          */
         Board& operator=(Board&& other);
 
-        virtual ~Board();
+        ~Board() = default;
 
+        /**
+         * @brief Gibt einen Hashwert des Schachbretts zurück.
+         */
         constexpr uint64_t getHashValue() const { return hashValue; };
 
         /**

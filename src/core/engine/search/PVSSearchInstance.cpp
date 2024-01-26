@@ -1,8 +1,10 @@
 #include "core/engine/search/PVSSearchInstance.h"
 
 int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta, bool allowNullMove, uint8_t nodeType) {
-    if(locallySearchedNodes % NODES_PER_CHECKUP == 0 && checkupFunction)
+    if(locallySearchedNodes >= NODES_PER_CHECKUP && checkupFunction) {
+        locallySearchedNodes = 0;
         checkupFunction();
+    }
 
     if(stopFlag.load())
         return 0;
@@ -192,6 +194,11 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 }
 
 int16_t PVSSearchInstance::quiescence(int16_t ply, int16_t alpha, int16_t beta) {
+    if(locallySearchedNodes >= NODES_PER_CHECKUP && checkupFunction) {
+        locallySearchedNodes = 0;
+        checkupFunction();
+    }
+
     nodesSearched.fetch_add(1);
     locallySearchedNodes++;
 
@@ -318,7 +325,11 @@ void PVSSearchInstance::scoreMoves(const Array<Move, 256>& moves, uint16_t ply) 
         int16_t score = 0;
 
         if(move.isCapture()) {
-            int16_t seeEvaluation = evaluator.evaluateMoveSEE(move);
+            uint64_t nodesSearchedBySEE = 0;
+            int16_t seeEvaluation = evaluator.evaluateMoveSEE(move, nodesSearchedBySEE);
+            locallySearchedNodes += nodesSearchedBySEE;
+            nodesSearched.fetch_add(nodesSearchedBySEE);
+
             if(seeEvaluation >= 0)
                 score += seeEvaluation + KILLER_MOVE_SCORE + 1;
             else
@@ -338,7 +349,11 @@ void PVSSearchInstance::scoreMoves(const Array<Move, 256>& moves, uint16_t ply) 
 
 void PVSSearchInstance::scoreMovesForQuiescence(const Array<Move, 256>& moves, uint16_t ply) {
     for(Move move : moves) {
-        int16_t score = evaluator.evaluateMoveSEE(move);
+        uint64_t nodesSearchedBySEE = 0;
+        int16_t score = evaluator.evaluateMoveSEE(move, nodesSearchedBySEE);
+        locallySearchedNodes += nodesSearchedBySEE;
+        nodesSearched.fetch_add(nodesSearchedBySEE);
+    
         moveStack[ply].moveScorePairs.push_back(MoveScorePair(move, score));
     }
 }

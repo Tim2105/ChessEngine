@@ -35,7 +35,7 @@ class Evaluator {
          * @brief Static Exchange Evaluation.
          * https://www.chessprogramming.org/Static_Exchange_Evaluation
          */
-        int32_t see(Move& m);
+        int32_t see(Move& m, uint64_t& nodesSearched);
     
     protected:
         Board* b;
@@ -80,7 +80,7 @@ class Evaluator {
         /**
          * @brief Führt eine statische Bewertung eines Zugs mit SEE durch.
          */
-        int16_t evaluateMoveSEE(Move m);
+        int16_t evaluateMoveSEE(Move m, uint64_t& nodesSearched);
 
         /**
          * @brief Führt eine statische Bewertung eines Zugs mit MVVLVA durch.

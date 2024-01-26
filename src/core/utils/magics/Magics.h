@@ -4,6 +4,7 @@
 #include "core/utils/magics/Precomputed.h"
 
 #include <stdint.h>
+#include <stdexcept>
 
 class Magics {
     private:
@@ -26,7 +27,7 @@ class Magics {
     public:
         static void initializeMagics();
 
-        static inline uint64_t lookupRookAttacks(int32_t sq, uint64_t occupied) {
+        static inline uint64_t lookupRookAttacks(int32_t sq, uint64_t occupied) noexcept {
             uint64_t ptr = rookAttackPtrs[sq];
             occupied &= MagicNumbers::rookMasks[sq];
             int32_t shift = MagicNumbers::rookShifts[sq];
@@ -35,7 +36,7 @@ class Magics {
             return rookAttacks[ptr + index];
         }
 
-        static inline uint64_t lookupBishopAttacks(int32_t sq, uint64_t occupied) {
+        static inline uint64_t lookupBishopAttacks(int32_t sq, uint64_t occupied) noexcept {
             uint64_t ptr = bishopAttackPtrs[sq];
             occupied &= MagicNumbers::bishopMasks[sq];
             int32_t shift = MagicNumbers::bishopShifts[sq];

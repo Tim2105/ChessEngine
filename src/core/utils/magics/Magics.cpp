@@ -1,10 +1,12 @@
 #include "core/utils/magics/Magics.h"
 #include "core/utils/magics/MagicsFinder.h"
 
+#include <bit>
+#include <cstdalign>
 #include <iostream>
 
-uint64_t Magics::rookAttacks[102400];
-uint64_t Magics::bishopAttacks[5248];
+alignas(64) uint64_t Magics::rookAttacks[102400];
+alignas(64) uint64_t Magics::bishopAttacks[5248];
 
 uint64_t Magics::rookAttackPtrs[64];
 uint64_t Magics::bishopAttackPtrs[64];
@@ -30,7 +32,7 @@ void Magics::initializeMagics() {
         uint64_t occupied = MagicNumbers::rookMasks[sq];
         int32_t shift = MagicNumbers::rookShifts[sq];
         uint64_t magic = MagicNumbers::rookMagics[sq];
-        int32_t numOccupancies = 1 << __builtin_popcountll(occupied);
+        int32_t numOccupancies = 1 << std::popcount(occupied);
         uint64_t* occupancies = new uint64_t[numOccupancies];
         MagicsFinder::generateAllOccupancyCombinations(occupied, occupancies);
 
@@ -61,7 +63,7 @@ void Magics::initializeMagics() {
         uint64_t occupied = MagicNumbers::bishopMasks[sq];
         int32_t shift = MagicNumbers::bishopShifts[sq];
         uint64_t magic = MagicNumbers::bishopMagics[sq];
-        int32_t numOccupancies = 1 << __builtin_popcountll(occupied);
+        int32_t numOccupancies = 1 << std::popcount(occupied);
         uint64_t* occupancies = new uint64_t[numOccupancies];
         MagicsFinder::generateAllOccupancyCombinations(occupied, occupancies);
 

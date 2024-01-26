@@ -16,7 +16,7 @@ TranspositionTable::TranspositionTable(size_t capacity) {
     // mit 16-Byte Ausrichtung, damit wir die Einträge mit
     // einer Vektorinstruktion laden und speichern können.
     #if defined(__SSE4_1__)
-        entries = new (std::align_val_t(16)) Entry[capacity];
+        entries = (Entry*)operator new[] (capacity * sizeof(Entry), std::align_val_t(16));
     #else
         entries = new Entry[capacity];
     #endif
@@ -28,7 +28,13 @@ TranspositionTable::TranspositionTable(size_t capacity) {
 }
 
 TranspositionTable::~TranspositionTable() {
-    delete[] entries;
+    // WICHTIG: Ausgerichteteter Speicher muss mit einem
+    // speziellen Operator gelöscht werden.
+    #if defined(__SSE4_1__)
+        operator delete[] (entries, std::align_val_t(16));
+    #else
+        delete[] entries;
+    #endif
 }
 
 TranspositionTable::TranspositionTable(TranspositionTable&& other) {
@@ -136,7 +142,13 @@ void TranspositionTable::resize(size_t capacity) {
     // Die Kapazität muss mindestens 1 sein (sonst rechnen wir später Modulo 0).
     capacity = std::max(capacity, (size_t)1);
 
-    delete[] entries;
+    // WICHTIG: Ausgerichteteter Speicher muss mit einem
+    // speziellen Operator gelöscht werden.
+    #if defined(__SSE4_1__)
+        operator delete[] (entries, std::align_val_t(16));
+    #else
+        delete[] entries;
+    #endif
 
     try {
         // Wir reservieren neuen Speicher für die Tabelle.
@@ -144,7 +156,7 @@ void TranspositionTable::resize(size_t capacity) {
         // mit 16-Byte Ausrichtung, damit wir die Einträge mit
         // einer Vektorinstruktion laden und speichern können.
         #if defined(__SSE4_1__)
-            entries = new (std::align_val_t(16)) Entry[capacity];
+            entries = (Entry*)operator new[] (capacity * sizeof(Entry), std::align_val_t(16));
         #else
             entries = new Entry[capacity];
         #endif
@@ -155,9 +167,9 @@ void TranspositionTable::resize(size_t capacity) {
         // Wir haben jetzt zwar alle alten Einträge verloren, aber das ist besser als
         // überhaupt keine Tabelle zu haben.
         #if defined(__SSE4_1__)
-            entries = new (std::align_val_t(16)) Entry[this->capacity];
+            entries = (Entry*)operator new[] (capacity * sizeof(Entry), std::align_val_t(16));
         #else
-            entries = new Entry[this->capacity];
+            entries = new Entry[capacity];
         #endif
 
         entriesWritten.store(0);

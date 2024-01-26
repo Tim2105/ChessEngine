@@ -85,6 +85,7 @@
         "optional": "cpp",
         "condition_variable": "cpp",
         "semaphore": "cpp",
-        "stop_token": "cpp"
+        "stop_token": "cpp",
+        "cstdalign": "cpp"
     }
 }

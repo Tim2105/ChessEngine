@@ -10,3 +10,7 @@
 #endif
 #endif
 #endif
+
+#ifdef DISABLE_THREADS
+#pragma message "Multithreading is disabled."
+#endif

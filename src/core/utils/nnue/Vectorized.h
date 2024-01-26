@@ -221,7 +221,7 @@ inline void linearI8ToI32(const int8_t* in, const int8_t* weights,
 
         __m128i resVec = m256_haddx4(a, a, a, a, biasVec);
 
-        _mm_store_si128((__m128i*)(out + i), resVec);
+        out[i] = _mm_cvtsi128_si32(resVec);
     }
 }
 
@@ -477,7 +477,7 @@ inline void linearI8ToI32(const int8_t* in, const int8_t* weights,
 
         __m128i resVec = m128_haddx4(a, a, a, a, biasVec);
 
-        _mm_store_si128((__m128i*)(out + i), resVec);
+        out[i] = _mm_cvtsi128_si32(resVec);
     }
 }
 
@@ -492,7 +492,7 @@ inline void linearI8ToI32(const int8_t* in, const int8_t* weights,
 
 #include <algorithm>
 
-constexpr size_t REQUIRED_ALIGNMENT = 1;
+constexpr size_t REQUIRED_ALIGNMENT = 4;
 
 inline void copy32i8(const int8_t* src, int8_t* dst) noexcept {
     for(size_t i = 0; i < 32; i++)

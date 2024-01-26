@@ -1,55 +1,59 @@
 #ifndef ARRAY_H
 #define ARRAY_H
 
+#include <algorithm>
+#include <cstdalign>
+#include <cstring>
 #include <initializer_list>
 #include <type_traits>
-#include <stdalign.h>
 #include <stdint.h>
 #include <vector>
 
 /**
  * @brief Array Klasse mit statischer Größe. Für Geschwindigkeit optimiert.
- * Bei Zugriffsoperation wird nicht geprüft, ob der Index gültig ist.
+ * Bei einer Zugriffsoperation wird nicht geprüft, ob der Index gültig ist.
  * 
  * @tparam T Der Typ der Elemente im Array.
  * @tparam s Die Größe des Arrays.
  */
 template <typename T, size_t s>
 class Array {
-
-    static constexpr size_t NEXT_POWER_OF_TWO(size_t n) {
-        size_t power = 1;
-        while(power < n)
-            power *= 2;
-
-        return power;
+    /**
+     * @brief Compile-Time Funktion, die die Ausrichtung des Arrays bestimmt.
+     * Ab einer Größe von 256 Byte wird das Array auf 64 Byte (Cache Line) ausgerichtet.
+     */
+    static constexpr size_t DETERMINE_ALIGNMENT() {
+        if constexpr(sizeof(T) * s >= 256)
+            return 64;
+        else
+            return alignof(T);
     }
 
     public:
-        alignas(std::min(NEXT_POWER_OF_TWO(s * sizeof(T)), (size_t)64)) T array[s];
+        alignas(DETERMINE_ALIGNMENT()) T array[s];
         size_t count;
 
         constexpr Array() : count(0) {}
 
         Array(const Array<T, s>& other) {
             count = other.count;
-            std::copy(other.array, other.array + count, array);
+            memcpy(array, other.array, sizeof(T) * count);
         }
 
         constexpr Array(const std::initializer_list<T>& list) {
             count = 0;
             for(const T& elem : list)
                 array[count++] = elem;
-
-            for(size_t i = count; i < s; i++)
-                array[i] = T();
         }
 
-        constexpr ~Array() {}
+        constexpr ~Array() = default;
 
         constexpr Array& operator=(const Array& other) {
+            if(this == &other)
+                return *this;
+
             count = other.count;
-            std::copy(other.array, other.array + count, array);
+            memcpy(array, other.array, sizeof(T) * count);
 
             return *this;
         }

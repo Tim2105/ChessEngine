@@ -58,7 +58,9 @@ int32_t Evaluator::getSmallestAttacker(int32_t to, int32_t side) {
     return NO_SQ;
 }
 
-int32_t Evaluator::see(Move& m) {
+int32_t Evaluator::see(Move& m, uint64_t& nodesSearched) {
+    nodesSearched++;
+
     int32_t score = 0;
     int32_t side = b->getSideToMove() ^ COLOR_MASK;
 
@@ -68,7 +70,7 @@ int32_t Evaluator::see(Move& m) {
     if(attackerSq != NO_SQ) {
         Move newMove(attackerSq, m.getDestination(), MOVE_CAPTURE);
         int32_t capturedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(b->pieceAt(m.getDestination()))];
-        score = std::max(score, capturedPieceValue - see(newMove));
+        score = std::max(score, capturedPieceValue - see(newMove, nodesSearched));
     }
 
     b->undoMove();
@@ -76,7 +78,7 @@ int32_t Evaluator::see(Move& m) {
     return score;
 }
 
-int16_t Evaluator::evaluateMoveSEE(Move m) {
+int16_t Evaluator::evaluateMoveSEE(Move m, uint64_t& nodesSearched) {
     int32_t moveScore = 0;
 
     if(m.isPromotion()) {
@@ -92,7 +94,7 @@ int16_t Evaluator::evaluateMoveSEE(Move m) {
 
     // SEE-Heuristik
     int32_t capturedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(b->pieceAt(m.getDestination()))];
-    moveScore += capturedPieceValue - see(m);
+    moveScore += capturedPieceValue - see(m, nodesSearched);
     
     return moveScore;
 }

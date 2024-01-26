@@ -2,6 +2,7 @@
 #include "core/utils/magics/Precomputed.h"
 #include "core/utils/Bitboard.h"
 
+#include <bit>
 #include <iostream>
 #include <random>
 
@@ -231,7 +232,7 @@ void MagicsFinder::findBishopMasks(std::ofstream& resultFile) {
 }
 
 void MagicsFinder::generateAllOccupancyCombinations(uint64_t mask, uint64_t* occupancies) {
-    int32_t numMaskBits = __builtin_popcountll(mask);
+    int32_t numMaskBits = std::popcount(mask);
 
     // Generiere alle möglichen Belegungen
     for(int32_t i = 0; i < (1 << numMaskBits); i++) {
@@ -309,7 +310,7 @@ bool validateBishopMagicNumber(uint64_t magic, int32_t sq, int32_t shift, uint64
 uint64_t MagicsFinder::findRookMagic(int32_t sq, int32_t shift) {
     uint64_t magic = 0ULL;
     uint64_t mask = MagicNumbers::rookMasks[sq];
-    int32_t numMaskBits = __builtin_popcountll(mask);
+    int32_t numMaskBits = std::popcount(mask);
     uint64_t occupancies[4096];
 
     generateAllOccupancyCombinations(mask, occupancies);
@@ -394,7 +395,7 @@ void MagicsFinder::searchForRookMagics(std::ofstream& resultFile, std::chrono::s
 uint64_t MagicsFinder::findBishopMagic(int32_t sq, int32_t shift) {
     uint64_t magic = 0ULL;
     uint64_t mask = MagicNumbers::bishopMasks[sq];
-    int32_t numMaskBits = __builtin_popcountll(mask);
+    int32_t numMaskBits = std::popcount(mask);
     uint64_t occupancies[4096];
 
     generateAllOccupancyCombinations(mask, occupancies);

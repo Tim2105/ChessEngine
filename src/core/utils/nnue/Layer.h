@@ -118,8 +118,8 @@ namespace NNUE {
                 return bias;
             }
 
-            constexpr const WEIGHT_T* getWeightPtr(size_t in) const noexcept {
-                return weights[in];
+            constexpr const WEIGHT_T* getWeightPtr(size_t out) const noexcept {
+                return weights[out];
             }
     };
 
@@ -174,8 +174,8 @@ namespace NNUE {
                 return bias;
             }
 
-            constexpr const int8_t* getWeightPtr(size_t in) const noexcept {
-                return weights[in];
+            constexpr const int8_t* getWeightPtr(size_t out) const noexcept {
+                return weights[out];
             }
     };
 

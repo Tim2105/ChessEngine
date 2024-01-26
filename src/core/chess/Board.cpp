@@ -3,6 +3,7 @@
 #include "core/chess/movegen/NewMovegen.h"
 #include "core/utils/MoveNotations.h"
 
+#include <algorithm>
 #include <stdio.h>
 
 Board::Board() {
@@ -329,10 +330,6 @@ Board Board::fromPGN(std::string pgn) {
     return board;
 }
 
-Board::~Board() {
-
-}
-
 uint64_t Board::generateHashValue() {
     uint64_t hash = 0ULL;
 
@@ -589,14 +586,12 @@ void Board::makeMove(Move m) {
     entry.whitePiecesBitboard = whitePiecesBitboard;
     entry.blackPiecesBitboard = blackPiecesBitboard;
 
-    for(int32_t i = 0; i < 15; i++)
-        entry.pieceBitboard[i] = pieceBitboard[i];
+    memcpy(entry.pieceBitboard, pieceBitboard, sizeof(Bitboard) * 15);
 
     entry.whiteAttackBitboard = whiteAttackBitboard;
     entry.blackAttackBitboard = blackAttackBitboard;
     
-    for(int32_t i = 0; i < 15; i++)
-        entry.pieceAttackBitboard[i] = pieceAttackBitboard[i];
+    memcpy(entry.pieceAttackBitboard, pieceAttackBitboard, sizeof(Bitboard) * 15);
 
     moveHistory.push_back(entry);
 
@@ -823,9 +818,8 @@ void Board::makeMove(Move m) {
 }
 
 void Board::undoMove() {
-    MoveHistoryEntry moveEntry = moveHistory.back();
+    MoveHistoryEntry& moveEntry = moveHistory.back();
     Move move = moveEntry.move;
-    moveHistory.pop_back();
 
     int32_t origin = move.getOrigin();
     int32_t destination = move.getDestination();
@@ -841,19 +835,19 @@ void Board::undoMove() {
     hashValue = moveEntry.hashValue;
     whitePiecesBitboard = moveEntry.whitePiecesBitboard;
     blackPiecesBitboard = moveEntry.blackPiecesBitboard;
-    for(int32_t i = 0; i < 15; i++)
-        pieceBitboard[i] = moveEntry.pieceBitboard[i];
+    memcpy(pieceBitboard, moveEntry.pieceBitboard, sizeof(Bitboard) * 15);
 
     allPiecesBitboard = whitePiecesBitboard | blackPiecesBitboard;
 
     whiteAttackBitboard = moveEntry.whiteAttackBitboard;
     blackAttackBitboard = moveEntry.blackAttackBitboard;
-    for(int32_t i = 0; i < 15; i++)
-        pieceAttackBitboard[i] = moveEntry.pieceAttackBitboard[i];
+    memcpy(pieceAttackBitboard, moveEntry.pieceAttackBitboard, sizeof(Bitboard) * 15);
     
     // Spezialfall: Nullzug
-    if(move.isNullMove())
+    if(move.isNullMove()) {
+        moveHistory.pop_back();
         return;
+    }
 
     int32_t enPassantCaptureSq = enPassantSquare + (side == WHITE ? SOUTH : NORTH);
 
@@ -885,6 +879,8 @@ void Board::undoMove() {
     // Spezialfall: En Passant
     if(move.isEnPassant())
         pieces[enPassantCaptureSq] = capturedPieceType;
+
+    moveHistory.pop_back();
 }
 
 bool Board::squareAttacked(int32_t sq, int32_t ownSide) const {
@@ -1160,11 +1156,11 @@ void Board::generatePinnedPiecesBitboards(int32_t side, Bitboard& pinnedPiecesBi
     int32_t diagonalPinDirections[4];
 
     int32_t numDiagonalPins = getDiagonallyPinnedToSquare(kingSquare,
-                                ownPieces,
-                                pieceBitboard[otherSide | QUEEN] | pieceBitboard[otherSide | BISHOP],
-                                enemyPiecesPlusKing,
-                                diagonalPins,
-                                diagonalPinDirections);
+                              ownPieces,
+                              pieceBitboard[otherSide | QUEEN] | pieceBitboard[otherSide | BISHOP],
+                              enemyPiecesPlusKing,
+                              diagonalPins,
+                              diagonalPinDirections);
     
     // Waaagerechte Angriffe
     int32_t straightPins[4];

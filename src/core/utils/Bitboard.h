@@ -14,9 +14,11 @@ class Bitboard {
         static constexpr uint64_t ZEROS = 0ULL;
         static constexpr uint64_t ONES = 0xFFFFFFFFFFFFFFFFULL;
 
-        constexpr Bitboard() : bitboard(0) {};
-        constexpr Bitboard(uint64_t bitboard) : bitboard(bitboard) {};
-        constexpr Bitboard(const Bitboard& bitboard) : bitboard(bitboard.bitboard) {};
+        constexpr Bitboard() noexcept : bitboard(0) {};
+        constexpr Bitboard(uint64_t bitboard) noexcept : bitboard(bitboard) {};
+        constexpr Bitboard(const Bitboard& bitboard) noexcept = default;
+
+        constexpr ~Bitboard() noexcept = default;
 
         friend std::ostream& operator<<(std::ostream& os, const Bitboard& bitboard);
 
@@ -190,10 +192,7 @@ class Bitboard {
         /**
          * @brief Zuweisungsoperator.
          */
-        constexpr Bitboard operator=(const Bitboard& bitboard) {
-            this->bitboard = bitboard.bitboard;
-            return *this;
-        }
+        constexpr Bitboard& operator=(const Bitboard& bitboard) = default;
 };
 
 /**

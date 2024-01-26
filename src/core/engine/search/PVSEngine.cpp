@@ -7,45 +7,58 @@
 #include <math.h>
 
 void PVSEngine::createHelperThreads(size_t numThreads, const UCI::SearchParams& params) {
-    for(size_t i = 0; i < numThreads; i++) {
-        instances.push_back(new PVSSearchInstance(board, transpositionTable, stopFlag, startTime, stopTime,
-                                                  nodesSearched, params.searchmoves, nullptr));
+    #if not defined(DISABLE_THREADS)
+        for(size_t i = 0; i < numThreads; i++) {
+            instances.push_back(new PVSSearchInstance(board, transpositionTable, stopFlag, startTime, stopTime,
+                                                      nodesSearched, params.searchmoves, nullptr));
 
-        instances[i]->setMainThread(false);
-    }
+            instances[i]->setMainThread(false);
+        }
+    #else
+        UNUSED(numThreads);
+        UNUSED(params);
+    #endif
 }
 
 void PVSEngine::destroyHelperThreads() {
-    for(PVSSearchInstance* instance : instances)
-        delete instance;
+    #if not defined(DISABLE_THREADS)
+        for(PVSSearchInstance* instance : instances)
+            delete instance;
 
-    instances.clear();
+        instances.clear();
+    #endif
 }
 
 void PVSEngine::startHelperThreads(int16_t depth, int16_t alpha, int16_t beta) {
-    int16_t i = 0;
-    for(PVSSearchInstance* instance : instances) {
-        instances[i]->setCurrentSearchDepth(depth);
-        threads.push_back(std::thread(&PVSSearchInstance::pvs, instance, depth * ONE_PLY, 0, alpha, beta, false, PV_NODE));
-        i++;
-    }
+    #if not defined(DISABLE_THREADS)
+        for(PVSSearchInstance* instance : instances) {
+            instance->setCurrentSearchDepth(depth);
+            threads.push_back(std::thread(&PVSSearchInstance::pvs, instance, depth * ONE_PLY, 0, alpha, beta, false, PV_NODE));
+        }
+    #else
+        UNUSED(depth);
+        UNUSED(alpha);
+        UNUSED(beta);
+    #endif
 }
 
 void PVSEngine::stopHelperThreads() {
-    if(stopFlag.load()) {
-        for(std::thread& thread: threads)
-        thread.join();
-
-        threads.clear();
-    } else {
-        stopFlag.store(true);
-
-        for(std::thread& thread: threads)
+    #if not defined(DISABLE_THREADS)
+        if(stopFlag.load()) {
+            for(std::thread& thread: threads)
             thread.join();
 
-        threads.clear();
-        stopFlag.store(false);
-    }
+            threads.clear();
+        } else {
+            stopFlag.store(true);
+
+            for(std::thread& thread: threads)
+                thread.join();
+
+            threads.clear();
+            stopFlag.store(false);
+        }
+    #endif
 }
 
 void PVSEngine::search(const UCI::SearchParams& params) {
@@ -66,7 +79,7 @@ void PVSEngine::search(const UCI::SearchParams& params) {
         if(isCheckupTime()) {
             lastCheckupTime = std::chrono::system_clock::now();
 
-            if(lastCheckupTime >= stopTime.load())
+            if(lastCheckupTime >= stopTime.load() && maxDepthReached > 0)
                 stop();
             
             if(checkupCallback)
@@ -80,7 +93,6 @@ void PVSEngine::search(const UCI::SearchParams& params) {
     mainInstance.setMainThread(true);
 
     size_t numAdditionalThreads = UCI::options["Threads"].getValue<size_t>() - 1;
-
     createHelperThreads(numAdditionalThreads, params);
 
     int16_t alpha = MIN_SCORE, beta = MAX_SCORE;
@@ -118,7 +130,7 @@ void PVSEngine::search(const UCI::SearchParams& params) {
         alpha = score - 15;
         beta = score + 15;
 
-        if(stopFlag.load())
+        if(stopFlag.load() && maxDepthReached > 0)
             break;
         else {
             maxDepthReached = depth;
