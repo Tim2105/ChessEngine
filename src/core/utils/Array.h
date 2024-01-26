@@ -70,7 +70,7 @@ class Array {
         /**
          * @brief Fügt ein Element hinten an den Array an.
          */
-        inline void push_back(T elem) {
+        inline void push_back(const T& elem) {
             array[count++] = elem;
         }
 
@@ -82,27 +82,40 @@ class Array {
         }
 
         /**
-         * @brief Fügt ein Array hinten an den Array an.
+         * @brief Fügt ein Array hinten an das Array an.
          */
         template <size_t s2>
-        inline void push_back(Array<T, s2>& other) {
-            std::copy(other.array, other.array + other.count, array + count);
+        inline void push_back(const Array<T, s2>& other) {
+            memcpy(array + count, other.array, sizeof(T) * other.count);
             count += other.count;
         }
 
         /**
          * @brief Fügt ein Element an der angegebenen Position ein.
          */
-        inline void insert(size_t index, T elem) {
+        inline void insert(size_t index, const T& elem) {
             std::copy_backward(array + index, array + count, array + count + 1);
             array[index] = elem;
             count++;
         }
 
         /**
+         * @brief Fügt ein Element sortiert in den Array ein
+         * unter der Annahme, dass der Array bereits sortiert ist.
+         * 
+         * @param elem Das einzufügende Element.
+         * @param compare Die Vergleichsfunktion, die die Sortierung des Arrays bestimmt.
+         *                Standardmäßig wird std::less<T> verwendet, sodass das Array aufsteigend sortiert bleibt.
+         */
+        inline void insertSorted(const T& elem, std::function<bool(const T&, const T&)> compare = std::less<T>()) {
+            size_t insertionIndex = std::lower_bound(array, array + count, elem, compare) - array;
+            insert(insertionIndex, elem);
+        }
+
+        /**
          * @brief Entfernt das erste Vorkommen des Elements aus dem Array.
          */
-        inline void remove(T elem) {
+        inline void remove(const T& elem) {
             for(size_t i = 0; i < count; i++) {
                 if(array[i] == elem) {
                     std::copy(array + i + 1, array + count, array + i);
@@ -124,7 +137,7 @@ class Array {
         /**
          * @brief Ersetzt das Element an der angegebenen Position durch das angegebene Element.
          */
-        inline void replace(size_t index, T elem) {
+        inline void replace(size_t index, const T& elem) {
             array[index] = elem;
         }
 

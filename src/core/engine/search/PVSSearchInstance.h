@@ -13,7 +13,7 @@
 #include <atomic>
 #include <chrono>
 #include <functional>
-#include <cstdalign>
+#include <random>
 
 class PVSSearchInstance {
     private:
@@ -21,8 +21,6 @@ class PVSSearchInstance {
             Array<MoveScorePair, 256> moveScorePairs;
             Move hashMove = Move::nullMove();
         };
-
-        bool isMainThread = false;
 
         Board board;
         #if defined(USE_HCE)
@@ -33,9 +31,9 @@ class PVSSearchInstance {
 
         TranspositionTable& transpositionTable;
 
-        alignas(64) Move killerMoves[MAX_PLY][2];
-        alignas(64) int32_t historyTable[2][64][64];
-        alignas(64) Array<Move, MAX_PLY> pvTable[MAX_PLY];
+        Move killerMoves[MAX_PLY][2];
+        int32_t historyTable[2][64][64];
+        Array<Move, MAX_PLY> pvTable[MAX_PLY];
 
         std::atomic_bool& stopFlag;
 
@@ -49,6 +47,10 @@ class PVSSearchInstance {
         Array<MoveStackEntry, MAX_PLY> moveStack;
 
         const Array<Move, 256>& searchMoves;
+
+        bool isMainThread = false;
+
+        std::mt19937 mersenneTwister;
 
         std::function<void()> checkupFunction;
 
@@ -85,13 +87,11 @@ class PVSSearchInstance {
 
             for(int16_t i = 0; i < MAX_PLY; i++)
                 pvTable[i].clear();
+
+            mersenneTwister.seed(0);
         }
 
         int16_t pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta, bool allowNullMove, uint8_t nodeType);
-
-        inline void setMainThread(bool isMainThread) {
-            this->isMainThread = isMainThread;
-        }
 
         inline void setCurrentSearchDepth(int16_t currentSearchDepth) {
             this->currentSearchDepth = currentSearchDepth;
@@ -99,6 +99,14 @@ class PVSSearchInstance {
 
         inline Array<Move, MAX_PLY>& getPV() {
             return pvTable[0];
+        }
+
+        inline void setMainThread(bool isMainThread) {
+            this->isMainThread = isMainThread;
+        }
+
+        inline void setMersenneTwisterSeed(uint_fast32_t mersenneTwisterSeed) {
+            mersenneTwister.seed(mersenneTwisterSeed);
         }
 
     private:

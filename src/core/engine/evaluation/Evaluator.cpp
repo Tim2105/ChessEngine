@@ -94,6 +94,9 @@ int16_t Evaluator::evaluateMoveSEE(Move m, uint64_t& nodesSearched) {
 
     // SEE-Heuristik
     int32_t capturedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(b->pieceAt(m.getDestination()))];
+    if(m.isEnPassant())
+        capturedPieceValue = SIMPLE_PIECE_VALUE[PAWN];
+
     moveScore += capturedPieceValue - see(m, nodesSearched);
     
     return moveScore;

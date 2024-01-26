@@ -322,25 +322,38 @@ void PVSSearchInstance::scoreMoves(const Array<Move, 256>& moves, uint16_t ply) 
         if(!move.exists())
             continue;
 
-        int16_t score = 0;
+        int16_t score;
+        int16_t scoreDistortion = 0;
+        if(!isMainThread)
+            scoreDistortion = mersenneTwister() % (2 * MAX_MOVE_SCORE_DISTORTION + 1) - MAX_MOVE_SCORE_DISTORTION;
 
-        if(move.isCapture()) {
+        if(move.isCapture() || move.isPromotion()) {
             uint64_t nodesSearchedBySEE = 0;
             int16_t seeEvaluation = evaluator.evaluateMoveSEE(move, nodesSearchedBySEE);
             locallySearchedNodes += nodesSearchedBySEE;
             nodesSearched.fetch_add(nodesSearchedBySEE);
 
-            if(seeEvaluation >= 0)
-                score += seeEvaluation + KILLER_MOVE_SCORE + 1;
-            else
-                score += KILLER_MOVE_SCORE - 1;
+            if(seeEvaluation >= 0) {
+                // Schlagzüge mit SEE >= 0
+                score = std::clamp(GOOD_CAPTURE_MOVES_NEUTRAL + seeEvaluation + scoreDistortion,
+                                   GOOD_CAPTURE_MOVES_MIN,
+                                   GOOD_CAPTURE_MOVES_MAX);
+            } else {
+                // Schlagzüge mit SEE < 0
+                score = std::clamp(BAD_CAPTURE_MOVES_NEUTRAL + seeEvaluation + scoreDistortion,
+                                   BAD_CAPTURE_MOVES_MIN,
+                                   BAD_CAPTURE_MOVES_MAX);
+            }
         } else {
-            if(isKillerMove(ply, move))
-                score += KILLER_MOVE_SCORE;
-            else
-                score += std::clamp(getHistoryScore(move) / currentSearchDepth,
-                                    MIN_SCORE + 1,
-                                    KILLER_MOVE_SCORE - 2);
+            if(isKillerMove(ply, move)) {
+                // Killerzüge
+                score = KILLER_MOVE_SCORE;
+            } else {
+                // Ruhige Züge
+                score = std::clamp(QUIET_MOVES_NEUTRAL + getHistoryScore(move) / currentSearchDepth + scoreDistortion,
+                                   QUIET_MOVES_MIN,
+                                   QUIET_MOVES_MAX);
+            }
         }
 
         moveStack[ply].moveScorePairs.push_back(MoveScorePair(move, score));
