@@ -107,7 +107,7 @@ class Array {
          * @param compare Die Vergleichsfunktion, die die Sortierung des Arrays bestimmt.
          *                Standardmäßig wird std::less<T> verwendet, sodass das Array aufsteigend sortiert bleibt.
          */
-        inline void insertSorted(const T& elem, std::function<bool(const T&, const T&)> compare = std::less<T>()) {
+        inline void insert_sorted(const T& elem, std::function<bool(const T&, const T&)> compare = std::less<T>()) {
             size_t insertionIndex = std::lower_bound(array, array + count, elem, compare) - array;
             insert(insertionIndex, elem);
         }
@@ -115,7 +115,7 @@ class Array {
         /**
          * @brief Entfernt das erste Vorkommen des Elements aus dem Array.
          */
-        inline void remove(const T& elem) {
+        inline void remove_first(const T& elem) {
             for(size_t i = 0; i < count; i++) {
                 if(array[i] == elem) {
                     std::copy(array + i + 1, array + count, array + i);

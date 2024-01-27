@@ -22,13 +22,10 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     TranspositionTableEntry entry;
     if(nodeType != PV_NODE && transpositionTable.probe(board.getHashValue(), entry)) {
         if(entry.depth * ONE_PLY >= depth) {
-            if(entry.type == PV_NODE) {
+            if(entry.type == PV_NODE || entry.type == ALL_NODE) {
                 return entry.score;
             } else if(entry.type == CUT_NODE) {
                 if(entry.score >= beta)
-                    return entry.score;
-            } else if(entry.type == ALL_NODE) {
-                if(entry.score <= alpha)
                     return entry.score;
             }
         }
@@ -56,15 +53,18 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     }
 
     clearPVTable(ply + 1);
-    clearMoveStack(ply);
+    prepareSearchStack(ply, nodeType != ALL_NODE && depth >= 6 * ONE_PLY, depth);
+
+    Move move;
+    int16_t moveCount = 0, moveScore;
 
     uint8_t actualNodeType = ALL_NODE;
-    int16_t bestScore = MIN_SCORE, moveCount = 0, moveScore;
-    MoveScorePair pair;
-    Move move, bestMove;
+    int16_t bestScore = MIN_SCORE;
+    moveCount = 0;
+    Move bestMove;
     bool isCheckEvasion = board.isCheck();
 
-    while((pair = selectNextMove(ply, nodeType != ALL_NODE && depth >= 6 * ONE_PLY, depth)).move.exists()) {
+    for(MoveScorePair& pair : searchStack[ply].moveScorePairs) {
         move = pair.move;
         moveScore = pair.score;
 
@@ -79,22 +79,29 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
             childType = PV_NODE;
         else if(nodeType == CUT_NODE && moveCount == 0)
             childType = ALL_NODE;
-
+        
         int16_t extension = determineExtension();
         int16_t reduction = 0;
-        if(extension == 0 && !isCheckEvasion) {
-            if(depth > 3 * ONE_PLY)
-                reduction = determineReduction(moveCount + 1, moveScore, nodeType);
-            else if(depth == 2 * ONE_PLY && moveCount > 0 && nodeType == ALL_NODE) {
-                int16_t quiescenceScore = quiescence(ply + 1, alpha, beta);
 
-                if(quiescenceScore <= alpha) {
+        if(extension == 0 && !isCheckEvasion) {
+            if(depth >= 3 * ONE_PLY)
+                reduction = determineReduction(moveCount + 1, moveScore, nodeType);
+            else if(depth == 2 * ONE_PLY && nodeType == ALL_NODE) {
+                int16_t staticEvaluation = evaluator.evaluate();
+
+                if(staticEvaluation <= alpha) {
                     evaluator.updateBeforeUndo();
                     board.undoMove();
                     evaluator.updateAfterUndo(move);
-                
-                    moveCount++;
 
+                    if(staticEvaluation > bestScore) {
+                        bestScore = staticEvaluation;
+                        bestMove = move;
+                    }
+
+                    nodesSearched.fetch_add(1);
+                    locallySearchedNodes++;
+                    moveCount++;
                     continue;
                 }
             }
@@ -228,13 +235,12 @@ int16_t PVSSearchInstance::quiescence(int16_t ply, int16_t alpha, int16_t beta) 
         minMoveScore = NEUTRAL_SCORE;
     }
 
-    clearMoveStack(ply);
+    prepareSearchStackForQuiescence(ply, minMoveScore, false);
 
     int16_t moveCount = 0;
-    MoveScorePair pair;
     Move move;
 
-    while((pair = selectNextMoveInQuiescence(ply, minMoveScore)).move.exists()) {
+    for(MoveScorePair& pair : searchStack[ply].moveScorePairs) {
         move = pair.move;
 
         evaluator.updateBeforeMove(move);
@@ -300,7 +306,7 @@ int16_t PVSSearchInstance::determineReduction(int16_t moveCount, int16_t moveSco
 
     int32_t historyScore = getHistoryScore(lastMove, board.getSideToMove() ^ COLOR_MASK);
     reduction -= historyScore / 16384 * ONE_PLY;
-    reduction = std::max(reduction, 0);
+    reduction = std::max(reduction, 0); 
 
     if(nodeType == CUT_NODE)
         reduction += ONE_PLY;
@@ -318,11 +324,133 @@ bool PVSSearchInstance::deactivateNullMove() {
     return ownPieces == board.getPieceBitboard(side | PAWN);
 }
 
-void PVSSearchInstance::scoreMoves(const Array<Move, 256>& moves, uint16_t ply) {
-    for(Move move : moves) {
-        if(!move.exists())
-            continue;
+void PVSSearchInstance::prepareSearchStack(uint16_t ply, bool useIID, int16_t depth) {
+    clearSearchStack(ply);
 
+    Move hashMove = Move::nullMove();
+    TranspositionTableEntry entry;
+    if(transpositionTable.probe(board.getHashValue(), entry))
+        hashMove = entry.hashMove;
+
+    if(hashMove.exists() && (ply != 0 || searchMoves.size() == 0 || searchMoves.contains(hashMove))) {
+        searchStack[ply].hashMove = hashMove;
+        searchStack[ply].moveScorePairs.push_back(MoveScorePair(hashMove, HASH_MOVE_SCORE));
+
+        Array<Move, 256> moves;
+        if(ply > 0 || searchMoves.size() == 0)
+            board.generateLegalMoves(moves);
+        else
+            moves = searchMoves;
+
+        moves.remove_first(hashMove);
+        scoreMoves(moves, ply);
+    } else if(useIID) {
+        MoveScorePair pair;
+        Move move, iidMove = Move::nullMove();
+        int16_t iidScore = MIN_SCORE, moveCount = 0, moveScore;
+
+        int16_t reducedDepth = (depth / (2 * ONE_PLY)) * ONE_PLY;
+
+        prepareSearchStack(ply, reducedDepth >= 6 * ONE_PLY, reducedDepth);
+
+        for(MoveScorePair& pair : searchStack[ply].moveScorePairs) {
+            move = pair.move;
+            moveScore = pair.score;
+
+            evaluator.updateBeforeMove(move);
+            board.makeMove(move);
+            evaluator.updateAfterMove();
+
+            int16_t reduction = determineReduction(moveCount + 1, moveScore, PV_NODE);
+            int16_t score;
+
+            if(moveCount == 0) {
+                score = -pvs(reducedDepth, ply + 1, -MAX_SCORE, -iidScore, false, PV_NODE);
+            } else {
+                score = -pvs(reducedDepth - reduction, ply + 1, -iidScore - 1, -iidScore, true, CUT_NODE);
+
+                if(score > iidScore)
+                    score = -pvs(reducedDepth, ply + 1, -MAX_SCORE, -iidScore, false, PV_NODE);
+            }
+
+            evaluator.updateBeforeUndo();
+            board.undoMove();
+            evaluator.updateAfterUndo(move);
+
+            if(score > iidScore) {
+                iidScore = score;
+                iidMove = move;
+            }
+
+            moveCount++;
+        }
+
+        searchStack[ply].hashMove = iidMove;
+        searchStack[ply].moveScorePairs.clear();
+
+        if(iidMove.exists())
+            searchStack[ply].moveScorePairs.push_back(MoveScorePair(iidMove, HASH_MOVE_SCORE));
+
+        Array<Move, 256> moves;
+        if(ply > 0 || searchMoves.size() == 0)
+            board.generateLegalMoves(moves);
+        else
+            moves = searchMoves;
+
+        moves.remove_first(iidMove);
+        scoreMoves(moves, ply);
+    } else {
+        Array<Move, 256> moves;
+        if(ply > 0 || searchMoves.size() == 0)
+            board.generateLegalMoves(moves);
+        else
+            moves = searchMoves;
+
+        scoreMoves(moves, ply);
+    }
+}
+
+void PVSSearchInstance::prepareSearchStackForQuiescence(uint16_t ply, int16_t minMoveScore, bool includeHashMove) {
+    clearSearchStack(ply);
+
+    if(includeHashMove) {
+        Move hashMove = Move::nullMove();
+        TranspositionTableEntry entry;
+        if(transpositionTable.probe(board.getHashValue(), entry))
+            hashMove = entry.hashMove;
+
+        if(hashMove.exists()) {
+            searchStack[ply].hashMove = hashMove;
+            searchStack[ply].moveScorePairs.push_back(MoveScorePair(hashMove, HASH_MOVE_SCORE));
+        }
+
+        Array<Move, 256> moves;
+        if(board.isCheck())
+            board.generateLegalMoves(moves);
+        else
+            board.generateLegalCaptures(moves);
+
+        moves.remove_first(hashMove);
+
+        scoreMovesForQuiescence(moves, ply, minMoveScore);
+    } else {
+        Array<Move, 256> moves;
+        if(board.isCheck())
+            board.generateLegalMoves(moves);
+        else
+            board.generateLegalCaptures(moves);
+
+        scoreMovesForQuiescence(moves, ply, minMoveScore);
+    }
+}
+
+void PVSSearchInstance::scoreMoves(const Array<Move, 256>& moves, uint16_t ply) {
+    Array<MoveScorePair, 64> goodCaptures;
+    Array<MoveScorePair, 64> badCaptures;
+    Array<MoveScorePair, 256> quietMoves;
+    Array<MoveScorePair, 2> killers;
+
+    for(Move move : moves) {
         int16_t score;
         int16_t scoreDistortion = 0;
         if(!isMainThread)
@@ -339,165 +467,46 @@ void PVSSearchInstance::scoreMoves(const Array<Move, 256>& moves, uint16_t ply) 
                 score = std::clamp(GOOD_CAPTURE_MOVES_NEUTRAL + seeEvaluation + scoreDistortion,
                                    GOOD_CAPTURE_MOVES_MIN,
                                    GOOD_CAPTURE_MOVES_MAX);
+
+                goodCaptures.insert_sorted(MoveScorePair(move, score), std::greater<MoveScorePair>());
             } else {
                 // Schlagzüge mit SEE < 0
                 score = std::clamp(BAD_CAPTURE_MOVES_NEUTRAL + seeEvaluation + scoreDistortion,
                                    BAD_CAPTURE_MOVES_MIN,
                                    BAD_CAPTURE_MOVES_MAX);
+
+                badCaptures.insert_sorted(MoveScorePair(move, score), std::greater<MoveScorePair>());
             }
         } else {
             if(isKillerMove(ply, move)) {
                 // Killerzüge
                 score = KILLER_MOVE_SCORE;
+                killers.push_back(MoveScorePair(move, score));
             } else {
                 // Ruhige Züge
                 score = std::clamp(QUIET_MOVES_NEUTRAL + getHistoryScore(move) / currentSearchDepth + scoreDistortion,
                                    QUIET_MOVES_MIN,
                                    QUIET_MOVES_MAX);
+
+                quietMoves.insert_sorted(MoveScorePair(move, score), std::greater<MoveScorePair>());
             }
         }
-
-        moveStack[ply].moveScorePairs.push_back(MoveScorePair(move, score));
     }
+
+    searchStack[ply].moveScorePairs.push_back(goodCaptures);
+    searchStack[ply].moveScorePairs.push_back(killers);
+    searchStack[ply].moveScorePairs.push_back(badCaptures);
+    searchStack[ply].moveScorePairs.push_back(quietMoves);
 }
 
-void PVSSearchInstance::scoreMovesForQuiescence(const Array<Move, 256>& moves, uint16_t ply) {
+void PVSSearchInstance::scoreMovesForQuiescence(const Array<Move, 256>& moves, uint16_t ply, int16_t minMoveScore) {
     for(Move move : moves) {
         uint64_t nodesSearchedBySEE = 0;
         int16_t score = evaluator.evaluateMoveSEE(move, nodesSearchedBySEE);
         locallySearchedNodes += nodesSearchedBySEE;
         nodesSearched.fetch_add(nodesSearchedBySEE);
     
-        moveStack[ply].moveScorePairs.push_back(MoveScorePair(move, score));
+        if(score >= minMoveScore)
+            searchStack[ply].moveScorePairs.insert_sorted(MoveScorePair(move, score), std::greater<MoveScorePair>());
     }
-}
-
-MoveScorePair PVSSearchInstance::selectNextMove(uint16_t ply, bool useIID, int16_t depth) {
-    if(moveStack[ply].moveScorePairs.size() == 0) {
-        if(!moveStack[ply].hashMove.exists()) {
-            Move hashMove = Move::nullMove();
-            TranspositionTableEntry entry;
-            if(transpositionTable.probe(board.getHashValue(), entry))
-                hashMove = entry.hashMove;
-
-            if(hashMove.exists() && (ply != 0 || searchMoves.size() == 0 || searchMoves.contains(hashMove))) {
-                moveStack[ply].hashMove = hashMove;
-                return { hashMove, HASH_MOVE_SCORE };
-            } else if(useIID) {
-                Array<MoveScorePair, 256> moveScorePairs;
-
-                MoveScorePair pair;
-                Move move, iidMove;
-                int16_t iidScore = MIN_SCORE, moveCount = 0, moveScore;
-
-                int16_t reducedDepth = (depth / (2 * ONE_PLY)) * ONE_PLY;
-
-                while((pair = selectNextMove(ply, reducedDepth >= 6 * ONE_PLY, reducedDepth)).move.exists()) {
-                    move = pair.move;
-                    moveScore = pair.score;
-
-                    evaluator.updateBeforeMove(move);
-                    board.makeMove(move);
-                    evaluator.updateAfterMove();
-
-                    int16_t reduction = determineReduction(moveCount + 1, moveScore, PV_NODE);
-                    int16_t score;
-
-                    if(moveCount == 0) {
-                        score = -pvs(reducedDepth, ply + 1, -MAX_SCORE, -iidScore, false, PV_NODE);
-                    } else {
-                        score = -pvs(reducedDepth - reduction, ply + 1, -iidScore - 1, -iidScore, true, CUT_NODE);
-
-                        if(score > iidScore)
-                            score = -pvs(reducedDepth, ply + 1, -MAX_SCORE, -iidScore, false, PV_NODE);
-                    }
-
-                    evaluator.updateBeforeUndo();
-                    board.undoMove();
-                    evaluator.updateAfterUndo(move);
-
-                    if(score > iidScore) {
-                        iidScore = score;
-                        iidMove = move;
-                    }
-
-                    moveScorePairs.push_back(MoveScorePair(move, score));
-
-                    moveCount++;
-                }
-
-                clearMoveStack(ply);
-
-                if(iidMove.exists()) {
-                    for(MoveScorePair& pair : moveScorePairs)
-                        if(pair.move == iidMove)
-                            pair.score = MIN_SCORE;
-
-                    moveStack[ply].moveScorePairs = moveScorePairs;
-                    moveStack[ply].hashMove = iidMove;
-                    return { iidMove, HASH_MOVE_SCORE };
-                }
-            }
-        }
-
-        Array<Move, 256> moves;
-        if(ply > 0 || searchMoves.size() == 0)
-            board.generateLegalMoves(moves);
-        else
-            moves = searchMoves;
-        
-        scoreMoves(moves, ply);
-
-        if(moveStack[ply].hashMove.exists()) {
-            for(MoveScorePair& pair : moveStack[ply].moveScorePairs)
-                if(pair.move == moveStack[ply].hashMove) {
-                    // Der Hashzug wurde bereits bewertet, daher wird er
-                    // nicht noch einmal zurückgegeben.
-                    pair.score = MIN_SCORE;
-                    break;
-                }
-        }
-    }
-
-    Move bestMove = Move::nullMove();
-    int16_t bestScore = MIN_SCORE;
-    size_t bestIndex = 0;
-
-    for(size_t i = 0; i < moveStack[ply].moveScorePairs.size(); i++)
-        if(moveStack[ply].moveScorePairs[i].score > bestScore) {
-            bestScore = moveStack[ply].moveScorePairs[i].score;
-            bestMove = moveStack[ply].moveScorePairs[i].move;
-            bestIndex = i;
-        }
-
-    moveStack[ply].moveScorePairs[bestIndex].score = MIN_SCORE;
-
-    return { bestMove, bestScore };
-}
-
-MoveScorePair PVSSearchInstance::selectNextMoveInQuiescence(uint16_t ply, int16_t minScore) {
-    if(moveStack[ply].moveScorePairs.size() == 0) {
-        Array<Move, 256> moves;
-        if(board.isCheck())
-            board.generateLegalMoves(moves);
-        else
-            board.generateLegalCaptures(moves);
-
-        scoreMovesForQuiescence(moves, ply);
-    }
-
-    Move bestMove = Move::nullMove();
-    int16_t bestScore = minScore - 1;
-    size_t bestIndex = 0;
-
-    for(size_t i = 0; i < moveStack[ply].moveScorePairs.size(); i++)
-        if(moveStack[ply].moveScorePairs[i].score > bestScore) {
-            bestScore = moveStack[ply].moveScorePairs[i].score;
-            bestMove = moveStack[ply].moveScorePairs[i].move;
-            bestIndex = i;
-        }
-
-    moveStack[ply].moveScorePairs[bestIndex].score = MIN_SCORE - 1;
-
-    return { bestMove, bestScore };
 }

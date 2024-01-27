@@ -19,7 +19,7 @@
 
 class PVSSearchInstance {
     private:
-        struct MoveStackEntry {
+        struct SearchStackEntry {
             Array<MoveScorePair, 256> moveScorePairs;
             Move hashMove = Move::nullMove();
         };
@@ -46,7 +46,7 @@ class PVSSearchInstance {
         uint64_t locallySearchedNodes = 0;
         int16_t currentSearchDepth = 0;
 
-        Array<MoveStackEntry, MAX_PLY> moveStack;
+        Array<SearchStackEntry, MAX_PLY> searchStack;
 
         const Array<Move, 256>& searchMoves;
 
@@ -65,11 +65,11 @@ class PVSSearchInstance {
 
         bool deactivateNullMove();
 
-        void scoreMoves(const Array<Move, 256>& moves, uint16_t ply);
-        void scoreMovesForQuiescence(const Array<Move, 256>& moves, uint16_t ply);
+        void prepareSearchStack(uint16_t ply, bool useIID, int16_t depth);
+        void prepareSearchStackForQuiescence(uint16_t ply, int16_t minMoveScore, bool includeHashMove);
 
-        MoveScorePair selectNextMove(uint16_t ply, bool useIID, int16_t depth);
-        MoveScorePair selectNextMoveInQuiescence(uint16_t ply, int16_t minScore = MIN_SCORE + 1);
+        void scoreMoves(const Array<Move, 256>& moves, uint16_t ply);
+        void scoreMovesForQuiescence(const Array<Move, 256>& moves, uint16_t ply, int16_t minMoveScore);
 
     public:
         PVSSearchInstance(Board& board, TranspositionTable& transpositionTable,
@@ -77,7 +77,7 @@ class PVSSearchInstance {
                           std::atomic<std::chrono::system_clock::time_point>& stopTime, std::atomic_uint64_t& nodesSearched,
                           const Array<Move, 256>& searchMoves, std::function<void()> checkupFunction) :
             board(board), evaluator(this->board), transpositionTable(transpositionTable), stopFlag(stopFlag), startTime(startTime), 
-            stopTime(stopTime), nodesSearched(nodesSearched), moveStack(), searchMoves(searchMoves), checkupFunction(checkupFunction) {
+            stopTime(stopTime), nodesSearched(nodesSearched), searchStack(), searchMoves(searchMoves), checkupFunction(checkupFunction) {
 
             for(int16_t i = 0; i < MAX_PLY; i++) {
                 killerMoves[i][0] = Move::nullMove();
@@ -132,9 +132,9 @@ class PVSSearchInstance {
             pvTable[ply].clear();
         }
 
-        constexpr void clearMoveStack(uint16_t ply) {
-            moveStack[ply].moveScorePairs.clear();
-            moveStack[ply].hashMove = Move::nullMove();
+        constexpr void clearSearchStack(uint16_t ply) {
+            searchStack[ply].moveScorePairs.clear();
+            searchStack[ply].hashMove = Move::nullMove();
         }
 
         constexpr void addKillerMove(uint16_t ply, Move move) {

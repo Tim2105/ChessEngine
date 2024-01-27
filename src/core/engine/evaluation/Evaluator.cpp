@@ -58,7 +58,7 @@ int32_t Evaluator::getSmallestAttacker(int32_t to, int32_t side) {
     return NO_SQ;
 }
 
-int32_t Evaluator::see(Move& m, uint64_t& nodesSearched) {
+int32_t Evaluator::see(Move m, uint64_t& nodesSearched) {
     nodesSearched++;
 
     int32_t score = 0;

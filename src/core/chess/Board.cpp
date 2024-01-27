@@ -24,10 +24,10 @@ Board::Board() {
 }
 
 Board::Board(const Board& b) {
-    for(int32_t i = 0; i < 64; i++)
+    for(size_t i = 0; i < 64; i++)
         pieces[i] = b.pieces[i];
 
-    for(int32_t i = 0; i < 15; i++)
+    for(size_t i = 0; i < 15; i++)
         pieceBitboard[i] = b.pieceBitboard[i];
 
     side = b.side;
@@ -44,10 +44,10 @@ Board::Board(const Board& b) {
 }
 
 Board::Board(Board&& b) {
-    for(int32_t i = 0; i < 64; i++)
+    for(size_t i = 0; i < 64; i++)
         pieces[i] = b.pieces[i];
 
-    for(int32_t i = 0; i < 15; i++)
+    for(size_t i = 0; i < 15; i++)
         pieceBitboard[i] = b.pieceBitboard[i];
 
     side = b.side;
@@ -64,10 +64,10 @@ Board::Board(Board&& b) {
 }
 
 Board& Board::operator=(const Board& b) {
-    for(int32_t i = 0; i < 64; i++)
+    for(size_t i = 0; i < 64; i++)
         pieces[i] = b.pieces[i];
 
-    for(int32_t i = 0; i < 15; i++)
+    for(size_t i = 0; i < 15; i++)
         pieceBitboard[i] = b.pieceBitboard[i];
 
     side = b.side;
@@ -86,10 +86,10 @@ Board& Board::operator=(const Board& b) {
 }
 
 Board& Board::operator=(Board&& b) {
-    for(int32_t i = 0; i < 64; i++)
+    for(size_t i = 0; i < 64; i++)
         pieces[i] = b.pieces[i];
 
-    for(int32_t i = 0; i < 15; i++)
+    for(size_t i = 0; i < 15; i++)
         pieceBitboard[i] = b.pieceBitboard[i];
 
     side = b.side;

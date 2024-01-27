@@ -43,12 +43,6 @@ class PVSEngine {
         std::atomic_uint64_t nodesSearched = 0;
         int16_t maxDepthReached = 0;
 
-        struct MoveStackEntry {
-            Array<MoveScorePair, 256> moveScorePairs;
-            Move hashMove = Move::nullMove();
-        };
-
-        Array<MoveStackEntry, MAX_PLY> moveStack;
         Array<MoveScorePair, 5> pvHistory;
 
         std::vector<std::thread> threads;
