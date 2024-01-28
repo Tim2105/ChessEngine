@@ -38,10 +38,10 @@ class Evaluator {
         int32_t see(Move m, uint64_t& nodesSearched);
     
     protected:
-        Board* b;
+        Board& board;
 
     public:
-        Evaluator(Board& b) : b(&b) {}
+        Evaluator(Board& b) : board(b) {}
 
         virtual ~Evaluator() {}
 
@@ -49,7 +49,7 @@ class Evaluator {
          * @brief Setzt das Spielfeld, auf dem die statische Bewertung ausgeführt werden soll.
          */
         virtual inline void setBoard(Board& b) {
-            this->b = &b;
+            this->board = b;
         }
 
         virtual void updateBeforeMove(Move m) { UNUSED(m); }
@@ -63,6 +63,8 @@ class Evaluator {
          * auch wenn beide Spieler kooperieren würden.
          * Andere Möglichkeiten für ein Unentschieden sind z.B. 50 Züge ohne Bauern- oder Schlagzug
          * oder dreimal dieselbe Stellung.
+         * 
+         * @note Patt wird hier nicht überprüft, weil das eine Aufgabe der Suche ist.
          */
         bool isDraw();
 
@@ -90,7 +92,7 @@ class Evaluator {
         /**
          * @brief Gibt eine Referenz auf das aktuelle Spielfeld zurück.
          */
-        constexpr Board& getBoard() { return *b; }
+        constexpr Board& getBoard() { return board; }
 };
 
 #endif

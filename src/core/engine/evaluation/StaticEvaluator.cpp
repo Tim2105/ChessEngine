@@ -4,16 +4,16 @@
 
 #include <algorithm>
 
-StaticEvaluator::StaticEvaluator(StaticEvaluator&& other) : Evaluator(*(other.b)) {}
+StaticEvaluator::StaticEvaluator(StaticEvaluator&& other) : Evaluator(other.board) {}
 
 StaticEvaluator& StaticEvaluator::operator=(StaticEvaluator&& other) {
-    this->b = other.b;
+    this->board = other.board;
 
     return *this;
 }
 
 void StaticEvaluator::updateBeforeMove(Move move) {
-    int32_t capturedPieceType = TYPEOF(b->pieceAt(move.getDestination()));
+    int32_t capturedPieceType = TYPEOF(board.pieceAt(move.getDestination()));
     int32_t promotedPieceType = EMPTY;
 
     if(move.isPromotion()) {
@@ -37,7 +37,7 @@ void StaticEvaluator::updateBeforeMove(Move move) {
 }
 
 void StaticEvaluator::updateAfterUndo(Move move) {
-    int32_t capturedPieceType = TYPEOF(b->pieceAt(move.getDestination()));
+    int32_t capturedPieceType = TYPEOF(board.pieceAt(move.getDestination()));
     int32_t promotedPieceType = EMPTY;
 
     if(move.isPromotion()) {
@@ -63,16 +63,16 @@ void StaticEvaluator::updateAfterUndo(Move move) {
 void StaticEvaluator::initGamePhase() {
     materialWeight = TOTAL_WEIGHT;
 
-    materialWeight -= b->getPieceBitboard(WHITE_PAWN).getNumberOfSetBits() * PAWN_WEIGHT;
-    materialWeight -= b->getPieceBitboard(BLACK_PAWN).getNumberOfSetBits() * PAWN_WEIGHT;
-    materialWeight -= b->getPieceBitboard(WHITE_KNIGHT).getNumberOfSetBits() * KNIGHT_WEIGHT;
-    materialWeight -= b->getPieceBitboard(BLACK_KNIGHT).getNumberOfSetBits() * KNIGHT_WEIGHT;
-    materialWeight -= b->getPieceBitboard(WHITE_BISHOP).getNumberOfSetBits() * BISHOP_WEIGHT;
-    materialWeight -= b->getPieceBitboard(BLACK_BISHOP).getNumberOfSetBits() * BISHOP_WEIGHT;
-    materialWeight -= b->getPieceBitboard(WHITE_ROOK).getNumberOfSetBits() * ROOK_WEIGHT;
-    materialWeight -= b->getPieceBitboard(BLACK_ROOK).getNumberOfSetBits() * ROOK_WEIGHT;
-    materialWeight -= b->getPieceBitboard(WHITE_QUEEN).getNumberOfSetBits() * QUEEN_WEIGHT;
-    materialWeight -= b->getPieceBitboard(BLACK_QUEEN).getNumberOfSetBits() * QUEEN_WEIGHT;
+    materialWeight -= board.getPieceBitboard(WHITE_PAWN).getNumberOfSetBits() * PAWN_WEIGHT;
+    materialWeight -= board.getPieceBitboard(BLACK_PAWN).getNumberOfSetBits() * PAWN_WEIGHT;
+    materialWeight -= board.getPieceBitboard(WHITE_KNIGHT).getNumberOfSetBits() * KNIGHT_WEIGHT;
+    materialWeight -= board.getPieceBitboard(BLACK_KNIGHT).getNumberOfSetBits() * KNIGHT_WEIGHT;
+    materialWeight -= board.getPieceBitboard(WHITE_BISHOP).getNumberOfSetBits() * BISHOP_WEIGHT;
+    materialWeight -= board.getPieceBitboard(BLACK_BISHOP).getNumberOfSetBits() * BISHOP_WEIGHT;
+    materialWeight -= board.getPieceBitboard(WHITE_ROOK).getNumberOfSetBits() * ROOK_WEIGHT;
+    materialWeight -= board.getPieceBitboard(BLACK_ROOK).getNumberOfSetBits() * ROOK_WEIGHT;
+    materialWeight -= board.getPieceBitboard(WHITE_QUEEN).getNumberOfSetBits() * QUEEN_WEIGHT;
+    materialWeight -= board.getPieceBitboard(BLACK_QUEEN).getNumberOfSetBits() * QUEEN_WEIGHT;
 
     gamePhase = (double)materialWeight / TOTAL_WEIGHT;
     gamePhase = gamePhase * (MAX_PHASE - MIN_PHASE) + MIN_PHASE; // phase in [MIN_PHASE, MAX_PHASE]
@@ -88,7 +88,7 @@ int32_t StaticEvaluator::evaluate() {
         return 0;
 
     int32_t score = 0;
-    int32_t side = b->getSideToMove();
+    int32_t side = board.getSideToMove();
 
     double phase = getGamePhase();
 
@@ -131,11 +131,11 @@ int32_t StaticEvaluator::middlegameEvaluation() {
 int32_t StaticEvaluator::endgameEvaluation() {
     int32_t score = 0;
 
-    int32_t side = b->getSideToMove();
+    int32_t side = board.getSideToMove();
     int32_t otherSide = side ^ COLOR_MASK;
 
-    int32_t ownKingPos = b->getKingSquare(side);
-    int32_t otherKingPos = b->getKingSquare(otherSide);
+    int32_t ownKingPos = board.getKingSquare(side);
+    int32_t otherKingPos = board.getKingSquare(otherSide);
 
     int32_t ownKingFile = SQ2F(ownKingPos);
     int32_t ownKingRank = SQ2R(ownKingPos);
@@ -162,17 +162,17 @@ int32_t StaticEvaluator::endgameEvaluation() {
 
 bool StaticEvaluator::isLikelyDraw() {
     // Unzureichendes Material
-    int32_t whitePawns = b->getPieceBitboard(WHITE_PAWN).getNumberOfSetBits();
-    int32_t whiteKnights = b->getPieceBitboard(WHITE_KNIGHT).getNumberOfSetBits();
-    int32_t whiteBishops = b->getPieceBitboard(WHITE_BISHOP).getNumberOfSetBits();
-    int32_t whiteRooks = b->getPieceBitboard(WHITE_ROOK).getNumberOfSetBits();
-    int32_t whiteQueens = b->getPieceBitboard(WHITE_QUEEN).getNumberOfSetBits();
+    int32_t whitePawns = board.getPieceBitboard(WHITE_PAWN).getNumberOfSetBits();
+    int32_t whiteKnights = board.getPieceBitboard(WHITE_KNIGHT).getNumberOfSetBits();
+    int32_t whiteBishops = board.getPieceBitboard(WHITE_BISHOP).getNumberOfSetBits();
+    int32_t whiteRooks = board.getPieceBitboard(WHITE_ROOK).getNumberOfSetBits();
+    int32_t whiteQueens = board.getPieceBitboard(WHITE_QUEEN).getNumberOfSetBits();
 
-    int32_t blackPawns = b->getPieceBitboard(BLACK_PAWN).getNumberOfSetBits();
-    int32_t blackKnights = b->getPieceBitboard(BLACK_KNIGHT).getNumberOfSetBits();
-    int32_t blackBishops = b->getPieceBitboard(BLACK_BISHOP).getNumberOfSetBits();
-    int32_t blackRooks = b->getPieceBitboard(BLACK_ROOK).getNumberOfSetBits();
-    int32_t blackQueens = b->getPieceBitboard(BLACK_QUEEN).getNumberOfSetBits();
+    int32_t blackPawns = board.getPieceBitboard(BLACK_PAWN).getNumberOfSetBits();
+    int32_t blackKnights = board.getPieceBitboard(BLACK_KNIGHT).getNumberOfSetBits();
+    int32_t blackBishops = board.getPieceBitboard(BLACK_BISHOP).getNumberOfSetBits();
+    int32_t blackRooks = board.getPieceBitboard(BLACK_ROOK).getNumberOfSetBits();
+    int32_t blackQueens = board.getPieceBitboard(BLACK_QUEEN).getNumberOfSetBits();
 
     if(whitePawns != 0 || blackPawns != 0)
         return false;
@@ -191,40 +191,40 @@ bool StaticEvaluator::isLikelyDraw() {
 
 int32_t StaticEvaluator::evalMGMaterial() {
     int32_t score = 0;
-    int32_t side = b->getSideToMove();
+    int32_t side = board.getSideToMove();
     int32_t otherSide = side ^ COLOR_MASK;
 
-    score += b->getPieceBitboard(side | PAWN).getNumberOfSetBits() * MG_PIECE_VALUE[PAWN];
-    score += b->getPieceBitboard(side | KNIGHT).getNumberOfSetBits() * MG_PIECE_VALUE[KNIGHT];
-    score += b->getPieceBitboard(side | BISHOP).getNumberOfSetBits() * MG_PIECE_VALUE[BISHOP];
-    score += b->getPieceBitboard(side | ROOK).getNumberOfSetBits() * MG_PIECE_VALUE[ROOK];
-    score += b->getPieceBitboard(side | QUEEN).getNumberOfSetBits() * MG_PIECE_VALUE[QUEEN];
+    score += board.getPieceBitboard(side | PAWN).getNumberOfSetBits() * MG_PIECE_VALUE[PAWN];
+    score += board.getPieceBitboard(side | KNIGHT).getNumberOfSetBits() * MG_PIECE_VALUE[KNIGHT];
+    score += board.getPieceBitboard(side | BISHOP).getNumberOfSetBits() * MG_PIECE_VALUE[BISHOP];
+    score += board.getPieceBitboard(side | ROOK).getNumberOfSetBits() * MG_PIECE_VALUE[ROOK];
+    score += board.getPieceBitboard(side | QUEEN).getNumberOfSetBits() * MG_PIECE_VALUE[QUEEN];
 
-    score -= b->getPieceBitboard(otherSide | PAWN).getNumberOfSetBits() * MG_PIECE_VALUE[PAWN];
-    score -= b->getPieceBitboard(otherSide | KNIGHT).getNumberOfSetBits() * MG_PIECE_VALUE[KNIGHT];
-    score -= b->getPieceBitboard(otherSide | BISHOP).getNumberOfSetBits() * MG_PIECE_VALUE[BISHOP];
-    score -= b->getPieceBitboard(otherSide | ROOK).getNumberOfSetBits() * MG_PIECE_VALUE[ROOK];
-    score -= b->getPieceBitboard(otherSide | QUEEN).getNumberOfSetBits() * MG_PIECE_VALUE[QUEEN];
+    score -= board.getPieceBitboard(otherSide | PAWN).getNumberOfSetBits() * MG_PIECE_VALUE[PAWN];
+    score -= board.getPieceBitboard(otherSide | KNIGHT).getNumberOfSetBits() * MG_PIECE_VALUE[KNIGHT];
+    score -= board.getPieceBitboard(otherSide | BISHOP).getNumberOfSetBits() * MG_PIECE_VALUE[BISHOP];
+    score -= board.getPieceBitboard(otherSide | ROOK).getNumberOfSetBits() * MG_PIECE_VALUE[ROOK];
+    score -= board.getPieceBitboard(otherSide | QUEEN).getNumberOfSetBits() * MG_PIECE_VALUE[QUEEN];
 
     return score;
 }
 
 int32_t StaticEvaluator::evalEGMaterial() {
     int32_t score = 0;
-    int32_t side = b->getSideToMove();
+    int32_t side = board.getSideToMove();
     int32_t otherSide = side ^ COLOR_MASK;
 
-    score += b->getPieceBitboard(side | PAWN).getNumberOfSetBits() * EG_PIECE_VALUE[PAWN];
-    score += b->getPieceBitboard(side | KNIGHT).getNumberOfSetBits() * EG_PIECE_VALUE[KNIGHT];
-    score += b->getPieceBitboard(side | BISHOP).getNumberOfSetBits() * EG_PIECE_VALUE[BISHOP];
-    score += b->getPieceBitboard(side | ROOK).getNumberOfSetBits() * EG_PIECE_VALUE[ROOK];
-    score += b->getPieceBitboard(side | QUEEN).getNumberOfSetBits() * EG_PIECE_VALUE[QUEEN];
+    score += board.getPieceBitboard(side | PAWN).getNumberOfSetBits() * EG_PIECE_VALUE[PAWN];
+    score += board.getPieceBitboard(side | KNIGHT).getNumberOfSetBits() * EG_PIECE_VALUE[KNIGHT];
+    score += board.getPieceBitboard(side | BISHOP).getNumberOfSetBits() * EG_PIECE_VALUE[BISHOP];
+    score += board.getPieceBitboard(side | ROOK).getNumberOfSetBits() * EG_PIECE_VALUE[ROOK];
+    score += board.getPieceBitboard(side | QUEEN).getNumberOfSetBits() * EG_PIECE_VALUE[QUEEN];
 
-    score -= b->getPieceBitboard(otherSide | PAWN).getNumberOfSetBits() * EG_PIECE_VALUE[PAWN];
-    score -= b->getPieceBitboard(otherSide | KNIGHT).getNumberOfSetBits() * EG_PIECE_VALUE[KNIGHT];
-    score -= b->getPieceBitboard(otherSide | BISHOP).getNumberOfSetBits() * EG_PIECE_VALUE[BISHOP];
-    score -= b->getPieceBitboard(otherSide | ROOK).getNumberOfSetBits() * EG_PIECE_VALUE[ROOK];
-    score -= b->getPieceBitboard(otherSide | QUEEN).getNumberOfSetBits() * EG_PIECE_VALUE[QUEEN];
+    score -= board.getPieceBitboard(otherSide | PAWN).getNumberOfSetBits() * EG_PIECE_VALUE[PAWN];
+    score -= board.getPieceBitboard(otherSide | KNIGHT).getNumberOfSetBits() * EG_PIECE_VALUE[KNIGHT];
+    score -= board.getPieceBitboard(otherSide | BISHOP).getNumberOfSetBits() * EG_PIECE_VALUE[BISHOP];
+    score -= board.getPieceBitboard(otherSide | ROOK).getNumberOfSetBits() * EG_PIECE_VALUE[ROOK];
+    score -= board.getPieceBitboard(otherSide | QUEEN).getNumberOfSetBits() * EG_PIECE_VALUE[QUEEN];
 
     return score;
 }
@@ -232,24 +232,24 @@ int32_t StaticEvaluator::evalEGMaterial() {
 int32_t StaticEvaluator::evalMGPieces() {
     int32_t score = 0;
 
-    int32_t side = b->getSideToMove();
+    int32_t side = board.getSideToMove();
     int32_t otherSide = side ^ COLOR_MASK;
 
-    Bitboard ownPawns = b->getPieceBitboard(side | PAWN);
-    Bitboard otherPawns = b->getPieceBitboard(otherSide | PAWN);
+    Bitboard ownPawns = board.getPieceBitboard(side | PAWN);
+    Bitboard otherPawns = board.getPieceBitboard(otherSide | PAWN);
     Bitboard pawns = ownPawns | otherPawns;
 
-    Bitboard ownKnights = b->getPieceBitboard(side | KNIGHT);
-    Bitboard otherKnights = b->getPieceBitboard(otherSide | KNIGHT);
+    Bitboard ownKnights = board.getPieceBitboard(side | KNIGHT);
+    Bitboard otherKnights = board.getPieceBitboard(otherSide | KNIGHT);
 
-    Bitboard ownBishops = b->getPieceBitboard(side | BISHOP);
-    Bitboard otherBishops = b->getPieceBitboard(otherSide | BISHOP);
+    Bitboard ownBishops = board.getPieceBitboard(side | BISHOP);
+    Bitboard otherBishops = board.getPieceBitboard(otherSide | BISHOP);
 
-    Bitboard ownRooks = b->getPieceBitboard(side | ROOK);
-    Bitboard otherRooks = b->getPieceBitboard(otherSide | ROOK);
+    Bitboard ownRooks = board.getPieceBitboard(side | ROOK);
+    Bitboard otherRooks = board.getPieceBitboard(otherSide | ROOK);
 
-    Bitboard ownQueens = b->getPieceBitboard(side | QUEEN);
-    Bitboard otherQueens = b->getPieceBitboard(otherSide | QUEEN);
+    Bitboard ownQueens = board.getPieceBitboard(side | QUEEN);
+    Bitboard otherQueens = board.getPieceBitboard(otherSide | QUEEN);
 
     score += evalMGKnights(ownKnights, pawns);
     score -= evalMGKnights(otherKnights, pawns);
@@ -269,23 +269,23 @@ int32_t StaticEvaluator::evalMGPieces() {
 int32_t StaticEvaluator::evalEGPieces() {
     int32_t score = 0;
 
-    int32_t side = b->getSideToMove();
+    int32_t side = board.getSideToMove();
     int32_t otherSide = side ^ COLOR_MASK;
 
-    Bitboard ownPawns = b->getPieceBitboard(side | PAWN);
-    Bitboard otherPawns = b->getPieceBitboard(otherSide | PAWN);
+    Bitboard ownPawns = board.getPieceBitboard(side | PAWN);
+    Bitboard otherPawns = board.getPieceBitboard(otherSide | PAWN);
 
     Bitboard ownPassedPawns = findPassedPawns(ownPawns, otherPawns, side);
     Bitboard otherPassedPawns = findPassedPawns(otherPawns, ownPawns, otherSide);
 
-    Bitboard ownKnights = b->getPieceBitboard(side | KNIGHT);
-    Bitboard otherKnights = b->getPieceBitboard(otherSide | KNIGHT);
+    Bitboard ownKnights = board.getPieceBitboard(side | KNIGHT);
+    Bitboard otherKnights = board.getPieceBitboard(otherSide | KNIGHT);
 
-    Bitboard ownBishops = b->getPieceBitboard(side | BISHOP);
-    Bitboard otherBishops = b->getPieceBitboard(otherSide | BISHOP);
+    Bitboard ownBishops = board.getPieceBitboard(side | BISHOP);
+    Bitboard otherBishops = board.getPieceBitboard(otherSide | BISHOP);
 
-    Bitboard ownRooks = b->getPieceBitboard(side | ROOK);
-    Bitboard otherRooks = b->getPieceBitboard(otherSide | ROOK);
+    Bitboard ownRooks = board.getPieceBitboard(side | ROOK);
+    Bitboard otherRooks = board.getPieceBitboard(otherSide | ROOK);
 
     score += evalEGKnights(ownKnights, ownPawns | otherPawns);
     score -= evalEGKnights(otherKnights, ownPawns | otherPawns);
@@ -447,20 +447,20 @@ inline int32_t StaticEvaluator::evalMGQueens(const Bitboard& ownQueens, const Bi
 int32_t StaticEvaluator::evalKingPawnEG() {
     int32_t score = 0;
 
-    int32_t side = b->getSideToMove();
+    int32_t side = board.getSideToMove();
     int32_t otherSide = side ^ COLOR_MASK;
 
-    Bitboard ownMinorOrMajorPieces = b->getPieceBitboard(side | KNIGHT) | b->getPieceBitboard(side | BISHOP) |
-                                     b->getPieceBitboard(side | ROOK) | b->getPieceBitboard(side | QUEEN);
+    Bitboard ownMinorOrMajorPieces = board.getPieceBitboard(side | KNIGHT) | board.getPieceBitboard(side | BISHOP) |
+                                     board.getPieceBitboard(side | ROOK) | board.getPieceBitboard(side | QUEEN);
 
-    Bitboard otherMinorOrMajorPieces = b->getPieceBitboard(otherSide | KNIGHT) | b->getPieceBitboard(otherSide | BISHOP) |
-                                       b->getPieceBitboard(otherSide | ROOK) | b->getPieceBitboard(otherSide | QUEEN);
+    Bitboard otherMinorOrMajorPieces = board.getPieceBitboard(otherSide | KNIGHT) | board.getPieceBitboard(otherSide | BISHOP) |
+                                       board.getPieceBitboard(otherSide | ROOK) | board.getPieceBitboard(otherSide | QUEEN);
 
-    int32_t ownKingSquare = b->getKingSquare(side);
-    int32_t otherKingSquare = b->getKingSquare(otherSide);
+    int32_t ownKingSquare = board.getKingSquare(side);
+    int32_t otherKingSquare = board.getKingSquare(otherSide);
 
-    Bitboard ownPawns = b->getPieceBitboard(side | PAWN);
-    Bitboard otherPawns = b->getPieceBitboard(otherSide | PAWN);
+    Bitboard ownPawns = board.getPieceBitboard(side | PAWN);
+    Bitboard otherPawns = board.getPieceBitboard(otherSide | PAWN);
 
     Bitboard ownPassedPawns = findPassedPawns(ownPawns, otherPawns, side);
     Bitboard otherPassedPawns = findPassedPawns(otherPawns, ownPawns, otherSide);
@@ -516,8 +516,8 @@ inline int32_t StaticEvaluator::evalMG_PSQT() {
     int32_t blackScore = 0;
 
     for(int p = PAWN; p <= KING; p++) {
-        Bitboard whitePieces = b->getPieceBitboard(WHITE | p);
-        Bitboard blackPieces = b->getPieceBitboard(BLACK | p);
+        Bitboard whitePieces = board.getPieceBitboard(WHITE | p);
+        Bitboard blackPieces = board.getPieceBitboard(BLACK | p);
 
         while(whitePieces) {
             int sq = whitePieces.getFirstSetBit();
@@ -534,10 +534,10 @@ inline int32_t StaticEvaluator::evalMG_PSQT() {
         }
     }
 
-    Bitboard whiteEnPrise = b->getWhiteOccupiedBitboard() & ~b->getAttackBitboard(WHITE);
-    Bitboard blackEnPrise = b->getBlackOccupiedBitboard() & ~b->getAttackBitboard(BLACK);
+    Bitboard whiteEnPrise = board.getWhiteOccupiedBitboard() & ~board.getAttackBitboard(WHITE);
+    Bitboard blackEnPrise = board.getBlackOccupiedBitboard() & ~board.getAttackBitboard(BLACK);
 
-    if(b->getSideToMove() == WHITE) {
+    if(board.getSideToMove() == WHITE) {
         score += whiteScore;
         score -= whiteEnPrise.getNumberOfSetBits() * MG_PIECE_EN_PRISE_VALUE;
         score -= blackScore;
@@ -558,8 +558,8 @@ inline int32_t StaticEvaluator::evalEG_PSQT() {
     int32_t blackScore = 0;
 
     for(int p = PAWN; p <= KING; p++) {
-        Bitboard whitePieces = b->getPieceBitboard(WHITE | p);
-        Bitboard blackPieces = b->getPieceBitboard(BLACK | p);
+        Bitboard whitePieces = board.getPieceBitboard(WHITE | p);
+        Bitboard blackPieces = board.getPieceBitboard(BLACK | p);
 
         while(whitePieces) {
             int sq = whitePieces.getFirstSetBit();
@@ -576,10 +576,10 @@ inline int32_t StaticEvaluator::evalEG_PSQT() {
         }
     }
 
-    Bitboard whiteEnPrise = b->getWhiteOccupiedBitboard() & ~b->getAttackBitboard(WHITE);
-    Bitboard blackEnPrise = b->getBlackOccupiedBitboard() & ~b->getAttackBitboard(BLACK);
+    Bitboard whiteEnPrise = board.getWhiteOccupiedBitboard() & ~board.getAttackBitboard(WHITE);
+    Bitboard blackEnPrise = board.getBlackOccupiedBitboard() & ~board.getAttackBitboard(BLACK);
 
-    if(b->getSideToMove() == WHITE) {
+    if(board.getSideToMove() == WHITE) {
         score += whiteScore;
         score -= whiteEnPrise.getNumberOfSetBits() * EG_PIECE_EN_PRISE_VALUE;
         score -= blackScore;
@@ -597,9 +597,9 @@ inline int32_t StaticEvaluator::evalEG_PSQT() {
 Score StaticEvaluator::evalPawnStructure(int32_t side) {
     Score score = Score{0, 0};
 
-    Bitboard ownPawns = b->getPieceBitboard(side | PAWN);
-    Bitboard otherPawns = b->getPieceBitboard((side ^ COLOR_MASK) | PAWN);
-    Bitboard ownPawnAttacks = b->getPieceAttackBitboard(side | PAWN);
+    Bitboard ownPawns = board.getPieceBitboard(side | PAWN);
+    Bitboard otherPawns = board.getPieceBitboard((side ^ COLOR_MASK) | PAWN);
+    Bitboard ownPawnAttacks = board.getPieceAttackBitboard(side | PAWN);
 
     Bitboard doublePawns = findDoublePawns(ownPawns, side);
     Bitboard isolatedPawns = findIsolatedPawns(ownPawns);
@@ -700,20 +700,20 @@ int32_t StaticEvaluator::evalMGKingAttackZone(int32_t side) {
     int32_t score = 0;
 
     int32_t otherSide = side ^ COLOR_MASK;
-    Bitboard kingAttackZone = kingAttackZoneMask[side / COLOR_MASK][b->getKingSquare(side)];
+    Bitboard kingAttackZone = kingAttackZoneMask[side / COLOR_MASK][board.getKingSquare(side)];
 
     int32_t attackCounter = 0;
     
-    int32_t knightThreats = (b->getPieceAttackBitboard(otherSide | KNIGHT) & kingAttackZone).getNumberOfSetBits();
+    int32_t knightThreats = (board.getPieceAttackBitboard(otherSide | KNIGHT) & kingAttackZone).getNumberOfSetBits();
     attackCounter += knightThreats * MG_KING_SAFETY_KNIGHT_THREAT_VALUE;
 
-    int32_t bishopThreats = (b->getPieceAttackBitboard(otherSide | BISHOP) & kingAttackZone).getNumberOfSetBits();
+    int32_t bishopThreats = (board.getPieceAttackBitboard(otherSide | BISHOP) & kingAttackZone).getNumberOfSetBits();
     attackCounter += bishopThreats * MG_KING_SAFETY_BISHOP_THREAT_VALUE;
 
-    int32_t rookThreats = (b->getPieceAttackBitboard(otherSide | ROOK) & kingAttackZone).getNumberOfSetBits();
+    int32_t rookThreats = (board.getPieceAttackBitboard(otherSide | ROOK) & kingAttackZone).getNumberOfSetBits();
     attackCounter += rookThreats * MG_KING_SAFETY_ROOK_THREAT_VALUE;
 
-    int32_t queenThreats = (b->getPieceAttackBitboard(otherSide | QUEEN) & kingAttackZone).getNumberOfSetBits();
+    int32_t queenThreats = (board.getPieceAttackBitboard(otherSide | QUEEN) & kingAttackZone).getNumberOfSetBits();
     attackCounter += queenThreats * MG_KING_SAFETY_QUEEN_THREAT_VALUE;
         
     if(attackCounter >= kingSafetyTableSize)
@@ -726,17 +726,17 @@ int32_t StaticEvaluator::evalMGKingAttackZone(int32_t side) {
 
 int32_t StaticEvaluator::evalMGKingSafety() {
     int32_t score = 0;
-    int32_t side = b->getSideToMove();
+    int32_t side = board.getSideToMove();
     int32_t otherSide = side ^ COLOR_MASK;
 
-    Bitboard ownPawns = b->getPieceBitboard(side | PAWN);
-    Bitboard otherPawns = b->getPieceBitboard(otherSide | PAWN);
+    Bitboard ownPawns = board.getPieceBitboard(side | PAWN);
+    Bitboard otherPawns = board.getPieceBitboard(otherSide | PAWN);
 
     int32_t ownKingSafetyScore = 0;
     int32_t otherKingSafetyScore = 0;
 
-    int32_t ownKingSquare = b->getKingSquare(side);
-    int32_t otherKingSquare = b->getKingSquare(otherSide);
+    int32_t ownKingSquare = board.getKingSquare(side);
+    int32_t otherKingSquare = board.getKingSquare(otherSide);
 
     ownKingSafetyScore += evalMGPawnShield(ownKingSquare, ownPawns, side);
     ownKingSafetyScore += evalMGPawnStorm(otherKingSquare, ownPawns, side);
@@ -753,27 +753,27 @@ int32_t StaticEvaluator::evalMGKingSafety() {
 
 int32_t StaticEvaluator::evalMGMobility() {
     int32_t score = 0;
-    int32_t side = b->getSideToMove();
+    int32_t side = board.getSideToMove();
     int32_t otherSide = side ^ COLOR_MASK;
 
-    Bitboard ownPieces = b->getWhiteOccupiedBitboard() | b->getPieceBitboard(WHITE_KING);
-    Bitboard otherPieces = b->getBlackOccupiedBitboard() | b->getPieceBitboard(BLACK_KING);
+    Bitboard ownPieces = board.getWhiteOccupiedBitboard() | board.getPieceBitboard(WHITE_KING);
+    Bitboard otherPieces = board.getBlackOccupiedBitboard() | board.getPieceBitboard(BLACK_KING);
 
     if(side == BLACK) {
-        ownPieces = b->getBlackOccupiedBitboard() | b->getPieceBitboard(BLACK_KING);
-        otherPieces = b->getWhiteOccupiedBitboard() | b->getPieceBitboard(WHITE_KING);
+        ownPieces = board.getBlackOccupiedBitboard() | board.getPieceBitboard(BLACK_KING);
+        otherPieces = board.getWhiteOccupiedBitboard() | board.getPieceBitboard(WHITE_KING);
     }
 
-    Bitboard ownPawnMobility = b->getPieceAttackBitboard(side | PAWN);
-    Bitboard otherPawnMobility = b->getPieceAttackBitboard(otherSide | PAWN);
-    Bitboard ownKnightMobility = b->getPieceAttackBitboard(side | KNIGHT) & ~b->getPieceAttackBitboard(otherSide | PAWN);
-    Bitboard otherKnightMobility = b->getPieceAttackBitboard(otherSide | KNIGHT) & ~b->getPieceAttackBitboard(side | PAWN);
-    Bitboard ownBishopMobility = b->getPieceAttackBitboard(side | BISHOP) & ~b->getPieceAttackBitboard(otherSide | PAWN);
-    Bitboard otherBishopMobility = b->getPieceAttackBitboard(otherSide | BISHOP) & ~b->getPieceAttackBitboard(side | PAWN);
-    Bitboard ownRookMobility = b->getPieceAttackBitboard(side | ROOK) & ~b->getPieceAttackBitboard(otherSide | PAWN);
-    Bitboard otherRookMobility = b->getPieceAttackBitboard(otherSide | ROOK) & ~b->getPieceAttackBitboard(side | PAWN);
-    Bitboard ownQueenMobility = b->getPieceAttackBitboard(side | QUEEN) & ~b->getPieceAttackBitboard(otherSide | PAWN);
-    Bitboard otherQueenMobility = b->getPieceAttackBitboard(otherSide | QUEEN) & ~b->getPieceAttackBitboard(side | PAWN);
+    Bitboard ownPawnMobility = board.getPieceAttackBitboard(side | PAWN);
+    Bitboard otherPawnMobility = board.getPieceAttackBitboard(otherSide | PAWN);
+    Bitboard ownKnightMobility = board.getPieceAttackBitboard(side | KNIGHT) & ~board.getPieceAttackBitboard(otherSide | PAWN);
+    Bitboard otherKnightMobility = board.getPieceAttackBitboard(otherSide | KNIGHT) & ~board.getPieceAttackBitboard(side | PAWN);
+    Bitboard ownBishopMobility = board.getPieceAttackBitboard(side | BISHOP) & ~board.getPieceAttackBitboard(otherSide | PAWN);
+    Bitboard otherBishopMobility = board.getPieceAttackBitboard(otherSide | BISHOP) & ~board.getPieceAttackBitboard(side | PAWN);
+    Bitboard ownRookMobility = board.getPieceAttackBitboard(side | ROOK) & ~board.getPieceAttackBitboard(otherSide | PAWN);
+    Bitboard otherRookMobility = board.getPieceAttackBitboard(otherSide | ROOK) & ~board.getPieceAttackBitboard(side | PAWN);
+    Bitboard ownQueenMobility = board.getPieceAttackBitboard(side | QUEEN) & ~board.getPieceAttackBitboard(otherSide | PAWN);
+    Bitboard otherQueenMobility = board.getPieceAttackBitboard(otherSide | QUEEN) & ~board.getPieceAttackBitboard(side | PAWN);
 
     score += ownPawnMobility.getNumberOfSetBits() * MG_PAWN_MOBILITY_VALUE;
     score -= otherPawnMobility.getNumberOfSetBits() * MG_PAWN_MOBILITY_VALUE;
@@ -791,27 +791,27 @@ int32_t StaticEvaluator::evalMGMobility() {
 
 int32_t StaticEvaluator::evalEGMobility() {
     int32_t score = 0;
-    int32_t side = b->getSideToMove();
+    int32_t side = board.getSideToMove();
     int32_t otherSide = side ^ COLOR_MASK;
 
-    Bitboard ownPieces = b->getWhiteOccupiedBitboard() | b->getPieceBitboard(WHITE_KING);
-    Bitboard otherPieces = b->getBlackOccupiedBitboard() | b->getPieceBitboard(BLACK_KING);
+    Bitboard ownPieces = board.getWhiteOccupiedBitboard() | board.getPieceBitboard(WHITE_KING);
+    Bitboard otherPieces = board.getBlackOccupiedBitboard() | board.getPieceBitboard(BLACK_KING);
 
     if(side == BLACK) {
-        ownPieces = b->getBlackOccupiedBitboard() | b->getPieceBitboard(BLACK_KING);
-        otherPieces = b->getWhiteOccupiedBitboard() | b->getPieceBitboard(WHITE_KING);
+        ownPieces = board.getBlackOccupiedBitboard() | board.getPieceBitboard(BLACK_KING);
+        otherPieces = board.getWhiteOccupiedBitboard() | board.getPieceBitboard(WHITE_KING);
     }
 
-    Bitboard ownPawnMobility = b->getPieceAttackBitboard(side | PAWN);
-    Bitboard otherPawnMobility = b->getPieceAttackBitboard(otherSide | PAWN);
-    Bitboard ownKnightMobility = b->getPieceAttackBitboard(side | KNIGHT) & ~b->getPieceAttackBitboard(otherSide | PAWN);
-    Bitboard otherKnightMobility = b->getPieceAttackBitboard(otherSide | KNIGHT) & ~b->getPieceAttackBitboard(side | PAWN);
-    Bitboard ownBishopMobility = b->getPieceAttackBitboard(side | BISHOP) & ~b->getPieceAttackBitboard(otherSide | PAWN);
-    Bitboard otherBishopMobility = b->getPieceAttackBitboard(otherSide | BISHOP) & ~b->getPieceAttackBitboard(side | PAWN);
-    Bitboard ownRookMobility = b->getPieceAttackBitboard(side | ROOK) & ~b->getPieceAttackBitboard(otherSide | PAWN);
-    Bitboard otherRookMobility = b->getPieceAttackBitboard(otherSide | ROOK) & ~b->getPieceAttackBitboard(side | PAWN);
-    Bitboard ownQueenMobility = b->getPieceAttackBitboard(side | QUEEN) & ~b->getPieceAttackBitboard(otherSide | PAWN);
-    Bitboard otherQueenMobility = b->getPieceAttackBitboard(otherSide | QUEEN) & ~b->getPieceAttackBitboard(side | PAWN);
+    Bitboard ownPawnMobility = board.getPieceAttackBitboard(side | PAWN);
+    Bitboard otherPawnMobility = board.getPieceAttackBitboard(otherSide | PAWN);
+    Bitboard ownKnightMobility = board.getPieceAttackBitboard(side | KNIGHT) & ~board.getPieceAttackBitboard(otherSide | PAWN);
+    Bitboard otherKnightMobility = board.getPieceAttackBitboard(otherSide | KNIGHT) & ~board.getPieceAttackBitboard(side | PAWN);
+    Bitboard ownBishopMobility = board.getPieceAttackBitboard(side | BISHOP) & ~board.getPieceAttackBitboard(otherSide | PAWN);
+    Bitboard otherBishopMobility = board.getPieceAttackBitboard(otherSide | BISHOP) & ~board.getPieceAttackBitboard(side | PAWN);
+    Bitboard ownRookMobility = board.getPieceAttackBitboard(side | ROOK) & ~board.getPieceAttackBitboard(otherSide | PAWN);
+    Bitboard otherRookMobility = board.getPieceAttackBitboard(otherSide | ROOK) & ~board.getPieceAttackBitboard(side | PAWN);
+    Bitboard ownQueenMobility = board.getPieceAttackBitboard(side | QUEEN) & ~board.getPieceAttackBitboard(otherSide | PAWN);
+    Bitboard otherQueenMobility = board.getPieceAttackBitboard(otherSide | QUEEN) & ~board.getPieceAttackBitboard(side | PAWN);
 
     score += ownPawnMobility.getNumberOfSetBits() * EG_PAWN_MOBILITY_VALUE;
     score -= otherPawnMobility.getNumberOfSetBits() * EG_PAWN_MOBILITY_VALUE;

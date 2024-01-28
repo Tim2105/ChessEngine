@@ -5,51 +5,52 @@
 #include <algorithm>
 
 bool Evaluator::isDraw() {
-    // Fifty-move rule
-    if(b->getFiftyMoveCounter() >= 100)
+    // 50-Züge-Regel
+    if(board.getFiftyMoveCounter() >= 100)
         return true;
     
-    if(b->repetitionCount() >= 3)
+    // Dreifache Stellungswiederholung
+    if(board.repetitionCount() >= 3)
         return true;
 
-    // Material draw
-    return Referee::isDrawByMaterial(*b);
+    // Unzureichendes Material
+    return Referee::isDrawByMaterial(board);
 }
 
 int32_t Evaluator::getSmallestAttacker(int32_t to, int32_t side) {
     int32_t otherSide = side ^ COLOR_MASK;
 
-    if(!b->getAttackBitboard(side).getBit(to))
+    if(!board.getAttackBitboard(side).getBit(to))
         return NO_SQ;
     
-    Bitboard pawnAttackers = pawnAttackBitboard(to, otherSide) & b->getPieceBitboard(side | PAWN);
+    Bitboard pawnAttackers = pawnAttackBitboard(to, otherSide) & board.getPieceBitboard(side | PAWN);
     if(pawnAttackers)
         return pawnAttackers.getFirstSetBit();
 
-    Bitboard knightAttackers = knightAttackBitboard(to) & b->getPieceBitboard(side | KNIGHT);
+    Bitboard knightAttackers = knightAttackBitboard(to) & board.getPieceBitboard(side | KNIGHT);
     if(knightAttackers)
         return knightAttackers.getFirstSetBit();
 
-    Bitboard bishopAttackers = diagonalAttackBitboard(to, b->getOccupiedBitboard() | b->getPieceBitboard(side | KING))
-                                                        & b->getPieceBitboard(side | BISHOP);
+    Bitboard bishopAttackers = diagonalAttackBitboard(to, board.getOccupiedBitboard() | board.getPieceBitboard(side | KING))
+                                                        & board.getPieceBitboard(side | BISHOP);
     if(bishopAttackers)
         return bishopAttackers.getFirstSetBit();
 
-    Bitboard rookAttackers = horizontalAttackBitboard(to, b->getOccupiedBitboard() | b->getPieceBitboard(side | KING))
-                                                        & b->getPieceBitboard(side | ROOK);
+    Bitboard rookAttackers = horizontalAttackBitboard(to, board.getOccupiedBitboard() | board.getPieceBitboard(side | KING))
+                                                        & board.getPieceBitboard(side | ROOK);
     if(rookAttackers)
         return rookAttackers.getFirstSetBit();
 
-    Bitboard queenAttackers = (diagonalAttackBitboard(to, b->getOccupiedBitboard() | b->getPieceBitboard(side | KING))
-                                | horizontalAttackBitboard(to, b->getOccupiedBitboard() | b->getPieceBitboard(side | KING)))
-                                & b->getPieceBitboard(side | QUEEN);
+    Bitboard queenAttackers = (diagonalAttackBitboard(to, board.getOccupiedBitboard() | board.getPieceBitboard(side | KING))
+                                | horizontalAttackBitboard(to, board.getOccupiedBitboard() | board.getPieceBitboard(side | KING)))
+                                & board.getPieceBitboard(side | QUEEN);
     if(queenAttackers)
         return queenAttackers.getFirstSetBit();
     
-    Bitboard kingAttackers = kingAttackBitboard(to) & b->getPieceBitboard(side | KING);
+    Bitboard kingAttackers = kingAttackBitboard(to) & board.getPieceBitboard(side | KING);
     if(kingAttackers) {
         // Der König darf nur schlagen, wenn die Figur nicht verteidigt wird
-        if(b->getAttackBitboard(otherSide).getBit(to))
+        if(board.getAttackBitboard(otherSide).getBit(to))
             return NO_SQ;
 
         return kingAttackers.getFirstSetBit();
@@ -62,18 +63,18 @@ int32_t Evaluator::see(Move m, uint64_t& nodesSearched) {
     nodesSearched++;
 
     int32_t score = 0;
-    int32_t side = b->getSideToMove() ^ COLOR_MASK;
+    int32_t side = board.getSideToMove() ^ COLOR_MASK;
 
-    b->makeMove(m);
+    board.makeMove(m);
 
     int32_t attackerSq = getSmallestAttacker(m.getDestination(), side);
     if(attackerSq != NO_SQ) {
         Move newMove(attackerSq, m.getDestination(), MOVE_CAPTURE);
-        int32_t capturedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(b->pieceAt(m.getDestination()))];
+        int32_t capturedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(board.pieceAt(m.getDestination()))];
         score = std::max(score, capturedPieceValue - see(newMove, nodesSearched));
     }
 
-    b->undoMove();
+    board.undoMove();
 
     return score;
 }
@@ -93,7 +94,7 @@ int16_t Evaluator::evaluateMoveSEE(Move m, uint64_t& nodesSearched) {
     }
 
     // SEE-Heuristik
-    int32_t capturedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(b->pieceAt(m.getDestination()))];
+    int32_t capturedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(board.pieceAt(m.getDestination()))];
     if(m.isEnPassant())
         capturedPieceValue = SIMPLE_PIECE_VALUE[PAWN];
 
@@ -118,8 +119,8 @@ int16_t Evaluator::evaluateMoveMVVLVA(Move m) {
 
     if(m.isCapture()) {
         // MVVLVA-Heuristik
-        int32_t movedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(b->pieceAt(m.getOrigin()))];
-        int32_t capturedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(b->pieceAt(m.getDestination()))];
+        int32_t movedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(board.pieceAt(m.getOrigin()))];
+        int32_t capturedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(board.pieceAt(m.getDestination()))];
 
         moveScore += capturedPieceValue - movedPieceValue;
     }

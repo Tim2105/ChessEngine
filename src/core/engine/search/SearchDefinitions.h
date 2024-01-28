@@ -72,10 +72,10 @@ static constexpr uint8_t CUT_NODE = 1;
 static constexpr uint8_t ALL_NODE = 2;
 
 static constexpr int16_t calculateNullMoveReduction(int16_t depth, int16_t staticEval, int16_t beta) {
-    int16_t reduction = 2 * ONE_PLY + depth / 4 + std::min((staticEval - beta) / 128, 3 * ONE_PLY);
+    int16_t reduction = 2 * ONE_PLY + depth / 3 + std::min((staticEval - beta) / 128, 3) * ONE_PLY;
 
-    // Runde auf nächstes Vielfaches von ONE_PLY
-    return (reduction + ONE_PLY / 2) / ONE_PLY * ONE_PLY;
+    // Runde auf nächstes Vielfaches von ONE_PLY ab
+    return (reduction / ONE_PLY) * ONE_PLY;
 }
 
 #endif

@@ -5,8 +5,8 @@ void SimpleUpdatedEvaluator::updateBeforeMove(Move m) {
 
     Score delta{0, 0};
 
-    int32_t side = b->getSideToMove();
-    int32_t piece = TYPEOF(b->pieceAt(m.getOrigin()));
+    int32_t side = board.getSideToMove();
+    int32_t piece = TYPEOF(board.pieceAt(m.getOrigin()));
     int32_t originPSQT = m.getOrigin();
     int32_t destinationPSQT = m.getDestination();
 
@@ -27,7 +27,7 @@ void SimpleUpdatedEvaluator::updateBeforeMove(Move m) {
 
     // Spezialfall: Schlagzug
     if(m.isCapture()) {
-        int32_t capturedPiece = b->pieceAt(m.getDestination());
+        int32_t capturedPiece = board.pieceAt(m.getDestination());
         int32_t capturedPieceSquare = destinationPSQT;
 
         // Spezialfall: En-Passant
@@ -106,22 +106,22 @@ void SimpleUpdatedEvaluator::calculateScore() {
     // Material
 
     for(int32_t piece = PAWN; piece <= KING; piece++) {
-        score.mg += b->getPieceBitboard(WHITE | piece).getNumberOfSetBits() * MG_PIECE_VALUE[piece];
-        score.eg += b->getPieceBitboard(WHITE | piece).getNumberOfSetBits() * EG_PIECE_VALUE[piece];
-        score.mg -= b->getPieceBitboard(BLACK | piece).getNumberOfSetBits() * MG_PIECE_VALUE[piece];
-        score.eg -= b->getPieceBitboard(BLACK | piece).getNumberOfSetBits() * EG_PIECE_VALUE[piece];
+        score.mg += board.getPieceBitboard(WHITE | piece).getNumberOfSetBits() * MG_PIECE_VALUE[piece];
+        score.eg += board.getPieceBitboard(WHITE | piece).getNumberOfSetBits() * EG_PIECE_VALUE[piece];
+        score.mg -= board.getPieceBitboard(BLACK | piece).getNumberOfSetBits() * MG_PIECE_VALUE[piece];
+        score.eg -= board.getPieceBitboard(BLACK | piece).getNumberOfSetBits() * EG_PIECE_VALUE[piece];
     }
 
     // Positionstabellen
     for(int32_t piece = PAWN; piece <= KING; piece++) {
-        Bitboard pieceBB = b->getPieceBitboard(WHITE | piece);
+        Bitboard pieceBB = board.getPieceBitboard(WHITE | piece);
         while(pieceBB) {
             int32_t square = pieceBB.popFirstSetBit();
             score.mg += MG_PSQT[piece][square];
             score.eg += EG_PSQT[piece][square];
         }
 
-        pieceBB = b->getPieceBitboard(BLACK | piece);
+        pieceBB = board.getPieceBitboard(BLACK | piece);
         while(pieceBB) {
             int32_t square = pieceBB.popFirstSetBit();
 
@@ -141,16 +141,16 @@ void SimpleUpdatedEvaluator::calculateScore() {
 void SimpleUpdatedEvaluator::calculateGamePhase() {
     currentPhaseWeight = TOTAL_WEIGHT;
 
-    currentPhaseWeight -= b->getPieceBitboard(WHITE_PAWN).getNumberOfSetBits() * PAWN_WEIGHT;
-    currentPhaseWeight -= b->getPieceBitboard(BLACK_PAWN).getNumberOfSetBits() * PAWN_WEIGHT;
-    currentPhaseWeight -= b->getPieceBitboard(WHITE_KNIGHT).getNumberOfSetBits() * KNIGHT_WEIGHT;
-    currentPhaseWeight -= b->getPieceBitboard(BLACK_KNIGHT).getNumberOfSetBits() * KNIGHT_WEIGHT;
-    currentPhaseWeight -= b->getPieceBitboard(WHITE_BISHOP).getNumberOfSetBits() * BISHOP_WEIGHT;
-    currentPhaseWeight -= b->getPieceBitboard(BLACK_BISHOP).getNumberOfSetBits() * BISHOP_WEIGHT;
-    currentPhaseWeight -= b->getPieceBitboard(WHITE_ROOK).getNumberOfSetBits() * ROOK_WEIGHT;
-    currentPhaseWeight -= b->getPieceBitboard(BLACK_ROOK).getNumberOfSetBits() * ROOK_WEIGHT;
-    currentPhaseWeight -= b->getPieceBitboard(WHITE_QUEEN).getNumberOfSetBits() * QUEEN_WEIGHT;
-    currentPhaseWeight -= b->getPieceBitboard(BLACK_QUEEN).getNumberOfSetBits() * QUEEN_WEIGHT;
+    currentPhaseWeight -= board.getPieceBitboard(WHITE_PAWN).getNumberOfSetBits() * PAWN_WEIGHT;
+    currentPhaseWeight -= board.getPieceBitboard(BLACK_PAWN).getNumberOfSetBits() * PAWN_WEIGHT;
+    currentPhaseWeight -= board.getPieceBitboard(WHITE_KNIGHT).getNumberOfSetBits() * KNIGHT_WEIGHT;
+    currentPhaseWeight -= board.getPieceBitboard(BLACK_KNIGHT).getNumberOfSetBits() * KNIGHT_WEIGHT;
+    currentPhaseWeight -= board.getPieceBitboard(WHITE_BISHOP).getNumberOfSetBits() * BISHOP_WEIGHT;
+    currentPhaseWeight -= board.getPieceBitboard(BLACK_BISHOP).getNumberOfSetBits() * BISHOP_WEIGHT;
+    currentPhaseWeight -= board.getPieceBitboard(WHITE_ROOK).getNumberOfSetBits() * ROOK_WEIGHT;
+    currentPhaseWeight -= board.getPieceBitboard(BLACK_ROOK).getNumberOfSetBits() * ROOK_WEIGHT;
+    currentPhaseWeight -= board.getPieceBitboard(WHITE_QUEEN).getNumberOfSetBits() * QUEEN_WEIGHT;
+    currentPhaseWeight -= board.getPieceBitboard(BLACK_QUEEN).getNumberOfSetBits() * QUEEN_WEIGHT;
 
     currentGamePhase = currentPhaseWeight / (double)TOTAL_WEIGHT;
     currentGamePhase = currentGamePhase * (MAX_PHASE - MIN_PHASE) + MIN_PHASE; // phase in [MIN_PHASE, MAX_PHASE]

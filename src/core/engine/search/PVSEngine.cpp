@@ -65,10 +65,8 @@ void helperThreadLoop(PVSSearchInstance* instance, int16_t depth, int16_t alpha,
 
 void PVSEngine::startHelperThreads(int16_t depth, int16_t alpha, int16_t beta) {
     #if not defined(DISABLE_THREADS)
-        for(PVSSearchInstance* instance : instances) {
-            instance->setCurrentSearchDepth(depth);
+        for(PVSSearchInstance* instance : instances)
             threads.push_back(std::thread(helperThreadLoop, instance, depth, alpha, beta));
-        }
     #else
         UNUSED(depth);
         UNUSED(alpha);
@@ -132,8 +130,6 @@ void PVSEngine::search(const UCI::SearchParams& params) {
     int16_t alpha = MIN_SCORE, beta = MAX_SCORE;
 
     for(int16_t depth = 1; depth <= MAX_PLY; depth++) {
-        mainInstance.setCurrentSearchDepth(depth);
-
         startHelperThreads(depth, alpha, beta);
         int16_t score = mainInstance.pvs(depth * ONE_PLY, 0, alpha, beta, false, PV_NODE);
 
@@ -163,21 +159,21 @@ void PVSEngine::search(const UCI::SearchParams& params) {
         alpha = score - ASPIRATION_WINDOW;
         beta = score + ASPIRATION_WINDOW;
 
+        variations.clear();
+
+        std::vector<Move> pvMoves;
+        for(Move move : mainInstance.getPV())
+            pvMoves.push_back(move);
+
+        variations.push_back({
+            pvMoves,
+            mainInstance.getPVScore()
+        });
+
         if(stopFlag.load() && maxDepthReached > 0)
             break;
         else {
             maxDepthReached = depth;
-
-            variations.clear();
-
-            std::vector<Move> pvMoves;
-            for(Move move : mainInstance.getPV())
-                pvMoves.push_back(move);
-
-            variations.push_back({
-                pvMoves,
-                score
-            });
 
             if(pvHistory.size() == 5)
                 pvHistory.shiftLeft(0);

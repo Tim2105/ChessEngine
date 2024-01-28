@@ -32,7 +32,7 @@ class SimpleUpdatedEvaluator: public Evaluator {
 
         constexpr int32_t evaluate() override {
             return ((1.0 - currentGamePhase) * currentScore.mg + currentGamePhase * currentScore.eg) *
-                   (b->getSideToMove() == WHITE ? 1 : -1);
+                   (board.getSideToMove() == WHITE ? 1 : -1);
         }
 
         constexpr double getGamePhase() const {

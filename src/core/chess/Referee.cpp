@@ -1,18 +1,19 @@
 #include "core/chess/Referee.h"
 
 bool Referee::isDraw(Board& b) {
-    // Stalemate
+    // Patt
     if(!b.isCheck() && b.generateLegalMoves().size() == 0)
         return true;
 
-    // Fifty-move rule
+    // 50-Züge-Regel
     if(b.getFiftyMoveCounter() >= 100)
         return true;
     
+    // Dreifache Stellungswiederholung
     if(b.repetitionCount() >= 3)
         return true;
 
-    // Material draw
+    // Unzureichendes Material
     return isDrawByMaterial(b);
 }
 
@@ -54,10 +55,7 @@ bool Referee::isDrawByMaterial(Board& b) {
             int32_t whiteBishopSq = b.getPieceBitboard(WHITE_BISHOP).getFirstSetBit();
             int32_t blackBishopSq = b.getPieceBitboard(BLACK_BISHOP).getFirstSetBit();
 
-            int32_t whiteBishopColor = whiteBishopSq % 20 < 10 ? whiteBishopSq % 2 : 1 - whiteBishopSq % 2;
-            int32_t blackBishopColor = blackBishopSq % 20 < 10 ? blackBishopSq % 2 : 1 - blackBishopSq % 2;
-
-            if(whiteBishopColor == blackBishopColor)
+            if(lightSquares.getBit(whiteBishopSq) == lightSquares.getBit(blackBishopSq))
                 return true;
         }
     }

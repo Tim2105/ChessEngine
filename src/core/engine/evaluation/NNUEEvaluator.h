@@ -25,8 +25,8 @@ class NNUEEvaluator: public Evaluator {
         ~NNUEEvaluator() {}
 
         inline int32_t evaluate() override {
-            int32_t numPawns = b->getPieceBitboard(WHITE | PAWN).getNumberOfSetBits() +
-                               b->getPieceBitboard(BLACK | PAWN).getNumberOfSetBits();
+            int32_t numPawns = board.getPieceBitboard(WHITE | PAWN).getNumberOfSetBits() +
+                               board.getPieceBitboard(BLACK | PAWN).getNumberOfSetBits();
 
             if(numPawns == 0 && std::abs(materialDifference) <= 300)
                 return 0;
@@ -34,14 +34,14 @@ class NNUEEvaluator: public Evaluator {
             if(gamePhase >= 1.0 && std::abs(materialDifference) >= 400)
                 return endgameEvaluator.evaluate() * STATIC_EVAL_MULTIPLIER;
 
-            return networkInstance.evaluate(b->getSideToMove());
+            return networkInstance.evaluate(board.getSideToMove());
         }
 
         inline void updateBeforeMove(Move move) override {
-            int32_t capturedPiece = b->pieceAt(move.getDestination());
+            int32_t capturedPiece = board.pieceAt(move.getDestination());
             int32_t promotedPieceType = EMPTY;
 
-            materialDifference -= SIMPLE_PIECE_VALUES[capturedPiece];
+            materialDifference -= SIMPLE_COLOR_PIECE_VALUE[capturedPiece];
 
             if(move.isPromotion()) {
                 if(move.isPromotionQueen())
@@ -64,7 +64,7 @@ class NNUEEvaluator: public Evaluator {
         }
 
         inline void updateAfterMove() override {
-            networkInstance.updateAfterMove(*b);
+            networkInstance.updateAfterMove(board);
         }
 
         inline void updateBeforeUndo() override {
@@ -72,10 +72,10 @@ class NNUEEvaluator: public Evaluator {
         }
 
         inline void updateAfterUndo(Move move) override {
-            int32_t capturedPiece = b->pieceAt(move.getDestination());
+            int32_t capturedPiece = board.pieceAt(move.getDestination());
             int32_t promotedPieceType = EMPTY;
 
-            materialDifference += SIMPLE_PIECE_VALUES[capturedPiece];
+            materialDifference += SIMPLE_COLOR_PIECE_VALUE[capturedPiece];
 
             if(move.isPromotion()) {
                 if(move.isPromotionQueen())
@@ -107,8 +107,8 @@ class NNUEEvaluator: public Evaluator {
         }
 
     private:
-        static constexpr int32_t SIMPLE_PIECE_VALUES[] = {0, 100, 300, 300, 500, 900, 0, 0,
-                                                          0, -100, -300, -300, -500, -900, 0};
+        static constexpr int32_t SIMPLE_COLOR_PIECE_VALUE[] = {0, 100, 300, 300, 500, 900, 0, 0,
+                                                               0, -100, -300, -300, -500, -900, 0};
 
         static constexpr double STATIC_EVAL_MULTIPLIER = 2.0;
 
@@ -131,20 +131,20 @@ class NNUEEvaluator: public Evaluator {
             materialDifference = 0;
 
             for(int32_t p = (WHITE | PAWN); p <= (WHITE | QUEEN); p++)
-                materialDifference += SIMPLE_PIECE_VALUES[p] * b->getPieceBitboard(p).getNumberOfSetBits();
+                materialDifference += SIMPLE_COLOR_PIECE_VALUE[p] * board.getPieceBitboard(p).getNumberOfSetBits();
 
             for(int32_t p = (BLACK | PAWN); p <= (BLACK | QUEEN); p++)
-                materialDifference += SIMPLE_PIECE_VALUES[p] * b->getPieceBitboard(p).getNumberOfSetBits();
+                materialDifference += SIMPLE_COLOR_PIECE_VALUE[p] * board.getPieceBitboard(p).getNumberOfSetBits();
         }
 
         inline void initializeGamePhase() {
             pieceWeight = TOTAL_WEIGHT;
 
             for(int32_t p = (WHITE | PAWN); p <= (WHITE | QUEEN); p++)
-                pieceWeight -= PIECE_WEIGHTS[TYPEOF(p)] * b->getPieceBitboard(p).getNumberOfSetBits();
+                pieceWeight -= PIECE_WEIGHTS[TYPEOF(p)] * board.getPieceBitboard(p).getNumberOfSetBits();
 
             for(int32_t p = (BLACK | PAWN); p <= (BLACK | QUEEN); p++)
-                pieceWeight -= PIECE_WEIGHTS[TYPEOF(p)] * b->getPieceBitboard(p).getNumberOfSetBits();
+                pieceWeight -= PIECE_WEIGHTS[TYPEOF(p)] * board.getPieceBitboard(p).getNumberOfSetBits();
 
             gamePhase = (double)pieceWeight / TOTAL_WEIGHT;
             gamePhase = gamePhase * (MAX_PHASE - MIN_PHASE) + MIN_PHASE;

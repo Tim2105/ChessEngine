@@ -17,8 +17,16 @@
 #include <functional>
 #include <random>
 
+/**
+ * @brief Eine Klasse, die alle Informationen für eine Hauptvariantensuche
+ * (Principal Variation Search) enthält.
+ */
 class PVSSearchInstance {
     private:
+        /**
+         * @brief Enthält alle Knoteninformationen,
+         * auf die Kindknoten zugreifen können sollen.
+         */
         struct SearchStackEntry {
             Array<MoveScorePair, 256> moveScorePairs;
             Move hashMove = Move::nullMove();
@@ -31,53 +39,200 @@ class PVSSearchInstance {
             NNUEEvaluator evaluator;
         #endif
 
+        /**
+         * @brief Eine Referenz auf die Transpositionstabelle,
+         * die von dieser Instanz verwendet werden soll.
+         */
         TranspositionTable& transpositionTable;
 
+        /**
+         * Globale Informationen, die innerhalb einer
+         * Suchinstanz gespeichert werden.
+         */
+
+        /**
+         * @brief Speichert zwei Killerzüge pro Tiefe.
+         * Killerzüge sind ruhige Züge (keine Schlagzüge oder Bauernaufwertungen),
+         * die einen Beta-Schnitt verursacht haben.
+         */
         Move killerMoves[MAX_PLY][2];
+
+        /**
+         * @brief Speichert die relative Vergangenheitsbewertung
+         * für jedes Tupel (Farbe, Ursprungsfeld, Zielfeld).
+         * Die relative Vergangenheitsbewertung ist eine ganzzahlige
+         * Approximation der Wahrscheinlichkeit, dass ein Zug
+         * nicht zu einer Bewertung <= alpha führt. Je höher die
+         * Zahl, desto häufiger führte der Zug zu einer Bewertung
+         * > alpha.
+         */
         int32_t historyTable[2][64][64];
+
+        /**
+         * @brief Eine Zugtabelle, um die Hauptvariante (die Zugfolge,
+         * die zu der Bewertung des Wurzelknotens führt) zu rekonstruieren.
+         */
         Array<Move, MAX_PLY> pvTable[MAX_PLY];
 
+        /**
+         * @brief Die Bewertung der Hauptvariante.
+         */
+        int16_t pvScore;
+
+        /**
+         * @brief Eine Referenz auf die Stop-Flag, der von der
+         * Suchinstanz verwendet werden soll. Sobald diese Variable
+         * auf true gesetzt wird, bringt die Suchinstanz ihre Suche
+         * ab und gibt aus pvs() zurück.
+         */
         std::atomic_bool& stopFlag;
+
+        /**
+         * @brief Gibt an, ob die Suchinstanz die Hauptinstanz innerhalb
+         * des Lazy SMP-Algorithmus ist.
+         */
+        bool isMainThread = false;
+
+        /**
+         * Eine Referenz auf die Start- und Stoppzeit der momentanen Suche.
+         */
 
         std::atomic<std::chrono::system_clock::time_point>& startTime;
         std::atomic<std::chrono::system_clock::time_point>& stopTime;
+
+        /**
+         * Verfolgt die Anzahl der Knoten (Schachpositionen),
+         * die während der aktuellen Suche betrchet wurden.
+         */
 
         std::atomic_uint64_t& nodesSearched;
         uint64_t locallySearchedNodes = 0;
         int16_t currentSearchDepth = 0;
 
-        Array<SearchStackEntry, MAX_PLY> searchStack;
+        /**
+         * @brief Der Suchstapel, der von der Suchinstanz verwendet wird.
+         * Der Suchstapel enthält alle Knoteninformationen, die von
+         * Vaterknoten für Kindknoten bereitgestellt werden sollen.
+         */
+        SearchStackEntry searchStack[MAX_PLY];
 
+        /**
+         * @brief Eine Referenz auf die Liste der Züge, auf die sich die
+         * Suchinstanz im Wurzelknoten beschränken soll. Wenn die Liste leer
+         * ist, betrachtet die Instanz alle Züge.
+         */
         const Array<Move, 256>& searchMoves;
 
-        bool isMainThread = false;
-
+        /**
+         * @brief Speichert die Anzahl der Threads, die gleichzeitig
+         * den Spielbaum durchsuchen. Diese Variable wird automatisch
+         * im Konstruktor auf den Wert der UCI-Option "Threads" gesetzt.
+         */
         size_t numThreads = 1;
 
+        /**
+         * @brief Ein Mersenne-Twister-Zufallszahlengenerator, der von
+         * der Suchinstanz verwendet wird, um die Zugvorsortierung
+         * (leicht) zu beeinflussen. Diese Maßnahme hilft den Threads des
+         * Lazy SMP-Algorithmus dabei, voneinander zu divergieren.
+         * 
+         * Hauptinstanzen verwenden den Zufallszahlengenerator nicht.
+         */
         std::mt19937 mersenneTwister;
 
+        /**
+         * @brief Eine Funktion, die von der Suchinstanz während der Suche
+         * regelmaßig aufgerufen wird.
+         */
         std::function<void()> checkupFunction;
 
+        /**
+         * @brief Führt eine Quieszenzsuche durch. Die Quieszenzsuche
+         * ist eine spezielle Form des Alpha-Beta-Algorithmus, die
+         * nur "interessante" Züge betrachtet.
+         * 
+         * @param ply Der Abstand zum Wurzelknoten.
+         * @param alpha Die untere Schranke des Suchfensters.
+         * @param beta Die obere Schranke des Suchfensters.
+         * @return Die Bewertung der Position.
+         */
         int16_t quiescence(int16_t ply, int16_t alpha, int16_t beta);
 
-        int16_t determineExtension();
-        int16_t determineReduction(int16_t moveCount, int16_t moveScore, uint8_t nodeType);
+        /**
+         * @brief Bestimmt, wie stark die Tiefe eines Knotens für die
+         * Late Move Reduction-Heuristik (LMR) zusätzlich reduziert werden soll.
+         * 
+         * @param moveCount Die Platzierung des Knotens in der Zugvorsortierung.
+         * @param moveScore Die Bewertung des letzten Zuges durch die Zugvorsortierung.
+         * @param nodeType Der Typ des Vaterknotens.
+         * @return Die Tiefe, um die der Knoten zusätzlich reduziert werden soll.
+         */
+        int16_t determineLMR(int16_t moveCount, int16_t moveScore, uint8_t nodeType);
 
+        /**
+         * @brief Überprüft anhand der momentanen Position, ob das
+         * Null Move Pruning durchgeführt werden darf.
+         */
         bool deactivateNullMove();
 
+        /**
+         * @brief Initialisiert den Suchstapel für die Tiefe.
+         * Dazu gehört die Generation und die Vorsortierung der Züge.
+         * 
+         * @param ply Der Abstand zum Wurzelknoten (Index des Suchstapels).
+         * @param useIID Gibt an, ob ein Hashzug "on the fly" bestimmt werden soll,
+         * wenn kein Eintrag in der Transpositionstabelle gefunden wurde.
+         * Diese Option führt eine reduzierte aber sonst vollständige Suche durch
+         * und sollte nur in wichtigen Knoten verwendet werden.
+         * @param depth Die verbleibende Suchtiefe.
+         */
         void prepareSearchStack(uint16_t ply, bool useIID, int16_t depth);
+
+        /**
+         * @brief Initialisiert den Suchstapel für die Quieszenzsuche.
+         * Dazu gehört die Generation und die Vorsortierung der Züge.
+         *
+         * @param ply Der Abstand zum Wurzelknoten (Index des Suchstapels).
+         * @param minMoveScore Die minimale Bewertung, die ein Zug haben muss,
+         * um in die Vorsortierung aufgenommen zu werden.
+         * @param includeHashMove Gibt an, ob der Hashzug in die Zugliste
+         * aufgenommen werden soll (falls vorhanden und nicht bereits in der Liste).
+         */
         void prepareSearchStackForQuiescence(uint16_t ply, int16_t minMoveScore, bool includeHashMove);
 
+        /**
+         * @brief Bewertet alle Züge in der Zugliste, sortiert sie
+         * und hängt sie an die Zugliste im Suchstapel an.
+         * 
+         * @param moves Die Liste der Züge, die bewertet werden sollen.
+         * @param ply Der Abstand zum Wurzelknoten (Index des Suchstapels).
+         */
         void scoreMoves(const Array<Move, 256>& moves, uint16_t ply);
+
+        /**
+         * @brief Bewertet alle Züge in der Zugliste für die Quiessenzsuche,
+         * sortiert sie und hängt sie an die Zugliste im Suchstapel an.
+         * 
+         * @param moves Die Liste der Züge, die bewertet werden sollen.
+         * @param ply Der Abstand zum Wurzelknoten (Index des Suchstapels).
+         * @param minMoveScore Die minimale Bewertung, die ein Zug haben muss,
+         * um in die Vorsortierung aufgenommen zu werden.
+         */
         void scoreMovesForQuiescence(const Array<Move, 256>& moves, uint16_t ply, int16_t minMoveScore);
 
     public:
+
+        /**
+         * @brief Konstruktor für eine Suchinstanz.
+         */
         PVSSearchInstance(Board& board, TranspositionTable& transpositionTable,
                           std::atomic_bool& stopFlag, std::atomic<std::chrono::system_clock::time_point>& startTime,
                           std::atomic<std::chrono::system_clock::time_point>& stopTime, std::atomic_uint64_t& nodesSearched,
                           const Array<Move, 256>& searchMoves, std::function<void()> checkupFunction) :
             board(board), evaluator(this->board), transpositionTable(transpositionTable), stopFlag(stopFlag), startTime(startTime), 
             stopTime(stopTime), nodesSearched(nodesSearched), searchStack(), searchMoves(searchMoves), checkupFunction(checkupFunction) {
+
+            // Leere die Killerzüge und die Vergangenheitsbewertung.
 
             for(int16_t i = 0; i < MAX_PLY; i++) {
                 killerMoves[i][0] = Move::nullMove();
@@ -89,34 +244,72 @@ class PVSSearchInstance {
                     for(int16_t k = 0; k < 64; k++)
                         historyTable[i][j][k] = 0;
 
+            // Leere die PV-Tabelle.
             for(int16_t i = 0; i < MAX_PLY; i++)
                 pvTable[i].clear();
 
+            // Setze die Anzahl der Threads.
             numThreads = UCI::options["Threads"].getValue<size_t>();
 
+            // Initialisiere den Zufallszahlengenerator mit einem festen Seed.
             mersenneTwister.seed(0);
         }
 
+        /**
+         * @brief Führt eine vollständige Hauptvariantensuche durch.
+         * 
+         * @param depth Die Suchtiefe.
+         * @param ply Der Abstand zum Wurzelknoten. Bei einem Aufruf
+         * von außerhalb der Suchinstanz sollte dieser Wert 0 sein.
+         * @param alpha Die untere Schranke des Suchfensters. Wenn keine
+         * untere Schranke bekannt ist, sollte MIN_SCORE übergeben werden.
+         * @param beta Die obere Schranke des Suchfensters. Wenn keine
+         * obere Schranke bekannt ist, sollte MAX_SCORE übergeben werden.
+         * @param allowNullMove Gibt an, ob Null Move Pruning verwendet werden darf.
+         * Von außerhalb der Suchinstanz sollte false übergeben werden.
+         * @param nodeType Der erwartete Typ des Knotens. Von außerhalb der
+         * Suchinstanz sollte PV_NODE übergeben werden.
+         * @return Die Bewertung der Position (oder 0, wenn die Suche vorzeitig über die Stop-Flag abgebrochen wurde).
+         * Die Hauptvariante kann über die Methode getPV() ausgelesen werden.
+         */
         int16_t pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta, bool allowNullMove, uint8_t nodeType);
 
-        inline void setCurrentSearchDepth(int16_t currentSearchDepth) {
-            this->currentSearchDepth = currentSearchDepth;
-        }
-
+        /**
+         * @brief Sagt der Suchinstanz, ob sie die Hauptinstanz
+         * innerhalb des Lazy SMP-Algorithmus ist.
+         */
         inline void setMainThread(bool isMainThread) {
             this->isMainThread = isMainThread;
         }
 
+        /**
+         * @brief Setzt den Seed des Zufallszahlengenerators.
+         */
         inline void setMersenneTwisterSeed(uint_fast32_t mersenneTwisterSeed) {
             mersenneTwister.seed(mersenneTwisterSeed);
         }
 
+        /**
+         * @brief Überprüft, ob die Stop-Flag gesetzt ist.
+         */
         inline bool shouldStop() {
             return stopFlag.load();
         }
 
+        /**
+         * @brief Gibt die gefundene Hauptvariante der Instanz
+         * zurück. Die Hauptvariante ist die Liste von Zügen,
+         * die zu der Bewertung des Wurzelknotens geführt hat.
+         */
         inline Array<Move, MAX_PLY>& getPV() {
             return pvTable[0];
+        }
+
+        /**
+         * @brief Gibt die Bewertung der Hauptvariante zurück.
+         */
+        inline int16_t getPVScore() {
+            return pvScore;
         }
 
     private:
@@ -172,10 +365,15 @@ class PVSSearchInstance {
                                [move.getDestination()];
         }
 
+        /**
+         * @brief Eine Konstante für das Delta-Pruning.
+         * Gibt den größtmöglichen Materialgewinn in einem Zug
+         * (+kleiner Puffer) an.
+         */
         static constexpr int16_t DELTA_MARGIN = 2000;
 
         /**
-         * @brief Masken unm Sentry-Bauern zu erkennen.
+         * @brief Masken um Sentry-Bauern zu erkennen.
          * Sentry-Bauern sind Bauern, die gegnerische Bauern auf dem Weg zur Aufwertung blockieren oder schlagen können.
          */
         static constexpr Bitboard sentryMasks[2][64] = {

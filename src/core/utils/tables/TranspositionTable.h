@@ -56,6 +56,10 @@ struct TranspositionTableEntry {
     constexpr bool operator>(const TranspositionTableEntry& other) const {
         return depth + age >= other.depth + other.age;
     }
+
+    constexpr static uint8_t EXACT = 0;
+    constexpr static uint8_t LOWER_BOUND = 1;
+    constexpr static uint8_t UPPER_BOUND = 2;
 };
 
 /**

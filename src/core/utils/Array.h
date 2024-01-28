@@ -114,15 +114,19 @@ class Array {
 
         /**
          * @brief Entfernt das erste Vorkommen des Elements aus dem Array.
+         * 
+         * @return true, wenn das Element entfernt wurde, sonst false.
          */
-        inline void remove_first(const T& elem) {
+        inline bool remove_first(const T& elem) {
             for(size_t i = 0; i < count; i++) {
                 if(array[i] == elem) {
                     std::copy(array + i + 1, array + count, array + i);
                     count--;
-                    return;
+                    return true;
                 }
             }
+
+            return false;
         }
 
         /**
