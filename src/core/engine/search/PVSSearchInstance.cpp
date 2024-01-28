@@ -59,6 +59,9 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
         }
     }
 
+    // Leere den Eintrag im Suchstack für den aktuellen Abstand zum Wurzelknoten.
+    clearSearchStack(ply);
+
     /**
      * Null-Move-Pruning:
      * Wir gehen davon aus, dass ein Spieler mit einem Zug
@@ -74,7 +77,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     if(allowNullMove && !board.isCheck() &&
        depth > ONE_PLY && !deactivateNullMove()) {
 
-        int16_t staticEvaluation = evaluator.evaluate();
+        int16_t staticEvaluation = getStaticEvalInSearchStack(ply);
         if(staticEvaluation > beta) {
             Move nullMove = Move::nullMove();
             board.makeMove(nullMove);
@@ -95,7 +98,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     // In PV-Knoten soll über interne Iterative Tiefensuche (IID)
     // der beste Zug genauer vorhergesagt werden.
     bool fallbackToIID = nodeType == PV_NODE;
-    prepareSearchStack(ply, fallbackToIID, depth);
+    addMovesToSearchStack(ply, fallbackToIID, depth);
 
     Move move;
     int16_t moveCount = 0, moveScore;
@@ -120,7 +123,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
         int16_t score;
 
-        // Sagen den Knotentyp des Kindknotens voraus.
+        // Sage den Knotentyp des Kindknotens voraus.
         uint8_t childType = CUT_NODE;
         if(nodeType == PV_NODE && moveCount == 0)
             childType = PV_NODE;
@@ -147,9 +150,10 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
             // Wenn die Bewertung entweder über dem Nullfenster liegt,
             // führe eine vollständige Suche durch, wenn:
-            // - die Bewertung liegt innerhalb des Suchfensters dieses Knotens
-            // - oder die Suchtiefe dieses Kindes wurde reduziert
-            if(score > alpha && (reduction > 0 || nodeType == PV_NODE)) {
+            // - die Suchtiefe dieses Kindes reduziert wurde (reduction > 0)
+            // - oder die Bewertung liegt dieses Knotens innerhalb des Suchfensters
+            //   liegt (< beta)
+            if(score > alpha && (reduction > 0 || score < beta)) {
                 if(nodeType == PV_NODE)
                     childType = PV_NODE;
                 else
@@ -289,13 +293,16 @@ int16_t PVSSearchInstance::quiescence(int16_t ply, int16_t alpha, int16_t beta) 
     if(board.repetitionCount() >= 3 || board.getFiftyMoveCounter() >= 100)
         return DRAW_SCORE;
 
+    // Leere den Eintrag im Suchstack für den aktuellen Abstand zum Wurzelknoten.
+    clearSearchStack(ply);
+
     // Die aktuelle statische Bewertung der Position (=> Stand Pat Score).
     // Wir betrachten in der Quieszenzsuche (außer wenn wir im Schach stehen)
     // nicht alle Züge. Wenn wir die Bewertung mit den Zügen, die wir betrachten,
     // nur verschlechtern können, geben wir die statische Bewertung unter der
     // Annahme zurück, dass einer der nicht betrachteten Züge zu einer
     // besseren Bewertung führen würde.
-    int16_t standPat = evaluator.evaluate();
+    int16_t standPat = getStaticEvalInSearchStack(ply);
 
     // Wenn die statische Bewertung schon über dem Suchfenster
     // liegt, können wir die Suche abbrechen.
@@ -326,7 +333,7 @@ int16_t PVSSearchInstance::quiescence(int16_t ply, int16_t alpha, int16_t beta) 
     }
 
     // Generiere alle Züge, die wir betrachten wollen.
-    prepareSearchStackForQuiescence(ply, minMoveScore, false);
+    addMovesToSearchStackInQuiescence(ply, minMoveScore, false);
 
     int16_t moveCount = 0;
     Move move;
@@ -423,9 +430,9 @@ bool PVSSearchInstance::deactivateNullMove() {
     return ownPieces == board.getPieceBitboard(side | PAWN);
 }
 
-void PVSSearchInstance::prepareSearchStack(uint16_t ply, bool useIID, int16_t depth) {
+void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t depth) {
     // Setze den aktuellen Eintrag zurück.
-    clearSearchStack(ply);
+    clearMovesInSearchStack(ply);
 
     // Suche in der Transpositionstabelle nach einem Hashzug
     // für die aktuelle Position.
@@ -459,11 +466,7 @@ void PVSSearchInstance::prepareSearchStack(uint16_t ply, bool useIID, int16_t de
         scoreMoves(moves, ply);
     } else if(useIID) {
         iid:
-
-        // Wir betrachten diesen Knoten.
-        nodesSearched.fetch_add(1);
-        locallySearchedNodes++;
-
+        
         // Wir haben keinen Hashzug für die aktuelle Position gefunden,
         // aber uns ist eine akkurate Zugvorsortierung wichtig.
         // Führe daher eine interne Tiefensuche durch, in
@@ -480,7 +483,7 @@ void PVSSearchInstance::prepareSearchStack(uint16_t ply, bool useIID, int16_t de
         // Bereite die Züge für die Suche vor.
         // Verwende auch hier eine interne Tiefensuche, wenn die reduzierte
         // Suchtiefe größer als 0 ist. => IID
-        prepareSearchStack(ply, reducedDepth > 0, reducedDepth);
+        addMovesToSearchStack(ply, reducedDepth > 0, reducedDepth);
 
         // Durchsuche die Züge in der vorläufigen Reihenfolge.
         for(MoveScorePair& pair : searchStack[ply].moveScorePairs) {
@@ -554,9 +557,9 @@ void PVSSearchInstance::prepareSearchStack(uint16_t ply, bool useIID, int16_t de
     }
 }
 
-void PVSSearchInstance::prepareSearchStackForQuiescence(uint16_t ply, int16_t minMoveScore, bool includeHashMove) {
+void PVSSearchInstance::addMovesToSearchStackInQuiescence(uint16_t ply, int16_t minMoveScore, bool includeHashMove) {
     // Setze den aktuellen Eintrag zurück.
-    clearSearchStack(ply);
+    clearMovesInSearchStack(ply);
 
     if(includeHashMove) {
         // Wir sollen den Hashzug in die Zugliste einfügen.

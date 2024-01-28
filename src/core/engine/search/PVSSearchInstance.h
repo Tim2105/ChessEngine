@@ -30,6 +30,8 @@ class PVSSearchInstance {
         struct SearchStackEntry {
             Array<MoveScorePair, 256> moveScorePairs;
             Move hashMove = Move::nullMove();
+            int16_t staticEvaluation = 0;
+            bool staticEvaluationValid = false;
         };
 
         Board board;
@@ -176,8 +178,8 @@ class PVSSearchInstance {
         bool deactivateNullMove();
 
         /**
-         * @brief Initialisiert den Suchstapel für die Tiefe.
-         * Dazu gehört die Generation und die Vorsortierung der Züge.
+         * @brief Generiert alle Züge, die in der momentanen Position
+         * möglich sind und fügt sie sortiert in die Zugliste im Suchstapel ein.
          * 
          * @param ply Der Abstand zum Wurzelknoten (Index des Suchstapels).
          * @param useIID Gibt an, ob ein Hashzug "on the fly" bestimmt werden soll,
@@ -186,11 +188,12 @@ class PVSSearchInstance {
          * und sollte nur in wichtigen Knoten verwendet werden.
          * @param depth Die verbleibende Suchtiefe.
          */
-        void prepareSearchStack(uint16_t ply, bool useIID, int16_t depth);
+        void addMovesToSearchStack(uint16_t ply, bool useIID, int16_t depth);
 
         /**
-         * @brief Initialisiert den Suchstapel für die Quieszenzsuche.
-         * Dazu gehört die Generation und die Vorsortierung der Züge.
+         * @brief Generiert alle Züge, die in der momentanen Position
+         * für die Quieszenzsuche relevant sind und fügt sie sortiert in die
+         * Zugliste im Suchstapel ein.
          *
          * @param ply Der Abstand zum Wurzelknoten (Index des Suchstapels).
          * @param minMoveScore Die minimale Bewertung, die ein Zug haben muss,
@@ -198,7 +201,7 @@ class PVSSearchInstance {
          * @param includeHashMove Gibt an, ob der Hashzug in die Zugliste
          * aufgenommen werden soll (falls vorhanden und nicht bereits in der Liste).
          */
-        void prepareSearchStackForQuiescence(uint16_t ply, int16_t minMoveScore, bool includeHashMove);
+        void addMovesToSearchStackInQuiescence(uint16_t ply, int16_t minMoveScore, bool includeHashMove);
 
         /**
          * @brief Bewertet alle Züge in der Zugliste, sortiert sie
@@ -325,9 +328,28 @@ class PVSSearchInstance {
             pvTable[ply].clear();
         }
 
-        constexpr void clearSearchStack(uint16_t ply) {
+        constexpr void clearMovesInSearchStack(uint16_t ply) {
             searchStack[ply].moveScorePairs.clear();
             searchStack[ply].hashMove = Move::nullMove();
+        }
+
+        constexpr void clearStaticEvaluationInSearchStack(uint16_t ply) {
+            searchStack[ply].staticEvaluation = 0;
+            searchStack[ply].staticEvaluationValid = false;
+        }
+
+        constexpr void clearSearchStack(uint16_t ply) {
+            clearMovesInSearchStack(ply);
+            clearStaticEvaluationInSearchStack(ply);
+        }
+
+        constexpr int16_t getStaticEvalInSearchStack(uint16_t ply) {
+            if(!searchStack[ply].staticEvaluationValid) {
+                searchStack[ply].staticEvaluation = evaluator.evaluate();
+                searchStack[ply].staticEvaluationValid = true;
+            }
+
+            return searchStack[ply].staticEvaluation;
         }
 
         constexpr void addKillerMove(uint16_t ply, Move move) {
@@ -347,19 +369,19 @@ class PVSSearchInstance {
                         [move.getDestination()] += (depth / ONE_PLY) * (depth / ONE_PLY);
         }
 
-        inline void decrementHistoryScore(Move move, int16_t depth) {
+        constexpr void decrementHistoryScore(Move move, int16_t depth) {
             historyTable[board.getSideToMove() / COLOR_MASK]
                         [move.getOrigin()]
                         [move.getDestination()] -= depth / ONE_PLY;
         }
 
-        inline int32_t getHistoryScore(Move move) {
+        constexpr int32_t getHistoryScore(Move move) {
             return historyTable[board.getSideToMove() / COLOR_MASK]
                                [move.getOrigin()]
                                [move.getDestination()];
         }
 
-        inline int32_t getHistoryScore(Move move, int32_t side) {
+        constexpr int32_t getHistoryScore(Move move, int32_t side) {
             return historyTable[side / COLOR_MASK]
                                [move.getOrigin()]
                                [move.getDestination()];
@@ -371,6 +393,12 @@ class PVSSearchInstance {
          * (+kleiner Puffer) an.
          */
         static constexpr int16_t DELTA_MARGIN = 2000;
+
+        /**
+         * @brief Gibt die (halbe) Breite des Aspirationsfenster für
+         * die interne Iterative Tiefensuche an.
+         */
+        static constexpr int16_t IID_ASPIRATION_WINDOW_SIZE = 50;
 
         /**
          * @brief Masken um Sentry-Bauern zu erkennen.
