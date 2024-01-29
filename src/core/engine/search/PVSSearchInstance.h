@@ -398,7 +398,13 @@ class PVSSearchInstance {
          * @brief Gibt die (halbe) Breite des Aspirationsfenster für
          * die interne Iterative Tiefensuche an.
          */
-        static constexpr int16_t IID_ASPIRATION_WINDOW_SIZE = 50;
+        static constexpr int16_t IID_ASPIRATION_WINDOW_SIZE = 15;
+
+        /**
+         * @brief Gibt die (halbe) Breite des erweiterten Aspirationsfenster für
+         * die interne Iterative Tiefensuche an.
+         */
+        static constexpr int16_t IID_WIDENED_ASPIRATION_WINDOW_SIZE = 150;
 
         /**
          * @brief Masken um Sentry-Bauern zu erkennen.
