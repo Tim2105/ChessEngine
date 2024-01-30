@@ -159,8 +159,24 @@ class PVSEngine {
             return !stopFlag.load();
         }
 
-        static constexpr int16_t ASPIRATION_WINDOW = 25;
+        /**
+         * @brief Die (halbe) größe des Aspirationsfensters.
+         */
+        static constexpr int16_t ASPIRATION_WINDOW = 15;
+
+        /**
+         * @brief Die (halbe) größe des erweiterten Aspirationsfensters.
+         * Im Falle eines fail-high oder fail-low wird die Größe des
+         * Aspirationsfensters auf diesen Wert erweitert.
+         */
         static constexpr int16_t WIDENED_ASPIRATION_WINDOW = 150;
+
+        /**
+         * @brief Ein sehr schmales Aspirationsfenster schlägt in einseitigen
+         * Positionen oft fehl. Um dies zu verhindern, wird das Aspirationsfenster
+         * in solchen Positionen anhand der Bewertung der letzten Iteration erweitert.
+         */
+        static constexpr double ASPIRATION_WINDOW_SCORE_FACTOR = 0.15;
 
     private:
         constexpr void clearPVHistory() {

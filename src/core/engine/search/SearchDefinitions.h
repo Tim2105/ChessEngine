@@ -46,7 +46,7 @@ static constexpr int16_t MIN_SCORE = -30000;
 static constexpr int16_t MAX_SCORE = 30000;
 static constexpr int16_t NEUTRAL_SCORE = 0;
 
-static constexpr int16_t MAX_MOVE_SCORE_DISTORTION = 200;
+static constexpr int16_t MAX_MOVE_SCORE_DISTORTION = 20;
 
 static constexpr int32_t QUIET_MOVES_MIN = MIN_SCORE + 1;
 static constexpr int32_t QUIET_MOVES_NEUTRAL = NEUTRAL_SCORE;

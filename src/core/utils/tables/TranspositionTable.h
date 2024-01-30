@@ -48,13 +48,16 @@ struct TranspositionTableEntry {
 
     /**
      * @brief Ersetzungsprädikat für die Transpositionstabelle.
+     * Berechne aus dem Alter und der Tiefe die Proirität eines Eintrags.
+     * Bevorzuge exakte Einträge vor Einträgen, die nur eine Grenze angeben.
      * 
      * @param other Der andere Eintrag.
      * 
      * @return true, wenn dieser Eintrag den anderen Eintrag ersetzen soll.
      */
     constexpr bool operator>(const TranspositionTableEntry& other) const {
-        return depth + age >= other.depth + other.age;
+        return (depth + age) * 2 + (type == EXACT) >=
+               (other.depth + other.age) * 2 + (other.type == EXACT);
     }
 
     constexpr static uint8_t EXACT = 0;

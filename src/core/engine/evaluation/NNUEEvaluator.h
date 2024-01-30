@@ -110,7 +110,7 @@ class NNUEEvaluator: public Evaluator {
         static constexpr int32_t SIMPLE_COLOR_PIECE_VALUE[] = {0, 100, 300, 300, 500, 900, 0, 0,
                                                                0, -100, -300, -300, -500, -900, 0};
 
-        static constexpr double STATIC_EVAL_MULTIPLIER = 2.0;
+        static constexpr double STATIC_EVAL_MULTIPLIER = 1.5;
 
         // Figurengewichte
         static constexpr int32_t PAWN_WEIGHT = 0;

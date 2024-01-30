@@ -156,8 +156,8 @@ void PVSEngine::search(const UCI::SearchParams& params) {
 
         stopHelperThreads();
 
-        alpha = score - ASPIRATION_WINDOW;
-        beta = score + ASPIRATION_WINDOW;
+        alpha = score - score * ASPIRATION_WINDOW_SCORE_FACTOR - ASPIRATION_WINDOW;
+        beta = score + score * ASPIRATION_WINDOW_SCORE_FACTOR + ASPIRATION_WINDOW;
 
         variations.clear();
 

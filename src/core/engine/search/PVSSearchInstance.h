@@ -108,7 +108,7 @@ class PVSSearchInstance {
          */
 
         std::atomic_uint64_t& nodesSearched;
-        uint64_t locallySearchedNodes = 0;
+        uint64_t localNodeCounter = 0;
         int16_t currentSearchDepth = 0;
 
         /**
