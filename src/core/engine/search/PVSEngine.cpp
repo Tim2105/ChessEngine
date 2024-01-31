@@ -95,6 +95,7 @@ void PVSEngine::stopHelperThreads() {
 
 void PVSEngine::search(const UCI::SearchParams& params) {
     stopFlag.store(false);
+    searching = true;
     isTimeControlled = params.useWBTime;
     isPondering.store(params.ponder);
     nodesSearched.store(0);
@@ -111,7 +112,10 @@ void PVSEngine::search(const UCI::SearchParams& params) {
         if(isCheckupTime()) {
             lastCheckupTime = std::chrono::system_clock::now();
 
-            if(lastCheckupTime >= stopTime.load() && maxDepthReached > 0)
+            if((lastCheckupTime >= stopTime.load() && maxDepthReached > 0) || // Die Zeit ist abgelaufen
+               nodesSearched.load() >= params.nodes || // Die Knotenanzahl wurde erreicht
+               (uint32_t)maxDepthReached >= params.depth || // Die Zieltiefe wurde erreicht
+               (uint32_t)isMateIn(getBestMoveScore()) <= params.mate) // Das Zielmatt wurde gefunden
                 stop();
             
             if(checkupCallback)
@@ -209,6 +213,7 @@ void PVSEngine::search(const UCI::SearchParams& params) {
     }
 
     stopFlag.store(false);
+    searching = false;
 
     destroyHelperThreads();
 
@@ -241,30 +246,27 @@ void PVSEngine::search(const UCI::SearchParams& params) {
 }
 
 void PVSEngine::calculateTimeLimits(const UCI::SearchParams& params) {
-    if(params.infinite) {
-        timeMin = std::chrono::milliseconds(std::numeric_limits<uint32_t>::max());
-        timeMax = std::chrono::milliseconds(std::numeric_limits<uint32_t>::max());
-        return;
-    }
-
     if(params.useMovetime) {
         timeMin = std::chrono::milliseconds(params.movetime);
         timeMax = std::chrono::milliseconds(params.movetime);
-        return;
+    } else if(params.useWBTime) {
+        // Berechne die minimale und maximale Zeit, die die Suche dauern soll
+        uint32_t time = board.getSideToMove() == WHITE ? params.wtime : params.btime;
+        size_t numLegalMoves = board.generateLegalMoves().size();
+
+        double oneThirtiethOfTime = time * 0.0333;
+        double oneFourthOfTime = time * 0.25;
+
+        uint32_t minTime = oneThirtiethOfTime - oneThirtiethOfTime * std::exp(-0.05  * numLegalMoves);
+        uint32_t maxTime = oneFourthOfTime - oneFourthOfTime * std::exp(-0.05  * numLegalMoves);
+
+        timeMin = std::chrono::milliseconds(minTime);
+        timeMax = std::chrono::milliseconds(maxTime);
+    } else {
+        // Keine Zeitkontrolle
+        timeMin = std::chrono::milliseconds(std::numeric_limits<uint32_t>::max());
+        timeMax = std::chrono::milliseconds(std::numeric_limits<uint32_t>::max());
     }
-
-    // Berechne die minimale und maximale Zeit, die die Suche dauern soll
-    uint32_t time = board.getSideToMove() == WHITE ? params.wtime : params.btime;
-    size_t numLegalMoves = board.generateLegalMoves().size();
-
-    double oneThirtiethOfTime = time * 0.0333;
-    double oneFourthOfTime = time * 0.25;
-
-    uint32_t minTime = oneThirtiethOfTime - oneThirtiethOfTime * std::exp(-0.05  * numLegalMoves);
-    uint32_t maxTime = oneFourthOfTime - oneFourthOfTime * std::exp(-0.05  * numLegalMoves);
-
-    timeMin = std::chrono::milliseconds(minTime);
-    timeMax = std::chrono::milliseconds(maxTime);
 }
 
 bool PVSEngine::extendSearch(bool isTimeControlled) {

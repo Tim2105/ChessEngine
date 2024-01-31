@@ -10,6 +10,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <thread>
 
 Board board;
 PVSEngine engine(board);
@@ -29,8 +30,9 @@ UCI::Options UCI::options = {
     UCI::Option("Ponder", "false")
 };
 
-const std::chrono::duration TIME_BETWEEN_NODE_OUTPUT = std::chrono::milliseconds(2000);
-std::chrono::time_point<std::chrono::steady_clock> lastNodeOutput = std::chrono::steady_clock::now();
+#if not defined(DISABLE_THREADS)
+    std::thread searchThread;
+#endif
 
 bool quitFlag = false;
 bool debug = false;
@@ -61,6 +63,13 @@ void UCI::listen() {
 
     while(!quitFlag)
         readAndHandleNextCommand(std::cin);
+
+    engine.stop();
+
+    #if not defined(DISABLE_THREADS)
+        if(searchThread.joinable())
+            searchThread.join();
+    #endif
 }
 
 void readAndHandleNextCommand(std::istream& is) {
@@ -94,10 +103,6 @@ void readAndHandleNextCommand(std::istream& is) {
     }
 
     std::cout << std::endl;
-}
-
-bool hasReceivedInput() {
-    return isEnterWaiting();
 }
 
 std::string getNextToken(std::istream& is) {
@@ -160,6 +165,9 @@ void handleIsReadyCommand() {
 }
 
 void handleSetOptionCommand(std::string args) {
+    if(engine.isSearching())
+        return;
+
     if(debug)
         std::cout << "info string Received setoption " << args << std::endl;
 
@@ -195,11 +203,17 @@ void handleSetOptionCommand(std::string args) {
 }
 
 void handleRegisterCommand() {
+    if(engine.isSearching())
+        return;
+
     if(debug)
         std::cout << "info string Received register" << std::endl;
 }
 
 void handleUCINewGameCommand() {
+    if(engine.isSearching())
+        return;
+
     if(debug)
         std::cout << "info string Received ucinewgame" << std::endl;
 
@@ -207,6 +221,9 @@ void handleUCINewGameCommand() {
 }
 
 void handlePositionCommand(std::string args) {
+    if(engine.isSearching())
+        return;
+
     if(debug)
         std::cout << "info string Received position " << args << std::endl;
 
@@ -279,6 +296,9 @@ void handlePositionCommand(std::string args) {
 }
 
 void handleGoCommand(std::string args) {
+    if(engine.isSearching())
+        return;
+
     if(debug)
         std::cout << "info string Received go " << args << std::endl;
 
@@ -395,9 +415,14 @@ void handleGoCommand(std::string args) {
         std::cout << "info string ponder: " << params.ponder << std::endl;
     }
 
-    lastNodeOutput = std::chrono::steady_clock::now();
+    #if defined(DISABLE_THREADS)
+        engine.search(params);
+    #else
+        if(searchThread.joinable())
+            searchThread.join();
 
-    engine.search(params);
+        searchThread = std::thread(&PVSEngine::search, &engine, params);
+    #endif
 }
 
 void handleStopCommand() {

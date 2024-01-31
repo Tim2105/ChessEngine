@@ -34,6 +34,7 @@ class PVSEngine {
 
         std::atomic_bool stopFlag = true;
         bool isTimeControlled = false;
+        bool searching = false;
         std::atomic_bool isPondering = false;
         std::atomic<std::chrono::system_clock::time_point> startTime;
         std::atomic<std::chrono::system_clock::time_point> stopTime;
@@ -156,7 +157,7 @@ class PVSEngine {
         }
 
         inline bool isSearching() const {
-            return !stopFlag.load();
+            return searching;
         }
 
         /**
