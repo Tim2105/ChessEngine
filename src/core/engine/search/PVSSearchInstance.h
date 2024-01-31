@@ -166,10 +166,19 @@ class PVSSearchInstance {
          * 
          * @param moveCount Die Platzierung des Knotens in der Zugvorsortierung.
          * @param moveScore Die Bewertung des letzten Zuges durch die Zugvorsortierung.
-         * @param nodeType Der Typ des Vaterknotens.
          * @return Die Tiefe, um die der Knoten zusätzlich reduziert werden soll.
          */
-        int16_t determineLMR(int16_t moveCount, int16_t moveScore, uint8_t nodeType);
+        int16_t determineLMR(int16_t moveCount, int16_t moveScore);
+
+        /**
+         * @brief Bestimme die Tiefe, um die ein Knoten für die ProbCut-Heuristik
+         * (mit beta) zusätzlich reduziert werden soll.
+         * 
+         * @param staticEval Die statistische Bewertung der Position.
+         * @param beta Die obere Schranke des Suchfensters.
+         * @return Die Tiefe, um die der Knoten zusätzlich reduziert werden soll.
+         */
+        int16_t determineProbCutReduction(int16_t staticEval, int16_t beta);
 
         /**
          * @brief Überprüft anhand der momentanen Position, ob das

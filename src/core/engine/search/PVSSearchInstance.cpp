@@ -12,7 +12,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     }
 
     // Prüfe, ob die Suche abgebrochen werden soll.
-    if(stopFlag.load())
+    if(stopFlag.load() && currentSearchDepth > 1)
         return 0;
 
     // Wenn die Suchtiefe 0 oder die maximale Suchdistanz erreicht wurde, bestimme die Bewertung
@@ -114,7 +114,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     addMovesToSearchStack(ply, fallbackToIID, depth);
 
     // Prüfe, ob die Suche abgebrochen werden soll.
-    if(stopFlag.load())
+    if(stopFlag.load() && currentSearchDepth > 1)
         return 0;
 
     Move move;
@@ -140,56 +140,95 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
         int16_t score;
 
+        // Wenn ein Cut-Knoten bis einschließlich der Killerzüge durchsucht wurde
+        // und noch keinen Beta-Schnitt gemacht hat, dann ist es wahrscheinlich,
+        // ein All-Knoten.
+        if(nodeType == CUT_NODE && moveCount > 0 && moveScore < KILLER_MOVE_SCORE)
+            nodeType = ALL_NODE;
+
         // Sage den Knotentyp des Kindknotens voraus.
         uint8_t childType = CUT_NODE;
         if(nodeType == PV_NODE && moveCount == 0)
             childType = PV_NODE;
-        else if(nodeType == CUT_NODE && moveScore >= KILLER_MOVE_SCORE)
+        else if(nodeType == CUT_NODE)
             childType = ALL_NODE;
-        
-        // Erweitere die Suchtiefe, wenn der Zug den Gegner in Schach setzt.
-        int16_t extension = 0;
-        if(board.isCheck())
-            extension += ONE_PLY;
 
-        if(moveCount == 0) {
-            // Durchsuche das erste Kind vollständig.
-            score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, true, childType);
-        } else {
-            // Durchsuche die restlichen Kinder mit einem Nullfenster (nur in PV-Knoten) und bei,
-            // auf ersten Blick, uninteressanten Zügen mit einer reduzierten Suchtiefe
-            // (=> Late Move Reductions).
-            int16_t reduction = 0;
-            if(depth >= 3 * ONE_PLY && extension == 0 && !isCheckEvasion)
-                reduction = determineLMR(moveCount + 1, moveScore, nodeType);
+        bool skipFullSearch = false;
 
-            score = -pvs(depth - ONE_PLY + extension - reduction, ply + 1, -alpha - 1, -alpha, true, childType);
+        /**
+         * ProbCut:
+         * 
+         * Wir befinden uns in einem erwarteten Cut-Knoten, das bedeutet,
+         * dass wir denken, als letztes einen schlechten Zug gemacht zu haben.
+         * Um das schnell zu überprüfen, führen wir eine reduzierte Suche durch
+         * und überprüfen, ob wir >= beta sind. Wenn ja, gehen wir davon aus,
+         * dass wir auch bei einer vollständigen Suche >= beta sind.
+         */
+        if(nodeType == CUT_NODE) {
+            int16_t reduction = determineProbCutReduction(getStaticEvalInSearchStack(ply), beta);
 
-            // Wenn die Bewertung entweder über dem Nullfenster liegt,
-            // führe eine vollständige Suche durch, wenn:
-            // - die Suchtiefe dieses Kindes reduziert wurde (reduction > 0)
-            // - oder die Bewertung liegt dieses Knotens innerhalb des Suchfensters
-            //   liegt (< beta)
-            if(score > alpha && (reduction > 0 || score < beta)) {
-                if(nodeType == PV_NODE)
-                    childType = PV_NODE;
-                else
-                    childType = ALL_NODE;
+            score = -pvs(depth - ONE_PLY - reduction, ply + 1, -beta, -beta + 1, false, childType);
 
-                score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, false, childType);
-            }
+            // Skaliere die Bewertung in Richtung 0, wenn der Zug einmal wiederholt wurde.
+            // Dadurch kann die Suche Dauerschach (als Strategie) schneller erkennen.
+            if(repetitionCount >= 2)
+                score /= 2;
+
+            // Skaliere die Bewertung in Richtung 0, wenn wir uns der 50-Züge-Regel annähern.
+            // (Starte erst nach 10 Zügen, damit die Bewertung nicht zu früh verzerrt wird.)
+            int32_t fiftyMoveCounter = board.getFiftyMoveCounter();
+            if(fiftyMoveCounter > 20 && !isMateScore(score))
+                score = (int32_t)score * (100 - fiftyMoveCounter) / 80;
+
+            if(score >= beta)
+                skipFullSearch = true;
         }
+        
+        if(!skipFullSearch) {
+            // Erweitere die Suchtiefe, wenn der Zug den Gegner in Schach setzt.
+            int16_t extension = 0;
+            if(board.isCheck())
+                extension += ONE_PLY;
 
-        // Skaliere die Bewertung in Richtung 0, wenn der Zug einmal wiederholt wurde.
-        // Dadurch kann die Suche Dauerschach (als Strategie) schneller erkennen.
-        if(repetitionCount >= 2)
-            score /= 2;
+            if(moveCount == 0 || nodeType == CUT_NODE) {
+                // Durchsuche das erste Kind vollständig.
+                score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, true, childType);
+            } else {
+                // Durchsuche die restlichen Kinder mit einem Nullfenster (nur in PV-Knoten) und bei,
+                // auf ersten Blick, uninteressanten Zügen mit einer reduzierten Suchtiefe
+                // (=> Late Move Reductions).
+                int16_t reduction = 0;
+                if(depth >= 3 * ONE_PLY && extension == 0 && !isCheckEvasion)
+                    reduction = determineLMR(moveCount + 1, moveScore);
 
-        // Skaliere die Bewertung in Richtung 0, wenn wir uns der 50-Züge-Regel annähern.
-        // (Starte erst nach 10 Zügen, damit die Bewertung nicht zu früh verzerrt wird.)
-        int32_t fiftyMoveCounter = board.getFiftyMoveCounter();
-        if(fiftyMoveCounter > 20 && !isMateScore(score))
-            score = (int32_t)score * (100 - fiftyMoveCounter) / 80;
+                score = -pvs(depth - ONE_PLY + extension - reduction, ply + 1, -alpha - 1, -alpha, true, childType);
+
+                // Wenn die Bewertung entweder über dem Nullfenster liegt,
+                // führe eine vollständige Suche durch, wenn:
+                // - die Suchtiefe dieses Kindes reduziert wurde (reduction > 0)
+                // - oder die Bewertung liegt dieses Knotens innerhalb des Suchfensters
+                //   liegt (< beta)
+                if(score > alpha && (reduction > 0 || score < beta)) {
+                    if(nodeType == PV_NODE)
+                        childType = PV_NODE;
+                    else
+                        childType = ALL_NODE;
+
+                    score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, false, childType);
+                }
+            }
+
+            // Skaliere die Bewertung in Richtung 0, wenn der Zug einmal wiederholt wurde.
+            // Dadurch kann die Suche Dauerschach (als Strategie) schneller erkennen.
+            if(repetitionCount >= 2)
+                score /= 2;
+
+            // Skaliere die Bewertung in Richtung 0, wenn wir uns der 50-Züge-Regel annähern.
+            // (Starte erst nach 10 Zügen, damit die Bewertung nicht zu früh verzerrt wird.)
+            int32_t fiftyMoveCounter = board.getFiftyMoveCounter();
+            if(fiftyMoveCounter > 20 && !isMateScore(score))
+                score = (int32_t)score * (100 - fiftyMoveCounter) / 80;
+        }
 
         // Mache den Zug rückgängig und informiere den Evaluator.
         evaluator.updateBeforeUndo();
@@ -197,7 +236,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
         evaluator.updateAfterUndo(move);
 
         // Prüfe, ob die Suche abgebrochen werden soll.
-        if(stopFlag.load())
+        if(stopFlag.load() && currentSearchDepth > 1)
             return 0;
 
         if(score >= beta) {
@@ -411,7 +450,7 @@ int16_t PVSSearchInstance::quiescence(int16_t ply, int16_t alpha, int16_t beta) 
     return bestScore;
 }
 
-int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore, uint8_t nodeType) {
+int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore) {
     // LMR reduziert nie den ersten Zug
     if(moveCount == 1)
         return 0;
@@ -445,13 +484,16 @@ int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore, ui
     historyReduction = std::clamp(historyReduction, -ONE_PLY, 2 * ONE_PLY);
     reduction += historyReduction;
 
-    // Erhöhe die Reduktion in erwarteten Cut-Knoten.
-    if(nodeType == CUT_NODE) {
-        reduction += ONE_PLY;
+    return reduction;
+}
 
-        if(moveScore < NEUTRAL_SCORE)
-            reduction += ONE_PLY;
-    }
+int16_t PVSSearchInstance::determineProbCutReduction(int16_t staticEval, int16_t beta) {
+    // Standardmäßig reduzieren wir um zwei zusätzliche Tiefen.
+    int16_t reduction = ONE_PLY;
+
+    // Passe die Reduktion an die Differenz zwischen der statischen Bewertung
+    // und dem Beta-Wert an.
+    reduction += std::clamp((staticEval - beta) / 256, 0, 2) * ONE_PLY;
 
     return reduction;
 }
@@ -536,7 +578,7 @@ void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t
 
             for(int16_t d = ONE_PLY; d <= reducedDepth; d += ONE_PLY) {
                 // Prüfe, ob die Suche abgebrochen werden soll.
-                if(stopFlag.load())
+                if(stopFlag.load() && currentSearchDepth > 1)
                     return;
 
                 // Probiere eine Suche mit Aspirationsfenster.
