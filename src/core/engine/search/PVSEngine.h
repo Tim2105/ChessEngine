@@ -38,6 +38,7 @@ class PVSEngine {
         std::atomic_bool isPondering = false;
         std::atomic<std::chrono::system_clock::time_point> startTime;
         std::atomic<std::chrono::system_clock::time_point> stopTime;
+        std::chrono::system_clock::time_point lastOutputTime;
         std::chrono::milliseconds timeMin;
         std::chrono::milliseconds timeMax;
 
@@ -48,12 +49,16 @@ class PVSEngine {
 
         std::vector<std::thread> threads;
         std::vector<PVSSearchInstance*> instances;
+        PVSSearchInstance* mainInstance = nullptr;
 
         void createHelperThreads(size_t numThreads, const UCI::SearchParams& params);
         void destroyHelperThreads();
 
         void startHelperThreads(int16_t depth, int16_t alpha, int16_t beta);
         void stopHelperThreads();
+
+        void outputSearchInfo();
+        void outputNodesInfo();
 
         void calculateTimeLimits(const UCI::SearchParams& params);
         bool extendSearch(bool isTimeControlled);
@@ -178,6 +183,12 @@ class PVSEngine {
          * in solchen Positionen anhand der Bewertung der letzten Iteration erweitert.
          */
         static constexpr double ASPIRATION_WINDOW_SCORE_FACTOR = 0.15;
+
+        /**
+         * @brief Die maximale Dauer in Millisekunden, die zwischen zwei
+         * Ausgaben vergehen darf.
+         */
+        static constexpr uint64_t MAX_TIME_BETWEEN_OUTPUTS = 2000;
 
     private:
         constexpr void clearPVHistory() {

@@ -82,6 +82,18 @@ class PVSSearchInstance {
         int16_t pvScore;
 
         /**
+         * @brief Die Anzahl der Erweiterungen, die auf dem Pfad
+         * zum momentanen Knoten bereits durchgeführt wurden.
+         */
+        int16_t extensionsOnPath = 0;
+
+        /**
+         * @brief Die maximale Anzahl an Zügen, die diese Instanz
+         * von der Wurzel aus in die Zukunft geguckt hat.
+         */
+        uint16_t selectiveDepth = 0;
+
+        /**
          * @brief Eine Referenz auf die Stop-Flag, der von der
          * Suchinstanz verwendet werden soll. Sobald diese Variable
          * auf true gesetzt wird, bringt die Suchinstanz ihre Suche
@@ -158,7 +170,7 @@ class PVSSearchInstance {
          * @param beta Die obere Schranke des Suchfensters.
          * @return Die Bewertung der Position.
          */
-        int16_t quiescence(int16_t ply, int16_t alpha, int16_t beta);
+        int16_t quiescence(uint16_t ply, int16_t alpha, int16_t beta);
 
         /**
          * @brief Bestimmt, wie stark die Tiefe eines Knotens für die
@@ -169,16 +181,6 @@ class PVSSearchInstance {
          * @return Die Tiefe, um die der Knoten zusätzlich reduziert werden soll.
          */
         int16_t determineLMR(int16_t moveCount, int16_t moveScore);
-
-        /**
-         * @brief Bestimme die Tiefe, um die ein Knoten für die ProbCut-Heuristik
-         * (mit beta) zusätzlich reduziert werden soll.
-         * 
-         * @param staticEval Die statistische Bewertung der Position.
-         * @param beta Die obere Schranke des Suchfensters.
-         * @return Die Tiefe, um die der Knoten zusätzlich reduziert werden soll.
-         */
-        int16_t determineProbCutReduction(int16_t staticEval, int16_t beta);
 
         /**
          * @brief Überprüft anhand der momentanen Position, ob das
@@ -322,6 +324,22 @@ class PVSSearchInstance {
          */
         inline int16_t getPVScore() {
             return pvScore;
+        }
+
+        /**
+         * @brief Gibt die maximale Anzahl an Zügen, die diese Instanz
+         * von der Wurzel aus in die Zukunft geguckt hat, zurück.
+         */
+        inline uint16_t getSelectiveDepth() {
+            return selectiveDepth;
+        }
+
+        /**
+         * @brief Setzt die maximale Anzahl an Zügen, die diese Instanz
+         * von der Wurzel aus in die Zukunft geguckt hat, zurück.
+         */
+        inline void resetSelectiveDepth() {
+            selectiveDepth = 0;
         }
 
     private:

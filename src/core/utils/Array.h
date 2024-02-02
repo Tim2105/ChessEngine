@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cstdalign>
 #include <cstring>
+#include <functional>
 #include <initializer_list>
 #include <type_traits>
 #include <stdint.h>

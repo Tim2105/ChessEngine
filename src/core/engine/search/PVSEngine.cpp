@@ -65,8 +65,10 @@ void helperThreadLoop(PVSSearchInstance* instance, int16_t depth, int16_t alpha,
 
 void PVSEngine::startHelperThreads(int16_t depth, int16_t alpha, int16_t beta) {
     #if not defined(DISABLE_THREADS)
-        for(PVSSearchInstance* instance : instances)
+        for(PVSSearchInstance* instance : instances) {
+            instance->resetSelectiveDepth();
             threads.push_back(std::thread(helperThreadLoop, instance, depth, alpha, beta));
+        }
     #else
         UNUSED(depth);
         UNUSED(alpha);
@@ -93,6 +95,45 @@ void PVSEngine::stopHelperThreads() {
     #endif
 }
 
+void PVSEngine::outputSearchInfo() {
+    int16_t score = getBestMoveScore();
+    std::string scoreStr;
+    if(isMateScore(score)) {
+        scoreStr = "mate ";
+        if(score < 0)
+            scoreStr += "-";
+        scoreStr += std::to_string(isMateIn(score));
+    } else {
+        scoreStr = "cp " + std::to_string(score);
+    }
+
+    uint16_t selectiveDepth = mainInstance->getSelectiveDepth();
+    for(PVSSearchInstance* instance : instances)
+        selectiveDepth = std::max(selectiveDepth, instance->getSelectiveDepth());
+
+    std::chrono::milliseconds timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime.load());
+    std::cout << "info depth " << maxDepthReached << " seldepth " << selectiveDepth << " score " << scoreStr << " nodes " << nodesSearched.load() <<
+                 " time " << timeElapsed.count() << " nps " << (uint64_t)(nodesSearched.load() / (timeElapsed.count() / 1000.0)) <<
+                 " hashfull " << (uint32_t)((double)transpositionTable.getEntriesWritten() / (double)transpositionTable.getCapacity() * 1000.0) <<
+                 " pv ";
+
+    for(Move move : variations[0].moves)
+        std::cout << move.toString() << " ";
+
+    std::cout << std::endl;
+
+    lastOutputTime = std::chrono::system_clock::now();
+}
+
+void PVSEngine::outputNodesInfo() {
+    std::chrono::milliseconds timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime.load());
+    std::cout << "info nodes " << nodesSearched.load() << " time " << timeElapsed.count() << " nps " <<
+                 (uint64_t)(nodesSearched.load() / (timeElapsed.count() / 1000.0)) <<
+                 " hashfull " << (uint32_t)((double)transpositionTable.getEntriesWritten() / (double)transpositionTable.getCapacity() * 1000.0) << std::endl;
+
+    lastOutputTime = std::chrono::system_clock::now();
+}
+
 void PVSEngine::search(const UCI::SearchParams& params) {
     stopFlag.store(false);
     searching = true;
@@ -107,6 +148,7 @@ void PVSEngine::search(const UCI::SearchParams& params) {
     startTime.store(std::chrono::system_clock::now());
     calculateTimeLimits(params);
     stopTime.store(startTime.load() + timeMax);
+    lastOutputTime = startTime.load();
 
     std::function<void()> checkupFunction = [&]() {
         if(isCheckupTime()) {
@@ -117,6 +159,10 @@ void PVSEngine::search(const UCI::SearchParams& params) {
                (uint32_t)maxDepthReached >= params.depth || // Die Zieltiefe wurde erreicht
                (uint32_t)isMateIn(getBestMoveScore()) <= params.mate) // Das Zielmatt wurde gefunden
                 stop();
+
+            // Mindestens alle 2 Sekunden die Ausgabe aktualisieren
+            if(lastCheckupTime >= lastOutputTime + std::chrono::milliseconds(MAX_TIME_BETWEEN_OUTPUTS))
+                outputNodesInfo();
             
             if(checkupCallback)
                 checkupCallback();
@@ -125,6 +171,8 @@ void PVSEngine::search(const UCI::SearchParams& params) {
 
     PVSSearchInstance mainInstance(board, transpositionTable, stopFlag, startTime, stopTime,
                                    nodesSearched, params.searchmoves, checkupFunction);
+    
+    this->mainInstance = &mainInstance;
 
     mainInstance.setMainThread(true);
 
@@ -188,25 +236,7 @@ void PVSEngine::search(const UCI::SearchParams& params) {
             });
         }
 
-        score = getBestMoveScore();
-        std::string scoreStr;
-        if(isMateScore(score)) {
-            scoreStr = "mate ";
-            if(score < 0)
-                scoreStr += "-";
-            scoreStr += std::to_string(isMateIn(score));
-        } else {
-            scoreStr = "cp " + std::to_string(score);
-        }
-
-        std::chrono::milliseconds timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime.load());
-        std::cout << "info depth " << depth << " score " << scoreStr << " nodes " << nodesSearched.load() <<
-                    " time " << timeElapsed.count() << " nps " << (uint64_t)(nodesSearched.load() / (timeElapsed.count() / 1000.0)) <<
-                    " pv ";
-        for(Move move : variations[0].moves)
-            std::cout << move.toString() << " ";
-
-        std::cout << std::endl;
+        outputSearchInfo();
 
         if(!isPondering.load() && !extendSearch(isTimeControlled))
             break;
@@ -217,30 +247,15 @@ void PVSEngine::search(const UCI::SearchParams& params) {
 
     destroyHelperThreads();
 
-    int16_t score = getBestMoveScore();
-    std::string scoreStr;
-    if(isMateScore(score)) {
-        scoreStr = "mate ";
-        if(score < 0)
-            scoreStr += "-";
-        scoreStr += std::to_string(isMateIn(score));
-    } else {
-        scoreStr = "cp " + std::to_string(score);
-    }
-
-    std::chrono::milliseconds timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime.load());
-    std::cout << "info depth " << maxDepthReached << " score " << scoreStr << " nodes " << nodesSearched.load() <<
-                " time " << timeElapsed.count() << " nps " << (uint64_t)(nodesSearched.load() / (timeElapsed.count() / 1000.0)) <<
-                " pv ";
-
-    for(Move move : variations[0].moves)
-        std::cout << move.toString() << " ";
+    outputSearchInfo();
 
     std::cout << "\n" << "bestmove " << getBestMove().toString();
 
-    std::vector<Move> pv = getPrincipalVariation();
-    if(pv.size() > 1)
-        std::cout << " ponder " << pv[1].toString();
+    if(UCI::options["Ponder"].getValue<bool>()) {
+        std::vector<Move> pv = getPrincipalVariation();
+        if(pv.size() > 1)
+            std::cout << " ponder " << pv[1].toString();
+    }
 
     std::cout << std::endl;
 }
