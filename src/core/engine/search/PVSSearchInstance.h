@@ -82,12 +82,6 @@ class PVSSearchInstance {
         int16_t pvScore;
 
         /**
-         * @brief Die Anzahl der Erweiterungen, die auf dem Pfad
-         * zum momentanen Knoten bereits durchgeführt wurden.
-         */
-        int16_t extensionsOnPath = 0;
-
-        /**
          * @brief Die maximale Anzahl an Zügen, die diese Instanz
          * von der Wurzel aus in die Zukunft geguckt hat.
          */

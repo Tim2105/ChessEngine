@@ -2,10 +2,8 @@
 
 int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta, bool allowNullMove, uint8_t nodeType) {
     // Setze die momentane Suchtiefe, wenn wir uns im Wurzelknoten befinden.
-    if(ply == 0) {
+    if(ply == 0)
         currentSearchDepth = depth / ONE_PLY;
-        extensionsOnPath = 0;
-    }
 
     // Führe die Checkup-Funktion regelmäßig aus.
     if(localNodeCounter >= NODES_PER_CHECKUP && checkupFunction) {
@@ -114,7 +112,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     // In PV-Knoten soll über interne Iterative Tiefensuche (IID)
     // der beste Zug genauer vorhergesagt werden,
     // wenn kein Hashzug existiert.
-    bool fallbackToIID = nodeType == PV_NODE;
+    bool fallbackToIID = nodeType == PV_NODE || (nodeType == CUT_NODE && depth >= 12 * ONE_PLY);
     addMovesToSearchStack(ply, fallbackToIID, depth);
 
     // Prüfe, ob die Suche abgebrochen werden soll.
@@ -124,51 +122,6 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     Move move;
     int16_t moveCount = 0, moveScore;
     bool isCheckEvasion = board.isCheck();
-
-    /**
-     * Singular Reply Extension:
-     * 
-     * Wenn wir uns in einem PV- oder Cut-Knoten befinden wollen wir überprüfen,
-     * ob wir nur einen guten Zug haben. Wir gehen davon aus, der unser bester Zug
-     * von der Zugvorsortierung an erster Stelle platziert wurde. Wenn alle anderen Züge
-     * katastrophal unter alpha scheitern, können wir davon ausgehen, dass der verbleibende
-     * Zug unser mit Abstand bester Zug ist und wird mit einer erhöhten Suchtiefe durchsucht.
-     */
-    int16_t singularReplyExtension = 0;
-
-    if(nodeType != ALL_NODE && !isMateScore(alpha) && depth >= 4 * ONE_PLY &&
-      (entryExists && entry.depth * ONE_PLY >= depth - 4 * ONE_PLY &&
-       entry.score > alpha && entry.type != TranspositionTableEntry::UPPER_BOUND)) {
-        int16_t reducedAlpha = alpha - 100;
-        int16_t reducedDepth = depth - 4 * ONE_PLY;
-
-        singularReplyExtension = ONE_PLY;
-
-        for(size_t i = 1; i < searchStack[ply].moveScorePairs.size(); i++){
-            move = searchStack[ply].moveScorePairs[i].move;
-            moveScore = searchStack[ply].moveScorePairs[i].score;
-
-            // Führe den Zug aus und informiere den Evaluator.
-            evaluator.updateBeforeMove(move);
-            board.makeMove(move);
-            evaluator.updateAfterMove();
-
-            int16_t score = -pvs(reducedDepth, ply + 1, -reducedAlpha - 1, -reducedAlpha, true, CUT_NODE);
-
-            // Mache den Zug rückgängig und informiere den Evaluator.
-            evaluator.updateBeforeUndo();
-            board.undoMove();
-            evaluator.updateAfterUndo(move);
-
-            if(score > reducedAlpha) {
-                // Der Zug hat eine Bewertung über dem reduzierten Alpha-Wert.
-                // Unsere Annahme, dass der Zug schlecht ist, war falsch
-                // und wir haben mehr als einen akzeptablen Zug.
-                singularReplyExtension = 0;
-                break;
-            }
-        }
-    }
 
     uint8_t ttEntryType = TranspositionTableEntry::UPPER_BOUND;
     int16_t bestScore = MIN_SCORE;
@@ -181,13 +134,6 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     for(MoveScorePair& pair : searchStack[ply].moveScorePairs) {
         move = pair.move;
         moveScore = pair.score;
-
-        // Wenn die Singular Reply Extension aktiv ist, dann brich ab
-        // dem zweiten Zug ab. Alle weiteren Züge sind in einer reduzierten
-        // Suche sehr stark unter alpha gescheitert und werden wahrscheinlich
-        // bei voller Suche nicht über alpha hinauskommen.
-        if(moveCount > 0 && singularReplyExtension > 0)
-            break;
 
         // Führe den Zug aus und informiere den Evaluator.
         evaluator.updateBeforeMove(move);
@@ -211,14 +157,9 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
         
         // Erweitere die Suchtiefe, wenn der Zug den Gegner in Schach setzt.
         int16_t extension = 0;
-        
-        if(moveCount == 0)
-            extension += singularReplyExtension;
 
-        if(extension == 0 && board.isCheck())
+        if(board.isCheck())
             extension += ONE_PLY;
-
-        extensionsOnPath += extension;
 
         if(moveCount == 0 || nodeType == CUT_NODE) {
             // Durchsuche das erste Kind vollständig.
@@ -247,8 +188,6 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
                 score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, false, childType);
             }
         }
-
-        extensionsOnPath -= extension;
 
         // Skaliere die Bewertung in Richtung 0, wenn der Zug einmal wiederholt wurde.
         // Dadurch kann die Suche Dauerschach (als Strategie) schneller erkennen.
@@ -512,8 +451,8 @@ int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore) {
     // Passe die Reduktion an die relative Vergangenheitsbewertung des Zuges an.
     // -> Bessere Züge werden weniger reduziert und schlechtere Züge mehr.
     int32_t historyScore = getHistoryScore(lastMove, board.getSideToMove() ^ COLOR_MASK);
-    int32_t historyReduction = -historyScore / 32768 * ONE_PLY;
-    historyReduction = std::max(historyReduction, 0);
+    int32_t historyReduction = -historyScore / 16384 * ONE_PLY;
+    historyReduction = std::clamp(historyReduction, -ONE_PLY, 2 * ONE_PLY);
     reduction += historyReduction;
 
     return reduction;
