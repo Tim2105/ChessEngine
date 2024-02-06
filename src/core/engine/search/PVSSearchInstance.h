@@ -139,16 +139,6 @@ class PVSSearchInstance {
         size_t numThreads = 1;
 
         /**
-         * @brief Ein Mersenne-Twister-Zufallszahlengenerator, der von
-         * der Suchinstanz verwendet wird, um die Zugvorsortierung
-         * (leicht) zu beeinflussen. Diese Maßnahme hilft den Threads des
-         * Lazy SMP-Algorithmus dabei, voneinander zu divergieren.
-         * 
-         * Hauptinstanzen verwenden den Zufallszahlengenerator nicht.
-         */
-        std::mt19937 mersenneTwister;
-
-        /**
          * @brief Eine Funktion, die von der Suchinstanz während der Suche
          * regelmaßig aufgerufen wird.
          */
@@ -258,9 +248,6 @@ class PVSSearchInstance {
 
             // Setze die Anzahl der Threads.
             numThreads = UCI::options["Threads"].getValue<size_t>();
-
-            // Initialisiere den Zufallszahlengenerator mit einem festen Seed.
-            mersenneTwister.seed(0);
         }
 
         /**
@@ -288,13 +275,6 @@ class PVSSearchInstance {
          */
         inline void setMainThread(bool isMainThread) {
             this->isMainThread = isMainThread;
-        }
-
-        /**
-         * @brief Setzt den Seed des Zufallszahlengenerators.
-         */
-        inline void setMersenneTwisterSeed(uint_fast32_t mersenneTwisterSeed) {
-            mersenneTwister.seed(mersenneTwisterSeed);
         }
 
         /**

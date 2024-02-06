@@ -13,7 +13,6 @@ void PVSEngine::createHelperThreads(size_t numThreads, const UCI::SearchParams& 
                                                       nodesSearched, params.searchmoves, nullptr));
 
             instances[i]->setMainThread(false);
-            instances[i]->setMersenneTwisterSeed(i);
         }
     #else
         UNUSED(numThreads);

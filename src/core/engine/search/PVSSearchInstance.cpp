@@ -109,7 +109,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     clearPVTable(ply + 1);
 
     // Generiere alle legalen Züge dieser Position.
-    // In PV-Knoten soll über interne Iterative Tiefensuche (IID)
+    // In PV-Knoten und Cut-Knoten mit höherer Tiefe soll über interne iterative Tiefensuche (IID)
     // der beste Zug genauer vorhergesagt werden,
     // wenn kein Hashzug existiert.
     bool fallbackToIID = nodeType == PV_NODE || (nodeType == CUT_NODE && depth >= 12 * ONE_PLY);
@@ -135,10 +135,53 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
         move = pair.move;
         moveScore = pair.score;
 
-        // Führe den Zug aus und informiere den Evaluator.
-        evaluator.updateBeforeMove(move);
-        board.makeMove(move);
-        evaluator.updateAfterMove();
+        /**
+         * Futility Pruning:
+         * Wenn wir uns in einer geringen Suchtiefe befinden, unsere momentane
+         * statische Bewertung weit unter alpha liegt und der Zug nicht offensichtlich
+         * gut ist (hohe Bewertung in Vorsortierung), dann können wir den Zug überspringen.
+         * 
+         * Aus taktischen Gründen wird Futility Pruning nicht angewandt, wenn wir
+         * uns im Schach oder einem PV-Knoten befinden, wenn der Zug ein Schlagzug ist
+         * oder wenn der Zug den Gegner in Schach setzt.
+         */
+        if(depth <= 3 * ONE_PLY && moveScore < KILLER_MOVE_SCORE && !isCheckEvasion &&
+           nodeType != PV_NODE && !move.isCapture()) {
+            
+            int16_t staticEvaluation = getStaticEvalInSearchStack(ply);
+
+            // Führe den Zug aus und informiere den Evaluator.
+            evaluator.updateBeforeMove(move);
+            board.makeMove(move);
+            evaluator.updateAfterMove();
+
+            bool isCheck = board.isCheck();
+
+            int16_t futilityMargin = 200 + 200 * (depth / ONE_PLY - 1);
+            if(!isCheck && staticEvaluation + futilityMargin < alpha) {
+                // Wir haben diesen Knoten betrachtet.
+                nodesSearched.fetch_add(1);
+                localNodeCounter++;
+
+                // Mache den Zug rückgängig und informiere den Evaluator.
+                evaluator.updateBeforeUndo();
+                board.undoMove();
+                evaluator.updateAfterUndo(move);
+
+                if(moveCount == 0) {
+                    bestScore = staticEvaluation;
+                    bestMove = move;
+                }
+
+                moveCount++;
+                continue;
+            }
+        } else {
+            // Führe den Zug aus und informiere den Evaluator.
+            evaluator.updateBeforeMove(move);
+            board.makeMove(move);
+            evaluator.updateAfterMove();
+        }
 
         int16_t score;
 
@@ -169,7 +212,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
             // auf ersten Blick, uninteressanten Zügen mit einer reduzierten Suchtiefe
             // (=> Late Move Reductions).
             int16_t reduction = 0;
-            if(depth >= 3 * ONE_PLY && extension == 0 && !isCheckEvasion)
+            if(extension == 0 && !isCheckEvasion)
                 reduction = determineLMR(moveCount + 1, moveScore);
 
             score = -pvs(depth - ONE_PLY + extension - reduction, ply + 1, -alpha - 1, -alpha, true, childType);
@@ -376,7 +419,7 @@ int16_t PVSSearchInstance::quiescence(uint16_t ply, int16_t alpha, int16_t beta)
     }
 
     // Generiere alle Züge, die wir betrachten wollen.
-    addMovesToSearchStackInQuiescence(ply, minMoveScore, false);
+    addMovesToSearchStackInQuiescence(ply, minMoveScore, true);
 
     int16_t moveCount = 0;
     Move move;
@@ -662,12 +705,6 @@ void PVSSearchInstance::scoreMoves(const Array<Move, 256>& moves, uint16_t ply) 
     for(Move move : moves) {
         int16_t score;
 
-        // Hilfsthread im Lazy SMP-Algortihmus fügen eine leichte
-        // Bewertungsverzerrung hinzu, um von anderen Threads zu divergieren.
-        int16_t scoreDistortion = 0;
-        if(!isMainThread)
-            scoreDistortion = mersenneTwister() % (2 * MAX_MOVE_SCORE_DISTORTION + 1) - MAX_MOVE_SCORE_DISTORTION;
-
         if(move.isCapture() || move.isPromotion()) {
             // Schlagzüge und Bauernumwandlungen werden mit
             // der Static Exchange Evaluation (SEE) bewertet.
@@ -679,14 +716,14 @@ void PVSSearchInstance::scoreMoves(const Array<Move, 256>& moves, uint16_t ply) 
 
             if(seeEvaluation >= 0) {
                 // Gute Schlagzüge
-                score = std::clamp(GOOD_CAPTURE_MOVES_NEUTRAL + seeEvaluation + scoreDistortion,
+                score = std::clamp(GOOD_CAPTURE_MOVES_NEUTRAL + seeEvaluation,
                                    GOOD_CAPTURE_MOVES_MIN,
                                    GOOD_CAPTURE_MOVES_MAX);
 
                 goodCaptures.insert_sorted(MoveScorePair(move, score), std::greater<MoveScorePair>());
             } else {
                 // Schlechte Schlagzüge
-                score = std::clamp(BAD_CAPTURE_MOVES_NEUTRAL + seeEvaluation + scoreDistortion,
+                score = std::clamp(BAD_CAPTURE_MOVES_NEUTRAL + seeEvaluation,
                                    BAD_CAPTURE_MOVES_MIN,
                                    BAD_CAPTURE_MOVES_MAX);
 
@@ -699,7 +736,7 @@ void PVSSearchInstance::scoreMoves(const Array<Move, 256>& moves, uint16_t ply) 
                 killers.push_back(MoveScorePair(move, score));
             } else {
                 // Ruhige Züge
-                score = std::clamp(QUIET_MOVES_NEUTRAL + getHistoryScore(move) / currentSearchDepth + scoreDistortion,
+                score = std::clamp(QUIET_MOVES_NEUTRAL + getHistoryScore(move) / currentSearchDepth,
                                    QUIET_MOVES_MIN,
                                    QUIET_MOVES_MAX);
 
@@ -712,8 +749,8 @@ void PVSSearchInstance::scoreMoves(const Array<Move, 256>& moves, uint16_t ply) 
     // wir müssen sie nur noch auf den Suchstack übertragen.
     searchStack[ply].moveScorePairs.push_back(goodCaptures);
     searchStack[ply].moveScorePairs.push_back(killers);
-    searchStack[ply].moveScorePairs.push_back(badCaptures);
     searchStack[ply].moveScorePairs.push_back(quietMoves);
+    searchStack[ply].moveScorePairs.push_back(badCaptures);
 }
 
 void PVSSearchInstance::scoreMovesForQuiescence(const Array<Move, 256>& moves, uint16_t ply, int16_t minMoveScore) {
