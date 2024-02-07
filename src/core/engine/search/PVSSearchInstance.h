@@ -144,6 +144,8 @@ class PVSSearchInstance {
          */
         std::function<void()> checkupFunction;
 
+        int16_t singularExtensionsOnPath = 0;
+
         /**
          * @brief Führt eine Quieszenzsuche durch. Die Quieszenzsuche
          * ist eine spezielle Form des Alpha-Beta-Algorithmus, die

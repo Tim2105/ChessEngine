@@ -76,4 +76,12 @@ static constexpr int16_t calculateNullMoveReduction(int16_t depth, int16_t stati
     return (reduction / ONE_PLY) * ONE_PLY;
 }
 
+static constexpr int16_t calculateFutilityMargin(int16_t depth) {
+    return 300 + 200 * (depth / ONE_PLY - 1) * (depth / ONE_PLY - 1);
+}
+
+static constexpr int16_t MULTICUT_R = 4 * ONE_PLY;
+static constexpr int16_t MULTICUT_C = 2;
+static constexpr int16_t MULTICUT_M = 3;
+
 #endif

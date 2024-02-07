@@ -28,25 +28,27 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     // Überprüfe, ob dieser Knoten zu einem Unentschieden durch
     // dreifache Stellungswiederholung oder die 50-Züge-Regel führt.
     uint16_t repetitionCount = board.repetitionCount();
-    if(repetitionCount >= 3 || board.getFiftyMoveCounter() >= 100)
+    if(ply > 0 && (repetitionCount >= 3 || board.getFiftyMoveCounter() >= 100))
         return DRAW_SCORE;
 
     /**
      * Mate Distance Pruning:
      * 
-     * Wenn unser alpha größer oder gleich als MATE_SCORE - ply ist,
-     * können wir den Knoten abbrechen, weil wir in diesem
-     * Fall auf keinen Fall alpha anheben können (wir haben
-     * bereits ein schnelleres Matt gefunden).
+     * Wenn wir bereits ein schnelleres Matt in einem
+     * anderen Pfad gefunden haben, können wir die Suche
+     * abbrechen.
      */
     if(alpha >= MATE_SCORE - ply)
         return alpha; // fail-hard
+
+    if(beta <= -MATE_SCORE + ply)
+        return beta; // fail-hard
 
     // Suche in der Transpositionstabelle nach einem Eintrag für
     // die aktuelle Position.
     TranspositionTableEntry entry;
     bool entryExists = false;
-    if((nodeType != PV_NODE || !isMainThread) && (entryExists = transpositionTable.probe(board.getHashValue(), entry))) {
+    if(nodeType != PV_NODE && (entryExists = transpositionTable.probe(board.getHashValue(), entry))) {
         // Ein Eintrag kann nur verwendet werden, wenn die eingetragene
         // Suchtiefe mindestens so groß ist wie unsere Suchtiefe.
         if(entry.depth * ONE_PLY >= depth) {
@@ -123,6 +125,135 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     int16_t moveCount = 0, moveScore;
     bool isCheckEvasion = board.isCheck();
 
+    /**
+     * Multi-Cut:
+     * Wenn wir uns in einem Cut-Knoten befinden, d.h. wir erwarten
+     * einen Beta-Schnitt, überprüfen wir, ob C der ersten M >= C Züge
+     * in einer reduzierten Suche zu einem Beta-Schnitt führen.
+     * 
+     * Wenn das der Fall ist, gehen wir davon aus, dass mindestens einer
+     * dieser Züge auch bei einer vollständigen Suche zu einem Beta-Schnitt
+     * führen wird und brechen die Suche ab vorzeitig ab.
+     */
+    if(nodeType == CUT_NODE && depth >= MULTICUT_R && !isCheckEvasion &&
+       searchStack[ply].moveScorePairs.size() >= MULTICUT_C) {
+        int16_t reducedDepth = depth - MULTICUT_R;
+        int16_t numFailHighs = 0, bestScore = MIN_SCORE;
+        Move bestMove;
+
+        // Durchsuche die ersten M Züge mit reduzierter Suchtiefe.
+        for(MoveScorePair& pair : searchStack[ply].moveScorePairs) {
+            move = pair.move;
+            moveScore = pair.score;
+
+            // Wir haben bereits M Züge betrachtet. Wir gehen
+            // in die reguläre Suche über.
+            if(moveCount >= MULTICUT_M)
+                break;
+
+            // Führe den Zug aus und informiere den Evaluator.
+            evaluator.updateBeforeMove(move);
+            board.makeMove(move);
+            evaluator.updateAfterMove();
+
+            // Durchsuche den Kindknoten mit reduzierter Suchtiefe.
+            int16_t score = -pvs(reducedDepth, ply + 1, -beta, -beta + 1, false, ALL_NODE);
+
+            // Mache den Zug rückgängig und informiere den Evaluator.
+            evaluator.updateBeforeUndo();
+            board.undoMove();
+            evaluator.updateAfterUndo(move);
+
+            moveCount++;
+
+            // Überprüfe auf einen Beta-Schnitt.
+            if(score >= beta) {
+                if(score > bestScore) {
+                    bestScore = score;
+                    bestMove = move;
+                }
+
+                numFailHighs++;
+
+                // Wenn wir genug Beta-Schnitte haben, brechen wir die Suche ab.
+                if(numFailHighs >= MULTICUT_C) {
+                    TranspositionTableEntry entry(
+                        bestMove,
+                        bestScore,
+                        board.getPly(),
+                        (uint8_t)(reducedDepth / ONE_PLY),
+                        TranspositionTableEntry::LOWER_BOUND
+                    );
+
+                    transpositionTable.put(board.getHashValue(), entry);
+
+                    return bestScore;
+                }
+            }
+
+            // Überprüfe, ob es überhaupt noch möglich ist C Beta-Schnitte in den
+            // ersten M Zügen zu erreichen. Wenn nicht, gehen wir in die reguläre Suche über.
+            if(MULTICUT_M - moveCount + numFailHighs < MULTICUT_C)
+                break;
+        }
+
+    }
+
+    moveCount = 0;
+
+    /**
+     * Singular Reply Extension:
+     * 
+     * Wir haben diese Position bereits einmal betrachtet und
+     * mit einer Bewertung > alpha bewertet. Wir wollen jetzt
+     * herausfinden, ob das der einzig gute Zug ist. Dazu werden
+     * alle übrigen Züge mit reduzierter Suchtiefe betrachtet.
+     * Wenn alle anderen Züge weit unter alpha bewertet werden,
+     * gehen wir davon aus, dass der beste Zug in dieser Position
+     * der einzige gute Zug ist und erhöhen seine Suchtiefe.
+     */
+    int16_t singularExtension = 0;
+    if(depth >= 4 * ONE_PLY && singularExtensionsOnPath < currentSearchDepth / 2 * ONE_PLY &&
+       entryExists && entry.depth >= depth - 4 * ONE_PLY &&
+       entry.score > alpha && entry.type != TranspositionTableEntry::UPPER_BOUND) {
+
+        int16_t reducedDepth = depth - 4 * ONE_PLY;
+        int16_t reducedAlpha = alpha - 100;
+
+        singularExtension = ONE_PLY;
+
+        for(MoveScorePair& pair : searchStack[ply].moveScorePairs) {
+            if(moveCount == 0) {
+                moveCount++;
+                continue;
+            }
+
+            move = pair.move;
+            moveScore = pair.score;
+
+            // Führe den Zug aus und informiere den Evaluator.
+            evaluator.updateBeforeMove(move);
+            board.makeMove(move);
+            evaluator.updateAfterMove();
+
+            // Durchsuche den Kindknoten mit reduzierter Suchtiefe.
+            int16_t score = -pvs(reducedDepth, ply + 1, -reducedAlpha - 1, -reducedAlpha, true, CUT_NODE);
+
+            // Mache den Zug rückgängig und informiere den Evaluator.
+            evaluator.updateBeforeUndo();
+            board.undoMove();
+            evaluator.updateAfterUndo(move);
+
+            // Überprüfe, ob wir über unserem reduzierten Alpha-Wert liegen.
+            if(score > reducedAlpha) {
+                singularExtension = 0;
+                break;
+            }
+
+            moveCount++;
+        }
+    }
+
     uint8_t ttEntryType = TranspositionTableEntry::UPPER_BOUND;
     int16_t bestScore = MIN_SCORE;
     moveCount = 0;
@@ -135,6 +266,9 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
         move = pair.move;
         moveScore = pair.score;
 
+        if(moveCount > 0 && singularExtension > 0)
+            break;
+
         /**
          * Futility Pruning:
          * Wenn wir uns in einer geringen Suchtiefe befinden, unsere momentane
@@ -143,10 +277,11 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
          * 
          * Aus taktischen Gründen wird Futility Pruning nicht angewandt, wenn wir
          * uns im Schach oder einem PV-Knoten befinden, wenn der Zug ein Schlagzug ist
-         * oder wenn der Zug den Gegner in Schach setzt.
+         * oder wenn der Zug den Gegner in Schach setzt. Außerdem wird Futility Pruning
+         * abgeschaltet, wenn alpha oder beta eine Mattbewertung ist.
          */
         if(depth <= 3 * ONE_PLY && moveScore < KILLER_MOVE_SCORE && !isCheckEvasion &&
-           nodeType != PV_NODE && !move.isCapture()) {
+           nodeType != PV_NODE && !(isMateScore(alpha) || isMateScore(beta)) && !move.isCapture()) {
             
             int16_t staticEvaluation = getStaticEvalInSearchStack(ply);
 
@@ -157,7 +292,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
             bool isCheck = board.isCheck();
 
-            int16_t futilityMargin = 200 + 200 * (depth / ONE_PLY - 1);
+            int16_t futilityMargin = calculateFutilityMargin(depth);
             if(!isCheck && staticEvaluation + futilityMargin < alpha) {
                 // Wir haben diesen Knoten betrachtet.
                 nodesSearched.fetch_add(1);
@@ -199,10 +334,12 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
             childType = ALL_NODE;
         
         // Erweitere die Suchtiefe, wenn der Zug den Gegner in Schach setzt.
-        int16_t extension = 0;
+        int16_t extension = singularExtension;
 
         if(board.isCheck())
             extension += ONE_PLY;
+
+        singularExtensionsOnPath += singularExtension;
 
         if(moveCount == 0 || nodeType == CUT_NODE) {
             // Durchsuche das erste Kind vollständig.
@@ -231,6 +368,8 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
                 score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, false, childType);
             }
         }
+
+        singularExtensionsOnPath -= singularExtension;
 
         // Skaliere die Bewertung in Richtung 0, wenn der Zug einmal wiederholt wurde.
         // Dadurch kann die Suche Dauerschach (als Strategie) schneller erkennen.
@@ -466,7 +605,7 @@ int16_t PVSSearchInstance::quiescence(uint16_t ply, int16_t alpha, int16_t beta)
 
 int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore) {
     // LMR reduziert nie den ersten Zug
-    if(moveCount == 1)
+    if(moveCount <= 1)
         return 0;
 
     Move lastMove = board.getLastMove();
