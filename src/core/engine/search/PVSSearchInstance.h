@@ -144,8 +144,6 @@ class PVSSearchInstance {
          */
         std::function<void()> checkupFunction;
 
-        int16_t singularExtensionsOnPath = 0;
-
         /**
          * @brief Führt eine Quieszenzsuche durch. Die Quieszenzsuche
          * ist eine spezielle Form des Alpha-Beta-Algorithmus, die
@@ -167,6 +165,19 @@ class PVSSearchInstance {
          * @return Die Tiefe, um die der Knoten zusätzlich reduziert werden soll.
          */
         int16_t determineLMR(int16_t moveCount, int16_t moveScore);
+
+        /**
+         * @brief Bestimmt, ab welchem Zug das Null Move Pruning
+         * angewendet werden darf.
+         * 
+         * @param depth Die verbleibende Suchtiefe.
+         * @param moveScore Die Bewertung des letzten Zuges durch die Zugvorsortierung.
+         * @param isCheckEvasion Gibt an, ob die Position eine
+         * Schachabwehr ist.
+         * @return Die Anzahl der Züge, die mindestens durchsucht werden
+         * müssen, bevor das Null Move Pruning angewendet werden darf.
+         */
+        int16_t determineLMPCount(int16_t depth, bool isCheckEvasion);
 
         /**
          * @brief Überprüft anhand der momentanen Position, ob das
