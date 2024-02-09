@@ -31,7 +31,6 @@ class PVSSearchInstance {
             Array<MoveScorePair, 256> moveScorePairs;
             Move hashMove = Move::nullMove();
             int16_t staticEvaluation = 0;
-            bool staticEvaluationValid = false;
         };
 
         Board board;
@@ -347,23 +346,8 @@ class PVSSearchInstance {
             searchStack[ply].hashMove = Move::nullMove();
         }
 
-        constexpr void clearStaticEvaluationInSearchStack(uint16_t ply) {
-            searchStack[ply].staticEvaluation = 0;
-            searchStack[ply].staticEvaluationValid = false;
-        }
-
         constexpr void clearSearchStack(uint16_t ply) {
             clearMovesInSearchStack(ply);
-            clearStaticEvaluationInSearchStack(ply);
-        }
-
-        constexpr int16_t getStaticEvalInSearchStack(uint16_t ply) {
-            if(!searchStack[ply].staticEvaluationValid) {
-                searchStack[ply].staticEvaluation = evaluator.evaluate();
-                searchStack[ply].staticEvaluationValid = true;
-            }
-
-            return searchStack[ply].staticEvaluation;
         }
 
         constexpr void addKillerMove(uint16_t ply, Move move) {

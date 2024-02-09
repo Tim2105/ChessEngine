@@ -78,6 +78,9 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     // Leere den Eintrag im Suchstack für den aktuellen Abstand zum Wurzelknoten.
     clearSearchStack(ply);
 
+    // Ermittele die statische Bewertung der Position.
+    searchStack[ply].staticEvaluation = evaluator.evaluate();
+
     /**
      * Null-Move-Pruning:
      * Wir gehen davon aus, dass ein Spieler mit einem Zug
@@ -93,7 +96,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     if(allowNullMove && !board.isCheck() &&
        depth > ONE_PLY && !deactivateNullMove()) {
 
-        int16_t staticEvaluation = getStaticEvalInSearchStack(ply);
+        int16_t staticEvaluation = searchStack[ply].staticEvaluation;
         if(staticEvaluation > beta) {
             Move nullMove = Move::nullMove();
             board.makeMove(nullMove);
@@ -282,7 +285,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
         if(depth <= 2 * ONE_PLY && moveScore < KILLER_MOVE_SCORE && !isCheckEvasion &&
            nodeType != PV_NODE && !(isMateScore(alpha) || isMateScore(beta)) && !move.isCapture()) {
             
-            int16_t staticEvaluation = getStaticEvalInSearchStack(ply);
+            int16_t staticEvaluation = searchStack[ply].staticEvaluation;
 
             // Führe den Zug aus und informiere den Evaluator.
             evaluator.updateBeforeMove(move);
@@ -541,13 +544,16 @@ int16_t PVSSearchInstance::quiescence(uint16_t ply, int16_t alpha, int16_t beta)
     // Leere den Eintrag im Suchstack für den aktuellen Abstand zum Wurzelknoten.
     clearSearchStack(ply);
 
+    // Ermittele die statische Bewertung der Position.
+    searchStack[ply].staticEvaluation = evaluator.evaluate();
+
     // Die aktuelle statische Bewertung der Position (=> Stand Pat Score).
     // Wir betrachten in der Quieszenzsuche (außer wenn wir im Schach stehen)
     // nicht alle Züge. Wenn wir die Bewertung mit den Zügen, die wir betrachten,
     // nur verschlechtern können, geben wir die statische Bewertung unter der
     // Annahme zurück, dass einer der nicht betrachteten Züge zu einer
     // besseren Bewertung führen würde.
-    int16_t standPat = getStaticEvalInSearchStack(ply);
+    int16_t standPat = searchStack[ply].staticEvaluation;
 
     // Wenn die statische Bewertung schon über dem Suchfenster
     // liegt, können wir die Suche abbrechen.
@@ -663,14 +669,14 @@ int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore) {
 int16_t PVSSearchInstance::determineLMPCount(int16_t depth, bool isCheckEvasion) {
     // LMP wird nur in geringen Tiefen,
     // nicht in Schachabwehrzügen angewandt.
-    if(depth >= 5 * ONE_PLY || isCheckEvasion)
+    if(depth >= 4 * ONE_PLY || isCheckEvasion)
         return std::numeric_limits<int16_t>::max();
 
-    // Standardmäßig müssen mindestens 4 Züge betrachtet werden.
-    int16_t result = 4;
+    // Standardmäßig müssen mindestens 6 Züge betrachtet werden.
+    int16_t result = 6;
 
     // Erhöhe die Anzahl der zu betrachtenden Züge mit der Suchtiefe.
-    result += (depth / ONE_PLY - 1) * 3;
+    result += (depth / ONE_PLY - 1) * 4;
 
     return result;
 }
@@ -740,7 +746,7 @@ void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t
 
         if(reducedDepth > 0) {
             // Führe die interne iterative Tiefensuche durch.
-            int16_t iidScore = getStaticEvalInSearchStack(ply);
+            int16_t iidScore = searchStack[ply].staticEvaluation;
 
             Array<Move, 256> searchMoves;
 
