@@ -27,6 +27,8 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
     // Überprüfe, ob dieser Knoten zu einem Unentschieden durch
     // dreifache Stellungswiederholung oder die 50-Züge-Regel führt.
+    // Stelle sicher, dass wir uns nicht im Wurzelknoten befinden,
+    // damit wir immer mindestens einen Zug in der PV haben.
     uint16_t repetitionCount = board.repetitionCount();
     if(ply > 0 && (repetitionCount >= 3 || board.getFiftyMoveCounter() >= 100))
         return DRAW_SCORE;
@@ -268,6 +270,9 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
         move = pair.move;
         moveScore = pair.score;
 
+        // Wir haben mit aktiver Singular Reply Extension bereits den ersten Zug betrachtet.
+        // Alle anderen Züge wurden bereits mit reduzierter Suchtiefe betrachtet und wurden
+        // weit unter alpha bewertet. Wir können die Suche abbrechen.
         if(moveCount > 0 && singularExtension > 0)
             break;
 
@@ -379,7 +384,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
             score = -pvs(depth - ONE_PLY + extension - reduction, ply + 1, -alpha - 1, -alpha, true, childType);
 
-            // Wenn die Bewertung entweder über dem Nullfenster liegt,
+            // Wenn die Bewertung über dem Nullfenster liegt,
             // führe eine vollständige Suche durch, wenn:
             // - die Suchtiefe dieses Kindes reduziert wurde (reduction > 0)
             // - oder die Bewertung liegt dieses Knotens innerhalb des Suchfensters
@@ -393,11 +398,6 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
                 score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, false, childType);
             }
         }
-
-        // Skaliere die Bewertung in Richtung 0, wenn der Zug einmal wiederholt wurde.
-        // Dadurch kann die Suche Dauerschach (als Strategie) schneller erkennen.
-        if(repetitionCount >= 2)
-            score /= 2;
 
         // Skaliere die Bewertung in Richtung 0, wenn wir uns der 50-Züge-Regel annähern.
         // (Starte erst nach 10 Zügen, damit die Bewertung nicht zu früh verzerrt wird.)
