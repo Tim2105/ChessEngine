@@ -87,6 +87,12 @@ class PVSSearchInstance {
         uint16_t selectiveDepth = 0;
 
         /**
+         * @brief Speichert die Erweiterungen, die durch die Singular
+         * Extension-Heuristik bereits auf dem Pfad durchgeführt wurde.
+         */
+        int16_t singularExtensionOnPath = 0;
+
+        /**
          * @brief Eine Referenz auf die Stop-Flag, der von der
          * Suchinstanz verwendet werden soll. Sobald diese Variable
          * auf true gesetzt wird, bringt die Suchinstanz ihre Suche

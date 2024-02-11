@@ -218,8 +218,8 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
      * der einzige gute Zug ist und erhöhen seine Suchtiefe.
      */
     int16_t singularExtension = 0;
-    if(depth >= 4 * ONE_PLY && entryExists && entry.depth >= depth - 4 * ONE_PLY &&
-       entry.score > alpha && entry.type != TranspositionTableEntry::UPPER_BOUND) {
+    if(depth >= 4 * ONE_PLY && singularExtensionOnPath < currentSearchDepth * ONE_PLY && entryExists &&
+       entry.depth >= depth - 4 * ONE_PLY && entry.score > alpha && entry.type != TranspositionTableEntry::UPPER_BOUND) {
 
         int16_t reducedDepth = depth - 4 * ONE_PLY;
         int16_t reducedAlpha = alpha - 100;
@@ -371,6 +371,8 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
         if(board.isCheck())
             extension += ONE_PLY;
 
+        singularExtensionOnPath += singularExtension;
+
         if(moveCount == 0 || nodeType == CUT_NODE) {
             // Durchsuche das erste Kind vollständig.
             score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, true, childType);
@@ -398,6 +400,8 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
                 score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, false, childType);
             }
         }
+
+        singularExtensionOnPath -= singularExtension;
 
         // Skaliere die Bewertung in Richtung 0, wenn wir uns der 50-Züge-Regel annähern.
         // (Starte erst nach 10 Zügen, damit die Bewertung nicht zu früh verzerrt wird.)
@@ -653,30 +657,35 @@ int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore) {
         }
     }
 
-    // Reduziere standardmäßig um eine zusätzliche Tiefe.
-    int32_t reduction = ONE_PLY;
+    // Reduziere standardmäßig anhand einer logarithmischen Funktion.
+    int32_t reduction = ONE_PLY * (int32_t)std::log2(moveCount);
 
     // Passe die Reduktion an die relative Vergangenheitsbewertung des Zuges an.
-    // -> Bessere Züge werden weniger reduziert und schlechtere Züge mehr.
+    // -> Bessere Züge werden weniger reduziert.
     int32_t historyScore = getHistoryScore(lastMove, board.getSideToMove() ^ COLOR_MASK);
-    int32_t historyReduction = -historyScore / 8192 * ONE_PLY;
-    historyReduction = std::clamp(historyReduction, -ONE_PLY, (int32_t)ONE_PLY);
+    int32_t historyReduction = -historyScore / (currentSearchDepth * 512) * ONE_PLY;
+    historyReduction = std::min(historyReduction, 0);
     reduction += historyReduction;
 
-    return reduction;
+    // Reduziere die Reduktion, wenn der letzte Zug ein Schlagzug war.
+    // Dadurch soll das taktische Bewusstsein erhöht werden.
+    if(lastMove.isCapture())
+        reduction -= 2 * ONE_PLY;
+
+    return std::max(reduction, 0);
 }
 
 int16_t PVSSearchInstance::determineLMPCount(int16_t depth, bool isCheckEvasion) {
     // LMP wird nur in geringen Tiefen,
     // nicht in Schachabwehrzügen angewandt.
-    if(depth >= 4 * ONE_PLY || isCheckEvasion)
+    if(depth >= 6 * ONE_PLY || isCheckEvasion)
         return std::numeric_limits<int16_t>::max();
 
     // Standardmäßig müssen mindestens 6 Züge betrachtet werden.
-    int16_t result = 6;
+    int16_t result = 8;
 
     // Erhöhe die Anzahl der zu betrachtenden Züge mit der Suchtiefe.
-    result += (depth / ONE_PLY - 1) * 4;
+    result += (depth / ONE_PLY - 1) * 5;
 
     return result;
 }
