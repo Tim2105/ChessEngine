@@ -20,17 +20,36 @@
 
 class PVSEngine {
     private:
+        /**
+         * @brief Eine Referenz auf das zu betrachtende Schachbrett.
+         * Das Objekt wird während der Suche nicht verändert.
+         */
         Board& board;
 
+        /**
+         * @brief Speichert die gefundenen Varianten.
+         * Im regulären Betrieb (also kein MultiPV)
+         * hat dieser Vektor die Größe 1.
+         */
         std::vector<Variation> variations;
-        uint32_t numVariations = 0;
 
+        /**
+         * @brief Die Transpositionstabelle, die während der Suche
+         * von allen Suchinstanzen geteilt wird.
+         */
         TranspositionTable transpositionTable;
+
+        /**
+         * Variablen für den regelmäßigen Checkup.
+         */
 
         std::chrono::system_clock::time_point lastCheckupTime;
         std::chrono::milliseconds checkupInterval;
-
         std::function<void()> checkupCallback;
+
+        /**
+         * Variablen für die Zeitkontrolle.
+         */
 
         std::atomic_bool stopFlag = true;
         bool isTimeControlled = false;
@@ -42,25 +61,95 @@ class PVSEngine {
         std::chrono::milliseconds timeMin;
         std::chrono::milliseconds timeMax;
 
+        /**
+         * @brief Die Anzahl der bisher durchsuchten Knoten.
+         * Diese Variable wird von allen Suchinstanzen geteilt.
+         */
         std::atomic_uint64_t nodesSearched = 0;
+
+        /**
+         * @brief Die maximale Suchtiefe, die bisher erreicht wurde.
+         */
         int16_t maxDepthReached = 0;
 
+        /**
+         * @brief Enthält den besten Zug und seine Bewertung
+         * der letzten Iterationen. Diese Informationen werden
+         * für die dynamische Zeitkontrolle verwendet.
+         */
         Array<MoveScorePair, 5> pvHistory;
 
+        /**
+         * @brief Ein Vektor mit allen Threads, auf denen
+         * eine Suchinstanz läuft. Die Instanz auf dem Hauptthread
+         * wird nicht in diesem Vektor gespeichert.
+         */
         std::vector<std::thread> threads;
+
+        /**
+         * @brief Die zusätzlichen Suchinstanzen, die auf den
+         * Helper-Threads laufen. Die Hauptinstanz läuft auf dem
+         * aufrufenden Thread.
+         */
         std::vector<PVSSearchInstance*> instances;
+
+        /**
+         * @brief Ein Pointer auf die Haupt-Suchinstanz.
+         */
         PVSSearchInstance* mainInstance = nullptr;
 
-        void createHelperThreads(size_t numThreads, const UCI::SearchParams& params);
-        void destroyHelperThreads();
+        /**
+         * @brief Erstellt die zusätzlichen Suchinstanzen.
+         * 
+         * @param numInstances Die Anzahl der zu erstellenden Instanzen.
+         */
+        void createHelperInstances(size_t numInstances);
 
-        void startHelperThreads(int16_t depth, int16_t alpha, int16_t beta);
+        /**
+         * @brief Zerstört die Helper-Threads und gibt die
+         * Speicherbereiche der Suchinstanzen frei.
+         */
+        void destroyHelperInstances();
+
+        /**
+         * @brief Erstellt für jede Suchinstanz einen Thread und
+         * startet die Suche.
+         * 
+         * @param depth Die Suchtiefe.
+         * @param alpha Der untere Wert des Suchfensters.
+         * @param beta Der obere Wert des Suchfensters.
+         * @param searchMoves Die, zu durchsuchenden, Züge.
+         * @param pv Gibt an, die wievielte PV gesucht werden soll.
+         */
+        void startHelperThreads(int16_t depth, int16_t alpha, int16_t beta, const Array<Move, 256>& searchMoves, size_t pv);
+
+        /**
+         * @brief Stoppt alle Suchinstanzen auf den
+         * Helper-Threads. Diese Funktion gibt erst zurück,
+         * wenn alle Instanzen zurückgekehrt sind.
+         */
         void stopHelperThreads();
+
+        /**
+         * Funktionen für die Ausgabe von Informationen
+         * nach dem UCI-Protokoll.
+         */
 
         void outputSearchInfo();
         void outputNodesInfo();
+        void outputMultiPVInfo(size_t pvIndex);
 
+        /**
+         * @brief Bestimmte die Zeitlimits für die Suche.
+         */
         void calculateTimeLimits(const UCI::SearchParams& params);
+
+        /**
+         * @brief Überprüft, ob die Suche abgebrochen werden soll.
+         * 
+         * @param isTimeControlled Gibt an, ob die Suche mit dynamischer
+         * Zeitkontrolle durchgeführt wird.
+         */
         bool extendSearch(bool isTimeControlled);
 
         inline bool isCheckupTime() {
@@ -83,44 +172,75 @@ class PVSEngine {
         }
 
     public:
-        PVSEngine(Board& board, uint32_t numVariations = 1,
-                  uint32_t checkupInterval = 2, std::function<void()> checkupCallback = nullptr)
-                : board(board), numVariations(numVariations),
-                  checkupInterval(checkupInterval), checkupCallback(checkupCallback) {}
+        /**
+         * @brief Konstruktor
+         * 
+         * @param board Das, zu betrachtende, Schachbrett.
+         * @param checkupInterval Die Anzahl an Millisekunden, die zwischen
+         * zwei Checkups vergehen sollen.
+         * @param checkupCallback Die Funktion, die bei jedem Checkup aufgerufen
+         * werden soll. Wenn keine Funktion aufgerufen werden soll, kann dieser
+         * Parameter weggelassen werden.
+         */
+        PVSEngine(Board& board, uint32_t checkupInterval = 2, std::function<void()> checkupCallback = nullptr)
+                : board(board), checkupInterval(checkupInterval), checkupCallback(checkupCallback) {}
 
         PVSEngine(const PVSEngine& other) = delete;
         PVSEngine& operator=(const PVSEngine& other) = delete;
 
+        /**
+         * @brief Startet die Suche.
+         * 
+         * @param params Die Suchparameter.
+         */
         void search(const UCI::SearchParams& params);
 
+        /**
+         * @brief Stoppt die Suche.
+         */
         inline void stop() {
             stopFlag.store(true);
         }
 
+        /**
+         * @brief Verändert die Kapazität der Transpositionstabelle.
+         */
         inline void setHashTableCapacity(size_t capacity) {
             transpositionTable.resize(capacity);
         }
 
+        /**
+         * @brief Gibt die Kapazität der Transpositionstabelle zurück.
+         */
         inline size_t getHashTableCapacity() {
             return transpositionTable.getCapacity();
         }
 
+        /**
+         * @brief Gibt die Anzahl der geschriebenen Einträge in der
+         * Transpositionstabelle zurück.
+         */
         inline size_t getHashTableSize() {
             return transpositionTable.getEntriesWritten();
         }
 
+        /**
+         * @brief Löscht alle Einträge in der Transpositionstabelle.
+         */
         inline void clearHashTable() {
             transpositionTable.clear();
         }
 
+        /**
+         * @brief Setzt das Schachbrett, das betrachtet werden soll.
+         */
         inline void setBoard(Board& board) {
             this->board = board;
         }
 
-        inline void setNumVariations(uint32_t numVariations) {
-            this->numVariations = numVariations;
-        }
-
+        /**
+         * @brief Setzt die Funktion, die bei jedem Checkup aufgerufen werden soll.
+         */
         inline void setCheckupCallback(std::function<void()> checkupCallback) {
             this->checkupCallback = checkupCallback;
         }
@@ -193,6 +313,18 @@ class PVSEngine {
     private:
         constexpr void clearPVHistory() {
             pvHistory.clear();
+        }
+
+        /**
+         * @brief Bestimmt die tiefste Suchtiefe aller Instanzen.
+         */
+        inline uint16_t getSelectiveDepth() {
+            uint16_t selDepth = mainInstance->getSelectiveDepth();
+
+            for(PVSSearchInstance* instance : instances)
+                selDepth = std::max(selDepth, instance->getSelectiveDepth());
+
+            return selDepth;
         }
 };
 

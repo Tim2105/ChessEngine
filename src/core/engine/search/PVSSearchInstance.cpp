@@ -572,23 +572,18 @@ int16_t PVSSearchInstance::quiescence(uint16_t ply, int16_t alpha, int16_t beta)
 
     // Die beste Bewertung, die wir bisher gefunden haben.
     int16_t bestScore = MIN_SCORE;
-    int16_t minMoveScore = MIN_SCORE;
 
     if(!board.isCheck()) {
         // Stand Pat darf nur verwendet werden, wenn wir nicht im Schach stehen.
         // Ansonsten betrachten wir alle Züge.
         bestScore = standPat;
 
-        // Wenn wir uns nicht im Schach befinden, betrachten wur nur Schlagzüge,
-        // die unser Zugvorsortierer als neutral oder besser bewertet hat.
-        minMoveScore = NEUTRAL_SCORE;
-
         if(standPat > alpha)
             alpha = standPat;
     }
 
     // Generiere alle Züge, die wir betrachten wollen.
-    addMovesToSearchStackInQuiescence(ply, minMoveScore, true);
+    addMovesToSearchStackInQuiescence(ply, ply <= currentSearchDepth);
 
     int16_t moveCount = 0;
     Move move;
@@ -706,7 +701,9 @@ void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t
     // für die aktuelle Position.
     Move hashMove = Move::nullMove();
 
-    if(ply == 0 && pvTable[0].size() > 0 && pvTable[0].front().exists()) {
+    if(ply == 0 && bestRootMoveHint.exists()) {
+        hashMove = bestRootMoveHint;
+    } else if(ply == 0 && pvTable[0].size() > 0 && pvTable[0].front().exists()) {
         // Probiere im Wurzelknoten den besten Zug aus der letzten Suche.
         hashMove = pvTable[0].front();
     } else {
@@ -760,13 +757,10 @@ void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t
             Array<Move, 256> searchMoves;
 
             // Erstelle eine neue Suchinstanz für die interne iterative Tiefensuche.
-            PVSSearchInstance iidInstance(board, transpositionTable, stopFlag, startTime, stopTime,
-                                          nodesSearched, searchMoves, checkupFunction);
-
-            // Die IID-Instanz soll nicht als Hauptinstanz betrachtet werden, damit
-            // sie in PV-Knoten Transpositionseinträge verwenden darf
-            // (wir müssen ja keine vollständige PV konstruieren).
-            iidInstance.setMainThread(false);
+            PVSSearchInstance iidInstance(board, transpositionTable, stopFlag, startTime,
+                                          stopTime, nodesSearched, checkupFunction);
+            iidInstance.setSearchMoves(searchMoves);
+            iidInstance.setMainThread(isMainThread);
 
             for(int16_t d = ONE_PLY; d <= reducedDepth; d += ONE_PLY) {
                 // Prüfe, ob die Suche abgebrochen werden soll.
@@ -839,9 +833,14 @@ void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t
     }
 }
 
-void PVSSearchInstance::addMovesToSearchStackInQuiescence(uint16_t ply, int16_t minMoveScore, bool includeHashMove) {
+void PVSSearchInstance::addMovesToSearchStackInQuiescence(uint16_t ply, bool includeHashMove) {
     // Setze den aktuellen Eintrag zurück.
     clearMovesInSearchStack(ply);
+
+    int16_t minSEEScore = MIN_SCORE;
+    bool isCheck = board.isCheck();
+    if(!isCheck)
+        minSEEScore = NEUTRAL_SCORE;
 
     if(includeHashMove) {
         // Wir sollen den Hashzug in die Zugliste einfügen.
@@ -854,7 +853,7 @@ void PVSSearchInstance::addMovesToSearchStackInQuiescence(uint16_t ply, int16_t 
         // die wir betrachten wollen und
         // bewerte sie.
         Array<Move, 256> moves;
-        if(board.isCheck())
+        if(isCheck)
             board.generateLegalMoves(moves);
         else
             board.generateLegalCaptures(moves);
@@ -864,17 +863,17 @@ void PVSSearchInstance::addMovesToSearchStackInQuiescence(uint16_t ply, int16_t 
             searchStack[ply].moveScorePairs.push_back(MoveScorePair(hashMove, HASH_MOVE_SCORE));
         }
 
-        scoreMovesForQuiescence(moves, ply, minMoveScore);
+        scoreMovesForQuiescence(moves, ply, minSEEScore);
     } else {
         // Der Hashzug soll nicht explizit betrachtet werden.
         // (Er könnte aber trotzdem in der Zugliste auftauchen.)
         Array<Move, 256> moves;
-        if(board.isCheck())
+        if(isCheck)
             board.generateLegalMoves(moves);
         else
             board.generateLegalCaptures(moves);
 
-        scoreMovesForQuiescence(moves, ply, minMoveScore);
+        scoreMovesForQuiescence(moves, ply, minSEEScore);
     }
 }
 
@@ -897,11 +896,7 @@ void PVSSearchInstance::scoreMoves(const Array<Move, 256>& moves, uint16_t ply) 
         if(move.isCapture() || move.isPromotion()) {
             // Schlagzüge und Bauernumwandlungen werden mit
             // der Static Exchange Evaluation (SEE) bewertet.
-
-            uint64_t nodesSearchedBySEE = 0;
-            int16_t seeEvaluation = evaluator.evaluateMoveSEE(move, nodesSearchedBySEE);
-            localNodeCounter += nodesSearchedBySEE;
-            nodesSearched.fetch_add(nodesSearchedBySEE);
+            int16_t seeEvaluation = evaluator.evaluateMoveSEE(move);
 
             if(seeEvaluation >= 0) {
                 // Gute Schlagzüge
@@ -942,28 +937,39 @@ void PVSSearchInstance::scoreMoves(const Array<Move, 256>& moves, uint16_t ply) 
     searchStack[ply].moveScorePairs.push_back(badCaptures);
 }
 
-void PVSSearchInstance::scoreMovesForQuiescence(const Array<Move, 256>& moves, uint16_t ply, int16_t minMoveScore) {
+void PVSSearchInstance::scoreMovesForQuiescence(const Array<Move, 256>& moves, uint16_t ply, int16_t minSEEScore) {
     for(Move move : moves) {
         int16_t score;
 
         if(move.isCapture() || move.isPromotion()) {
             // Schlagzüge und Bauernumwandlungen werden mit
             // der Static Exchange Evaluation (SEE) bewertet.
+            if(minSEEScore <= MIN_SCORE || evaluator.isSEEGreaterEqual(move, minSEEScore)) {
+                int32_t seeEvaluation = evaluator.evaluateMoveSEE(move);
 
-            uint64_t nodesSearchedBySEE = 0;
-            score = evaluator.evaluateMoveSEE(move, nodesSearchedBySEE);
-            localNodeCounter += nodesSearchedBySEE;
-            nodesSearched.fetch_add(nodesSearchedBySEE);
+                if(seeEvaluation >= NEUTRAL_SCORE) {
+                    // Gute Schlagzüge
+                    score = std::clamp(GOOD_CAPTURE_MOVES_NEUTRAL + seeEvaluation,
+                                       GOOD_CAPTURE_MOVES_MIN,
+                                       GOOD_CAPTURE_MOVES_MAX);
+                } else {
+                    // Schlechte Schlagzüge
+                    score = std::clamp(BAD_CAPTURE_MOVES_NEUTRAL + seeEvaluation,
+                                       BAD_CAPTURE_MOVES_MIN,
+                                       BAD_CAPTURE_MOVES_MAX);
+                }
+            } else {
+                // Züge mit SEE < minSEEScore werden nicht betrachtet.
+                continue;
+            }
         } else {
             // Ruhige Züge werden anhand ihrer relativen Vergangenheitsbewertung
             // bewertet.
-
             score = std::clamp(QUIET_MOVES_NEUTRAL + getHistoryScore(move) / currentSearchDepth,
                                QUIET_MOVES_MIN,
                                QUIET_MOVES_MAX);
         }
 
-        if(score >= minMoveScore)
-            searchStack[ply].moveScorePairs.insert_sorted(MoveScorePair(move, score), std::greater<MoveScorePair>());
+        searchStack[ply].moveScorePairs.insert_sorted(MoveScorePair(move, score), std::greater<MoveScorePair>());
     }
 }

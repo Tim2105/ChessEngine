@@ -35,7 +35,13 @@ class Evaluator {
          * @brief Static Exchange Evaluation.
          * https://www.chessprogramming.org/Static_Exchange_Evaluation
          */
-        int32_t see(Move m, uint64_t& nodesSearched);
+        int32_t see(Move m);
+
+        /**
+         * @brief Eine Kopie von isSEEGreaterEqual, die die Spezialfälle
+         * Bauernaufwertung und En-Passant nicht berücksichtigt.
+         */
+        bool seeGreaterEqual(Move m, int32_t threshold);
     
     protected:
         Board& board;
@@ -82,7 +88,13 @@ class Evaluator {
         /**
          * @brief Führt eine statische Bewertung eines Zugs mit SEE durch.
          */
-        int16_t evaluateMoveSEE(Move m, uint64_t& nodesSearched);
+        int16_t evaluateMoveSEE(Move m);
+
+        /**
+         * @brief Überprüft, ob die statische Bewertung eines Zugs mit SEE
+         * größer oder gleich einem Schwellwert ist.
+         */
+        bool isSEEGreaterEqual(Move m, int32_t threshold);
 
         /**
          * @brief Führt eine statische Bewertung eines Zugs mit MVVLVA durch.

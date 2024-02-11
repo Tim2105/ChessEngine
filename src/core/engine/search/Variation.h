@@ -9,6 +9,8 @@
 struct Variation {
     std::vector<Move> moves;
     int32_t score;
+    uint16_t depth;
+    uint16_t selectiveDepth;
 };
 
 template<>

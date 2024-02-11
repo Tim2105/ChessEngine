@@ -13,7 +13,6 @@ rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 
 # Compiler
 CC = g++
-# CC = x86_64-w64-mingw32-g++ # Windows
 
 # Compilerflags
 CFLAGS = -Wall -Wextra -Werror -std=c++20 -Isrc -Ofast -flto=auto -march=native

@@ -130,11 +130,19 @@ class PVSSearchInstance {
         SearchStackEntry searchStack[MAX_PLY];
 
         /**
-         * @brief Eine Referenz auf die Liste der Züge, auf die sich die
+         * @brief Die Liste der Züge, auf die sich die
          * Suchinstanz im Wurzelknoten beschränken soll. Wenn die Liste leer
          * ist, betrachtet die Instanz alle Züge.
          */
-        const Array<Move, 256>& searchMoves;
+        Array<Move, 256> searchMoves;
+
+        /**
+         * @brief Speichert den Zug, der im Wurzelknoten als
+         * erstet betrachtet werden soll. Wenn die Instanz selbst
+         * einen Zug bestimmen soll, muss der Nullzug in dieser
+         * Variable gespeichert werden.
+         */
+        Move bestRootMoveHint = Move::nullMove();
 
         /**
          * @brief Speichert die Anzahl der Threads, die gleichzeitig
@@ -209,12 +217,10 @@ class PVSSearchInstance {
          * Zugliste im Suchstapel ein.
          *
          * @param ply Der Abstand zum Wurzelknoten (Index des Suchstapels).
-         * @param minMoveScore Die minimale Bewertung, die ein Zug haben muss,
-         * um in die Vorsortierung aufgenommen zu werden.
          * @param includeHashMove Gibt an, ob der Hashzug in die Zugliste
          * aufgenommen werden soll (falls vorhanden und nicht bereits in der Liste).
          */
-        void addMovesToSearchStackInQuiescence(uint16_t ply, int16_t minMoveScore, bool includeHashMove);
+        void addMovesToSearchStackInQuiescence(uint16_t ply, bool includeHashMove);
 
         /**
          * @brief Bewertet alle Züge in der Zugliste, sortiert sie
@@ -231,10 +237,10 @@ class PVSSearchInstance {
          * 
          * @param moves Die Liste der Züge, die bewertet werden sollen.
          * @param ply Der Abstand zum Wurzelknoten (Index des Suchstapels).
-         * @param minMoveScore Die minimale Bewertung, die ein Zug haben muss,
-         * um in die Vorsortierung aufgenommen zu werden.
+         * @param minMoveScore Die minimale SEE-Bewertung, die ein Schlagzug
+         * haben muss, um aufgenommen zu werden.
          */
-        void scoreMovesForQuiescence(const Array<Move, 256>& moves, uint16_t ply, int16_t minMoveScore);
+        void scoreMovesForQuiescence(const Array<Move, 256>& moves, uint16_t ply, int16_t minSEEScore);
 
     public:
 
@@ -244,9 +250,9 @@ class PVSSearchInstance {
         PVSSearchInstance(Board& board, TranspositionTable& transpositionTable,
                           std::atomic_bool& stopFlag, std::atomic<std::chrono::system_clock::time_point>& startTime,
                           std::atomic<std::chrono::system_clock::time_point>& stopTime, std::atomic_uint64_t& nodesSearched,
-                          const Array<Move, 256>& searchMoves, std::function<void()> checkupFunction) :
+                          std::function<void()> checkupFunction) :
             board(board), evaluator(this->board), transpositionTable(transpositionTable), stopFlag(stopFlag), startTime(startTime), 
-            stopTime(stopTime), nodesSearched(nodesSearched), searchStack(), searchMoves(searchMoves), checkupFunction(checkupFunction) {
+            stopTime(stopTime), nodesSearched(nodesSearched), searchStack(), checkupFunction(checkupFunction) {
 
             // Leere die Killerzüge und die Vergangenheitsbewertung.
 
@@ -334,6 +340,22 @@ class PVSSearchInstance {
             selectiveDepth = 0;
         }
 
+        /**
+         * @brief Gibt die Liste der Züge an, auf die sich die
+         * Suchinstanz im Wurzelknoten beschränken soll.
+         */
+        inline void setSearchMoves(const Array<Move, 256>& searchMoves) {
+            this->searchMoves = searchMoves;
+        }
+
+        /**
+         * @brief Setzt den Zug, der im Wurzelknoten als
+         * erstet betrachtet werden soll.
+         */
+        inline void hintBestRootMove(Move move) {
+            bestRootMoveHint = move;
+        }
+
     private:
         inline void addPVMove(uint16_t ply, Move move) {
             pvTable[ply].clear();
@@ -344,7 +366,8 @@ class PVSSearchInstance {
         }
 
         constexpr void clearPVTable(uint16_t ply) {
-            pvTable[ply].clear();
+            if(ply < MAX_PLY)
+                pvTable[ply].clear();
         }
 
         constexpr void clearMovesInSearchStack(uint16_t ply) {
