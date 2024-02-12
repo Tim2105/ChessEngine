@@ -16,10 +16,12 @@ struct membuf : std::streambuf {
 Network::Network() {
     halfKPLayer = new HalfKPLayer;
 
-    membuf buf(_binary_resources_network_nnue_start, _binary_resources_network_nnue_end);
-    std::istream is(&buf);
+    #if not defined(USE_HCE)
+        membuf buf(_binary_resources_network_nnue_start, _binary_resources_network_nnue_end);
+        std::istream is(&buf);
 
-    is >> *this;
+        is >> *this;
+    #endif
 }
 
 Network::~Network() {

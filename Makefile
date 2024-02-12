@@ -33,7 +33,12 @@ endif
 SRC = $(call rwildcard,src/,*.cpp)
 
 # Einzubettende Ressourcen
-RES = $(call rwildcard,resources/,*);
+# Überprüfe, ob -DUSE_HCE gesetzt ist
+ifneq ($(findstring USE_HCE,$(CFLAGS)),USE_HCE)
+RES = $(call rwildcard,resources/,*.nnue)
+else
+RES = $(call rwildcard,resources/,*.hce)
+endif
 
 # Objektdateien
 # Werden in den Ordner bin/obj erstellt
