@@ -53,22 +53,22 @@ class Bitboard {
         /**
          * @brief Gibt den Index des ersten gesetzten Bits zurück.
          */
-        constexpr int32_t getFirstSetBit() const {
+        constexpr int32_t getFSB() const {
             return std::countr_zero(bitboard);
         }
 
         /**
          * @brief Gibt den Index des letzten gesetzten Bits zurück.
          */
-        constexpr int32_t getLastSetBit() const {
+        constexpr int32_t getLSB() const {
             return 63 - std::countl_zero(bitboard);
         }
 
         /**
          * @brief Löscht das erste gesetzte Bit und gibt dessen Index zurück.
          */
-        constexpr int32_t popFirstSetBit() {
-            int32_t index = getFirstSetBit();
+        constexpr int32_t popFSB() {
+            int32_t index = getFSB();
             bitboard &= bitboard - 1;
             return index;
         }
@@ -76,16 +76,17 @@ class Bitboard {
         /**
          * @brief Löscht das letzte gesetzte Bit und gibt dessen Index zurück.
          */
-        constexpr int32_t popLastSetBit() {
-            int32_t index = getLastSetBit();
+        constexpr int32_t popLSB() {
+            int32_t index = getLSB();
             clearBit(index);
             return index;
         }
 
         /**
-         * @brief Gibt die Anzahl der gesetzten Bits zurück.
+         * @brief Führt ein Population Count auf dem Bitboard durch,
+         * d.h. gibt die Anzahl der gesetzten Bits zurück.
          */
-        constexpr int32_t getNumberOfSetBits() const {
+        constexpr int32_t popcount() const {
             return std::popcount(bitboard);
         }
 

@@ -18,16 +18,16 @@ bool Referee::isDraw(Board& b) {
 }
 
 bool Referee::isDrawByMaterial(Board& b) {
-    int32_t whitePawns = b.getPieceBitboard(WHITE_PAWN).getNumberOfSetBits();
-    int32_t blackPawns = b.getPieceBitboard(BLACK_PAWN).getNumberOfSetBits();
-    int32_t whiteKnights = b.getPieceBitboard(WHITE_KNIGHT).getNumberOfSetBits();
-    int32_t blackKnights = b.getPieceBitboard(BLACK_KNIGHT).getNumberOfSetBits();
-    int32_t whiteBishops = b.getPieceBitboard(WHITE_BISHOP).getNumberOfSetBits();
-    int32_t blackBishops = b.getPieceBitboard(BLACK_BISHOP).getNumberOfSetBits();
-    int32_t whiteRooks = b.getPieceBitboard(WHITE_ROOK).getNumberOfSetBits();
-    int32_t blackRooks = b.getPieceBitboard(BLACK_ROOK).getNumberOfSetBits();
-    int32_t whiteQueens = b.getPieceBitboard(WHITE_QUEEN).getNumberOfSetBits();
-    int32_t blackQueens = b.getPieceBitboard(BLACK_QUEEN).getNumberOfSetBits();
+    int32_t whitePawns = b.getPieceBitboard(WHITE_PAWN).popcount();
+    int32_t blackPawns = b.getPieceBitboard(BLACK_PAWN).popcount();
+    int32_t whiteKnights = b.getPieceBitboard(WHITE_KNIGHT).popcount();
+    int32_t blackKnights = b.getPieceBitboard(BLACK_KNIGHT).popcount();
+    int32_t whiteBishops = b.getPieceBitboard(WHITE_BISHOP).popcount();
+    int32_t blackBishops = b.getPieceBitboard(BLACK_BISHOP).popcount();
+    int32_t whiteRooks = b.getPieceBitboard(WHITE_ROOK).popcount();
+    int32_t blackRooks = b.getPieceBitboard(BLACK_ROOK).popcount();
+    int32_t whiteQueens = b.getPieceBitboard(WHITE_QUEEN).popcount();
+    int32_t blackQueens = b.getPieceBitboard(BLACK_QUEEN).popcount();
 
     // Wenn Bauern, Türme oder Damen auf dem Spielfeld sind, ist noch genug Material vorhanden
     if(!(whitePawns > 0 || blackPawns > 0 || whiteRooks > 0 ||
@@ -52,8 +52,8 @@ bool Referee::isDrawByMaterial(Board& b) {
         if(whiteKnights == 0 && blackKnights == 0 &&
         whiteBishops == 1 && blackBishops == 1) {
             
-            int32_t whiteBishopSq = b.getPieceBitboard(WHITE_BISHOP).getFirstSetBit();
-            int32_t blackBishopSq = b.getPieceBitboard(BLACK_BISHOP).getFirstSetBit();
+            int32_t whiteBishopSq = b.getPieceBitboard(WHITE_BISHOP).getFSB();
+            int32_t blackBishopSq = b.getPieceBitboard(BLACK_BISHOP).getFSB();
 
             if(lightSquares.getBit(whiteBishopSq) == lightSquares.getBit(blackBishopSq))
                 return true;

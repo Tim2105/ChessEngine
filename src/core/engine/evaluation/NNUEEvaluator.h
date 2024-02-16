@@ -3,7 +3,6 @@
 
 #include "core/chess/Referee.h"
 #include "core/engine/evaluation/EndgameEvaluator.h"
-#include "core/engine/evaluation/SimpleUpdatedEvaluator.h"
 #include "core/utils/nnue/NNUEInstance.h"
 
 class NNUEEvaluator: public Evaluator {
@@ -25,8 +24,8 @@ class NNUEEvaluator: public Evaluator {
         ~NNUEEvaluator() {}
 
         inline int32_t evaluate() override {
-            int32_t numPawns = board.getPieceBitboard(WHITE | PAWN).getNumberOfSetBits() +
-                               board.getPieceBitboard(BLACK | PAWN).getNumberOfSetBits();
+            int32_t numPawns = board.getPieceBitboard(WHITE | PAWN).popcount() +
+                               board.getPieceBitboard(BLACK | PAWN).popcount();
 
             if(numPawns == 0 && std::abs(materialDifference) <= 300)
                 return 0;
@@ -131,20 +130,20 @@ class NNUEEvaluator: public Evaluator {
             materialDifference = 0;
 
             for(int32_t p = (WHITE | PAWN); p <= (WHITE | QUEEN); p++)
-                materialDifference += SIMPLE_COLOR_PIECE_VALUE[p] * board.getPieceBitboard(p).getNumberOfSetBits();
+                materialDifference += SIMPLE_COLOR_PIECE_VALUE[p] * board.getPieceBitboard(p).popcount();
 
             for(int32_t p = (BLACK | PAWN); p <= (BLACK | QUEEN); p++)
-                materialDifference += SIMPLE_COLOR_PIECE_VALUE[p] * board.getPieceBitboard(p).getNumberOfSetBits();
+                materialDifference += SIMPLE_COLOR_PIECE_VALUE[p] * board.getPieceBitboard(p).popcount();
         }
 
         inline void initializeGamePhase() {
             pieceWeight = TOTAL_WEIGHT;
 
             for(int32_t p = (WHITE | PAWN); p <= (WHITE | QUEEN); p++)
-                pieceWeight -= PIECE_WEIGHTS[TYPEOF(p)] * board.getPieceBitboard(p).getNumberOfSetBits();
+                pieceWeight -= PIECE_WEIGHTS[TYPEOF(p)] * board.getPieceBitboard(p).popcount();
 
             for(int32_t p = (BLACK | PAWN); p <= (BLACK | QUEEN); p++)
-                pieceWeight -= PIECE_WEIGHTS[TYPEOF(p)] * board.getPieceBitboard(p).getNumberOfSetBits();
+                pieceWeight -= PIECE_WEIGHTS[TYPEOF(p)] * board.getPieceBitboard(p).popcount();
 
             gamePhase = (double)pieceWeight / TOTAL_WEIGHT;
             gamePhase = gamePhase * (MAX_PHASE - MIN_PHASE) + MIN_PHASE;

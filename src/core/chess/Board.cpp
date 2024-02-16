@@ -162,20 +162,20 @@ Board::Board(std::string fen) {
     }
 
     // Überprüfe, zwei Könige vorhanden sind und keine Bauern auf der 1. oder 8. Reihe stehen
-    if(pieceBitboard[WHITE_KING].getNumberOfSetBits() != 1 || 
-       pieceBitboard[BLACK_KING].getNumberOfSetBits() != 1)
+    if(pieceBitboard[WHITE_KING].popcount() != 1 || 
+       pieceBitboard[BLACK_KING].popcount() != 1)
         throw std::invalid_argument("Invalid FEN string: There must be exactly one white and one black king");
 
     Bitboard whitePawns = pieceBitboard[WHITE_PAWN];
     while(whitePawns) {
-        int32_t square = whitePawns.popFirstSetBit();
+        int32_t square = whitePawns.popFSB();
         if(SQ2R(square) == RANK_1 || SQ2R(square) == RANK_8)
             throw std::invalid_argument("Invalid FEN string: There must not be any white pawns on the first or eighth rank");
     }
     
     Bitboard blackPawns = pieceBitboard[BLACK_PAWN];
     while(blackPawns) {
-        int32_t square = blackPawns.popFirstSetBit();
+        int32_t square = blackPawns.popFSB();
         if(SQ2R(square) == RANK_1 || SQ2R(square) == RANK_8)
             throw std::invalid_argument("Invalid FEN string: There must not be any black pawns on the first or eighth rank");
     }
@@ -270,7 +270,7 @@ Board::Board(std::string fen) {
     generateSpecialBitboards();
 
     // Überprüfe, ob der König des Spielers, der nicht am Zug ist, im Schach steht
-    if(squareAttacked(pieceBitboard[(side ^ COLOR_MASK) | KING].getFirstSetBit(), side))
+    if(squareAttacked(pieceBitboard[(side ^ COLOR_MASK) | KING].getFSB(), side))
         throw std::invalid_argument("Invalid FEN string: King of player not moving is in check");
 
     hashValue = generateHashValue();
@@ -555,7 +555,7 @@ bool Board::isMoveLegal(Move move) {
     // Überprüfe, ob der Zug den eigenen König in Schach setzt/lässt
     makeMove(move);
 
-    bool isCheck = squareAttacked(pieceBitboard[side | KING].getFirstSetBit(), otherSide);
+    bool isCheck = squareAttacked(pieceBitboard[side | KING].getFSB(), otherSide);
 
     undoMove();
 
@@ -563,7 +563,7 @@ bool Board::isMoveLegal(Move move) {
 }
 
 bool Board::isCheck() const {
-    return squareAttacked(pieceBitboard[side | KING].getFirstSetBit(), side ^ COLOR_MASK);
+    return squareAttacked(pieceBitboard[side | KING].getFSB(), side ^ COLOR_MASK);
 }
 
 void Board::makeMove(Move m) {
@@ -926,23 +926,23 @@ int32_t Board::numSquareAttackers(int32_t sq, int32_t ownSide, Bitboard occupied
 
     // Diagonale Angriffe
     Bitboard diagonalAttackers = diagonalAttackBitboard(sq, occupied) & (pieceBitboard[ownSide | BISHOP] | pieceBitboard[ownSide | QUEEN]);
-    numAttackers += diagonalAttackers.getNumberOfSetBits();
+    numAttackers += diagonalAttackers.popcount();
 
     // Waaagerechte Angriffe
     Bitboard straightAttackers = horizontalAttackBitboard(sq, occupied) & (pieceBitboard[ownSide | ROOK] | pieceBitboard[ownSide | QUEEN]);
-    numAttackers += straightAttackers.getNumberOfSetBits();
+    numAttackers += straightAttackers.popcount();
 
     // Springer Angriffe
     Bitboard knightAttackers = knightAttackBitboard(sq) & pieceBitboard[ownSide | KNIGHT];
-    numAttackers += knightAttackers.getNumberOfSetBits();
+    numAttackers += knightAttackers.popcount();
 
     // Bauer Angriffe
     Bitboard pawnAttackers = pawnAttackBitboard(sq, otherSide) & pieceBitboard[ownSide | PAWN];
-    numAttackers += pawnAttackers.getNumberOfSetBits();
+    numAttackers += pawnAttackers.popcount();
 
     // König Angriffe
     Bitboard kingAttackers = kingAttackBitboard(sq) & pieceBitboard[ownSide | KING];
-    numAttackers += kingAttackers.getNumberOfSetBits();
+    numAttackers += kingAttackers.popcount();
 
     return numAttackers;
 }
@@ -953,27 +953,27 @@ int32_t Board::numSquareAttackers(int32_t sq, int32_t ownSide, Bitboard occupied
 
     // Diagonale Angriffe
     Bitboard diagonalAttackers = diagonalAttackBitboard(sq, occupied) & (pieceBitboard[ownSide | BISHOP] | pieceBitboard[ownSide | QUEEN]);
-    numAttackers += diagonalAttackers.getNumberOfSetBits();
+    numAttackers += diagonalAttackers.popcount();
     attackerRays |= diagonalAttackUntilBlocked(sq, pieceBitboard[ownSide | BISHOP] | pieceBitboard[ownSide | QUEEN], occupied);
 
     // Waaagerechte Angriffe
     Bitboard straightAttackers = horizontalAttackBitboard(sq, occupied) & (pieceBitboard[ownSide | ROOK] | pieceBitboard[ownSide | QUEEN]);
-    numAttackers += straightAttackers.getNumberOfSetBits();
+    numAttackers += straightAttackers.popcount();
     attackerRays |= horizontalAttackUntilBlocked(sq, pieceBitboard[ownSide | ROOK] | pieceBitboard[ownSide | QUEEN], occupied);
 
     // Springer Angriffe
     Bitboard knightAttackers = knightAttackBitboard(sq) & pieceBitboard[ownSide | KNIGHT];
-    numAttackers += knightAttackers.getNumberOfSetBits();
+    numAttackers += knightAttackers.popcount();
     attackerRays |= knightAttackers;
 
     // Bauer Angriffe
     Bitboard pawnAttackers = pawnAttackBitboard(sq, otherSide) & pieceBitboard[ownSide | PAWN];
-    numAttackers += pawnAttackers.getNumberOfSetBits();
+    numAttackers += pawnAttackers.popcount();
     attackerRays |= pawnAttackers;
 
     // König Angriffe
     Bitboard kingAttackers = kingAttackBitboard(sq) & pieceBitboard[ownSide | KING];
-    numAttackers += kingAttackers.getNumberOfSetBits();
+    numAttackers += kingAttackers.popcount();
     attackerRays |= kingAttackers;
 
     return numAttackers;
@@ -989,14 +989,14 @@ Bitboard Board::generateAttackBitboard(int32_t side) {
     // Diagonale Angriffe
     Bitboard bishopBitboard = pieceBitboard[side | BISHOP];
     while(bishopBitboard) {
-        int32_t sq = bishopBitboard.popFirstSetBit();
+        int32_t sq = bishopBitboard.popFSB();
         pieceAttackBitboard[side | BISHOP] |= diagonalAttackBitboard(sq, piecesPlusOwnKing);
         attackBitboard |= pieceAttackBitboard[side | BISHOP];
     }
 
     Bitboard queenBitboard = pieceBitboard[side | QUEEN];
     while(queenBitboard) {
-        int32_t sq = queenBitboard.popFirstSetBit();
+        int32_t sq = queenBitboard.popFSB();
         pieceAttackBitboard[side | QUEEN] |= diagonalAttackBitboard(sq, piecesPlusOwnKing);
         attackBitboard |= pieceAttackBitboard[side | QUEEN];
     }
@@ -1004,14 +1004,14 @@ Bitboard Board::generateAttackBitboard(int32_t side) {
     // Waagerechte Angriffe
     Bitboard rookBitboard = pieceBitboard[side | ROOK];
     while(rookBitboard) {
-        int32_t sq = rookBitboard.popFirstSetBit();
+        int32_t sq = rookBitboard.popFSB();
         pieceAttackBitboard[side | ROOK] |= horizontalAttackBitboard(sq, piecesPlusOwnKing);
         attackBitboard |= pieceAttackBitboard[side | ROOK];
     }
 
     queenBitboard = pieceBitboard[side | QUEEN];
     while(queenBitboard) {
-        int32_t sq = queenBitboard.popFirstSetBit();
+        int32_t sq = queenBitboard.popFSB();
         pieceAttackBitboard[side | QUEEN] |= horizontalAttackBitboard(sq, piecesPlusOwnKing);
         attackBitboard |= pieceAttackBitboard[side | QUEEN];
     }
@@ -1019,7 +1019,7 @@ Bitboard Board::generateAttackBitboard(int32_t side) {
     // Springer Angriffe
     Bitboard knightBitboard = pieceBitboard[side | KNIGHT];
     while(knightBitboard) {
-        int32_t sq = knightBitboard.popFirstSetBit();
+        int32_t sq = knightBitboard.popFSB();
         pieceAttackBitboard[side | KNIGHT] |= knightAttackBitboard(sq);
         attackBitboard |= pieceAttackBitboard[side | KNIGHT];
     }
@@ -1027,7 +1027,7 @@ Bitboard Board::generateAttackBitboard(int32_t side) {
     // Bauer Angriffe
     Bitboard pawnBitboard = pieceBitboard[side | PAWN];
     while(pawnBitboard) {
-        int32_t sq = pawnBitboard.popFirstSetBit();
+        int32_t sq = pawnBitboard.popFSB();
         pieceAttackBitboard[side | PAWN] |= pawnAttackBitboard(sq, side);
         attackBitboard |= pieceAttackBitboard[side | PAWN];
     }
@@ -1035,7 +1035,7 @@ Bitboard Board::generateAttackBitboard(int32_t side) {
     // König Angriffe
     Bitboard kingBitboard = pieceBitboard[side | KING];
     while(kingBitboard) {
-        int32_t sq = kingBitboard.popFirstSetBit();
+        int32_t sq = kingBitboard.popFSB();
         pieceAttackBitboard[side | KING] |= kingAttackBitboard(sq);
         attackBitboard |= pieceAttackBitboard[side | KING];
     }
@@ -1053,7 +1053,7 @@ Bitboard Board::generateAttackBitboard(int32_t side, Bitboard updatedSquares, in
         Bitboard bishopBitboard = pieceBitboard[side | BISHOP];
 
         while(bishopBitboard) {
-            int32_t sq = bishopBitboard.popFirstSetBit();
+            int32_t sq = bishopBitboard.popFSB();
             bishopAttackBitboard |= diagonalAttackBitboard(sq, piecesPlusOwnKing);
         }
 
@@ -1067,7 +1067,7 @@ Bitboard Board::generateAttackBitboard(int32_t side, Bitboard updatedSquares, in
         Bitboard rookBitboard = pieceBitboard[side | ROOK];
 
         while(rookBitboard) {
-            int32_t sq = rookBitboard.popFirstSetBit();
+            int32_t sq = rookBitboard.popFSB();
             rookAttackBitboard |= horizontalAttackBitboard(sq, piecesPlusOwnKing);
         }
 
@@ -1081,7 +1081,7 @@ Bitboard Board::generateAttackBitboard(int32_t side, Bitboard updatedSquares, in
         Bitboard queenBitboard = pieceBitboard[side | QUEEN];
 
         while(queenBitboard) {
-            int32_t sq = queenBitboard.popFirstSetBit();
+            int32_t sq = queenBitboard.popFSB();
             queenAttackBitboard |= diagonalAttackBitboard(sq, piecesPlusOwnKing);
             queenAttackBitboard |= horizontalAttackBitboard(sq, piecesPlusOwnKing);
         }
@@ -1096,7 +1096,7 @@ Bitboard Board::generateAttackBitboard(int32_t side, Bitboard updatedSquares, in
         Bitboard knightBitboard = pieceBitboard[side | KNIGHT];
 
         while(knightBitboard) {
-            int32_t sq = knightBitboard.popFirstSetBit();
+            int32_t sq = knightBitboard.popFSB();
             knightAttacks |= knightAttackBitboard(sq);
         }
 
@@ -1110,7 +1110,7 @@ Bitboard Board::generateAttackBitboard(int32_t side, Bitboard updatedSquares, in
         Bitboard pawnBitboard = pieceBitboard[side | PAWN];
 
         while(pawnBitboard) {
-            int32_t sq = pawnBitboard.popFirstSetBit();
+            int32_t sq = pawnBitboard.popFSB();
             pawnAttacks |= pawnAttackBitboard(sq, side);
         }
 
@@ -1123,7 +1123,7 @@ Bitboard Board::generateAttackBitboard(int32_t side, Bitboard updatedSquares, in
         Bitboard kingBitboard = pieceBitboard[side | KING];
 
         while(kingBitboard) {
-            int32_t sq = kingBitboard.popFirstSetBit();
+            int32_t sq = kingBitboard.popFSB();
             kingAttacks |= kingAttackBitboard(sq);
         }
 
@@ -1141,7 +1141,7 @@ Bitboard Board::generateAttackBitboard(int32_t side, Bitboard updatedSquares, in
 void Board::generatePinnedPiecesBitboards(int32_t side, Bitboard& pinnedPiecesBitboard,
                                           int32_t* pinnedPiecesDirection) const {
 
-    int32_t kingSquare = pieceBitboard[side | KING].getFirstSetBit();
+    int32_t kingSquare = pieceBitboard[side | KING].getFSB();
     int32_t otherSide = side ^ COLOR_MASK;
     Bitboard enemyPiecesPlusKing;
     if(side == WHITE)
@@ -1199,14 +1199,14 @@ void Board::generateLegalMoves(Array<Move, 256>& legalMoves) const noexcept {
 
     if(side == WHITE) {
         if(isCheck())
-            numAttackers = numSquareAttackers(pieceBitboard[WHITE_KING].getFirstSetBit(), BLACK, allPiecesBitboard | pieceBitboard[BLACK_KING], attackingRays);
+            numAttackers = numSquareAttackers(pieceBitboard[WHITE_KING].getFSB(), BLACK, allPiecesBitboard | pieceBitboard[BLACK_KING], attackingRays);
         
         generatePinnedPiecesBitboards(WHITE, pinnedPieces, pinDirections);
 
         Movegen::generateLegalMoves<WHITE>(*this, legalMoves, numAttackers, attackingRays, pinnedPieces, pinDirections);
     } else {
         if(isCheck())
-            numAttackers = numSquareAttackers(pieceBitboard[BLACK_KING].getFirstSetBit(), WHITE, allPiecesBitboard | pieceBitboard[WHITE_KING], attackingRays);
+            numAttackers = numSquareAttackers(pieceBitboard[BLACK_KING].getFSB(), WHITE, allPiecesBitboard | pieceBitboard[WHITE_KING], attackingRays);
         
         generatePinnedPiecesBitboards(BLACK, pinnedPieces, pinDirections);
 
@@ -1228,14 +1228,14 @@ void Board::generateLegalCaptures(Array<Move, 256>& legalCaptures) const noexcep
 
     if(side == WHITE) {
         if(isCheck())
-            numAttackers = numSquareAttackers(pieceBitboard[WHITE_KING].getFirstSetBit(), BLACK, allPiecesBitboard | pieceBitboard[BLACK_KING], attackingRays);
+            numAttackers = numSquareAttackers(pieceBitboard[WHITE_KING].getFSB(), BLACK, allPiecesBitboard | pieceBitboard[BLACK_KING], attackingRays);
         
         generatePinnedPiecesBitboards(WHITE, pinnedPieces, pinDirections);
 
         Movegen::generateLegalCaptures<WHITE>(*this, legalCaptures, numAttackers, attackingRays, pinnedPieces, pinDirections);
     } else {
         if(isCheck())
-            numAttackers = numSquareAttackers(pieceBitboard[BLACK_KING].getFirstSetBit(), WHITE, allPiecesBitboard | pieceBitboard[WHITE_KING], attackingRays);
+            numAttackers = numSquareAttackers(pieceBitboard[BLACK_KING].getFSB(), WHITE, allPiecesBitboard | pieceBitboard[WHITE_KING], attackingRays);
         
         generatePinnedPiecesBitboards(BLACK, pinnedPieces, pinDirections);
 

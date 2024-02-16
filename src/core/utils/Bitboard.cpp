@@ -109,8 +109,8 @@ int32_t getDiagonallyPinnedToSquare(int32_t sq, Bitboard ownPieces,
     Bitboard potentialPinnedPieces = potentialAttacks & ownPieces;
     Bitboard potentialPinners = potentialAttacks & enemyPieces;
 
-    if(potentialPinners && potentialPinnedPieces.getNumberOfSetBits() == 1) {
-        pinnedSquares[numPins] = potentialPinnedPieces.getFirstSetBit();
+    if(potentialPinners && potentialPinnedPieces.popcount() == 1) {
+        pinnedSquares[numPins] = potentialPinnedPieces.getFSB();
         pinnedDirections[numPins] = NORTH_EAST;
         numPins++;
     }
@@ -119,8 +119,8 @@ int32_t getDiagonallyPinnedToSquare(int32_t sq, Bitboard ownPieces,
     potentialPinnedPieces = potentialAttacks & ownPieces;
     potentialPinners = potentialAttacks & enemyPieces;
 
-    if(potentialPinners && potentialPinnedPieces.getNumberOfSetBits() == 1) {
-        pinnedSquares[numPins] = potentialPinnedPieces.getFirstSetBit();
+    if(potentialPinners && potentialPinnedPieces.popcount() == 1) {
+        pinnedSquares[numPins] = potentialPinnedPieces.getFSB();
         pinnedDirections[numPins] = SOUTH_WEST;
         numPins++;
     }
@@ -129,8 +129,8 @@ int32_t getDiagonallyPinnedToSquare(int32_t sq, Bitboard ownPieces,
     potentialPinnedPieces = potentialAttacks & ownPieces;
     potentialPinners = potentialAttacks & enemyPieces;
 
-    if(potentialPinners && potentialPinnedPieces.getNumberOfSetBits() == 1) {
-        pinnedSquares[numPins] = potentialPinnedPieces.getFirstSetBit();
+    if(potentialPinners && potentialPinnedPieces.popcount() == 1) {
+        pinnedSquares[numPins] = potentialPinnedPieces.getFSB();
         pinnedDirections[numPins] = SOUTH_EAST;
         numPins++;
     }
@@ -139,8 +139,8 @@ int32_t getDiagonallyPinnedToSquare(int32_t sq, Bitboard ownPieces,
     potentialPinnedPieces = potentialAttacks & ownPieces;
     potentialPinners = potentialAttacks & enemyPieces;
 
-    if(potentialPinners && potentialPinnedPieces.getNumberOfSetBits() == 1) {
-        pinnedSquares[numPins] = potentialPinnedPieces.getFirstSetBit();
+    if(potentialPinners && potentialPinnedPieces.popcount() == 1) {
+        pinnedSquares[numPins] = potentialPinnedPieces.getFSB();
         pinnedDirections[numPins] = NORTH_WEST;
         numPins++;
     }
@@ -160,8 +160,8 @@ int32_t getHorizontallyPinnedToSquare(int32_t sq, Bitboard ownPieces,
     Bitboard potentialPinnedPieces = potentialAttacks & ownPieces;
     Bitboard potentialPinners = potentialAttacks & enemyPieces;
 
-    if(potentialPinners && potentialPinnedPieces.getNumberOfSetBits() == 1) {
-        pinnedSquares[numPins] = potentialPinnedPieces.getFirstSetBit();
+    if(potentialPinners && potentialPinnedPieces.popcount() == 1) {
+        pinnedSquares[numPins] = potentialPinnedPieces.getFSB();
         pinnedDirections[numPins] = NORTH;
         numPins++;
     }
@@ -170,8 +170,8 @@ int32_t getHorizontallyPinnedToSquare(int32_t sq, Bitboard ownPieces,
     potentialPinnedPieces = potentialAttacks & ownPieces;
     potentialPinners = potentialAttacks & enemyPieces;
 
-    if(potentialPinners && potentialPinnedPieces.getNumberOfSetBits() == 1) {
-        pinnedSquares[numPins] = potentialPinnedPieces.getFirstSetBit();
+    if(potentialPinners && potentialPinnedPieces.popcount() == 1) {
+        pinnedSquares[numPins] = potentialPinnedPieces.getFSB();
         pinnedDirections[numPins] = SOUTH;
         numPins++;
     }
@@ -180,8 +180,8 @@ int32_t getHorizontallyPinnedToSquare(int32_t sq, Bitboard ownPieces,
     potentialPinnedPieces = potentialAttacks & ownPieces;
     potentialPinners = potentialAttacks & enemyPieces;
 
-    if(potentialPinners && potentialPinnedPieces.getNumberOfSetBits() == 1) {
-        pinnedSquares[numPins] = potentialPinnedPieces.getFirstSetBit();
+    if(potentialPinners && potentialPinnedPieces.popcount() == 1) {
+        pinnedSquares[numPins] = potentialPinnedPieces.getFSB();
         pinnedDirections[numPins] = EAST;
         numPins++;
     }
@@ -190,8 +190,8 @@ int32_t getHorizontallyPinnedToSquare(int32_t sq, Bitboard ownPieces,
     potentialPinnedPieces = potentialAttacks & ownPieces;
     potentialPinners = potentialAttacks & enemyPieces;
 
-    if(potentialPinners && potentialPinnedPieces.getNumberOfSetBits() == 1) {
-        pinnedSquares[numPins] = potentialPinnedPieces.getFirstSetBit();
+    if(potentialPinners && potentialPinnedPieces.popcount() == 1) {
+        pinnedSquares[numPins] = potentialPinnedPieces.getFSB();
         pinnedDirections[numPins] = WEST;
         numPins++;
     }

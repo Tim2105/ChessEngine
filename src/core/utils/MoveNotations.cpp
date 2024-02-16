@@ -113,12 +113,12 @@ std::string toAlgebraicNotation(const Move& move, Board& board, const std::strin
     switch(TYPEOF(movedPiece)) {
         case KNIGHT: {
             Bitboard knightsAttackingDest = knightAttackBitboard(dest) & board.getPieceBitboard(side | KNIGHT);
-            if(knightsAttackingDest.getNumberOfSetBits() > 1) {
+            if(knightsAttackingDest.popcount() > 1) {
                 int32_t numOriginFile = 0;
                 int32_t numOriginRank = 0;
 
                 while(knightsAttackingDest) {
-                    int32_t knightSq = knightsAttackingDest.getFirstSetBit();
+                    int32_t knightSq = knightsAttackingDest.getFSB();
                     knightsAttackingDest.clearBit(knightSq);
 
                     if(knightSq % 8 == originFile)
@@ -147,12 +147,12 @@ std::string toAlgebraicNotation(const Move& move, Board& board, const std::strin
                                             board.getPieceBitboard(BLACK | KING)) &
                         board.getPieceBitboard(side | BISHOP);
 
-            if(bishopsAttackingDest.getNumberOfSetBits() > 1) {
+            if(bishopsAttackingDest.popcount() > 1) {
                 int32_t numOriginFile = 0;
                 int32_t numOriginRank = 0;
 
                 while(bishopsAttackingDest) {
-                    int32_t bishopSq = bishopsAttackingDest.getFirstSetBit();
+                    int32_t bishopSq = bishopsAttackingDest.getFSB();
                     bishopsAttackingDest.clearBit(bishopSq);
 
                     if(bishopSq % 8 == originFile)
@@ -181,12 +181,12 @@ std::string toAlgebraicNotation(const Move& move, Board& board, const std::strin
                                             board.getPieceBitboard(BLACK | KING)) &
                         board.getPieceBitboard(side | ROOK);
 
-            if(rooksAttackingDest.getNumberOfSetBits() > 1) {
+            if(rooksAttackingDest.popcount() > 1) {
                 int32_t numOriginFile = 0;
                 int32_t numOriginRank = 0;
 
                 while(rooksAttackingDest) {
-                    int32_t rookSq = rooksAttackingDest.getFirstSetBit();
+                    int32_t rookSq = rooksAttackingDest.getFSB();
                     rooksAttackingDest.clearBit(rookSq);
 
                     if(rookSq % 8 == originFile)
@@ -218,12 +218,12 @@ std::string toAlgebraicNotation(const Move& move, Board& board, const std::strin
                                             board.getPieceBitboard(BLACK | KING))) &
                             board.getPieceBitboard(side | QUEEN);
 
-            if(queensAttackingDest.getNumberOfSetBits() > 1) {
+            if(queensAttackingDest.popcount() > 1) {
                 int32_t numOriginFile = 0;
                 int32_t numOriginRank = 0;
 
                 while(queensAttackingDest) {
-                    int32_t queenSq = queensAttackingDest.getFirstSetBit();
+                    int32_t queenSq = queensAttackingDest.getFSB();
                     queensAttackingDest.clearBit(queenSq);
 
                     if(queenSq % 8 == originFile)

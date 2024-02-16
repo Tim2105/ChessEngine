@@ -509,17 +509,17 @@ class alignas(64) Board {
         /**
          * @brief Gibt das Feld zurück, auf dem der weiße König steht.
          */
-        constexpr int32_t getWhiteKingSquare() const { return pieceBitboard[WHITE_KING].getFirstSetBit(); };
+        constexpr int32_t getWhiteKingSquare() const { return pieceBitboard[WHITE_KING].getFSB(); };
 
         /**
          * @brief Gibt das Feld zurück, auf dem der schwarze König steht.
          */
-        constexpr int32_t getBlackKingSquare() const { return pieceBitboard[BLACK_KING].getFirstSetBit(); };
+        constexpr int32_t getBlackKingSquare() const { return pieceBitboard[BLACK_KING].getFSB(); };
 
         /**
          * @brief Gibt das Feld zurück, auf dem der König einer bestimmten Seite steht.
          */
-        constexpr int32_t getKingSquare(int32_t side) const { return pieceBitboard[side | KING].getFirstSetBit(); };
+        constexpr int32_t getKingSquare(int32_t side) const { return pieceBitboard[side | KING].getFSB(); };
 };
 
 #endif

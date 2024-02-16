@@ -25,27 +25,27 @@ int32_t Evaluator::getSmallestAttacker(int32_t to, int32_t side) {
     
     Bitboard pawnAttackers = pawnAttackBitboard(to, otherSide) & board.getPieceBitboard(side | PAWN);
     if(pawnAttackers)
-        return pawnAttackers.getFirstSetBit();
+        return pawnAttackers.getFSB();
 
     Bitboard knightAttackers = knightAttackBitboard(to) & board.getPieceBitboard(side | KNIGHT);
     if(knightAttackers)
-        return knightAttackers.getFirstSetBit();
+        return knightAttackers.getFSB();
 
     Bitboard bishopAttackers = diagonalAttackBitboard(to, board.getOccupiedBitboard() | board.getPieceBitboard(side | KING))
                                                         & board.getPieceBitboard(side | BISHOP);
     if(bishopAttackers)
-        return bishopAttackers.getFirstSetBit();
+        return bishopAttackers.getFSB();
 
     Bitboard rookAttackers = horizontalAttackBitboard(to, board.getOccupiedBitboard() | board.getPieceBitboard(side | KING))
                                                         & board.getPieceBitboard(side | ROOK);
     if(rookAttackers)
-        return rookAttackers.getFirstSetBit();
+        return rookAttackers.getFSB();
 
     Bitboard queenAttackers = (diagonalAttackBitboard(to, board.getOccupiedBitboard() | board.getPieceBitboard(side | KING))
                                 | horizontalAttackBitboard(to, board.getOccupiedBitboard() | board.getPieceBitboard(side | KING)))
                                 & board.getPieceBitboard(side | QUEEN);
     if(queenAttackers)
-        return queenAttackers.getFirstSetBit();
+        return queenAttackers.getFSB();
     
     Bitboard kingAttackers = kingAttackBitboard(to) & board.getPieceBitboard(side | KING);
     if(kingAttackers) {
@@ -53,7 +53,7 @@ int32_t Evaluator::getSmallestAttacker(int32_t to, int32_t side) {
         if(board.getAttackBitboard(otherSide).getBit(to))
             return NO_SQ;
 
-        return kingAttackers.getFirstSetBit();
+        return kingAttackers.getFSB();
     }
 
     return NO_SQ;

@@ -65,7 +65,7 @@ void Instance::initializeFromBoard(const Board& board, int32_t color) noexcept {
         for(int32_t piece = (WHITE | PAWN); piece <= (WHITE | QUEEN); piece++) {
             Bitboard pieceBitboard = board.getPieceBitboard(piece);
             while(pieceBitboard) {
-                int32_t sq = pieceBitboard.popFirstSetBit();
+                int32_t sq = pieceBitboard.popFSB();
                 activeFeatures.push_back(getHalfKPIndex<WHITE>(kingSq, sq, piece));
             }
         }
@@ -74,7 +74,7 @@ void Instance::initializeFromBoard(const Board& board, int32_t color) noexcept {
         for(int32_t piece = (BLACK | PAWN); piece <= (BLACK | QUEEN); piece++) {
             Bitboard pieceBitboard = board.getPieceBitboard(piece);
             while(pieceBitboard) {
-                int32_t sq = pieceBitboard.popFirstSetBit();
+                int32_t sq = pieceBitboard.popFSB();
                 activeFeatures.push_back(getHalfKPIndex<WHITE>(kingSq, sq, piece));
             }
         }
@@ -82,7 +82,7 @@ void Instance::initializeFromBoard(const Board& board, int32_t color) noexcept {
         for(int32_t piece = (WHITE | PAWN); piece <= (WHITE | QUEEN); piece++) {
             Bitboard pieceBitboard = board.getPieceBitboard(piece);
             while(pieceBitboard) {
-                int32_t sq = pieceBitboard.popFirstSetBit();
+                int32_t sq = pieceBitboard.popFSB();
                 activeFeatures.push_back(getHalfKPIndex<BLACK>(kingSq, sq, piece));
             }
         }
@@ -91,7 +91,7 @@ void Instance::initializeFromBoard(const Board& board, int32_t color) noexcept {
         for(int32_t piece = (BLACK | PAWN); piece <= (BLACK | QUEEN); piece++) {
             Bitboard pieceBitboard = board.getPieceBitboard(piece);
             while(pieceBitboard) {
-                int32_t sq = pieceBitboard.popFirstSetBit();
+                int32_t sq = pieceBitboard.popFSB();
                 activeFeatures.push_back(getHalfKPIndex<BLACK>(kingSq, sq, piece));
             }
         }
@@ -149,7 +149,7 @@ void Instance::initializeFromBoard(const Board& board) noexcept {
     for(int32_t piece = (WHITE | PAWN); piece <= (WHITE | QUEEN); piece++) {
         Bitboard pieceBitboard = board.getPieceBitboard(piece);
         while(pieceBitboard) {
-            int32_t sq = pieceBitboard.popFirstSetBit();
+            int32_t sq = pieceBitboard.popFSB();
             activeFeaturesWhite.push_back(getHalfKPIndex<WHITE>(board.getKingSquare(WHITE), sq, piece));
             activeFeaturesBlack.push_back(getHalfKPIndex<BLACK>(board.getKingSquare(BLACK), sq, piece));
         }
@@ -159,7 +159,7 @@ void Instance::initializeFromBoard(const Board& board) noexcept {
     for(int32_t piece = (BLACK | PAWN); piece <= (BLACK | QUEEN); piece++) {
         Bitboard pieceBitboard = board.getPieceBitboard(piece);
         while(pieceBitboard) {
-            int32_t sq = pieceBitboard.popFirstSetBit();
+            int32_t sq = pieceBitboard.popFSB();
             activeFeaturesWhite.push_back(getHalfKPIndex<WHITE>(board.getKingSquare(WHITE), sq, piece));
             activeFeaturesBlack.push_back(getHalfKPIndex<BLACK>(board.getKingSquare(BLACK), sq, piece));
         }

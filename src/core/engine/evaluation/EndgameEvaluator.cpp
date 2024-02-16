@@ -59,17 +59,17 @@ int32_t EndgameEvaluator::evalEGMaterial() {
     int32_t side = board.getSideToMove();
     int32_t otherSide = side ^ COLOR_MASK;
 
-    score += board.getPieceBitboard(side | PAWN).getNumberOfSetBits() * EG_PIECE_VALUE[PAWN];
-    score += board.getPieceBitboard(side | KNIGHT).getNumberOfSetBits() * EG_PIECE_VALUE[KNIGHT];
-    score += board.getPieceBitboard(side | BISHOP).getNumberOfSetBits() * EG_PIECE_VALUE[BISHOP];
-    score += board.getPieceBitboard(side | ROOK).getNumberOfSetBits() * EG_PIECE_VALUE[ROOK];
-    score += board.getPieceBitboard(side | QUEEN).getNumberOfSetBits() * EG_PIECE_VALUE[QUEEN];
+    score += board.getPieceBitboard(side | PAWN).popcount() * EG_PIECE_VALUE[PAWN];
+    score += board.getPieceBitboard(side | KNIGHT).popcount() * EG_PIECE_VALUE[KNIGHT];
+    score += board.getPieceBitboard(side | BISHOP).popcount() * EG_PIECE_VALUE[BISHOP];
+    score += board.getPieceBitboard(side | ROOK).popcount() * EG_PIECE_VALUE[ROOK];
+    score += board.getPieceBitboard(side | QUEEN).popcount() * EG_PIECE_VALUE[QUEEN];
 
-    score -= board.getPieceBitboard(otherSide | PAWN).getNumberOfSetBits() * EG_PIECE_VALUE[PAWN];
-    score -= board.getPieceBitboard(otherSide | KNIGHT).getNumberOfSetBits() * EG_PIECE_VALUE[KNIGHT];
-    score -= board.getPieceBitboard(otherSide | BISHOP).getNumberOfSetBits() * EG_PIECE_VALUE[BISHOP];
-    score -= board.getPieceBitboard(otherSide | ROOK).getNumberOfSetBits() * EG_PIECE_VALUE[ROOK];
-    score -= board.getPieceBitboard(otherSide | QUEEN).getNumberOfSetBits() * EG_PIECE_VALUE[QUEEN];
+    score -= board.getPieceBitboard(otherSide | PAWN).popcount() * EG_PIECE_VALUE[PAWN];
+    score -= board.getPieceBitboard(otherSide | KNIGHT).popcount() * EG_PIECE_VALUE[KNIGHT];
+    score -= board.getPieceBitboard(otherSide | BISHOP).popcount() * EG_PIECE_VALUE[BISHOP];
+    score -= board.getPieceBitboard(otherSide | ROOK).popcount() * EG_PIECE_VALUE[ROOK];
+    score -= board.getPieceBitboard(otherSide | QUEEN).popcount() * EG_PIECE_VALUE[QUEEN];
 
     return score;
 }
@@ -110,7 +110,7 @@ int32_t EndgameEvaluator::evalEGPieces() {
 inline int32_t EndgameEvaluator::evalEGKnights(const Bitboard& ownKnights, const Bitboard& pawns) {
     int32_t score = 0;
 
-    score += ownKnights.getNumberOfSetBits() * KNIGHT_PAWN_VALUE * pawns.getNumberOfSetBits();
+    score += ownKnights.popcount() * KNIGHT_PAWN_VALUE * pawns.popcount();
 
     return score;
 }
@@ -118,7 +118,7 @@ inline int32_t EndgameEvaluator::evalEGKnights(const Bitboard& ownKnights, const
 inline int32_t EndgameEvaluator::evalEGBishops(const Bitboard& ownBishops) {
     int32_t score = 0;
 
-    if(ownBishops.getNumberOfSetBits() > 1)
+    if(ownBishops.popcount() > 1)
         score += EG_BISHOP_PAIR_VALUE;
 
     return score;
@@ -130,7 +130,7 @@ inline int32_t EndgameEvaluator::evalEGRooks(const Bitboard& ownRooks, const Bit
     
     Bitboard rooks = ownRooks;
     while(rooks) {
-        int32_t sq = rooks.getFirstSetBit();
+        int32_t sq = rooks.getFSB();
         rooks.clearBit(sq);
 
         Bitboard fileTowardEnemy = fileFacingEnemy[side / COLOR_MASK][sq];
@@ -151,7 +151,7 @@ inline int32_t EndgameEvaluator::evalEGRooks(const Bitboard& ownRooks, const Bit
             score += EG_ROOK_BLOCKING_PASSED_PAWN_VALUE; // Turm blockiert einen gegnerischen Freibauern
     }
 
-    score += ownRooks.getNumberOfSetBits() * ROOK_CAPTURED_PAWN_VALUE * (16 - (ownPawns | otherPawns).getNumberOfSetBits());
+    score += ownRooks.popcount() * ROOK_CAPTURED_PAWN_VALUE * (16 - (ownPawns | otherPawns).popcount());
 
     return score;
 }
@@ -191,7 +191,7 @@ inline int32_t EndgameEvaluator::evalEGRuleOfTheSquare(const Bitboard& ownPassed
 
     Bitboard passedPawns = ownPassedPawns;
     while(passedPawns) {
-        int32_t sq = passedPawns.getFirstSetBit();
+        int32_t sq = passedPawns.getFSB();
         passedPawns.clearBit(sq);
 
         int32_t pawnFile = sq % 8;
@@ -232,13 +232,13 @@ inline int32_t EndgameEvaluator::evalEG_PSQT() {
         Bitboard blackPieces = board.getPieceBitboard(BLACK | p);
 
         while(whitePieces) {
-            int sq = whitePieces.getFirstSetBit();
+            int sq = whitePieces.getFSB();
             whiteScore += EG_PSQT[p][sq];
             whitePieces.clearBit(sq);
         }
 
         while(blackPieces) {
-            int sq = blackPieces.getFirstSetBit();
+            int sq = blackPieces.getFSB();
             int rank = sq / 8;
             int file = sq % 8;
             blackScore += EG_PSQT[p][(RANK_8 - rank) * 8 + file];
@@ -251,14 +251,14 @@ inline int32_t EndgameEvaluator::evalEG_PSQT() {
 
     if(board.getSideToMove() == WHITE) {
         score += whiteScore;
-        score -= whiteEnPrise.getNumberOfSetBits() * EG_PIECE_EN_PRISE_VALUE;
+        score -= whiteEnPrise.popcount() * EG_PIECE_EN_PRISE_VALUE;
         score -= blackScore;
-        score += blackEnPrise.getNumberOfSetBits() * EG_PIECE_EN_PRISE_VALUE;
+        score += blackEnPrise.popcount() * EG_PIECE_EN_PRISE_VALUE;
     } else {
         score += blackScore;
-        score -= blackEnPrise.getNumberOfSetBits() * EG_PIECE_EN_PRISE_VALUE;
+        score -= blackEnPrise.popcount() * EG_PIECE_EN_PRISE_VALUE;
         score -= whiteScore;
-        score += whiteEnPrise.getNumberOfSetBits() * EG_PIECE_EN_PRISE_VALUE;
+        score += whiteEnPrise.popcount() * EG_PIECE_EN_PRISE_VALUE;
     }
 
     return score;
@@ -287,18 +287,18 @@ int32_t EndgameEvaluator::evalPawnStructure(int32_t side) {
 }
 
 inline int32_t EndgameEvaluator::evalDoublePawns(Bitboard doublePawns) {
-    return doublePawns.getNumberOfSetBits() * EG_PAWN_DOUBLED_VALUE;
+    return doublePawns.popcount() * EG_PAWN_DOUBLED_VALUE;
 }
 
 inline int32_t EndgameEvaluator::evalIsolatedPawns(Bitboard isolatedPawns) {
-    return isolatedPawns.getNumberOfSetBits() * EG_PAWN_ISOLATED_VALUE;
+    return isolatedPawns.popcount() * EG_PAWN_ISOLATED_VALUE;
 }
 
 inline int32_t EndgameEvaluator::evalPassedPawns(Bitboard passedPawns, const Bitboard& ownPawnAttacks, int32_t side) {
     int32_t score = 0;
 
     while(passedPawns) {
-        int sq = passedPawns.getFirstSetBit();
+        int sq = passedPawns.getFSB();
         passedPawns.clearBit(sq);
 
         int rank = sq / 8;
@@ -315,11 +315,11 @@ inline int32_t EndgameEvaluator::evalPassedPawns(Bitboard passedPawns, const Bit
 }
 
 inline int32_t EndgameEvaluator::evalPawnChains(Bitboard pawnChains) {
-    return pawnChains.getNumberOfSetBits() * EG_PAWN_CHAIN_VALUE;
+    return pawnChains.popcount() * EG_PAWN_CHAIN_VALUE;
 }
 
 inline int32_t EndgameEvaluator::evalConnectedPawns(Bitboard connectedPawns) {
-    return connectedPawns.getNumberOfSetBits() * EG_PAWN_CONNECTED_VALUE;
+    return connectedPawns.popcount() * EG_PAWN_CONNECTED_VALUE;
 }
 
 int32_t EndgameEvaluator::evalEGMobility() {
@@ -346,16 +346,16 @@ int32_t EndgameEvaluator::evalEGMobility() {
     Bitboard ownQueenMobility = board.getPieceAttackBitboard(side | QUEEN) & ~board.getPieceAttackBitboard(otherSide | PAWN);
     Bitboard otherQueenMobility = board.getPieceAttackBitboard(otherSide | QUEEN) & ~board.getPieceAttackBitboard(side | PAWN);
 
-    score += ownPawnMobility.getNumberOfSetBits() * EG_PAWN_MOBILITY_VALUE;
-    score -= otherPawnMobility.getNumberOfSetBits() * EG_PAWN_MOBILITY_VALUE;
-    score += ownKnightMobility.getNumberOfSetBits() * EG_KNIGHT_MOBILITY_VALUE;
-    score -= otherKnightMobility.getNumberOfSetBits() * EG_KNIGHT_MOBILITY_VALUE;
-    score += ownBishopMobility.getNumberOfSetBits() * EG_BISHOP_MOBILITY_VALUE;
-    score -= otherBishopMobility.getNumberOfSetBits() * EG_BISHOP_MOBILITY_VALUE;
-    score += ownRookMobility.getNumberOfSetBits() * EG_ROOK_MOBILITY_VALUE;
-    score -= otherRookMobility.getNumberOfSetBits() * EG_ROOK_MOBILITY_VALUE;
-    score += ownQueenMobility.getNumberOfSetBits() * EG_QUEEN_MOBILITY_VALUE;
-    score -= otherQueenMobility.getNumberOfSetBits() * EG_QUEEN_MOBILITY_VALUE;
+    score += ownPawnMobility.popcount() * EG_PAWN_MOBILITY_VALUE;
+    score -= otherPawnMobility.popcount() * EG_PAWN_MOBILITY_VALUE;
+    score += ownKnightMobility.popcount() * EG_KNIGHT_MOBILITY_VALUE;
+    score -= otherKnightMobility.popcount() * EG_KNIGHT_MOBILITY_VALUE;
+    score += ownBishopMobility.popcount() * EG_BISHOP_MOBILITY_VALUE;
+    score -= otherBishopMobility.popcount() * EG_BISHOP_MOBILITY_VALUE;
+    score += ownRookMobility.popcount() * EG_ROOK_MOBILITY_VALUE;
+    score -= otherRookMobility.popcount() * EG_ROOK_MOBILITY_VALUE;
+    score += ownQueenMobility.popcount() * EG_QUEEN_MOBILITY_VALUE;
+    score -= otherQueenMobility.popcount() * EG_QUEEN_MOBILITY_VALUE;
 
     return score;
 }
@@ -365,7 +365,7 @@ Bitboard EndgameEvaluator::findDoublePawns(const Bitboard& ownPawns, int32_t sid
     Bitboard pawnCopy = ownPawns;
 
     while(pawnCopy) {
-        int i = pawnCopy.getFirstSetBit();
+        int i = pawnCopy.getFSB();
 
         pawnCopy.clearBit(i);
 
@@ -380,7 +380,7 @@ Bitboard EndgameEvaluator::findIsolatedPawns(const Bitboard& ownPawns) {
     Bitboard pawnCopy = ownPawns;
 
     while(pawnCopy) {
-        int i = pawnCopy.getFirstSetBit();
+        int i = pawnCopy.getFSB();
         pawnCopy.clearBit(i);
 
         int file = i % 8;
@@ -397,7 +397,7 @@ Bitboard EndgameEvaluator::findPassedPawns(const Bitboard& ownPawns, const Bitbo
     Bitboard pawnCopy = ownPawns;
 
     while(pawnCopy) {
-        int i = pawnCopy.getFirstSetBit();
+        int i = pawnCopy.getFSB();
         pawnCopy.clearBit(i);
 
         if(!(sentryMasks[side / COLOR_MASK][i] & otherPawns) &&
@@ -413,7 +413,7 @@ Bitboard EndgameEvaluator::findPawnChains(const Bitboard& ownPawns, int32_t side
     Bitboard pawnCopy = ownPawns;
 
     while(pawnCopy) {
-        int i = pawnCopy.getFirstSetBit();
+        int i = pawnCopy.getFSB();
         pawnCopy.clearBit(i);
 
         pawnChain |= pawnChainMasks[side / 8][i] & ownPawns;
@@ -427,7 +427,7 @@ Bitboard EndgameEvaluator::findConnectedPawns(const Bitboard& ownPawns) {
     Bitboard pawnCopy = ownPawns;
 
     while(pawnCopy) {
-        int i = pawnCopy.getFirstSetBit();
+        int i = pawnCopy.getFSB();
         pawnCopy.clearBit(i);
 
         connectedPawns |= connectedPawnMasks[i] & ownPawns;
