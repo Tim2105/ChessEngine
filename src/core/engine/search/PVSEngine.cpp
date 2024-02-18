@@ -328,10 +328,6 @@ void PVSEngine::search(const UCI::SearchParams& params) {
             // Stoppe die Hilfsthreads.
             stopHelperThreads();
 
-            // Soll die Suche abgebrochen werden?
-            if(stopFlag.load() && maxDepthReached > 0)
-                break;
-
             // Speichere die Hauptvariante und die Bewertung.
             std::vector<Move> pvMoves;
             for(Move move : mainInstance.getPV())
@@ -382,6 +378,10 @@ void PVSEngine::search(const UCI::SearchParams& params) {
             // Wenn wir das nicht machen, enthält im Multi-PV-Modus
             // jede Variante die gleichen Züge.
             searchMoves.remove_first(bestMove);
+
+            // Soll die Suche abgebrochen werden?
+            if(stopFlag.load() && maxDepthReached > 0)
+                break;
         }
 
         // Soll die Suche abgebrochen werden?

@@ -70,6 +70,14 @@ class PVSSearchInstance {
         int32_t historyTable[2][64][64];
 
         /**
+         * @brief Speichert für jedes Tupel (Farbe, Figur, Zielfeld)
+         * den besten Zug, der in der Vergangenheit in dieser Position
+         * gespielt wurde. Dieser Zug wird in der Zugvorsortierung
+         * bevorzugt behandelt.
+         */
+        Move counterMoveTable[2][6][64];
+
+        /**
          * @brief Eine Zugtabelle, um die Hauptvariante (die Zugfolge,
          * die zu der Bewertung des Wurzelknotens führt) zu rekonstruieren.
          */
@@ -87,10 +95,10 @@ class PVSSearchInstance {
         uint16_t selectiveDepth = 0;
 
         /**
-         * @brief Speichert die Erweiterungen, die durch die Singular
-         * Extension-Heuristik bereits auf dem Pfad durchgeführt wurde.
+         * @brief Speichert die Erweiterungen, die bereits
+         * auf dem Pfad durchgeführt wurden. 
          */
-        int16_t singularExtensionOnPath = 0;
+        int16_t extensionsOnPath = 0;
 
         /**
          * @brief Eine Referenz auf die Stop-Flag, der von der
@@ -175,9 +183,10 @@ class PVSSearchInstance {
          * 
          * @param moveCount Die Platzierung des Knotens in der Zugvorsortierung.
          * @param moveScore Die Bewertung des letzten Zuges durch die Zugvorsortierung.
+         * @param depth Die verbleibende Suchtiefe.
          * @return Die Tiefe, um die der Knoten zusätzlich reduziert werden soll.
          */
-        int16_t determineLMR(int16_t moveCount, int16_t moveScore);
+        int16_t determineLMR(int16_t moveCount, int16_t moveScore, int16_t depth);
 
         /**
          * @brief Bestimmt, ab welchem Zug das Null Move Pruning
@@ -197,6 +206,13 @@ class PVSSearchInstance {
          * Null Move Pruning durchgeführt werden darf.
          */
         bool deactivateNullMove();
+
+        /**
+         * @brief Überprüft anhand der momentanen Position, ob ein
+         * Nullzugschnitt mit einer reduzierten Suche verifiziert
+         * werden muss.
+         */
+        bool verifyNullMove();
 
         /**
          * @brief Generiert alle Züge, die in der momentanen Position
@@ -265,6 +281,11 @@ class PVSSearchInstance {
                 for(int16_t j = 0; j < 64; j++)
                     for(int16_t k = 0; k < 64; k++)
                         historyTable[i][j][k] = 0;
+
+            for (int16_t i = 0; i < 2; i++)
+                for (int16_t j = 0; j < 6; j++)
+                    for (int16_t k = 0; k < 64; k++)
+                        counterMoveTable[i][j][k] = Move::nullMove();
 
             // Leere die PV-Tabelle.
             for(int16_t i = 0; i < MAX_PLY; i++)
@@ -377,6 +398,7 @@ class PVSSearchInstance {
 
         constexpr void clearSearchStack(uint16_t ply) {
             clearMovesInSearchStack(ply);
+            searchStack[ply].staticEvaluation = 0;
         }
 
         constexpr void addKillerMove(uint16_t ply, Move move) {
@@ -412,6 +434,14 @@ class PVSSearchInstance {
             return historyTable[side / COLOR_MASK]
                                [move.getOrigin()]
                                [move.getDestination()];
+        }
+
+        constexpr void setCounterMove(Move move, int32_t side, int32_t piece, int32_t destination) {
+            counterMoveTable[side / COLOR_MASK][piece - 1][destination] = move;
+        }
+
+        constexpr Move getCounterMove(int32_t side, int32_t piece, int32_t destination) {
+            return counterMoveTable[side / COLOR_MASK][piece - 1][destination];
         }
 
         /**

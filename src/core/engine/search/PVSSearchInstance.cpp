@@ -49,15 +49,14 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     // Suche in der Transpositionstabelle nach einem Eintrag für
     // die aktuelle Position.
     TranspositionTableEntry entry;
-    bool entryExists = false;
-    if(nodeType != PV_NODE && (entryExists = transpositionTable.probe(board.getHashValue(), entry))) {
+    bool entryExists = transpositionTable.probe(board.getHashValue(), entry);
+    if(entryExists && nodeType != PV_NODE) {
         // Ein Eintrag kann nur verwendet werden, wenn die eingetragene
         // Suchtiefe mindestens so groß ist wie unsere Suchtiefe.
         if(entry.depth * ONE_PLY >= depth) {
             if(entry.type == TranspositionTableEntry::EXACT) {
                 // Der Eintrag speichert eine exakte Bewertung,
                 // d.h. er stammt aus einem PV-Knoten.
-                addPVMove(ply, entry.hashMove);
                 return entry.score;
             } else if(entry.type == TranspositionTableEntry::LOWER_BOUND) {
                 // Der Eintrag speichert eine untere Schranke,
@@ -94,8 +93,10 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
      * In Positionen mit Zugzwang hält die Nullzugobservation
      * nicht, daher deaktivieren wir die Heuristik wenn wir
      * nur noch einen König und Bauern haben.
+     * Darüber hinaus reduzieren wir die Suchtiefe anstatt
+     * abzuschneiden, wenn wir nur noch wenig Material haben.
      */
-    if(allowNullMove && !board.isCheck() &&
+    if(allowNullMove && !board.isCheck() && nodeType != PV_NODE &&
        depth > ONE_PLY && !deactivateNullMove()) {
 
         int16_t staticEvaluation = searchStack[ply].staticEvaluation;
@@ -108,8 +109,14 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
             board.undoMove();
 
-            if(score >= beta)
-                return score;
+            if(score >= beta) {
+                if(depth <= 2 * ONE_PLY || !verifyNullMove())
+                    return score;
+
+                // Der Nullzug soll verifiziert werden.
+                // Führe eine reduzierte Suche durch.
+                depth -= 2 * ONE_PLY;
+            }
         }
     }
 
@@ -119,7 +126,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     // In PV-Knoten und Cut-Knoten mit höherer Tiefe soll über interne iterative Tiefensuche (IID)
     // der beste Zug genauer vorhergesagt werden,
     // wenn kein Hashzug existiert.
-    bool fallbackToIID = nodeType == PV_NODE || (nodeType == CUT_NODE && depth >= 12 * ONE_PLY);
+    bool fallbackToIID = nodeType != ALL_NODE && depth >= 12 * ONE_PLY;
     addMovesToSearchStack(ply, fallbackToIID, depth);
 
     // Prüfe, ob die Suche abgebrochen werden soll.
@@ -142,7 +149,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
      */
     if(nodeType == CUT_NODE && depth >= MULTICUT_R && !isCheckEvasion &&
        searchStack[ply].moveScorePairs.size() >= MULTICUT_C) {
-        int16_t reducedDepth = depth - MULTICUT_R;
+        int16_t reducedDepth = std::max(depth - MULTICUT_R, depth / (2 * ONE_PLY) * ONE_PLY);
         int16_t numFailHighs = 0, bestScore = MIN_SCORE;
         Move bestMove;
 
@@ -156,18 +163,26 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
             if(moveCount >= MULTICUT_M)
                 break;
 
-            // Führe den Zug aus und informiere den Evaluator.
-            evaluator.updateBeforeMove(move);
-            board.makeMove(move);
-            evaluator.updateAfterMove();
+            int16_t score;
 
-            // Durchsuche den Kindknoten mit reduzierter Suchtiefe.
-            int16_t score = -pvs(reducedDepth, ply + 1, -beta, -beta + 1, false, ALL_NODE);
+            if(entryExists && entry.hashMove == move && entry.depth * ONE_PLY >= reducedDepth) {
+                // Wir haben einen Eintrag für diesen Zug in der Transpositionstabelle mit
+                // einer Tiefe >= der reduzierten Suchtiefe. Wir können den Zug überspringen.
+                score = entry.score;
+            } else {
+                // Führe den Zug aus und informiere den Evaluator.
+                evaluator.updateBeforeMove(move);
+                board.makeMove(move);
+                evaluator.updateAfterMove();
 
-            // Mache den Zug rückgängig und informiere den Evaluator.
-            evaluator.updateBeforeUndo();
-            board.undoMove();
-            evaluator.updateAfterUndo(move);
+                // Durchsuche den Kindknoten mit reduzierter Suchtiefe.
+                score = -pvs(reducedDepth, ply + 1, -beta, -beta + 1, false, ALL_NODE);
+
+                // Mache den Zug rückgängig und informiere den Evaluator.
+                evaluator.updateBeforeUndo();
+                board.undoMove();
+                evaluator.updateAfterUndo(move);
+            }
 
             moveCount++;
 
@@ -192,8 +207,26 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
                     transpositionTable.put(board.getHashValue(), entry);
 
+                    // Verbessere die relative Bewertung des Zuges
+                    incrementHistoryScore(bestMove, reducedDepth);
+
+                    if(!bestMove.isCapture() && !bestMove.isPromotion()) {
+                        // Setze einen Eintrag in der Konterzug-Tabelle.
+                        Move previousMove = board.getLastMove();
+                        if(previousMove.exists()) {
+                            int32_t previousMoveDestination = previousMove.getDestination();
+                            int32_t prevoiuslyMovedPieceType = TYPEOF(board.pieceAt(previousMoveDestination));
+
+                            setCounterMove(bestMove, board.getSideToMove(), prevoiuslyMovedPieceType, previousMoveDestination);
+                        }
+                    }
+
                     return bestScore;
                 }
+            } else {
+                // Verschlechtere die relative Bewertung des Zuges,
+                // er führte nicht zu einem Beta-Schnitt.
+                decrementHistoryScore(move, reducedDepth);
             }
 
             // Überprüfe, ob es überhaupt noch möglich ist C Beta-Schnitte in den
@@ -218,11 +251,14 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
      * der einzige gute Zug ist und erhöhen seine Suchtiefe.
      */
     int16_t singularExtension = 0;
-    if(depth >= 4 * ONE_PLY && singularExtensionOnPath < currentSearchDepth * ONE_PLY && entryExists &&
-       entry.depth >= depth - 4 * ONE_PLY && entry.score > alpha && entry.type != TranspositionTableEntry::UPPER_BOUND) {
+    if(depth > 4 * ONE_PLY && !(isMateScore(alpha) && alpha < NEUTRAL_SCORE) &&
+       extensionsOnPath < currentSearchDepth * ONE_PLY && entryExists &&
+       entry.depth >= depth - 4 * ONE_PLY && entry.score > alpha &&
+       entry.type != TranspositionTableEntry::UPPER_BOUND) {
 
         int16_t reducedDepth = depth - 4 * ONE_PLY;
-        int16_t reducedAlpha = alpha - 100;
+        int16_t reducedAlpha = alpha - 50;
+        reducedAlpha -= ((float)depth / (float)reducedDepth) * 20;
 
         singularExtension = ONE_PLY;
 
@@ -330,7 +366,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
         // Wenn ein Cut-Knoten bis einschließlich der Killerzüge durchsucht wurde
         // und noch keinen Beta-Schnitt gemacht hat, dann ist es wahrscheinlich,
         // ein All-Knoten.
-        if(nodeType == CUT_NODE && moveCount > 0 && moveScore < KILLER_MOVE_SCORE)
+        if(nodeType == CUT_NODE && moveCount > 2 && moveScore < KILLER_MOVE_SCORE)
             nodeType = ALL_NODE;
 
         /**
@@ -365,24 +401,31 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
         else if(nodeType == CUT_NODE)
             childType = ALL_NODE;
         
-        // Erweitere die Suchtiefe, wenn der Zug den Gegner in Schach setzt.
         int16_t extension = singularExtension;
 
-        if(board.isCheck())
-            extension += ONE_PLY;
+        /**
+         * Erweiterungen:
+         * Ähnlich wie bei der Singular Reply Extension, erweitern wir die Suchtiefe
+         * unter bestimmten Bedingungen. Begrenze die Anzahl der Erweiterungen auf
+         * die momentane angestrengte Suchtiefe um Suchexplosionen zu vermeiden.
+         */
+        if(extensionsOnPath + extension < currentSearchDepth * ONE_PLY) {
+            // Erweitere die Suchtiefe, wenn der Zug den Gegner in Schach setzt.
+            if(board.isCheck())
+                extension += ONE_PLY;
+        }
 
-        singularExtensionOnPath += singularExtension;
+        extensionsOnPath += extension;
 
-        if(moveCount == 0 || nodeType == CUT_NODE) {
-            // Durchsuche das erste Kind vollständig.
+        if(moveCount == 0) {
             score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, true, childType);
         } else {
             // Durchsuche die restlichen Kinder mit einem Nullfenster (nur in PV-Knoten) und bei,
             // auf ersten Blick, uninteressanten Zügen mit einer reduzierten Suchtiefe
             // (=> Late Move Reductions).
             int16_t reduction = 0;
-            if(extension == 0 && !isCheckEvasion)
-                reduction = determineLMR(moveCount + 1, moveScore);
+            if(depth >= 3 * ONE_PLY && extension == 0 && !isCheckEvasion)
+                reduction = determineLMR(moveCount + 1, moveScore, depth);
 
             score = -pvs(depth - ONE_PLY + extension - reduction, ply + 1, -alpha - 1, -alpha, true, childType);
 
@@ -401,13 +444,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
             }
         }
 
-        singularExtensionOnPath -= singularExtension;
-
-        // Skaliere die Bewertung in Richtung 0, wenn wir uns der 50-Züge-Regel annähern.
-        // (Starte erst nach 10 Zügen, damit die Bewertung nicht zu früh verzerrt wird.)
-        int32_t fiftyMoveCounter = board.getFiftyMoveCounter();
-        if(fiftyMoveCounter > 20 && !isMateScore(score))
-            score = (int32_t)score * (100 - fiftyMoveCounter) / 80;
+        extensionsOnPath -= extension;
 
         // Mache den Zug rückgängig und informiere den Evaluator.
         evaluator.updateBeforeUndo();
@@ -440,8 +477,18 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
             // Speichere den Zug in der Killerzug-Tabelle,
             // wenn es sich um einen "leisen" Zug handelt.
-            if(!move.isCapture() && !move.isPromotion())
+            if(!move.isCapture() && !move.isPromotion()) {
                 addKillerMove(ply, move);
+
+                // Setze einen Eintrag in der Konterzug-Tabelle.
+                Move previousMove = board.getLastMove();
+                if(previousMove.exists()) {
+                    int32_t previousMoveDestination = previousMove.getDestination();
+                    int32_t prevoiuslyMovedPieceType = TYPEOF(board.pieceAt(previousMoveDestination));
+
+                    setCounterMove(move, board.getSideToMove(), prevoiuslyMovedPieceType, previousMoveDestination);
+                }
+            }
 
             // Verbessere die relative Bewertung des Zuges
             incrementHistoryScore(move, depth);
@@ -504,10 +551,22 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
     transpositionTable.put(board.getHashValue(), entry);
 
-    // Wenn dieser Zug der beste Zug in einem PV-Knoten ist,
-    // erhöhe seine relative Vergangenheitsbewertung.
-    if(ttEntryType == TranspositionTableEntry::EXACT)
+    if(ttEntryType == TranspositionTableEntry::EXACT) {
+        // Wenn dieser Zug der beste Zug in einem PV-Knoten ist,
+        // erhöhe seine relative Vergangenheitsbewertung.
         incrementHistoryScore(bestMove, depth);
+
+        if(!bestMove.isCapture() && !bestMove.isPromotion()) {
+            // Setze einen Eintrag in der Konterzug-Tabelle.
+            Move previousMove = board.getLastMove();
+            if(previousMove.exists()) {
+                int32_t previousMoveDestination = previousMove.getDestination();
+                int32_t prevoiuslyMovedPieceType = TYPEOF(board.pieceAt(previousMoveDestination));
+
+                setCounterMove(bestMove, board.getSideToMove(), prevoiuslyMovedPieceType, previousMoveDestination);
+            }
+        }
+    }
 
     return bestScore;
 }
@@ -628,7 +687,7 @@ int16_t PVSSearchInstance::quiescence(uint16_t ply, int16_t alpha, int16_t beta)
     return bestScore;
 }
 
-int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore) {
+int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore, int16_t depth) {
     // LMR reduziert nie den ersten Zug
     if(moveCount <= 1)
         return 0;
@@ -653,21 +712,15 @@ int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore) {
     }
 
     // Reduziere standardmäßig anhand einer logarithmischen Funktion.
-    int32_t reduction = ONE_PLY * (int32_t)std::log2(moveCount);
+    int32_t reduction = ONE_PLY * (int32_t)(std::log(moveCount) / std::log(3));
 
     // Passe die Reduktion an die relative Vergangenheitsbewertung des Zuges an.
     // -> Bessere Züge werden weniger reduziert.
     int32_t historyScore = getHistoryScore(lastMove, board.getSideToMove() ^ COLOR_MASK);
-    int32_t historyReduction = -historyScore / (currentSearchDepth * 512) * ONE_PLY;
-    historyReduction = std::min(historyReduction, 0);
+    int32_t historyReduction = -historyScore / 8192 * ONE_PLY;
     reduction += historyReduction;
 
-    // Reduziere die Reduktion, wenn der letzte Zug ein Schlagzug war.
-    // Dadurch soll das taktische Bewusstsein erhöht werden.
-    if(lastMove.isCapture())
-        reduction -= 2 * ONE_PLY;
-
-    return std::max(reduction, 0);
+    return std::clamp(reduction, 0, depth - 2 * ONE_PLY);
 }
 
 int16_t PVSSearchInstance::determineLMPCount(int16_t depth, bool isCheckEvasion) {
@@ -676,7 +729,7 @@ int16_t PVSSearchInstance::determineLMPCount(int16_t depth, bool isCheckEvasion)
     if(depth >= 6 * ONE_PLY || isCheckEvasion)
         return std::numeric_limits<int16_t>::max();
 
-    // Standardmäßig müssen mindestens 6 Züge betrachtet werden.
+    // Standardmäßig müssen mindestens 8 Züge betrachtet werden.
     int16_t result = 8;
 
     // Erhöhe die Anzahl der zu betrachtenden Züge mit der Suchtiefe.
@@ -691,6 +744,18 @@ bool PVSSearchInstance::deactivateNullMove() {
     int32_t side = board.getSideToMove();
     Bitboard ownPieces = side == WHITE ? board.getWhiteOccupiedBitboard() : board.getBlackOccupiedBitboard();
     return ownPieces == board.getPieceBitboard(side | PAWN);
+}
+
+bool PVSSearchInstance::verifyNullMove() {
+    // Ein Nullzug muss verifiziert werden, wenn der Spieler
+    // 2 Leicht-/Schwerfiguren oder weniger hat.
+    int32_t side = board.getSideToMove();
+    Bitboard ownMajorOrMinorPieces = board.getPieceBitboard(side | KNIGHT) |
+                                     board.getPieceBitboard(side | BISHOP) |
+                                     board.getPieceBitboard(side | ROOK) |
+                                     board.getPieceBitboard(side | QUEEN);
+
+    return ownMajorOrMinorPieces.popcount() <= 2;
 }
 
 void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t depth) {
@@ -889,6 +954,15 @@ void PVSSearchInstance::scoreMoves(const Array<Move, 256>& moves, uint16_t ply) 
     Array<MoveScorePair, 256> quietMoves;
     Array<MoveScorePair, 2> killers;
 
+    // Bestimme den eingetragenen Konterzug für den
+    // letzten gespielten Zug des Gegners.
+    Move previousMove = board.getLastMove();
+    int32_t previousMoveDestination = previousMove.getDestination();
+    int32_t prevoiuslyMovedPieceType = TYPEOF(board.pieceAt(previousMoveDestination));
+    Move counterMove = Move::nullMove();
+    if(previousMove.exists())
+        counterMove = getCounterMove(board.getSideToMove(), prevoiuslyMovedPieceType, previousMoveDestination);
+
     // Betrachte alle, zu bewertenden Züge.
     for(Move move : moves) {
         int16_t score;
@@ -920,9 +994,12 @@ void PVSSearchInstance::scoreMoves(const Array<Move, 256>& moves, uint16_t ply) 
                 killers.push_back(MoveScorePair(move, score));
             } else {
                 // Ruhige Züge
-                score = std::clamp(QUIET_MOVES_NEUTRAL + getHistoryScore(move) / currentSearchDepth,
-                                   QUIET_MOVES_MIN,
-                                   QUIET_MOVES_MAX);
+                if(move == counterMove)
+                    score = QUIET_MOVES_MAX; // Konterzüge werden mit maximaler Bewertung für ruhige Züge versehen
+                else
+                    score = std::clamp(QUIET_MOVES_NEUTRAL + getHistoryScore(move) / currentSearchDepth,
+                                    QUIET_MOVES_MIN,
+                                    QUIET_MOVES_MAX); // Bewerte anhand der relativen Vergangenheitsbewertung
 
                 quietMoves.insert_sorted(MoveScorePair(move, score), std::greater<MoveScorePair>());
             }

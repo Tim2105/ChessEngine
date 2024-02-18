@@ -30,10 +30,25 @@ class NNUEEvaluator: public Evaluator {
             if(numPawns == 0 && std::abs(materialDifference) <= 300)
                 return 0;
 
-            if(gamePhase >= 1.0 && std::abs(materialDifference) >= 400)
-                return endgameEvaluator.evaluate() * STATIC_EVAL_MULTIPLIER;
+            int32_t evaluation;
 
-            return networkInstance.evaluate(board.getSideToMove());
+            if(gamePhase >= 1.0 && std::abs(materialDifference) >= 400)
+                evaluation = endgameEvaluator.evaluate() * STATIC_EVAL_MULTIPLIER;
+            else
+                evaluation = networkInstance.evaluate(board.getSideToMove());
+
+            // Skaliere die Bewertung in Richtung 0, wenn wir uns der 50-Züge-Regel annähern.
+            // (Starte erst nach 10 Zügen, damit die Bewertung nicht zu früh verzerrt wird.)
+            int32_t fiftyMoveCounter = board.getFiftyMoveCounter();
+            if(fiftyMoveCounter > 20)
+                evaluation = (int32_t)evaluation * (100 - fiftyMoveCounter) / 80;
+
+            // Skaliere die Bewertung in Richtung 0, wenn die Position bereits einmal
+            // aufgetreten ist und wir uns der dreifachen Stellungswiederholung annähern.
+            if(board.repetitionCount() >= 2)
+                evaluation /= 2;
+
+            return evaluation;
         }
 
         inline void updateBeforeMove(Move move) override {
