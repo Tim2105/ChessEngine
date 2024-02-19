@@ -46,20 +46,6 @@ struct TranspositionTableEntry {
         return *reinterpret_cast<const uint64_t*>(this);
     }
 
-    /**
-     * @brief Ersetzungsprädikat für die Transpositionstabelle.
-     * Berechne aus dem Alter und der Tiefe die Proirität eines Eintrags.
-     * Bevorzuge exakte Einträge vor Einträgen, die nur eine Grenze angeben.
-     * 
-     * @param other Der andere Eintrag.
-     * 
-     * @return true, wenn dieser Eintrag den anderen Eintrag ersetzen soll.
-     */
-    constexpr bool operator>(const TranspositionTableEntry& other) const {
-        return (depth + age) * 2 + (type == EXACT) >=
-               (other.depth + other.age) * 2 + (other.type == EXACT);
-    }
-
     constexpr static uint8_t EXACT = 0;
     constexpr static uint8_t LOWER_BOUND = 1;
     constexpr static uint8_t UPPER_BOUND = 2;
@@ -72,6 +58,30 @@ struct TranspositionTableEntry {
 struct Entry {
     uint64_t hash;
     TranspositionTableEntry data;
+
+    /**
+     * @brief Ersetzungsprädikat für die Transpositionstabelle.
+     * 
+     * @param other Der andere Eintrag.
+     * @return true, wenn dieser Eintrag eine höhere Priorität hat.
+     */
+    constexpr bool operator>(const Entry& other) const {
+        if(data.age > other.data.age) {
+            // Ein Eintrag aus einem neueren Spielfeld hat immer Vorrang
+            // außer wenn der andere Eintrag für dieselbe Position und
+            // mit höherer Tiefe ist.
+            if((hash ^ data) == (other.hash ^ other.data) &&
+               data.depth + data.age < other.data.depth + other.data.age)
+                return false;
+            else
+                return true;
+        } else {
+            // Einträge mit höherer Tiefe haben Vorrang.
+            // Bei gleicher Tiefe haben exakte Einträge Vorrang.
+            return (data.depth + data.age) * 2 + (data.type == TranspositionTableEntry::EXACT) >=
+                   (other.data.depth + other.data.age) * 2 + (other.data.type == TranspositionTableEntry::EXACT);
+        }
+    }
 };
 
 static constexpr size_t TT_ENTRY_SIZE = sizeof(Entry);
@@ -114,7 +124,7 @@ class TranspositionTable {
         }
 
         inline size_t getEntriesWritten() const noexcept {
-            return entriesWritten.load();
+            return std::min(entriesWritten.load(), capacity);
         }
 
         /**

@@ -89,6 +89,11 @@ class PVSSearchInstance {
         int16_t pvScore;
 
         /**
+         * @brief Das Alter des Spielfeldes an der Wurzel.
+         */
+        uint16_t rootAge = 0;
+
+        /**
          * @brief Die maximale Anzahl an Zügen, die diese Instanz
          * von der Wurzel aus in die Zukunft geguckt hat.
          */
@@ -446,10 +451,10 @@ class PVSSearchInstance {
 
         /**
          * @brief Eine Konstante für das Delta-Pruning.
-         * Gibt den größtmöglichen Materialgewinn in einem Zug
-         * (+kleiner Puffer) an.
+         * Gibt den größtmöglichen Materialgewinn (+kleine Margin)
+         * in einem Zug an.
          */
-        static constexpr int16_t DELTA_MARGIN = 2000;
+        static constexpr int16_t DELTA_MARGIN = 1000;
 
         /**
          * @brief Gibt die (halbe) Breite des Aspirationsfenster für

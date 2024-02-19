@@ -79,20 +79,31 @@ void TranspositionTable::put(uint64_t hash, const TranspositionTableEntry& entry
 
         entriesWritten.fetch_add(1);
     } else {
+        Entry newEntry{hash ^ entry, entry}; // XOR, damit der Hashwert gleichzeitig als Prüfwert dient.
+
+        #if defined(__SSE4_1__)
+            // Wir laden den Eintrag mit SSE4.1.
+            // Ausgerichtetes Laden ist wie ausgerichtetes Speichern
+            // auf vielen Prozessoren atomar.
+            __m128i entry128 = _mm_load_si128((__m128i*)&entries[index]);
+            uint64_t entryHash = _mm_extract_epi64(entry128, 0);
+            uint64_t entryData = _mm_extract_epi64(entry128, 1);
+            Entry existingEntry{entryHash, entryData};
+        #else
+            Entry existingEntry = entries[index];
+        #endif
+
         // Der Bucket ist bereits belegt, wir müssen prüfen, ob der Eintrag
         // eine höhere Priorität als der bisherige Eintrag hat.
-        if(entry > entries[index].data) {
-            // Der Eintrag hat eine höhere Priorität, wir überschreiben den alten Eintrag.
-
+        if(newEntry > existingEntry) {
             #if defined(__SSE4_1__)
                 // Wir speichern den Eintrag mit SSE4.1.
                 // Ausgerichtetes Speichern ist auf vielen Prozessoren
                 // atomar, sodass wir korrumpierte Einträge vermeiden können.
-                __m128i entry128 = _mm_set_epi64x(entry, hash ^ entry);
+                __m128i entry128 = _mm_set_epi64x(newEntry.data, newEntry.hash);
                 _mm_store_si128((__m128i*)&entries[index], entry128);
             #else
-                entries[index].hash = hash ^ entry; // XOR, damit der Hashwert gleichzeitig als Prüfwert dient.
-                entries[index].data = entry;
+                entries[index] = newEntry;
             #endif
         }
     }

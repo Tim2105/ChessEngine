@@ -141,7 +141,6 @@ static constexpr int16_t calculateFutilityMargin(int16_t depth) {
  * Definitionen für die Multi-Cut-Heuristik
  */
 
-static constexpr int16_t MULTICUT_R = 4 * ONE_PLY;
 static constexpr int16_t MULTICUT_C = 2;
 static constexpr int16_t MULTICUT_M = 3;
 
