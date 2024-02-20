@@ -119,9 +119,8 @@ class PVSEngine {
          * @param alpha Der untere Wert des Suchfensters.
          * @param beta Der obere Wert des Suchfensters.
          * @param searchMoves Die, zu durchsuchenden, Züge.
-         * @param pv Gibt an, die wievielte PV gesucht werden soll.
          */
-        void startHelperThreads(int16_t depth, int16_t alpha, int16_t beta, const Array<Move, 256>& searchMoves, size_t pv);
+        void startHelperThreads(int16_t depth, int16_t alpha, int16_t beta, const Array<Move, 256>& searchMoves);
 
         /**
          * @brief Stoppt alle Suchinstanzen auf den

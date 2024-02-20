@@ -63,28 +63,11 @@ void helperThreadLoop(PVSSearchInstance* instance, int16_t depth, int16_t alpha,
     } while(!instance->shouldStop());
 }
 
-void PVSEngine::startHelperThreads(int16_t depth, int16_t alpha, int16_t beta, const Array<Move, 256>& searchMoves, size_t pv) {
+void PVSEngine::startHelperThreads(int16_t depth, int16_t alpha, int16_t beta, const Array<Move, 256>& searchMoves) {
     #if not defined(DISABLE_THREADS)
-        size_t bestRootMoveHintIdx = pv;
         for(PVSSearchInstance* instance : instances) {
             instance->resetSelectiveDepth();
             instance->setSearchMoves(searchMoves);
-
-            Move bestRootMoveHint = Move::nullMove();
-
-            /**
-             * @brief Setze den Zug, den die Instanz im Wurzelknoten als
-             * erstet betrachten soll. Im Multi-PV-Modus werden verschiedene
-             * Züge an die Hilfsinstanzen verteilt.
-             */
-            if(depth > 1) {
-                bestRootMoveHintIdx = (bestRootMoveHintIdx + 1) % variations.size();
-                if(bestRootMoveHintIdx < pv)
-                    bestRootMoveHintIdx = pv;
-
-                bestRootMoveHint = variations[bestRootMoveHintIdx].moves.front();
-                instance->hintBestRootMove(bestRootMoveHint);
-            }
 
             // Starte den Hilfsthread
             threads.push_back(std::thread(helperThreadLoop, instance, depth, alpha, beta));
@@ -94,7 +77,6 @@ void PVSEngine::startHelperThreads(int16_t depth, int16_t alpha, int16_t beta, c
         UNUSED(alpha);
         UNUSED(beta);
         UNUSED(searchMoves);
-        UNUSED(pv);
     #endif
 }
 
@@ -278,7 +260,6 @@ void PVSEngine::search(const UCI::SearchParams& params) {
         // jede PV eine eigene Suche durchgeführt.
         for(size_t pv = 0; pv < multiPV; pv++) {
             int16_t alpha = MIN_SCORE, beta = MAX_SCORE;
-            Move bestRootMoveHint = Move::nullMove();
 
             // In allen Durchläufen mit Tiefe > 1 wird die Suche mit
             // einem Aspirationsfenster gestartet.
@@ -286,19 +267,14 @@ void PVSEngine::search(const UCI::SearchParams& params) {
                 int32_t prevScore = variations[pv].score;
                 alpha = prevScore - prevScore * ASPIRATION_WINDOW_SCORE_FACTOR - ASPIRATION_WINDOW;
                 beta = prevScore + prevScore * ASPIRATION_WINDOW_SCORE_FACTOR + ASPIRATION_WINDOW;
-
-                // Der erste Zug, der in der Hauptinstanz betrachtet werden soll,
-                // ist der beste Zug aus dem vorherigen Durchlauf.
-                bestRootMoveHint = variations[pv].moves.front();
             }
 
             // Starte die Hilfsthreads.
-            startHelperThreads(depth, alpha, beta, searchMoves, pv);
+            startHelperThreads(depth, alpha, beta, searchMoves);
 
             // Initialisiere die Hauptinstanz für diesen Durchlauf.
             mainInstance.resetSelectiveDepth();
             mainInstance.setSearchMoves(searchMoves);
-            mainInstance.hintBestRootMove(bestRootMoveHint);
 
             // Führe die Suche in der Hauptinstanz durch.
             int16_t score = mainInstance.pvs(depth * ONE_PLY, 0, alpha, beta, false, PV_NODE);

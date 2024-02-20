@@ -84,6 +84,10 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     // Ermittele die statische Bewertung der Position.
     searchStack[ply].staticEvaluation = evaluator.evaluate();
 
+    // int16_t staticEvalImprovement = 0;
+    // if(ply > 1)
+    //     staticEvalImprovement = searchStack[ply].staticEvaluation - searchStack[ply - 2].staticEvaluation;
+
     /**
      * Null-Move-Pruning:
      * Wir gehen davon aus, dass ein Spieler mit einem Zug
@@ -149,7 +153,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
      * dieser Züge auch bei einer vollständigen Suche zu einem Beta-Schnitt
      * führen wird und brechen die Suche ab vorzeitig ab.
      */
-    if(nodeType == CUT_NODE && depth > 4 * ONE_PLY && !isCheckEvasion &&
+    if(nodeType == CUT_NODE && depth > (4 + (searchStack[ply].staticEvaluation < beta) * 3) * ONE_PLY && !isCheckEvasion &&
        searchStack[ply].moveScorePairs.size() >= MULTICUT_C) {
         int16_t reducedDepth = std::min(depth / (2 * ONE_PLY) * ONE_PLY, depth - 4 * ONE_PLY);
         int16_t numFailHighs = 0, bestScore = MIN_SCORE;
@@ -405,7 +409,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
          */
         if(board.isCheck()) {
             // Erweitere die Suchtiefe, wenn der Zug den Gegner in Schach setzt.
-            if(repetitionCount < 2)
+            if(extension == 0 && extensionsOnPath < currentSearchDepth / 2 * ONE_PLY && repetitionCount < 2)
                 extension += ONE_PLY;
             else
                 disableLMR = true; // Keine Reduktionen in Zügen, die den Gegner in Schach setzen
@@ -702,7 +706,7 @@ int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore, in
     // Passe die Reduktion an die relative Vergangenheitsbewertung des Zuges an.
     // -> Bessere Züge werden weniger reduziert.
     int32_t historyScore = getHistoryScore(lastMove, board.getSideToMove() ^ COLOR_MASK);
-    int32_t historyReduction = -historyScore / 16384 * ONE_PLY;
+    int32_t historyReduction = -historyScore / 8192 * ONE_PLY;
     reduction += historyReduction;
 
     // Wir reduzieren nie direkt in eine Quieszenzsuche hinein.
@@ -752,11 +756,7 @@ void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t
     // für die aktuelle Position.
     Move hashMove = Move::nullMove();
 
-    if(ply == 0 && bestRootMoveHint.exists()) {
-        // Uns wurde von der Engine ein Zug für die Wurzelposition
-        // mitgegeben, den wir zuerst betrachten sollen.
-        hashMove = bestRootMoveHint;
-    } else if(ply == 0 && pvTable[0].size() > 0 && pvTable[0].front().exists()) {
+    if(ply == 0 && pvTable[0].size() > 0) {
         // Probiere im Wurzelknoten den besten Zug aus der letzten Suche.
         hashMove = pvTable[0].front();
     } else {

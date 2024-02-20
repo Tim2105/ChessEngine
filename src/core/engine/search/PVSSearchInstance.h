@@ -150,14 +150,6 @@ class PVSSearchInstance {
         Array<Move, 256> searchMoves;
 
         /**
-         * @brief Speichert den Zug, der im Wurzelknoten als
-         * erstet betrachtet werden soll. Wenn die Instanz selbst
-         * einen Zug bestimmen soll, muss der Nullzug in dieser
-         * Variable gespeichert werden.
-         */
-        Move bestRootMoveHint = Move::nullMove();
-
-        /**
          * @brief Speichert die Anzahl der Threads, die gleichzeitig
          * den Spielbaum durchsuchen. Diese Variable wird automatisch
          * im Konstruktor auf den Wert der UCI-Option "Threads" gesetzt.
@@ -372,14 +364,6 @@ class PVSSearchInstance {
          */
         inline void setSearchMoves(const Array<Move, 256>& searchMoves) {
             this->searchMoves = searchMoves;
-        }
-
-        /**
-         * @brief Setzt den Zug, der im Wurzelknoten als
-         * erstet betrachtet werden soll.
-         */
-        inline void hintBestRootMove(Move move) {
-            bestRootMoveHint = move;
         }
 
     private:
