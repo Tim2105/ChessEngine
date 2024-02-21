@@ -149,9 +149,9 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
      * dieser Züge auch bei einer vollständigen Suche zu einem Beta-Schnitt
      * führen wird und brechen die Suche ab vorzeitig ab.
      */
-    if(nodeType == CUT_NODE && depth >= 8 * ONE_PLY && !isCheckEvasion &&
+    if(nodeType == CUT_NODE && depth > 4 * ONE_PLY && searchStack[ply].staticEvaluation >= beta &&
        searchStack[ply].moveScorePairs.size() >= MULTICUT_C) {
-        int16_t reducedDepth = depth - 4 * ONE_PLY;
+        int16_t reducedDepth = std::min(depth / (2 * ONE_PLY) * ONE_PLY, depth - 4 * ONE_PLY);
         int16_t numFailHighs = 0, bestScore = MIN_SCORE;
         Move bestMove;
 
