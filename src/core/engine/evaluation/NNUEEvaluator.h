@@ -43,11 +43,6 @@ class NNUEEvaluator: public Evaluator {
             if(fiftyMoveCounter > 20)
                 evaluation = (int32_t)evaluation * (100 - fiftyMoveCounter) / 80;
 
-            // Skaliere die Bewertung in Richtung 0, wenn die Position bereits einmal
-            // aufgetreten ist und wir uns der dreifachen Stellungswiederholung annähern.
-            if(board.repetitionCount() >= 2)
-                evaluation /= 2;
-
             return evaluation;
         }
 

@@ -32,7 +32,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     // Stelle sicher, dass wir uns nicht im Wurzelknoten befinden,
     // damit wir immer mindestens einen Zug in der PV haben.
     uint16_t repetitionCount = board.repetitionCount();
-    if(ply > 0 && (repetitionCount >= 3 || board.getFiftyMoveCounter() >= 100))
+    if(ply > 0 && (repetitionCount >= 2 || board.getFiftyMoveCounter() >= 100))
         return DRAW_SCORE;
 
     /**
@@ -83,10 +83,6 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
     // Ermittele die statische Bewertung der Position.
     searchStack[ply].staticEvaluation = evaluator.evaluate();
-
-    // int16_t staticEvalImprovement = 0;
-    // if(ply > 1)
-    //     staticEvalImprovement = searchStack[ply].staticEvaluation - searchStack[ply - 2].staticEvaluation;
 
     /**
      * Null-Move-Pruning:
@@ -153,9 +149,9 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
      * dieser Züge auch bei einer vollständigen Suche zu einem Beta-Schnitt
      * führen wird und brechen die Suche ab vorzeitig ab.
      */
-    if(nodeType == CUT_NODE && depth > (4 + (searchStack[ply].staticEvaluation < beta) * 3) * ONE_PLY && !isCheckEvasion &&
+    if(nodeType == CUT_NODE && depth >= 8 * ONE_PLY && !isCheckEvasion &&
        searchStack[ply].moveScorePairs.size() >= MULTICUT_C) {
-        int16_t reducedDepth = std::min(depth / (2 * ONE_PLY) * ONE_PLY, depth - 4 * ONE_PLY);
+        int16_t reducedDepth = depth - 4 * ONE_PLY;
         int16_t numFailHighs = 0, bestScore = MIN_SCORE;
         Move bestMove;
 
@@ -169,27 +165,18 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
             if(moveCount >= MULTICUT_M)
                 break;
 
-            int16_t score;
+            // Führe den Zug aus und informiere den Evaluator.
+            evaluator.updateBeforeMove(move);
+            board.makeMove(move);
+            evaluator.updateAfterMove();
 
-            if(entryExists && entry.hashMove == move && entry.depth * ONE_PLY >= reducedDepth) {
-                // Wir haben einen Eintrag für diesen Zug in der Transpositionstabelle mit
-                // einer Tiefe >= der reduzierten Suchtiefe. Wir kennen also bereits eine
-                // Bewertung für diesen Zug und können ihn überspringen.
-                score = entry.score;
-            } else {
-                // Führe den Zug aus und informiere den Evaluator.
-                evaluator.updateBeforeMove(move);
-                board.makeMove(move);
-                evaluator.updateAfterMove();
+            // Durchsuche den Kindknoten mit reduzierter Suchtiefe.
+            int16_t score = -pvs(reducedDepth, ply + 1, -beta, -beta + 1, false, ALL_NODE);
 
-                // Durchsuche den Kindknoten mit reduzierter Suchtiefe.
-                score = -pvs(reducedDepth, ply + 1, -beta, -beta + 1, false, ALL_NODE);
-
-                // Mache den Zug rückgängig und informiere den Evaluator.
-                evaluator.updateBeforeUndo();
-                board.undoMove();
-                evaluator.updateAfterUndo(move);
-            }
+            // Mache den Zug rückgängig und informiere den Evaluator.
+            evaluator.updateBeforeUndo();
+            board.undoMove();
+            evaluator.updateAfterUndo(move);
 
             moveCount++;
 
@@ -260,7 +247,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     int16_t singularExtension = 0;
     int16_t singularDepth = std::min(depth / (2 * ONE_PLY) * ONE_PLY, depth - 4 * ONE_PLY);
 
-    if(singularDepth > 0 && repetitionCount < 2 && !(isMateScore(alpha) && alpha < NEUTRAL_SCORE) &&
+    if(singularDepth > 0 && !(isMateScore(alpha) && alpha < NEUTRAL_SCORE) &&
        extensionsOnPath < currentSearchDepth / 2 * ONE_PLY && entryExists &&
        entry.depth * ONE_PLY >= singularDepth && entry.score > alpha &&
        entry.type != TranspositionTableEntry::UPPER_BOUND) {
@@ -409,7 +396,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
          */
         if(board.isCheck()) {
             // Erweitere die Suchtiefe, wenn der Zug den Gegner in Schach setzt.
-            if(extension == 0 && extensionsOnPath < currentSearchDepth / 2 * ONE_PLY && repetitionCount < 2)
+            if(extension == 0 && extensionsOnPath < currentSearchDepth / 2 * ONE_PLY)
                 extension += ONE_PLY;
             else
                 disableLMR = true; // Keine Reduktionen in Zügen, die den Gegner in Schach setzen
@@ -585,7 +572,7 @@ int16_t PVSSearchInstance::quiescence(uint16_t ply, int16_t alpha, int16_t beta)
 
     // Überprüfe, ob dieser Knoten zu einem Unentschieden durch
     // dreifache Stellungswiederholung oder die 50-Züge-Regel führt.
-    if(board.repetitionCount() >= 3 || board.getFiftyMoveCounter() >= 100)
+    if(board.repetitionCount() >= 2 || board.getFiftyMoveCounter() >= 100)
         return DRAW_SCORE;
 
     // Wenn die maximale Suchdistanz erreicht wurde,
