@@ -89,6 +89,16 @@ enum {
     A8, B8, C8, D8, E8, F8, G8, H8, NO_SQ
 };
 
+namespace Square {
+    constexpr int32_t flipY(int32_t sq) {
+        return sq ^ 56;
+    }
+
+    constexpr int32_t rotateY(int32_t sq) {
+        return sq ^ 63;
+    }
+}
+
 enum {
     WHITE_KINGSIDE_CASTLE = 1,
     WHITE_QUEENSIDE_CASTLE = 2,

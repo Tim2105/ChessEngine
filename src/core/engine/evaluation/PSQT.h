@@ -4,23 +4,31 @@
 #include <stdint.h>
 
 /**
- * @brief Die PSQT aus der Sicht der weißen Figuren für das Midgame.
+ * @brief Die PSQT aus der Sicht der weißen Figuren für das Mittelspiel.
  * 
- * Sehr ähnlich wie https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function.
+ * Die Positionstabellen bilden auf folgende Felder ab:
+ * A1, B1, C1, D1, E1, F1, G1, H1,
+ * A2, B2, C2, D2, E2, F2, G2, H2,
+ * A3, B3, C3, D3, E3, F3, G3, H3,
+ * A4, B4, C4, D4, E4, F4, G4, H4,
+ * A5, B5, C5, D5, E5, F5, G5, H5,
+ * A6, B6, C6, D6, E6, F6, G6, H6,
+ * A7, B7, C7, D7, E7, F7, G7, H7,
+ * A8, B8, C8, D8, E8, F8, G8, H8
  */
 static constexpr int16_t MG_PSQT[7][64] = {
         // Empty
         {},
         // Pawn
         {
-                0, 0, 0, 0, 0, 0, 0, 0, 
-                -11, 19, 12, -7, -11, -10, 0, -17, 
-                -6, 16, 1, 1, -5, -2, -2, -13, 
-                -9, 10, 12, 16, 12, -2, -1, 0, 
-                -8, 16, 12, 22, 20, 6, 12, 3, 
-                -7, 24, 112, 64, 15, 26, 6, 6, 
-                -2, 34, 252, 68, 47, 60, 134, 94, 
-                0, 0, 0, 0, 0, 0, 0, 0, 
+                0, 0, 0, 0, 0, 0, 0, 0,
+                -7, -8, -16, -31, -33, 14, 22, -23,
+                0, -2, -6, -31, -34, -41, 18, -2,
+                22, 15, 17, 20, 20, 5, 10, 25,
+                -8, 3, 20, 26, 22, 0, 10, 39,
+                0, 2, 24, 14, 12, 9, 25, 57,
+                28, 11, 24, 15, 13, 31, 72, 42,
+                0, 0, 0, 0, 0, 0, 0, 0,
         },
         // Knight
         {
@@ -80,9 +88,17 @@ static constexpr int16_t MG_PSQT[7][64] = {
 };
 
 /**
- * @brief Die PSQT aus der Sicht der weißen Figuren für das Endgame.
- *
- * Sehr ähnlich wie https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function.
+ * @brief Die PSQT aus der Sicht der weißen Figuren für das Endspiel.
+ * 
+ * Die Positionstabellen bilden wie bei MG_PSQT auf folgende Felder ab:
+ * A1, B1, C1, D1, E1, F1, G1, H1,
+ * A2, B2, C2, D2, E2, F2, G2, H2,
+ * A3, B3, C3, D3, E3, F3, G3, H3,
+ * A4, B4, C4, D4, E4, F4, G4, H4,
+ * A5, B5, C5, D5, E5, F5, G5, H5,
+ * A6, B6, C6, D6, E6, F6, G6, H6,
+ * A7, B7, C7, D7, E7, F7, G7, H7,
+ * A8, B8, C8, D8, E8, F8, G8, H8
  */
 static constexpr int16_t EG_PSQT[7][64] = {
         // Empty

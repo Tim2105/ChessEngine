@@ -3,7 +3,7 @@
 
 #include "core/chess/Board.h"
 
-#include "core/engine/evaluation/StaticEvaluator.h"
+#include "core/engine/evaluation/HandcraftedEvaluator.h"
 #include "core/engine/evaluation/NNUEEvaluator.h"
 #include "core/engine/search/SearchDefinitions.h"
 
@@ -35,7 +35,7 @@ class PVSSearchInstance {
 
         Board board;
         #if defined(USE_HCE)
-            StaticEvaluator evaluator;
+            HandcraftedEvaluator evaluator;
         #else
             NNUEEvaluator evaluator;
         #endif

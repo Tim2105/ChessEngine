@@ -15,7 +15,7 @@ rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 CC = g++
 
 # Compilerflags
-CFLAGS = -Wall -Wextra -Werror -std=c++20 -Isrc -Ofast -flto=auto -march=native
+CFLAGS = -Wall -Wextra -Werror -std=c++20 -Isrc -Ofast -flto=auto -march=native -DUSE_HCE
 
 # Linkerflags
 LDFLAGS = 

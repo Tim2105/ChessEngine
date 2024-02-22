@@ -57,6 +57,10 @@ struct Score {
     constexpr bool operator!=(const Score& other) const {
         return !(*this == other);
     }
+
+    constexpr Score operator-() const {
+        return Score{-mg, -eg};
+    }
 };
 
 struct PawnBitboards {

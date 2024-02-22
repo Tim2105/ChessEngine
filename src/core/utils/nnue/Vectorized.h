@@ -154,7 +154,7 @@ inline void scaledClippedReLU32i32(const int32_t* src, int8_t* dst) noexcept {
 
 inline void m256_add_dpbusd_epi32(__m256i& outVec, __m256i a, __m256i b) {
     #if defined (USE_VNNI)
-        acc = _mm256_dpbusd_epi32(acc, a, b);
+        outVec = _mm256_dpbusd_epi32(outVec, a, b);
     #else
         __m256i resVec = _mm256_maddubs_epi16(a, b);
         __m256i oneVec = _mm256_set1_epi16(1);

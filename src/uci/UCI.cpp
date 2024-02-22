@@ -1,6 +1,4 @@
 #include "core/engine/search/PVSEngine.h"
-#include "core/engine/evaluation/NNUEEvaluator.h"
-#include "core/engine/evaluation/StaticEvaluator.h"
 
 #include "uci/Options.h"
 #include "uci/PortabilityHelper.h"
