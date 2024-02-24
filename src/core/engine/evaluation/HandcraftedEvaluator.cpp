@@ -86,12 +86,24 @@ void HandcraftedEvaluator::updateBeforeMove(Move m) {
     evaluationVars.phase = std::clamp(evaluationVars.phase, 0.0, 1.0); // phase auf [0, 1] begrenzen
 }
 
+void HandcraftedEvaluator::updateAfterMove() {
+    Move m = board.getLastMove();
+
+    int32_t movedPiece = TYPEOF(board.pieceAt(m.getDestination()));
+    int32_t capturedPiece = TYPEOF(board.getLastMoveHistoryEntry().capturedPiece);
+
+    // Aktualisiere die Bauernbewertung,
+    // wenn ein Bauer bewegt, geschlagen oder aufgewertet wurde
+    if(movedPiece == PAWN || capturedPiece == PAWN || m.isPromotion())
+        calculatePawnScore();
+}
+
 void HandcraftedEvaluator::updateBeforeUndo() {
     evaluationVars = evaluationHistory.back();
     evaluationHistory.pop_back();
 }
 
-void HandcraftedEvaluator::calculateScore() {
+void HandcraftedEvaluator::calculateMaterialScore() {
     Score score{0, 0};
 
     // Material
@@ -124,6 +136,92 @@ void HandcraftedEvaluator::calculateScore() {
     }
 
     evaluationVars.materialScore = score;
+}
+
+void HandcraftedEvaluator::calculatePawnScore() {
+    Score score{0, 0};
+
+    Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
+    Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);
+
+    Bitboard doubleWhitePawns = 0, doubleBlackPawns = 0;
+    Bitboard isolatedWhitePawns = 0, isolatedBlackPawns = 0;
+    Bitboard whitePassedPawns = 0, blackPassedPawns = 0;
+
+    Bitboard tmp = whitePawns;
+    while(tmp) {
+        int32_t sq = tmp.popFSB();
+
+        // Doppelbauern
+        doubleWhitePawns |= whitePawns & fileFacingEnemy[WHITE / COLOR_MASK][sq];
+        
+        // Isolierte Bauern
+        int32_t file = SQ2F(sq);
+        if(!(whitePawns & neighboringFiles[file]))
+            isolatedWhitePawns.setBit(sq);
+
+        // Freibauern
+        if(!(sentryMasks[WHITE / COLOR_MASK][sq] & blackPawns))
+            whitePassedPawns.setBit(sq);
+    }
+
+    tmp = blackPawns;
+    while(tmp) {
+        int32_t sq = tmp.popFSB();
+
+        // Doppelbauern
+        doubleBlackPawns |= blackPawns & fileFacingEnemy[BLACK / COLOR_MASK][sq];
+
+        // Isolierte Bauern
+        int32_t file = SQ2F(sq);
+        if(!(blackPawns & neighboringFiles[file]))
+            isolatedBlackPawns.setBit(sq);
+
+        // Freibauern
+        if(!(sentryMasks[BLACK / COLOR_MASK][sq] & whitePawns))
+            blackPassedPawns.setBit(sq);
+    }
+
+    // Doppelbauern
+    while(doubleWhitePawns) {
+        int32_t file = SQ2F(doubleWhitePawns.popFSB());
+        score.mg += MG_DOUBLED_PAWN_PENALTY[file];
+        score.eg += EG_DOUBLED_PAWN_PENALTY[file];
+    }
+
+    while(doubleBlackPawns) {
+        int32_t file = SQ2F(doubleBlackPawns.popFSB());
+        score.mg -= MG_DOUBLED_PAWN_PENALTY[file];
+        score.eg -= EG_DOUBLED_PAWN_PENALTY[file];
+    }
+
+    // Isolierte Bauern
+    while(isolatedWhitePawns) {
+        int32_t file = SQ2F(isolatedWhitePawns.popFSB());
+        score.mg += MG_ISOLATED_PAWN_PENALTY[file];
+        score.eg += EG_ISOLATED_PAWN_PENALTY[file];
+    }
+
+    while(isolatedBlackPawns) {
+        int32_t file = SQ2F(isolatedBlackPawns.popFSB());
+        score.mg -= MG_ISOLATED_PAWN_PENALTY[file];
+        score.eg -= EG_ISOLATED_PAWN_PENALTY[file];
+    }
+
+    // Freibauern
+    while(whitePassedPawns) {
+        int32_t rank = SQ2R(whitePassedPawns.popFSB());
+        score.mg += MG_PASSED_PAWN_BONUS[rank];
+        score.eg += EG_PASSED_PAWN_BONUS[rank];
+    }
+
+    while(blackPassedPawns) {
+        int32_t rank = SQ2R(blackPassedPawns.popFSB());
+        score.mg -= MG_PASSED_PAWN_BONUS[rank];
+        score.eg -= EG_PASSED_PAWN_BONUS[rank];
+    }
+
+    evaluationVars.pawnScore = score;
 }
 
 void HandcraftedEvaluator::calculateGamePhase() {
