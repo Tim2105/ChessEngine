@@ -35,7 +35,9 @@ class HandcraftedEvaluator: public Evaluator {
         };
 
         inline int32_t evaluate() override {
-            int32_t evaluation = ((1.0 - evaluationVars.phase) * evaluationVars.materialScore.mg + evaluationVars.phase * evaluationVars.materialScore.eg) *
+            Score score = evaluationVars.materialScore + evaluationVars.pawnScore;
+
+            int32_t evaluation = ((1.0 - evaluationVars.phase) * score.mg + evaluationVars.phase * score.eg) *
                    (board.getSideToMove() == WHITE ? 1 : -1);
 
             // Skaliere die Bewertung in Richtung 0, wenn wir uns der 50-Züge-Regel annähern.
