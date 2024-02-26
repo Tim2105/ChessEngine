@@ -4,7 +4,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     // Setze die momentane Suchtiefe, wenn wir uns im Wurzelknoten befinden.
     if(ply == 0) {
         currentSearchDepth = depth / ONE_PLY;
-        rootAge = board.getPly();
+        rootAge = board.getAge();
     }
 
     // Führe die Checkup-Funktion regelmäßig aus.
@@ -796,11 +796,21 @@ void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t
 
             Array<Move, 256> searchMoves;
 
+            // Setze das Alter der Position auf das Alter der Wurzelposition + 1,
+            // sodass das IID Priorität in der Transpositionstabelle, die Einträge
+            // aber ab dem nächsten Zug überschrieben werden.
+            uint16_t currentAge = board.getAge();
+            board.setAge(rootAge + 1);
+
             // Erstelle eine neue Suchinstanz für die interne iterative Tiefensuche.
             PVSSearchInstance iidInstance(board, transpositionTable, stopFlag, startTime,
                                           stopTime, nodesSearched, checkupFunction);
             iidInstance.setSearchMoves(searchMoves);
             iidInstance.setMainThread(isMainThread);
+
+            // Das Alter der Position kann hier bereits zurückgesetzt werden,
+            // weil der Konstruktor der Suchinstanz eine Kopie der Position erstellt.
+            board.setAge(currentAge);
 
             for(int16_t d = ONE_PLY; d <= reducedDepth; d += ONE_PLY) {
                 // Prüfe, ob die Suche abgebrochen werden soll.

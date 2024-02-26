@@ -229,7 +229,7 @@ class alignas(64) Board {
         /**
          * @brief Speichert die Anzahl der Halbzüge, die seit dem Anfang des Spiels vergangen sind.
          */
-        uint16_t ply;
+        uint16_t age;
 
         /**
          * @brief Generiert einen Zobrist-Hash für das aktuelle Schachbrett.
@@ -494,7 +494,12 @@ class alignas(64) Board {
         /**
          * @brief Gibt die Anzahl der Halbzüge zurück, die gespielt wurden.
          */
-        constexpr uint16_t getPly() const { return ply; };
+        constexpr uint16_t getAge() const { return age; };
+
+        /**
+         * @brief Setzt die Anzahl der Halbzüge, die gespielt wurden.
+         */
+        constexpr void setAge(uint16_t age) { this->age = age; };
 
         /**
          * @brief Gibt die Anzahl der Halbzüge zurück, die seit dem letzten Bauernzug oder Schlagzug gespielt wurden.

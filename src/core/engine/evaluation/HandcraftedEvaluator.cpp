@@ -242,3 +242,167 @@ void HandcraftedEvaluator::calculateGamePhase() {
     evaluationVars.phase = evaluationVars.phase * (MAX_PHASE - MIN_PHASE) + MIN_PHASE; // phase in [MIN_PHASE, MAX_PHASE]
     evaluationVars.phase = std::clamp(evaluationVars.phase, 0.0, 1.0); // phase auf [0, 1] begrenzen
 }
+
+int32_t HandcraftedEvaluator::calculateKingSafetyScore() {
+    int32_t score = 0;
+
+    int32_t whiteKingSquare = board.getKingSquare(WHITE);
+    int32_t blackKingSquare = board.getKingSquare(BLACK);
+
+    Bitboard whiteDefendedSquares = board.getAttackBitboard(WHITE) & ~board.getPieceBitboard(WHITE_KING);
+    Bitboard blackDefendedSquares = board.getAttackBitboard(BLACK) & ~board.getPieceBitboard(BLACK_KING);
+
+    // Bestimme die Anzahl der Angreifer pro Figurentyp auf die Felder um den weißen König
+    Bitboard kingZone = kingAttackZone[WHITE / COLOR_MASK][whiteKingSquare];
+    int32_t numBlackAttackers = 0;
+    int32_t blackAttackersWeight = 0;
+
+    Bitboard blackKnights = board.getPieceBitboard(BLACK_KNIGHT);
+    while(blackKnights) {
+        int32_t sq = blackKnights.popFSB();
+        Bitboard attacks = knightAttackBitboard(sq) & kingZone;
+        if(attacks) {
+            numBlackAttackers++;
+            Bitboard undefendedAttacks = attacks & ~whiteDefendedSquares;
+            Bitboard defendedAttacks = attacks & whiteDefendedSquares;
+            blackAttackersWeight += undefendedAttacks.popcount() * PIECE_UNDEFENDED_ATTACK_WEIGHT[KNIGHT];
+            blackAttackersWeight += defendedAttacks.popcount() * PIECE_DEFENDED_ATTACK_WEIGHT[KNIGHT];
+        }
+    }
+
+    Bitboard blackBishops = board.getPieceBitboard(BLACK_BISHOP);
+    while(blackBishops) {
+        int32_t sq = blackBishops.popFSB();
+        Bitboard attacks = diagonalAttackBitboard(sq, board.getOccupiedBitboard() | board.getPieceBitboard(BLACK_KING)) & kingZone;
+        if(attacks) {
+            numBlackAttackers++;
+            Bitboard undefendedAttacks = attacks & ~whiteDefendedSquares;
+            Bitboard defendedAttacks = attacks & whiteDefendedSquares;
+            blackAttackersWeight += undefendedAttacks.popcount() * PIECE_UNDEFENDED_ATTACK_WEIGHT[BISHOP];
+            blackAttackersWeight += defendedAttacks.popcount() * PIECE_DEFENDED_ATTACK_WEIGHT[BISHOP];
+        }
+    }
+
+    Bitboard blackRooks = board.getPieceBitboard(BLACK_ROOK);
+    while(blackRooks) {
+        int32_t sq = blackRooks.popFSB();
+        Bitboard attacks = horizontalAttackBitboard(sq, board.getOccupiedBitboard() | board.getPieceBitboard(BLACK_KING)) & kingZone;
+        if(attacks) {
+            numBlackAttackers++;
+            Bitboard undefendedAttacks = attacks & ~whiteDefendedSquares;
+            Bitboard defendedAttacks = attacks & whiteDefendedSquares;
+            blackAttackersWeight += undefendedAttacks.popcount() * PIECE_UNDEFENDED_ATTACK_WEIGHT[ROOK];
+            blackAttackersWeight += defendedAttacks.popcount() * PIECE_DEFENDED_ATTACK_WEIGHT[ROOK];
+        }
+    }
+
+    Bitboard blackQueens = board.getPieceBitboard(BLACK_QUEEN);
+    while(blackQueens) {
+        int32_t sq = blackQueens.popFSB();
+        Bitboard attacks = (diagonalAttackBitboard(sq, board.getOccupiedBitboard() | board.getPieceBitboard(BLACK_KING)) |
+                            horizontalAttackBitboard(sq, board.getOccupiedBitboard() | board.getPieceBitboard(BLACK_KING))) & kingZone;
+
+        if(attacks) {
+            numBlackAttackers++;
+            Bitboard undefendedAttacks = attacks & ~whiteDefendedSquares;
+            Bitboard defendedAttacks = attacks & whiteDefendedSquares;
+            blackAttackersWeight += undefendedAttacks.popcount() * PIECE_UNDEFENDED_ATTACK_WEIGHT[QUEEN];
+            blackAttackersWeight += defendedAttacks.popcount() * PIECE_DEFENDED_ATTACK_WEIGHT[QUEEN];
+        }
+    }
+
+    numBlackAttackers = std::min(numBlackAttackers, (int32_t)(NUM_ATTACKER_WEIGHT_SIZE - 1));
+
+    // Bestimme die Anzahl der Angreifer pro Figurentyp auf die Felder um den schwarzen König
+    kingZone = kingAttackZone[BLACK / COLOR_MASK][blackKingSquare];
+    int32_t numWhiteAttackers = 0;
+    int32_t whiteAttackersWeight = 0;
+
+    Bitboard whiteKnights = board.getPieceBitboard(WHITE_KNIGHT);
+    while(whiteKnights) {
+        int32_t sq = whiteKnights.popFSB();
+        Bitboard attacks = knightAttackBitboard(sq) & kingZone;
+        if(attacks) {
+            numWhiteAttackers++;
+            Bitboard undefendedAttacks = attacks & ~blackDefendedSquares;
+            Bitboard defendedAttacks = attacks & blackDefendedSquares;
+            whiteAttackersWeight += undefendedAttacks.popcount() * PIECE_UNDEFENDED_ATTACK_WEIGHT[KNIGHT];
+            whiteAttackersWeight += defendedAttacks.popcount() * PIECE_DEFENDED_ATTACK_WEIGHT[KNIGHT];
+        }
+    }
+
+    Bitboard whiteBishops = board.getPieceBitboard(WHITE_BISHOP);
+    while(whiteBishops) {
+        int32_t sq = whiteBishops.popFSB();
+        Bitboard attacks = diagonalAttackBitboard(sq, board.getOccupiedBitboard() | board.getPieceBitboard(WHITE_KING)) & kingZone;
+        if(attacks) {
+            numWhiteAttackers++;
+            Bitboard undefendedAttacks = attacks & ~blackDefendedSquares;
+            Bitboard defendedAttacks = attacks & blackDefendedSquares;
+            whiteAttackersWeight += undefendedAttacks.popcount() * PIECE_UNDEFENDED_ATTACK_WEIGHT[BISHOP];
+            whiteAttackersWeight += defendedAttacks.popcount() * PIECE_DEFENDED_ATTACK_WEIGHT[BISHOP];
+        }
+    }
+
+    Bitboard whiteRooks = board.getPieceBitboard(WHITE_ROOK);
+    while(whiteRooks) {
+        int32_t sq = whiteRooks.popFSB();
+        Bitboard attacks = horizontalAttackBitboard(sq, board.getOccupiedBitboard() | board.getPieceBitboard(WHITE_KING)) & kingZone;
+        if(attacks) {
+            numWhiteAttackers++;
+            Bitboard undefendedAttacks = attacks & ~blackDefendedSquares;
+            Bitboard defendedAttacks = attacks & blackDefendedSquares;
+            whiteAttackersWeight += undefendedAttacks.popcount() * PIECE_UNDEFENDED_ATTACK_WEIGHT[ROOK];
+            whiteAttackersWeight += defendedAttacks.popcount() * PIECE_DEFENDED_ATTACK_WEIGHT[ROOK];
+        }
+    }
+
+    Bitboard whiteQueens = board.getPieceBitboard(WHITE_QUEEN);
+    while(whiteQueens) {
+        int32_t sq = whiteQueens.popFSB();
+        Bitboard attacks = (diagonalAttackBitboard(sq, board.getOccupiedBitboard() | board.getPieceBitboard(WHITE_KING)) |
+                            horizontalAttackBitboard(sq, board.getOccupiedBitboard() | board.getPieceBitboard(WHITE_KING))) & kingZone;
+                        
+        if(attacks) {
+            numWhiteAttackers++;
+            Bitboard undefendedAttacks = attacks & ~blackDefendedSquares;
+            Bitboard defendedAttacks = attacks & blackDefendedSquares;
+            whiteAttackersWeight += undefendedAttacks.popcount() * PIECE_UNDEFENDED_ATTACK_WEIGHT[QUEEN];
+            whiteAttackersWeight += defendedAttacks.popcount() * PIECE_DEFENDED_ATTACK_WEIGHT[QUEEN];
+        }
+    }
+
+    numWhiteAttackers = std::min(numWhiteAttackers, (int32_t)(NUM_ATTACKER_WEIGHT_SIZE - 1));
+
+    // Berechne die Bewertung
+    score += whiteAttackersWeight * NUM_ATTACKER_WEIGHT[numWhiteAttackers] / 100;
+    score -= blackAttackersWeight * NUM_ATTACKER_WEIGHT[numBlackAttackers] / 100;
+
+    return score;
+}
+
+int32_t HandcraftedEvaluator::evaluateKNBKEndgame(int32_t b, int32_t k) {
+    int32_t evaluation = std::abs(evaluationVars.materialScore.eg);
+
+    b = -1879048192 * b >> 31;
+    k = (k >> 3) + ((k ^ b) & 7);
+    int32_t manhattanDistToClosestCornerOfBishopSqColor = (15 * (k >> 3) ^ k) - (k >> 3);
+    evaluation += (7 - manhattanDistToClosestCornerOfBishopSqColor) * EG_SPECIAL_MATE_PROGRESS_BONUS;
+
+    return evaluation + EG_WINNING_BONUS;
+}
+
+int32_t HandcraftedEvaluator::evaluateWinningNoPawnsEndgame(int32_t k) {
+    int32_t evaluation = std::abs(evaluationVars.materialScore.eg);
+
+    int32_t file = SQ2F(k);
+    int32_t rank = SQ2R(k);
+
+    file ^= (file - 4) >> 8;
+    rank ^= (rank - 4) >> 8;
+
+    int32_t manhattanDistToCenter = (file + rank) & 7;
+    evaluation += manhattanDistToCenter * EG_SPECIAL_MATE_PROGRESS_BONUS;
+
+    return evaluation + EG_WINNING_BONUS;
+}

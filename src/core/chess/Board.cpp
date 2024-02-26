@@ -14,7 +14,7 @@ Board::Board() {
                        WHITE_QUEENSIDE_CASTLE |
                        BLACK_KINGSIDE_CASTLE |
                        BLACK_QUEENSIDE_CASTLE;
-    ply = 0;
+    age = 0;
 
     moveHistory.reserve(256);
 
@@ -34,7 +34,7 @@ Board::Board(const Board& b) {
     enPassantSquare = b.enPassantSquare;
     fiftyMoveRule = b.fiftyMoveRule;
     castlingPermission = b.castlingPermission;
-    ply = b.ply;
+    age = b.age;
 
     moveHistory = b.moveHistory;
 
@@ -54,7 +54,7 @@ Board::Board(Board&& b) {
     enPassantSquare = b.enPassantSquare;
     fiftyMoveRule = b.fiftyMoveRule;
     castlingPermission = b.castlingPermission;
-    ply = b.ply;
+    age = b.age;
 
     moveHistory = std::move(b.moveHistory);
 
@@ -74,7 +74,7 @@ Board& Board::operator=(const Board& b) {
     enPassantSquare = b.enPassantSquare;
     fiftyMoveRule = b.fiftyMoveRule;
     castlingPermission = b.castlingPermission;
-    ply = b.ply;
+    age = b.age;
 
     moveHistory = b.moveHistory;
 
@@ -96,7 +96,7 @@ Board& Board::operator=(Board&& b) {
     enPassantSquare = b.enPassantSquare;
     fiftyMoveRule = b.fiftyMoveRule;
     castlingPermission = b.castlingPermission;
-    ply = b.ply;
+    age = b.age;
 
     moveHistory = std::move(b.moveHistory);
 
@@ -256,7 +256,7 @@ Board::Board(std::string fen) {
     fen = fen.substr(std::min(indexNextSection + 1, fen.length()));
 
     if(fen.length() == 0)
-        ply = side == WHITE ? 0 : 1;
+        age = side == WHITE ? 0 : 1;
     else {
         // Anzahl der bereits gespielten Züge auslesen
         int32_t plyAdd = side == WHITE ? 0 : 1;
@@ -264,7 +264,7 @@ Board::Board(std::string fen) {
         if(plyFen < 1)
             throw std::invalid_argument("Invalid FEN string: Number of played moves is zero or negative");
 
-        ply = (plyFen - 1) * 2 + plyAdd;
+        age = (plyFen - 1) * 2 + plyAdd;
     }
 
     generateSpecialBitboards();
@@ -614,7 +614,7 @@ void Board::makeMove(Move m) {
 
         side = side ^ COLOR_MASK;
         hashValue ^= Zobrist::zobristBlackToMove;
-        ply++;
+        age++;
 
         return;
     }
@@ -814,7 +814,7 @@ void Board::makeMove(Move m) {
 
     side = side ^ COLOR_MASK;
     hashValue ^= Zobrist::zobristBlackToMove;
-    ply++;
+    age++;
 }
 
 void Board::undoMove() {
@@ -827,7 +827,7 @@ void Board::undoMove() {
     int32_t capturedPieceType = moveEntry.capturedPiece;
 
     // Mache den Spielzustand rückgängig
-    ply--;
+    age--;
     side = side ^ COLOR_MASK;
     fiftyMoveRule = moveEntry.fiftyMoveRule;
     enPassantSquare = moveEntry.enPassantSquare;
@@ -1354,7 +1354,7 @@ std::string Board::toFen() const {
 
     fen += " ";
 
-    int32_t fullMoves = (ply / 2) + 1;
+    int32_t fullMoves = (age / 2) + 1;
 
     fen += std::to_string(fullMoves);
 
@@ -1369,7 +1369,7 @@ std::string Board::toPgn() const {
     if(moveHistory.size() == 0)
         return pgn;
 
-    int32_t startPly = ply - moveHistory.size();
+    int32_t startPly = age - moveHistory.size();
 
     if(startPly != 0)
         throw std::runtime_error("The game hasn't started here. Can't generate PGN string.");
