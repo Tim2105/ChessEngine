@@ -249,11 +249,15 @@ int32_t HandcraftedEvaluator::calculateKingSafetyScore() {
     int32_t whiteKingSquare = board.getKingSquare(WHITE);
     int32_t blackKingSquare = board.getKingSquare(BLACK);
 
-    Bitboard whiteDefendedSquares = board.getAttackBitboard(WHITE) & ~board.getPieceBitboard(WHITE_KING);
-    Bitboard blackDefendedSquares = board.getAttackBitboard(BLACK) & ~board.getPieceBitboard(BLACK_KING);
+    Bitboard whiteDefendedSquares = board.getPieceAttackBitboard(WHITE_PAWN) | board.getPieceAttackBitboard(WHITE_KNIGHT) |
+                                    board.getPieceAttackBitboard(WHITE_BISHOP) | board.getPieceAttackBitboard(WHITE_ROOK) |
+                                    board.getPieceAttackBitboard(WHITE_QUEEN);
+    Bitboard blackDefendedSquares = board.getPieceAttackBitboard(BLACK_PAWN) | board.getPieceAttackBitboard(BLACK_KNIGHT) |
+                                    board.getPieceAttackBitboard(BLACK_BISHOP) | board.getPieceAttackBitboard(BLACK_ROOK) |
+                                    board.getPieceAttackBitboard(BLACK_QUEEN);
 
     // Bestimme die Anzahl der Angreifer pro Figurentyp auf die Felder um den weißen König
-    Bitboard kingZone = kingAttackZone[WHITE / COLOR_MASK][whiteKingSquare];
+    Bitboard kingZone = kingAttackZone[whiteKingSquare];
     int32_t numBlackAttackers = 0;
     int32_t blackAttackersWeight = 0;
 
@@ -265,8 +269,8 @@ int32_t HandcraftedEvaluator::calculateKingSafetyScore() {
             numBlackAttackers++;
             Bitboard undefendedAttacks = attacks & ~whiteDefendedSquares;
             Bitboard defendedAttacks = attacks & whiteDefendedSquares;
-            blackAttackersWeight += undefendedAttacks.popcount() * PIECE_UNDEFENDED_ATTACK_WEIGHT[KNIGHT];
-            blackAttackersWeight += defendedAttacks.popcount() * PIECE_DEFENDED_ATTACK_WEIGHT[KNIGHT];
+            blackAttackersWeight += undefendedAttacks.popcount() * KNIGHT_UNDEFENDED_ATTACK_WEIGHT;
+            blackAttackersWeight += defendedAttacks.popcount() * KNIGHT_DEFENDED_ATTACK_WEIGHT;
         }
     }
 
@@ -278,8 +282,8 @@ int32_t HandcraftedEvaluator::calculateKingSafetyScore() {
             numBlackAttackers++;
             Bitboard undefendedAttacks = attacks & ~whiteDefendedSquares;
             Bitboard defendedAttacks = attacks & whiteDefendedSquares;
-            blackAttackersWeight += undefendedAttacks.popcount() * PIECE_UNDEFENDED_ATTACK_WEIGHT[BISHOP];
-            blackAttackersWeight += defendedAttacks.popcount() * PIECE_DEFENDED_ATTACK_WEIGHT[BISHOP];
+            blackAttackersWeight += undefendedAttacks.popcount() * BISHOP_UNDEFENDED_ATTACK_WEIGHT;
+            blackAttackersWeight += defendedAttacks.popcount() * BISHOP_DEFENDED_ATTACK_WEIGHT;
         }
     }
 
@@ -291,8 +295,8 @@ int32_t HandcraftedEvaluator::calculateKingSafetyScore() {
             numBlackAttackers++;
             Bitboard undefendedAttacks = attacks & ~whiteDefendedSquares;
             Bitboard defendedAttacks = attacks & whiteDefendedSquares;
-            blackAttackersWeight += undefendedAttacks.popcount() * PIECE_UNDEFENDED_ATTACK_WEIGHT[ROOK];
-            blackAttackersWeight += defendedAttacks.popcount() * PIECE_DEFENDED_ATTACK_WEIGHT[ROOK];
+            blackAttackersWeight += undefendedAttacks.popcount() * ROOK_UNDEFENDED_ATTACK_WEIGHT;
+            blackAttackersWeight += defendedAttacks.popcount() * ROOK_DEFENDED_ATTACK_WEIGHT;
         }
     }
 
@@ -306,15 +310,15 @@ int32_t HandcraftedEvaluator::calculateKingSafetyScore() {
             numBlackAttackers++;
             Bitboard undefendedAttacks = attacks & ~whiteDefendedSquares;
             Bitboard defendedAttacks = attacks & whiteDefendedSquares;
-            blackAttackersWeight += undefendedAttacks.popcount() * PIECE_UNDEFENDED_ATTACK_WEIGHT[QUEEN];
-            blackAttackersWeight += defendedAttacks.popcount() * PIECE_DEFENDED_ATTACK_WEIGHT[QUEEN];
+            blackAttackersWeight += undefendedAttacks.popcount() * QUEEN_UNDEFENDED_ATTACK_WEIGHT;
+            blackAttackersWeight += defendedAttacks.popcount() * QUEEN_DEFENDED_ATTACK_WEIGHT;
         }
     }
 
     numBlackAttackers = std::min(numBlackAttackers, (int32_t)(NUM_ATTACKER_WEIGHT_SIZE - 1));
 
     // Bestimme die Anzahl der Angreifer pro Figurentyp auf die Felder um den schwarzen König
-    kingZone = kingAttackZone[BLACK / COLOR_MASK][blackKingSquare];
+    kingZone = kingAttackZone[blackKingSquare];
     int32_t numWhiteAttackers = 0;
     int32_t whiteAttackersWeight = 0;
 
@@ -326,8 +330,8 @@ int32_t HandcraftedEvaluator::calculateKingSafetyScore() {
             numWhiteAttackers++;
             Bitboard undefendedAttacks = attacks & ~blackDefendedSquares;
             Bitboard defendedAttacks = attacks & blackDefendedSquares;
-            whiteAttackersWeight += undefendedAttacks.popcount() * PIECE_UNDEFENDED_ATTACK_WEIGHT[KNIGHT];
-            whiteAttackersWeight += defendedAttacks.popcount() * PIECE_DEFENDED_ATTACK_WEIGHT[KNIGHT];
+            whiteAttackersWeight += undefendedAttacks.popcount() * KNIGHT_UNDEFENDED_ATTACK_WEIGHT;
+            whiteAttackersWeight += defendedAttacks.popcount() * KNIGHT_DEFENDED_ATTACK_WEIGHT;
         }
     }
 
@@ -339,8 +343,8 @@ int32_t HandcraftedEvaluator::calculateKingSafetyScore() {
             numWhiteAttackers++;
             Bitboard undefendedAttacks = attacks & ~blackDefendedSquares;
             Bitboard defendedAttacks = attacks & blackDefendedSquares;
-            whiteAttackersWeight += undefendedAttacks.popcount() * PIECE_UNDEFENDED_ATTACK_WEIGHT[BISHOP];
-            whiteAttackersWeight += defendedAttacks.popcount() * PIECE_DEFENDED_ATTACK_WEIGHT[BISHOP];
+            whiteAttackersWeight += undefendedAttacks.popcount() * BISHOP_UNDEFENDED_ATTACK_WEIGHT;
+            whiteAttackersWeight += defendedAttacks.popcount() * BISHOP_DEFENDED_ATTACK_WEIGHT;
         }
     }
 
@@ -352,8 +356,8 @@ int32_t HandcraftedEvaluator::calculateKingSafetyScore() {
             numWhiteAttackers++;
             Bitboard undefendedAttacks = attacks & ~blackDefendedSquares;
             Bitboard defendedAttacks = attacks & blackDefendedSquares;
-            whiteAttackersWeight += undefendedAttacks.popcount() * PIECE_UNDEFENDED_ATTACK_WEIGHT[ROOK];
-            whiteAttackersWeight += defendedAttacks.popcount() * PIECE_DEFENDED_ATTACK_WEIGHT[ROOK];
+            whiteAttackersWeight += undefendedAttacks.popcount() * ROOK_UNDEFENDED_ATTACK_WEIGHT;
+            whiteAttackersWeight += defendedAttacks.popcount() * ROOK_DEFENDED_ATTACK_WEIGHT;
         }
     }
 
@@ -367,8 +371,8 @@ int32_t HandcraftedEvaluator::calculateKingSafetyScore() {
             numWhiteAttackers++;
             Bitboard undefendedAttacks = attacks & ~blackDefendedSquares;
             Bitboard defendedAttacks = attacks & blackDefendedSquares;
-            whiteAttackersWeight += undefendedAttacks.popcount() * PIECE_UNDEFENDED_ATTACK_WEIGHT[QUEEN];
-            whiteAttackersWeight += defendedAttacks.popcount() * PIECE_DEFENDED_ATTACK_WEIGHT[QUEEN];
+            whiteAttackersWeight += undefendedAttacks.popcount() * QUEEN_UNDEFENDED_ATTACK_WEIGHT;
+            whiteAttackersWeight += defendedAttacks.popcount() * QUEEN_DEFENDED_ATTACK_WEIGHT;
         }
     }
 

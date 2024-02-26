@@ -10,7 +10,7 @@
 #endif
 #endif
 #else
-#pragma message "Using HCE (Handcrafted Evaluation) instead of NNUE (Efficiently Updatable Neural Networks). This will weaken the engine's playing strength."
+#pragma message "Using HCE (Handcrafted Evaluation) instead of NNUE (Efficiently Updatable Neural Networks) will weaken the engine's playing strength."
 #endif
 
 #ifdef DISABLE_THREADS
