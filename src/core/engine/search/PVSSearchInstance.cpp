@@ -149,9 +149,9 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
      * dieser Züge auch bei einer vollständigen Suche zu einem Beta-Schnitt
      * führen wird und brechen die Suche ab vorzeitig ab.
      */
-    if(nodeType == CUT_NODE && depth > 4 * ONE_PLY && searchStack[ply].staticEvaluation >= beta &&
+    if(nodeType == CUT_NODE && depth >= 8 * ONE_PLY &&
        searchStack[ply].moveScorePairs.size() >= MULTICUT_C) {
-        int16_t reducedDepth = std::min(depth / (2 * ONE_PLY) * ONE_PLY, depth - 4 * ONE_PLY);
+        int16_t reducedDepth = depth - 4 * ONE_PLY;
         int16_t numFailHighs = 0, bestScore = MIN_SCORE;
         Move bestMove;
 
@@ -171,7 +171,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
             evaluator.updateAfterMove();
 
             // Durchsuche den Kindknoten mit reduzierter Suchtiefe.
-            int16_t score = -pvs(reducedDepth, ply + 1, -beta, -beta + 1, false, ALL_NODE);
+            int16_t score = -pvs(reducedDepth, ply + 1, -beta, -beta + 1, true, ALL_NODE);
 
             // Mache den Zug rückgängig und informiere den Evaluator.
             evaluator.updateBeforeUndo();
@@ -248,7 +248,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     int16_t singularDepth = std::min(depth / (2 * ONE_PLY) * ONE_PLY, depth - 4 * ONE_PLY);
 
     if(singularDepth > 0 && !(isMateScore(alpha) && alpha < NEUTRAL_SCORE) &&
-       extensionsOnPath < currentSearchDepth / 2 * ONE_PLY && entryExists &&
+       extensionsOnPath < currentSearchDepth * ONE_PLY && entryExists &&
        entry.depth * ONE_PLY >= singularDepth && entry.score > alpha &&
        entry.type != TranspositionTableEntry::UPPER_BOUND) {
 
@@ -256,13 +256,13 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
         singularExtension = ONE_PLY;
 
         for(MoveScorePair& pair : searchStack[ply].moveScorePairs) {
-            if(moveCount == 0) {
+            move = pair.move;
+            moveScore = pair.score;
+
+            if(move == entry.hashMove) {
                 moveCount++;
                 continue;
             }
-
-            move = pair.move;
-            moveScore = pair.score;
 
             // Führe den Zug aus und informiere den Evaluator.
             evaluator.updateBeforeMove(move);
@@ -279,6 +279,16 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
             // Überprüfe, ob wir über unserem reduzierten Alpha-Wert liegen.
             if(score > reducedAlpha) {
+                /**
+                 * Mini-Multi-Cut:
+                 * Der Eintrag in der Transpositionstabelle speichert eine Bewertung >= beta
+                 * und der durchsuchte Zug hat, trotz nach unten verschobenem Suchfenster,
+                 * ebenfalls eine Bewertung >= beta. Wir gehen davon aus, dass mindestens beider
+                 * Züge in einer vollständigen Suche zu einem Beta-Schnitt führen und brechen ab.
+                 */
+                if(score >= beta && entry.score >= beta)
+                    return beta; // fail-hard
+
                 singularExtension = 0;
                 break;
             }
@@ -298,12 +308,6 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     for(MoveScorePair& pair : searchStack[ply].moveScorePairs) {
         move = pair.move;
         moveScore = pair.score;
-
-        // Wir haben mit aktiver Singular Reply Extension den ersten Zug betrachtet.
-        // Alle anderen Züge wurden bereits mit reduzierter Suchtiefe betrachtet und wurden
-        // weit unter alpha bewertet. Wir können die Suche abbrechen.
-        if(moveCount > 0 && singularExtension > 0)
-            break;
 
         /**
          * Futility Pruning:
@@ -386,7 +390,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
         else if(nodeType == CUT_NODE)
             childType = ALL_NODE;
         
-        int16_t extension = singularExtension;
+        int16_t extension = singularExtension * (moveCount == 0);
         bool disableLMR = false;
 
         /**
@@ -396,7 +400,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
          */
         if(board.isCheck()) {
             // Erweitere die Suchtiefe, wenn der Zug den Gegner in Schach setzt.
-            if(extension == 0 && extensionsOnPath < currentSearchDepth / 2 * ONE_PLY)
+            if(extension == 0 && extensionsOnPath < currentSearchDepth * ONE_PLY)
                 extension += ONE_PLY;
             else
                 disableLMR = true; // Keine Reduktionen in Zügen, die den Gegner in Schach setzen
@@ -428,7 +432,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
                 else
                     childType = ALL_NODE;
 
-                score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, false, childType);
+                score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, true, childType);
             }
         }
 
@@ -688,12 +692,12 @@ int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore, in
 
     // Reduziere standardmäßig anhand einer logarithmischen Funktion.
     int32_t reduction = ONE_PLY * (int32_t)(std::log2(moveCount));
-    reduction = std::min(reduction, std::max(2 * ONE_PLY, depth / (5 * ONE_PLY) * ONE_PLY));
+    reduction = std::min(reduction, std::max(2 * ONE_PLY, depth / (6 * ONE_PLY) * ONE_PLY));
 
     // Passe die Reduktion an die relative Vergangenheitsbewertung des Zuges an.
     // -> Bessere Züge werden weniger reduziert.
     int32_t historyScore = getHistoryScore(lastMove, board.getSideToMove() ^ COLOR_MASK);
-    int32_t historyReduction = -historyScore / 8192 * ONE_PLY;
+    int32_t historyReduction = -historyScore / 16384 * ONE_PLY;
     reduction += historyReduction;
 
     // Wir reduzieren nie direkt in eine Quieszenzsuche hinein.
