@@ -26,6 +26,9 @@ class HandcraftedEvaluator: public Evaluator {
         void calculateGamePhase();
         int32_t calculateKingSafetyScore();
 
+        int32_t evaluateKingAttackZone();
+        int32_t evaluatePawnShield();
+
         int32_t evaluateKNBKEndgame(int32_t ownBishopSq, int32_t oppKingSq);
         int32_t evaluateWinningNoPawnsEndgame(int32_t oppKingSq);
 
@@ -34,14 +37,14 @@ class HandcraftedEvaluator: public Evaluator {
             100, // Pawn
             310, // Knight
             330, // Bishop
-            490, // Rook
+            500, // Rook
             950, // Queen
             0 // King
         };
 
         static constexpr int16_t EG_PIECE_VALUE[7] = {
             0, // Empty
-            140, // Pawn
+            110, // Pawn
             300, // Knight
             335, // Bishop
             525, // Rook
@@ -112,7 +115,7 @@ class HandcraftedEvaluator: public Evaluator {
             // Aktualisiere die Königssicherheitsbewertung
             int32_t kingSafetyScore = calculateKingSafetyScore();
 
-            int32_t evaluation = ((1.0 - evaluationVars.phase) * (score.mg + kingSafetyScore) + evaluationVars.phase * score.eg) *
+            int32_t evaluation = ((1.0 - evaluationVars.phase) * score.mg + evaluationVars.phase * score.eg + kingSafetyScore) *
                                  (board.getSideToMove() == WHITE ? 1 : -1);
 
             evaluation += (1.0 - evaluationVars.phase) * MG_TEMPO_BONUS + evaluationVars.phase * EG_TEMPO_BONUS;
@@ -202,7 +205,7 @@ class HandcraftedEvaluator: public Evaluator {
 
         // Bonus für Freibauern pro Rang im Endspiel
         static constexpr int16_t EG_PASSED_PAWN_BONUS[8] = {
-            0, 35, 35, 46, 59, 72, 101, 0
+            0, 35, 35, 46, 67, 91, 150, 0
         };
 
         static constexpr Bitboard fileFacingEnemy[2][64] = {
@@ -272,15 +275,10 @@ class HandcraftedEvaluator: public Evaluator {
 
         static constexpr size_t NUM_ATTACKER_WEIGHT_SIZE = sizeof(NUM_ATTACKER_WEIGHT) / sizeof(NUM_ATTACKER_WEIGHT[0]);
 
-        static constexpr int32_t KNIGHT_UNDEFENDED_ATTACK_WEIGHT = 28;
-        static constexpr int32_t BISHOP_UNDEFENDED_ATTACK_WEIGHT = 28;
-        static constexpr int32_t ROOK_UNDEFENDED_ATTACK_WEIGHT = 52;
-        static constexpr int32_t QUEEN_UNDEFENDED_ATTACK_WEIGHT = 96;
-
-        static constexpr int32_t KNIGHT_DEFENDED_ATTACK_WEIGHT = 17;
-        static constexpr int32_t BISHOP_DEFENDED_ATTACK_WEIGHT = 17;
-        static constexpr int32_t ROOK_DEFENDED_ATTACK_WEIGHT = 29;
-        static constexpr int32_t QUEEN_DEFENDED_ATTACK_WEIGHT = 40;
+        static constexpr int32_t KNIGHT_ATTACK_WEIGHT = 20;
+        static constexpr int32_t BISHOP_ATTACK_WEIGHT = 20;
+        static constexpr int32_t ROOK_ATTACK_WEIGHT = 40;
+        static constexpr int32_t QUEEN_ATTACK_WEIGHT = 80;
 
         static constexpr Bitboard kingAttackZone[64] = {
             0x30707ULL,0x70f0fULL,0xe0e0eULL,0x1c1c1cULL,0x383838ULL,0x707070ULL,0xe0f0f0ULL,0xc0e0e0ULL,
@@ -291,6 +289,37 @@ class HandcraftedEvaluator: public Evaluator {
             0x7070703000000ULL,0xf0f0f07000000ULL,0xe0e0e0e000000ULL,0x1c1c1c1c000000ULL,0x38383838000000ULL,0x70707070000000ULL,0xf0f0f0e0000000ULL,0xe0e0e0c0000000ULL,
             0x707070300000000ULL,0xf0f0f0700000000ULL,0xe0e0e0e00000000ULL,0x1c1c1c1c00000000ULL,0x3838383800000000ULL,0x7070707000000000ULL,0xf0f0f0e000000000ULL,0xe0e0e0c000000000ULL,
             0x707030000000000ULL,0xf0f070000000000ULL,0xe0e0e0000000000ULL,0x1c1c1c0000000000ULL,0x3838380000000000ULL,0x7070700000000000ULL,0xf0f0e00000000000ULL,0xe0e0c00000000000ULL,
+        };
+
+        static constexpr int32_t PAWN_SHIELD_SIZE_BONUS[4] = {
+            -32, 4, 46, 70
+        };
+
+        static constexpr size_t PAWN_SHIELD_SIZE_BONUS_SIZE = sizeof(PAWN_SHIELD_SIZE_BONUS) / sizeof(PAWN_SHIELD_SIZE_BONUS[0]);
+
+        static constexpr Bitboard pawnShieldMask[2][64] = {
+            // White
+            {
+                0x30302ULL,0x70705ULL,0xe0e0aULL,0x1c1c14ULL,0x383828ULL,0x707050ULL,0xe0e0a0ULL,0xc0c040ULL,
+                0x3030200ULL,0x7070500ULL,0xe0e0a00ULL,0x1c1c1400ULL,0x38382800ULL,0x70705000ULL,0xe0e0a000ULL,0xc0c04000ULL,
+                0x303020000ULL,0x707050000ULL,0xe0e0a0000ULL,0x1c1c140000ULL,0x3838280000ULL,0x7070500000ULL,0xe0e0a00000ULL,0xc0c0400000ULL,
+                0x30302000000ULL,0x70705000000ULL,0xe0e0a000000ULL,0x1c1c14000000ULL,0x383828000000ULL,0x707050000000ULL,0xe0e0a0000000ULL,0xc0c040000000ULL,
+                0x3030200000000ULL,0x7070500000000ULL,0xe0e0a00000000ULL,0x1c1c1400000000ULL,0x38382800000000ULL,0x70705000000000ULL,0xe0e0a000000000ULL,0xc0c04000000000ULL,
+                0x303020000000000ULL,0x707050000000000ULL,0xe0e0a0000000000ULL,0x1c1c140000000000ULL,0x3838280000000000ULL,0x7070500000000000ULL,0xe0e0a00000000000ULL,0xc0c0400000000000ULL,
+                0x302000000000000ULL,0x705000000000000ULL,0xe0a000000000000ULL,0x1c14000000000000ULL,0x3828000000000000ULL,0x7050000000000000ULL,0xe0a0000000000000ULL,0xc040000000000000ULL,
+                0x200000000000000ULL,0x500000000000000ULL,0xa00000000000000ULL,0x1400000000000000ULL,0x2800000000000000ULL,0x5000000000000000ULL,0xa000000000000000ULL,0x4000000000000000ULL,
+            },
+            // Black
+            {
+                0x2ULL,0x5ULL,0xaULL,0x14ULL,0x28ULL,0x50ULL,0xa0ULL,0x40ULL,
+                0x203ULL,0x507ULL,0xa0eULL,0x141cULL,0x2838ULL,0x5070ULL,0xa0e0ULL,0x40c0ULL,
+                0x20303ULL,0x50707ULL,0xa0e0eULL,0x141c1cULL,0x283838ULL,0x507070ULL,0xa0e0e0ULL,0x40c0c0ULL,
+                0x2030300ULL,0x5070700ULL,0xa0e0e00ULL,0x141c1c00ULL,0x28383800ULL,0x50707000ULL,0xa0e0e000ULL,0x40c0c000ULL,
+                0x203030000ULL,0x507070000ULL,0xa0e0e0000ULL,0x141c1c0000ULL,0x2838380000ULL,0x5070700000ULL,0xa0e0e00000ULL,0x40c0c00000ULL,
+                0x20303000000ULL,0x50707000000ULL,0xa0e0e000000ULL,0x141c1c000000ULL,0x283838000000ULL,0x507070000000ULL,0xa0e0e0000000ULL,0x40c0c0000000ULL,
+                0x2030300000000ULL,0x5070700000000ULL,0xa0e0e00000000ULL,0x141c1c00000000ULL,0x28383800000000ULL,0x50707000000000ULL,0xa0e0e000000000ULL,0x40c0c000000000ULL,
+                0x203030000000000ULL,0x507070000000000ULL,0xa0e0e0000000000ULL,0x141c1c0000000000ULL,0x2838380000000000ULL,0x5070700000000000ULL,0xa0e0e00000000000ULL,0x40c0c00000000000ULL,
+            }
         };
 };
 

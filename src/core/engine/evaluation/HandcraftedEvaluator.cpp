@@ -244,17 +244,14 @@ void HandcraftedEvaluator::calculateGamePhase() {
 }
 
 int32_t HandcraftedEvaluator::calculateKingSafetyScore() {
+    return evaluateKingAttackZone() + evaluatePawnShield();
+}
+
+int32_t HandcraftedEvaluator::evaluateKingAttackZone() {
     int32_t score = 0;
 
     int32_t whiteKingSquare = board.getKingSquare(WHITE);
     int32_t blackKingSquare = board.getKingSquare(BLACK);
-
-    Bitboard whiteDefendedSquares = board.getPieceAttackBitboard(WHITE_PAWN) | board.getPieceAttackBitboard(WHITE_KNIGHT) |
-                                    board.getPieceAttackBitboard(WHITE_BISHOP) | board.getPieceAttackBitboard(WHITE_ROOK) |
-                                    board.getPieceAttackBitboard(WHITE_QUEEN);
-    Bitboard blackDefendedSquares = board.getPieceAttackBitboard(BLACK_PAWN) | board.getPieceAttackBitboard(BLACK_KNIGHT) |
-                                    board.getPieceAttackBitboard(BLACK_BISHOP) | board.getPieceAttackBitboard(BLACK_ROOK) |
-                                    board.getPieceAttackBitboard(BLACK_QUEEN);
 
     // Bestimme die Anzahl der Angreifer pro Figurentyp auf die Felder um den weißen König
     Bitboard kingZone = kingAttackZone[whiteKingSquare];
@@ -267,10 +264,7 @@ int32_t HandcraftedEvaluator::calculateKingSafetyScore() {
         Bitboard attacks = knightAttackBitboard(sq) & kingZone;
         if(attacks) {
             numBlackAttackers++;
-            Bitboard undefendedAttacks = attacks & ~whiteDefendedSquares;
-            Bitboard defendedAttacks = attacks & whiteDefendedSquares;
-            blackAttackersWeight += undefendedAttacks.popcount() * KNIGHT_UNDEFENDED_ATTACK_WEIGHT;
-            blackAttackersWeight += defendedAttacks.popcount() * KNIGHT_DEFENDED_ATTACK_WEIGHT;
+            blackAttackersWeight += attacks.popcount() * KNIGHT_ATTACK_WEIGHT;
         }
     }
 
@@ -280,10 +274,7 @@ int32_t HandcraftedEvaluator::calculateKingSafetyScore() {
         Bitboard attacks = diagonalAttackBitboard(sq, board.getOccupiedBitboard() | board.getPieceBitboard(BLACK_KING)) & kingZone;
         if(attacks) {
             numBlackAttackers++;
-            Bitboard undefendedAttacks = attacks & ~whiteDefendedSquares;
-            Bitboard defendedAttacks = attacks & whiteDefendedSquares;
-            blackAttackersWeight += undefendedAttacks.popcount() * BISHOP_UNDEFENDED_ATTACK_WEIGHT;
-            blackAttackersWeight += defendedAttacks.popcount() * BISHOP_DEFENDED_ATTACK_WEIGHT;
+            blackAttackersWeight += attacks.popcount() * BISHOP_ATTACK_WEIGHT;
         }
     }
 
@@ -293,10 +284,7 @@ int32_t HandcraftedEvaluator::calculateKingSafetyScore() {
         Bitboard attacks = horizontalAttackBitboard(sq, board.getOccupiedBitboard() | board.getPieceBitboard(BLACK_KING)) & kingZone;
         if(attacks) {
             numBlackAttackers++;
-            Bitboard undefendedAttacks = attacks & ~whiteDefendedSquares;
-            Bitboard defendedAttacks = attacks & whiteDefendedSquares;
-            blackAttackersWeight += undefendedAttacks.popcount() * ROOK_UNDEFENDED_ATTACK_WEIGHT;
-            blackAttackersWeight += defendedAttacks.popcount() * ROOK_DEFENDED_ATTACK_WEIGHT;
+            blackAttackersWeight += attacks.popcount() * ROOK_ATTACK_WEIGHT;
         }
     }
 
@@ -308,10 +296,7 @@ int32_t HandcraftedEvaluator::calculateKingSafetyScore() {
 
         if(attacks) {
             numBlackAttackers++;
-            Bitboard undefendedAttacks = attacks & ~whiteDefendedSquares;
-            Bitboard defendedAttacks = attacks & whiteDefendedSquares;
-            blackAttackersWeight += undefendedAttacks.popcount() * QUEEN_UNDEFENDED_ATTACK_WEIGHT;
-            blackAttackersWeight += defendedAttacks.popcount() * QUEEN_DEFENDED_ATTACK_WEIGHT;
+            blackAttackersWeight += attacks.popcount() * QUEEN_ATTACK_WEIGHT;
         }
     }
 
@@ -328,10 +313,7 @@ int32_t HandcraftedEvaluator::calculateKingSafetyScore() {
         Bitboard attacks = knightAttackBitboard(sq) & kingZone;
         if(attacks) {
             numWhiteAttackers++;
-            Bitboard undefendedAttacks = attacks & ~blackDefendedSquares;
-            Bitboard defendedAttacks = attacks & blackDefendedSquares;
-            whiteAttackersWeight += undefendedAttacks.popcount() * KNIGHT_UNDEFENDED_ATTACK_WEIGHT;
-            whiteAttackersWeight += defendedAttacks.popcount() * KNIGHT_DEFENDED_ATTACK_WEIGHT;
+            whiteAttackersWeight += attacks.popcount() * KNIGHT_ATTACK_WEIGHT;
         }
     }
 
@@ -341,10 +323,7 @@ int32_t HandcraftedEvaluator::calculateKingSafetyScore() {
         Bitboard attacks = diagonalAttackBitboard(sq, board.getOccupiedBitboard() | board.getPieceBitboard(WHITE_KING)) & kingZone;
         if(attacks) {
             numWhiteAttackers++;
-            Bitboard undefendedAttacks = attacks & ~blackDefendedSquares;
-            Bitboard defendedAttacks = attacks & blackDefendedSquares;
-            whiteAttackersWeight += undefendedAttacks.popcount() * BISHOP_UNDEFENDED_ATTACK_WEIGHT;
-            whiteAttackersWeight += defendedAttacks.popcount() * BISHOP_DEFENDED_ATTACK_WEIGHT;
+            whiteAttackersWeight += attacks.popcount() * BISHOP_ATTACK_WEIGHT;
         }
     }
 
@@ -354,10 +333,7 @@ int32_t HandcraftedEvaluator::calculateKingSafetyScore() {
         Bitboard attacks = horizontalAttackBitboard(sq, board.getOccupiedBitboard() | board.getPieceBitboard(WHITE_KING)) & kingZone;
         if(attacks) {
             numWhiteAttackers++;
-            Bitboard undefendedAttacks = attacks & ~blackDefendedSquares;
-            Bitboard defendedAttacks = attacks & blackDefendedSquares;
-            whiteAttackersWeight += undefendedAttacks.popcount() * ROOK_UNDEFENDED_ATTACK_WEIGHT;
-            whiteAttackersWeight += defendedAttacks.popcount() * ROOK_DEFENDED_ATTACK_WEIGHT;
+            whiteAttackersWeight += attacks.popcount() * ROOK_ATTACK_WEIGHT;
         }
     }
 
@@ -369,10 +345,7 @@ int32_t HandcraftedEvaluator::calculateKingSafetyScore() {
                         
         if(attacks) {
             numWhiteAttackers++;
-            Bitboard undefendedAttacks = attacks & ~blackDefendedSquares;
-            Bitboard defendedAttacks = attacks & blackDefendedSquares;
-            whiteAttackersWeight += undefendedAttacks.popcount() * QUEEN_UNDEFENDED_ATTACK_WEIGHT;
-            whiteAttackersWeight += defendedAttacks.popcount() * QUEEN_DEFENDED_ATTACK_WEIGHT;
+            whiteAttackersWeight += attacks.popcount() * QUEEN_ATTACK_WEIGHT;
         }
     }
 
@@ -382,7 +355,34 @@ int32_t HandcraftedEvaluator::calculateKingSafetyScore() {
     score += whiteAttackersWeight * NUM_ATTACKER_WEIGHT[numWhiteAttackers] / 100;
     score -= blackAttackersWeight * NUM_ATTACKER_WEIGHT[numBlackAttackers] / 100;
 
-    return score;
+    return score * (1 - evaluationVars.phase);
+}
+
+int32_t HandcraftedEvaluator::evaluatePawnShield() {
+    int32_t score = 0;
+
+    int32_t whiteKingSquare = board.getKingSquare(WHITE);
+    int32_t blackKingSquare = board.getKingSquare(BLACK);
+
+    Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
+    Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);
+
+    Bitboard whitePawnShieldMask = pawnShieldMask[WHITE / COLOR_MASK][whiteKingSquare];
+    Bitboard blackPawnShieldMask = pawnShieldMask[BLACK / COLOR_MASK][blackKingSquare];
+
+    Bitboard whitePawnShield = whitePawns & whitePawnShieldMask;
+    Bitboard blackPawnShield = blackPawns & blackPawnShieldMask;
+
+    int32_t whitePawnShieldSize = whitePawnShield.popcount();
+    int32_t blackPawnShieldSize = blackPawnShield.popcount();
+
+    whitePawnShieldSize = std::min(whitePawnShieldSize, (int32_t)(PAWN_SHIELD_SIZE_BONUS_SIZE - 1));
+    blackPawnShieldSize = std::min(blackPawnShieldSize, (int32_t)(PAWN_SHIELD_SIZE_BONUS_SIZE - 1));
+
+    score += PAWN_SHIELD_SIZE_BONUS[whitePawnShieldSize];
+    score -= PAWN_SHIELD_SIZE_BONUS[blackPawnShieldSize];
+
+    return score * (1 - evaluationVars.phase);
 }
 
 int32_t HandcraftedEvaluator::evaluateKNBKEndgame(int32_t b, int32_t k) {
