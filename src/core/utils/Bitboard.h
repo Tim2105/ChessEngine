@@ -22,10 +22,11 @@ class Bitboard {
 
         friend std::ostream& operator<<(std::ostream& os, const Bitboard& bitboard);
 
-        constexpr uint64_t getBitboard() const {
+        constexpr uint64_t toU64() const {
             return bitboard;
         }
-        constexpr void setBitboard(uint64_t bitboard) {
+
+        constexpr void fromU64(uint64_t bitboard) {
             this->bitboard = bitboard;
         }
 

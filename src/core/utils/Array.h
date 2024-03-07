@@ -36,11 +36,21 @@ class Array {
 
         constexpr Array() : count(0) {}
 
+        /**
+         * @brief Der Kopierkonstruktor für Arrays,
+         * der bei regulärer Ausführung des Programms
+         * das Array mit memcpy kopiert.
+         */
         inline Array(const Array<T, s>& other) requires(!std::is_constant_evaluated()) {
             count = other.count;
             memcpy(array, other.array, sizeof(T) * count);
         }
 
+        /**
+         * @brief Der Kopierkonstruktor für Arrays,
+         * der während der Übersetzung des Programms
+         * für konstante Ausdrücke verwendet werden kann.
+         */
         constexpr Array(const Array<T, s>& other) requires(std::is_constant_evaluated()) {
             count = other.count;
             std::copy(other.array, other.array + count, array);
