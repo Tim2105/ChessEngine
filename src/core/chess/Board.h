@@ -438,6 +438,11 @@ class alignas(64) Board {
         constexpr int32_t getSideToMove() const { return side; };
 
         /**
+         * @brief Gibt die Rochadenberechtigung zurück.
+         */
+        constexpr int32_t getCastlingPermission() const { return castlingPermission; };
+
+        /**
          * @brief Gibt en letzten gespielten Zug zurück.
          */
         inline Move getLastMove() const { 

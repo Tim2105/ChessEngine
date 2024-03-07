@@ -90,6 +90,18 @@ enum {
 };
 
 namespace Square {
+    constexpr int32_t rankOf(int32_t sq) {
+        return sq >> 3;
+    }
+
+    constexpr int32_t fileOf(int32_t sq) {
+        return sq & 7;
+    }
+
+    constexpr int32_t fromFileRank(int32_t file, int32_t rank) {
+        return rank * 8 + file;
+    }
+
     constexpr int32_t flipY(int32_t sq) {
         return sq ^ 56;
     }

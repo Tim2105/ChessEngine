@@ -28,6 +28,8 @@ class HandcraftedEvaluator: public Evaluator {
 
         int32_t evaluateKingAttackZone();
         int32_t evaluatePawnShield();
+        int32_t evaluateOpenFiles();
+        int32_t evaluatePawnStorm();
 
         int32_t evaluateKNBKEndgame(int32_t ownBishopSq, int32_t oppKingSq);
         int32_t evaluateWinningNoPawnsEndgame(int32_t oppKingSq);
@@ -277,8 +279,8 @@ class HandcraftedEvaluator: public Evaluator {
 
         static constexpr int32_t KNIGHT_ATTACK_WEIGHT = 20;
         static constexpr int32_t BISHOP_ATTACK_WEIGHT = 20;
-        static constexpr int32_t ROOK_ATTACK_WEIGHT = 40;
-        static constexpr int32_t QUEEN_ATTACK_WEIGHT = 80;
+        static constexpr int32_t ROOK_ATTACK_WEIGHT = 37;
+        static constexpr int32_t QUEEN_ATTACK_WEIGHT = 65;
 
         static constexpr Bitboard kingAttackZone[64] = {
             0x30707ULL,0x70f0fULL,0xe0e0eULL,0x1c1c1cULL,0x383838ULL,0x707070ULL,0xe0f0f0ULL,0xc0e0e0ULL,
@@ -292,7 +294,7 @@ class HandcraftedEvaluator: public Evaluator {
         };
 
         static constexpr int32_t PAWN_SHIELD_SIZE_BONUS[4] = {
-            -32, 4, 46, 70
+            -32, 4, 16, 30
         };
 
         static constexpr size_t PAWN_SHIELD_SIZE_BONUS_SIZE = sizeof(PAWN_SHIELD_SIZE_BONUS) / sizeof(PAWN_SHIELD_SIZE_BONUS[0]);
@@ -319,6 +321,64 @@ class HandcraftedEvaluator: public Evaluator {
                 0x20303000000ULL,0x50707000000ULL,0xa0e0e000000ULL,0x141c1c000000ULL,0x283838000000ULL,0x507070000000ULL,0xa0e0e0000000ULL,0x40c0c0000000ULL,
                 0x2030300000000ULL,0x5070700000000ULL,0xa0e0e00000000ULL,0x141c1c00000000ULL,0x28383800000000ULL,0x50707000000000ULL,0xa0e0e000000000ULL,0x40c0c000000000ULL,
                 0x203030000000000ULL,0x507070000000000ULL,0xa0e0e0000000000ULL,0x141c1c0000000000ULL,0x2838380000000000ULL,0x5070700000000000ULL,0xa0e0e00000000000ULL,0x40c0c00000000000ULL,
+            }
+        };
+
+        // Bestrafung für offene Linien (keine eigenen Bauern) in der Nähe des Königs
+        static constexpr int32_t KING_OPEN_FILE_BONUS[4] = {
+            0, -25, -65, -69
+        };
+
+        static constexpr Bitboard fileMasks[8] = {
+            0x101010101010101ULL,
+            0x202020202020202ULL,
+            0x404040404040404ULL,
+            0x808080808080808ULL,
+            0x1010101010101010ULL,
+            0x2020202020202020ULL,
+            0x4040404040404040ULL,
+            0x8080808080808080ULL
+        };
+
+        static constexpr Array<int32_t, 3> nearbyFiles[8] = {
+            {0, 1},
+            {0, 1, 2},
+            {1, 2, 3},
+            {2, 3, 4},
+            {3, 4, 5},
+            {4, 5, 6},
+            {5, 6, 7},
+            {6, 7}
+        };
+
+        // Bestrafung für fortgeschrittene gegnerische Bauern
+        // in der Nähe des Königs pro Rang
+        static constexpr int32_t PAWN_STORM_BONUS[8] = {
+            0, -3, -3, -8, -19, -25, -26, 0
+        };
+
+        static constexpr Bitboard pawnStormMask[2][64] = {
+            // White
+            {
+                0x303030303030300ULL,0x707070707070700ULL,0xe0e0e0e0e0e0e00ULL,0x1c1c1c1c1c1c1c00ULL,0x3838383838383800ULL,0x7070707070707000ULL,0xe0e0e0e0e0e0e000ULL,0xc0c0c0c0c0c0c000ULL,
+                0x303030303030000ULL,0x707070707070000ULL,0xe0e0e0e0e0e0000ULL,0x1c1c1c1c1c1c0000ULL,0x3838383838380000ULL,0x7070707070700000ULL,0xe0e0e0e0e0e00000ULL,0xc0c0c0c0c0c00000ULL,
+                0x303030303000000ULL,0x707070707000000ULL,0xe0e0e0e0e000000ULL,0x1c1c1c1c1c000000ULL,0x3838383838000000ULL,0x7070707070000000ULL,0xe0e0e0e0e0000000ULL,0xc0c0c0c0c0000000ULL,
+                0x303030300000000ULL,0x707070700000000ULL,0xe0e0e0e00000000ULL,0x1c1c1c1c00000000ULL,0x3838383800000000ULL,0x7070707000000000ULL,0xe0e0e0e000000000ULL,0xc0c0c0c000000000ULL,
+                0x303030000000000ULL,0x707070000000000ULL,0xe0e0e0000000000ULL,0x1c1c1c0000000000ULL,0x3838380000000000ULL,0x7070700000000000ULL,0xe0e0e00000000000ULL,0xc0c0c00000000000ULL,
+                0x303000000000000ULL,0x707000000000000ULL,0xe0e000000000000ULL,0x1c1c000000000000ULL,0x3838000000000000ULL,0x7070000000000000ULL,0xe0e0000000000000ULL,0xc0c0000000000000ULL,
+                0x300000000000000ULL,0x700000000000000ULL,0xe00000000000000ULL,0x1c00000000000000ULL,0x3800000000000000ULL,0x7000000000000000ULL,0xe000000000000000ULL,0xc000000000000000ULL,
+                0x0ULL,0x0ULL,0x0ULL,0x0ULL,0x0ULL,0x0ULL,0x0ULL,0x0ULL,
+            },
+            // Black
+            {
+                0x0ULL,0x0ULL,0x0ULL,0x0ULL,0x0ULL,0x0ULL,0x0ULL,0x0ULL,
+                0x3ULL,0x7ULL,0xeULL,0x1cULL,0x38ULL,0x70ULL,0xe0ULL,0xc0ULL,
+                0x303ULL,0x707ULL,0xe0eULL,0x1c1cULL,0x3838ULL,0x7070ULL,0xe0e0ULL,0xc0c0ULL,
+                0x30303ULL,0x70707ULL,0xe0e0eULL,0x1c1c1cULL,0x383838ULL,0x707070ULL,0xe0e0e0ULL,0xc0c0c0ULL,
+                0x3030303ULL,0x7070707ULL,0xe0e0e0eULL,0x1c1c1c1cULL,0x38383838ULL,0x70707070ULL,0xe0e0e0e0ULL,0xc0c0c0c0ULL,
+                0x303030303ULL,0x707070707ULL,0xe0e0e0e0eULL,0x1c1c1c1c1cULL,0x3838383838ULL,0x7070707070ULL,0xe0e0e0e0e0ULL,0xc0c0c0c0c0ULL,
+                0x30303030303ULL,0x70707070707ULL,0xe0e0e0e0e0eULL,0x1c1c1c1c1c1cULL,0x383838383838ULL,0x707070707070ULL,0xe0e0e0e0e0e0ULL,0xc0c0c0c0c0c0ULL,
+                0x3030303030303ULL,0x7070707070707ULL,0xe0e0e0e0e0e0eULL,0x1c1c1c1c1c1c1cULL,0x38383838383838ULL,0x70707070707070ULL,0xe0e0e0e0e0e0e0ULL,0xc0c0c0c0c0c0c0ULL,
             }
         };
 };

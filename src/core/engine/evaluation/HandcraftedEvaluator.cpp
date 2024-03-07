@@ -244,7 +244,7 @@ void HandcraftedEvaluator::calculateGamePhase() {
 }
 
 int32_t HandcraftedEvaluator::calculateKingSafetyScore() {
-    return evaluateKingAttackZone() + evaluatePawnShield();
+    return evaluateKingAttackZone() + evaluatePawnShield() + evaluateOpenFiles() + evaluatePawnStorm();
 }
 
 int32_t HandcraftedEvaluator::evaluateKingAttackZone() {
@@ -381,6 +381,60 @@ int32_t HandcraftedEvaluator::evaluatePawnShield() {
 
     score += PAWN_SHIELD_SIZE_BONUS[whitePawnShieldSize];
     score -= PAWN_SHIELD_SIZE_BONUS[blackPawnShieldSize];
+
+    return score * (1 - evaluationVars.phase);
+}
+
+int32_t HandcraftedEvaluator::evaluateOpenFiles() {
+    int32_t score = 0;
+
+    int32_t whiteKingSquare = board.getKingSquare(WHITE);
+    int32_t blackKingSquare = board.getKingSquare(BLACK);
+
+    int32_t whiteKingFile = Square::fileOf(whiteKingSquare);
+    int32_t blackKingFile = Square::fileOf(blackKingSquare);
+
+    Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
+    Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);
+
+    int32_t whiteOpenFiles = 0;
+    int32_t blackOpenFiles = 0;
+
+    for(int32_t file : nearbyFiles[whiteKingFile])
+        if(!(whitePawns & fileMasks[file]))
+            whiteOpenFiles++;
+
+    for(int32_t file : nearbyFiles[blackKingFile])
+        if(!(blackPawns & fileMasks[file]))
+            blackOpenFiles++;
+
+    score += KING_OPEN_FILE_BONUS[whiteOpenFiles];
+    score -= KING_OPEN_FILE_BONUS[blackOpenFiles];
+
+    return score * (1 - evaluationVars.phase);
+}
+
+int32_t HandcraftedEvaluator::evaluatePawnStorm() {
+    int32_t score = 0;
+
+    int32_t whiteKingSquare = board.getKingSquare(WHITE);
+    int32_t blackKingSquare = board.getKingSquare(BLACK);
+
+    Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
+    Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);
+
+    Bitboard whitePawnStorm = pawnStormMask[WHITE / COLOR_MASK][whiteKingSquare] & blackPawns;
+    Bitboard blackPawnStorm = pawnStormMask[BLACK / COLOR_MASK][blackKingSquare] & whitePawns;
+
+    while(whitePawnStorm) {
+        int32_t sq = whitePawnStorm.popFSB();
+        score += PAWN_STORM_BONUS[Square::rankOf(sq)];
+    }
+
+    while(blackPawnStorm) {
+        int32_t sq = blackPawnStorm.popFSB();
+        score -= PAWN_STORM_BONUS[Square::rankOf(Square::flipY(sq))];
+    }
 
     return score * (1 - evaluationVars.phase);
 }

@@ -11,7 +11,7 @@
 #include <vector>
 
 /**
- * @brief Array Klasse mit statischer Größe. Für Geschwindigkeit optimiert.
+ * @brief Array-Klasse mit statischer Kapazität und variabler Größe.
  * Bei einer Zugriffsoperation wird nicht geprüft, ob der Index gültig ist.
  * 
  * @tparam T Der Typ der Elemente im Array.
@@ -36,25 +36,44 @@ class Array {
 
         constexpr Array() : count(0) {}
 
-        Array(const Array<T, s>& other) {
+        inline Array(const Array<T, s>& other) requires(!std::is_constant_evaluated()) {
             count = other.count;
             memcpy(array, other.array, sizeof(T) * count);
+        }
+
+        constexpr Array(const Array<T, s>& other) requires(std::is_constant_evaluated()) {
+            count = other.count;
+            std::copy(other.array, other.array + count, array);
+            std::fill(array + count, array + s, T());
         }
 
         constexpr Array(const std::initializer_list<T>& list) {
             count = 0;
             for(const T& elem : list)
                 array[count++] = elem;
+
+            std::fill(array + count, array + s, T());
         }
 
         constexpr ~Array() = default;
 
-        constexpr Array& operator=(const Array& other) {
+        inline Array& operator=(const Array& other) requires(!std::is_constant_evaluated()) {
             if(this == &other)
                 return *this;
 
             count = other.count;
             memcpy(array, other.array, sizeof(T) * count);
+
+            return *this;
+        }
+
+        constexpr Array& operator=(const Array& other) requires(std::is_constant_evaluated()) {
+            if(this == &other)
+                return *this;
+
+            count = other.count;
+            std::copy(other.array, other.array + count, array);
+            std::fill(array + count, array + s, T());
 
             return *this;
         }
