@@ -37,20 +37,20 @@ class HandcraftedEvaluator: public Evaluator {
         static constexpr int16_t MG_PIECE_VALUE[7] = {
             0, // Empty
             100, // Pawn
-            310, // Knight
-            330, // Bishop
-            500, // Rook
-            950, // Queen
+            400, // Knight
+            410, // Bishop
+            600, // Rook
+            1200, // Queen
             0 // King
         };
 
         static constexpr int16_t EG_PIECE_VALUE[7] = {
             0, // Empty
             110, // Pawn
-            300, // Knight
-            335, // Bishop
-            525, // Rook
-            1030, // Queen
+            380, // Knight
+            430, // Bishop
+            640, // Rook
+            1250, // Queen
             0 // King
         };
 
