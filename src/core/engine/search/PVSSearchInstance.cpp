@@ -81,8 +81,21 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     // Leere den Eintrag im Suchstack für den aktuellen Abstand zum Wurzelknoten.
     clearSearchStack(ply);
 
-    // Ermittele die statische Bewertung der Position.
-    searchStack[ply].staticEvaluation = evaluator.evaluate();
+    /**
+     * Ermittele die vorläufige Bewertung der Position.
+     * Die vorläufige Bewertung ist die eingetragene Bewertung
+     * in der Transpositionstabelle oder die statische Bewertung,
+     * wenn kein Eintrag existiert.
+     */
+    searchStack[ply].preliminaryScore = entryExists ? entry.score : evaluator.evaluate();
+
+    /**
+     * Überprüfe, ob der aktuelle Pfad zu einer plausiblen
+     * Position führt, d.h. die vorläufige Bewertung liegt
+     * innerhalb oder in der Nähe des Suchfensters.
+     */
+    bool isPlausibleLine = searchStack[ply].preliminaryScore > alpha - 100 &&
+                           searchStack[ply].preliminaryScore < beta + 100;
 
     /**
      * Null-Move-Pruning:
@@ -101,12 +114,12 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     if(allowNullMove && !board.isCheck() && nodeType != PV_NODE &&
        depth > ONE_PLY && !deactivateNullMove()) {
 
-        int16_t staticEvaluation = searchStack[ply].staticEvaluation;
-        if(staticEvaluation > beta) {
+        int16_t preliminaryEval = searchStack[ply].preliminaryScore;
+        if(preliminaryEval > beta) {
             Move nullMove = Move::nullMove();
             board.makeMove(nullMove);
 
-            int16_t score = -pvs(depth - calculateNullMoveReduction(depth, staticEvaluation, beta),
+            int16_t score = -pvs(depth - calculateNullMoveReduction(depth, preliminaryEval, beta),
                                  ply + 1, -beta, -beta + 1, false, CUT_NODE);
 
             board.undoMove();
@@ -141,17 +154,23 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
     /**
      * Multi-Cut:
-     * Wenn wir uns in einem Cut-Knoten befinden, d.h. wir erwarten
-     * einen Beta-Schnitt, überprüfen wir, ob C der ersten M >= C Züge
+     * Wenn wir uns in einem Cut-Knoten oder einem All-Knoten mit vorläufiger Bewertung >= beta befinden,
+     * d.h. wir erwarten einen Beta-Schnitt, überprüfen wir, ob C der ersten M >= C Züge
      * in einer reduzierten Suche zu einem Beta-Schnitt führen.
      * 
      * Wenn das der Fall ist, gehen wir davon aus, dass mindestens einer
      * dieser Züge auch bei einer vollständigen Suche zu einem Beta-Schnitt
      * führen wird und brechen die Suche ab vorzeitig ab.
      */
-    if(nodeType == CUT_NODE && depth >= 8 * ONE_PLY &&
+    if((nodeType == CUT_NODE || (nodeType == ALL_NODE && searchStack[ply].preliminaryScore >= beta)) &&
+       depth > (4 + isPlausibleLine * 3) * ONE_PLY &&
        searchStack[ply].moveScorePairs.size() >= MULTICUT_C) {
         int16_t reducedDepth = depth - 4 * ONE_PLY;
+
+        // Erlaube stärkere Reduktionen in nicht plausiblen Positionen
+        if(!isPlausibleLine)
+            reducedDepth = std::min((int32_t)reducedDepth, depth / (2 * ONE_PLY) * ONE_PLY);
+
         int16_t numFailHighs = 0, bestScore = MIN_SCORE;
         Move bestMove;
 
@@ -311,8 +330,8 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
         /**
          * Futility Pruning:
-         * Wenn wir uns in einer geringen Suchtiefe befinden, unsere momentane
-         * statische Bewertung weit unter alpha liegt und der Zug nicht offensichtlich
+         * Wenn wir uns in einer geringen Suchtiefe befinden, unsere vorläufige
+         * Bewertung weit unter alpha liegt und der Zug nicht offensichtlich
          * gut ist (hohe Bewertung in Vorsortierung), dann können wir den Zug überspringen.
          * 
          * Aus taktischen Gründen wird Futility Pruning nicht angewandt, wenn wir
@@ -323,7 +342,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
         if(depth <= 2 * ONE_PLY && moveScore < KILLER_MOVE_SCORE && !isCheckEvasion &&
            nodeType != PV_NODE && !(isMateScore(alpha) || isMateScore(beta)) && !move.isCapture()) {
             
-            int16_t staticEvaluation = searchStack[ply].staticEvaluation;
+            int16_t preliminaryEval = searchStack[ply].preliminaryScore;
 
             // Führe den Zug aus und informiere den Evaluator.
             evaluator.updateBeforeMove(move);
@@ -333,14 +352,14 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
             bool isCheck = board.isCheck();
 
             int16_t futilityMargin = calculateFutilityMargin(depth);
-            if(!isCheck && staticEvaluation + futilityMargin < alpha) {
+            if(!isCheck && preliminaryEval + futilityMargin < alpha) {
                 // Mache den Zug rückgängig und informiere den Evaluator.
                 evaluator.updateBeforeUndo();
                 board.undoMove();
                 evaluator.updateAfterUndo(move);
 
                 if(moveCount == 0) {
-                    bestScore = staticEvaluation;
+                    bestScore = preliminaryEval;
                     bestMove = move;
                 }
 
@@ -398,13 +417,44 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
          * Ähnlich wie bei der Singular Reply Extension, erweitern wir die Suchtiefe
          * unter bestimmten Bedingungen.
          */
+
+        /**
+         * Schacherweiterung:
+         * Wenn der Zug den Gegner in Schach setzt, erweitern wir die Suchtiefe.
+         */
         if(board.isCheck()) {
             // Erweitere die Suchtiefe, wenn der Zug den Gegner in Schach setzt.
-            if(extension == 0 && extensionsOnPath < currentSearchDepth * ONE_PLY)
+            if(extensionsOnPath + extension < currentSearchDepth * ONE_PLY)
                 extension += ONE_PLY;
             else
                 disableLMR = true; // Keine Reduktionen in Zügen, die den Gegner in Schach setzen
         }
+
+        /**
+         * Recapture-Erweiterung:
+         * Wenn dieser Zug die Figur schlägt, die gerade eine unserer Figuren
+         * geschlagen hat, erweitern wir die Suchtiefe.
+         * Diese Erweiterung wird übersprungen, wenn wir bereits durch eine
+         * andere Bedingung erweitern.
+         */
+        if(extension == 0 && moveScore >= GOOD_CAPTURE_MOVES_MIN && move.isCapture() &&
+           extensionsOnPath < currentSearchDepth / 2 * ONE_PLY) {
+            Move previousMove = Move::nullMove();
+            const std::vector<MoveHistoryEntry>& history = board.getMoveHistory();
+            if(history.size() >= 2)
+                previousMove = history[history.size() - 2].move;
+
+            if(previousMove.exists() && previousMove.isCapture() &&
+               previousMove.getDestination() == move.getDestination())
+                extension += ONE_PLY;
+        }
+
+        /**
+         * Erweitere plausible Pfade, die stark reduziert wurden.
+         */
+        if(extension == 0 && isPlausibleLine && moveScore >= NEUTRAL_SCORE &&
+           ply + depth / ONE_PLY < currentSearchDepth / 2)
+            extension += ONE_PLY;
 
         extensionsOnPath += extension;
 
@@ -600,15 +650,17 @@ int16_t PVSSearchInstance::quiescence(uint16_t ply, int16_t alpha, int16_t beta)
     // Leere den Eintrag im Suchstack für den aktuellen Abstand zum Wurzelknoten.
     clearSearchStack(ply);
 
-    // Ermittele die statische Bewertung der Position.
-    searchStack[ply].staticEvaluation = evaluator.evaluate();
+    // Ermittele die vorläufige Bewertung der Position.
+    // In der Quieszenzsuche ist die vorläufige Bewertung die
+    // statische Bewertung der Position.
+    searchStack[ply].preliminaryScore = evaluator.evaluate();
 
     // Wir betrachten in der Quieszenzsuche (außer wenn wir im Schach stehen)
     // nicht alle Züge. Wenn wir die Bewertung mit den Zügen, die wir betrachten,
-    // nur verschlechtern können, geben wir die statische Bewertung unter der
+    // nur verschlechtern können, geben wir die vorläufige Bewertung unter der
     // Annahme zurück, dass einer der nicht betrachteten Züge zu einer
     // besseren Bewertung führen würde.
-    int16_t standPat = searchStack[ply].staticEvaluation;
+    int16_t standPat = searchStack[ply].preliminaryScore;
 
     // Delta Pruning:
     // Der größtmögliche Materialgewinn in einem Zug reicht nicht aus,
@@ -697,8 +749,18 @@ int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore, in
     // Passe die Reduktion an die relative Vergangenheitsbewertung des Zuges an.
     // -> Bessere Züge werden weniger reduziert.
     int32_t historyScore = getHistoryScore(lastMove, board.getSideToMove() ^ COLOR_MASK);
-    int32_t historyReduction = -historyScore / 16384 * ONE_PLY;
+    int32_t historyReduction = -historyScore / 8192 * ONE_PLY;
     reduction += historyReduction;
+
+    // Freibauerzüge werden maximal um eine zusätzliche Suchtiefe reduziert.
+    int32_t movedPieceType = TYPEOF(board.pieceAt(lastMove.getDestination()));
+    if(movedPieceType == PAWN) {
+        int32_t side = board.getSideToMove() ^ COLOR_MASK;
+        int32_t otherSide = side ^ COLOR_MASK;
+        if(!(sentryMasks[side / COLOR_MASK][lastMove.getDestination()]
+            & board.getPieceBitboard(otherSide | PAWN)))
+            reduction = std::min(reduction, (int32_t)ONE_PLY);
+    }
 
     // Wir reduzieren nie direkt in eine Quieszenzsuche hinein.
     return std::clamp(reduction, 0, depth - 2 * ONE_PLY);
@@ -796,7 +858,7 @@ void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t
 
         if(reducedDepth > 0) {
             // Führe die interne iterative Tiefensuche durch.
-            int16_t iidScore = searchStack[ply].staticEvaluation;
+            int16_t iidScore = searchStack[ply].preliminaryScore;
 
             Array<Move, 256> searchMoves;
 

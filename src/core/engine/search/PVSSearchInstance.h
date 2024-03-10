@@ -30,7 +30,7 @@ class PVSSearchInstance {
         struct SearchStackEntry {
             Array<MoveScorePair, 256> moveScorePairs;
             Move hashMove = Move::nullMove();
-            int16_t staticEvaluation = 0;
+            int16_t preliminaryScore = 0;
         };
 
         Board board;
@@ -387,7 +387,7 @@ class PVSSearchInstance {
 
         constexpr void clearSearchStack(uint16_t ply) {
             clearMovesInSearchStack(ply);
-            searchStack[ply].staticEvaluation = 0;
+            searchStack[ply].preliminaryScore = 0;
         }
 
         constexpr void addKillerMove(uint16_t ply, Move move) {
