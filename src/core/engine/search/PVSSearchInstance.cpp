@@ -317,7 +317,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     }
 
     uint8_t ttEntryType = TranspositionTableEntry::UPPER_BOUND;
-    int16_t bestScore = MIN_SCORE, lmpCount = determineLMPCount(depth, isCheckEvasion);
+    int16_t bestScore = MIN_SCORE, lmpCount = determineLMPCount(depth, isCheckEvasion, isPlausibleLine);
     moveCount = 0;
     Move bestMove;
 
@@ -424,7 +424,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
          */
         if(board.isCheck()) {
             // Erweitere die Suchtiefe, wenn der Zug den Gegner in Schach setzt.
-            if(extensionsOnPath + extension < currentSearchDepth * ONE_PLY)
+            if(extension == 0 && extensionsOnPath < currentSearchDepth * ONE_PLY)
                 extension += ONE_PLY;
             else
                 disableLMR = true; // Keine Reduktionen in Zügen, die den Gegner in Schach setzen
@@ -452,7 +452,8 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
         /**
          * Erweitere plausible Pfade, die stark reduziert wurden.
          */
-        if(extension == 0 && isPlausibleLine && moveScore >= NEUTRAL_SCORE &&
+        if(extension == 0 && extensionsOnPath < currentSearchDepth / 4 * ONE_PLY &&
+           isPlausibleLine && moveScore > NEUTRAL_SCORE && moveCount < 5 &&
            ply + depth / ONE_PLY < currentSearchDepth / 2)
             extension += ONE_PLY;
 
@@ -466,8 +467,12 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
             // auf ersten Blick, uninteressanten Zügen mit einer reduzierten Suchtiefe
             // (=> Late Move Reductions).
             int16_t reduction = 0;
-            if(!disableLMR && depth >= 3 * ONE_PLY && extension == 0 && !isCheckEvasion)
-                reduction = determineLMR(moveCount + 1, moveScore, depth);
+            if(!disableLMR && depth >= 3 * ONE_PLY && extension == 0 && !isCheckEvasion) {
+                reduction = determineLMR(moveCount + 1, moveScore, depth, isPlausibleLine);
+
+                if(singularExtension > 0)
+                    reduction += std::min(reduction + 2 * ONE_PLY, depth - 2 * ONE_PLY);
+            }
 
             score = -pvs(depth - ONE_PLY + extension - reduction, ply + 1, -alpha - 1, -alpha, true, childType);
 
@@ -731,7 +736,7 @@ int16_t PVSSearchInstance::quiescence(uint16_t ply, int16_t alpha, int16_t beta)
     return bestScore;
 }
 
-int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore, int16_t depth) {
+int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore, int16_t depth, bool isPlausibleLine) {
     // LMR reduziert nie den ersten Zug
     if(moveCount <= 1)
         return 0;
@@ -744,32 +749,26 @@ int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore, in
 
     // Reduziere standardmäßig anhand einer logarithmischen Funktion.
     int32_t reduction = ONE_PLY * (int32_t)(std::log2(moveCount));
-    reduction = std::min(reduction, std::max(2 * ONE_PLY, depth / (6 * ONE_PLY) * ONE_PLY));
+    reduction = std::min(reduction, std::max((1 + !isPlausibleLine) * ONE_PLY,
+                                              depth / ((5 + isPlausibleLine) * ONE_PLY) * ONE_PLY));
 
     // Passe die Reduktion an die relative Vergangenheitsbewertung des Zuges an.
     // -> Bessere Züge werden weniger reduziert.
     int32_t historyScore = getHistoryScore(lastMove, board.getSideToMove() ^ COLOR_MASK);
-    int32_t historyReduction = -historyScore / 8192 * ONE_PLY;
+    int32_t historyReduction = -historyScore / 16384 * ONE_PLY;
     reduction += historyReduction;
 
-    // Freibauerzüge werden maximal um eine zusätzliche Suchtiefe reduziert.
-    int32_t movedPieceType = TYPEOF(board.pieceAt(lastMove.getDestination()));
-    if(movedPieceType == PAWN) {
-        int32_t side = board.getSideToMove() ^ COLOR_MASK;
-        int32_t otherSide = side ^ COLOR_MASK;
-        if(!(sentryMasks[side / COLOR_MASK][lastMove.getDestination()]
-            & board.getPieceBitboard(otherSide | PAWN)))
-            reduction = std::min(reduction, (int32_t)ONE_PLY);
-    }
+    if(!isPlausibleLine && moveScore <= BAD_CAPTURE_MOVES_MAX)
+        reduction += ONE_PLY;
 
     // Wir reduzieren nie direkt in eine Quieszenzsuche hinein.
     return std::clamp(reduction, 0, depth - 2 * ONE_PLY);
 }
 
-int16_t PVSSearchInstance::determineLMPCount(int16_t depth, bool isCheckEvasion) {
+int16_t PVSSearchInstance::determineLMPCount(int16_t depth, bool isCheckEvasion, bool isPlausibleLine) {
     // LMP wird nur in geringen Tiefen,
     // nicht in Schachabwehrzügen angewandt.
-    if(depth >= 6 * ONE_PLY || isCheckEvasion)
+    if(depth >= 6 * ONE_PLY || isCheckEvasion || isPlausibleLine)
         return std::numeric_limits<int16_t>::max();
 
     // Standardmäßig müssen mindestens 8 Züge betrachtet werden.
