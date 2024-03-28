@@ -31,6 +31,7 @@ class PVSSearchInstance {
             Array<MoveScorePair, 256> moveScorePairs;
             Move hashMove = Move::nullMove();
             int16_t preliminaryScore = 0;
+            bool isPlausibleLine = false;
         };
 
         Board board;
@@ -181,18 +182,18 @@ class PVSSearchInstance {
          * @param moveCount Die Platzierung des Knotens in der Zugvorsortierung.
          * @param moveScore Die Bewertung des letzten Zuges durch die Zugvorsortierung.
          * @param depth Die verbleibende Suchtiefe.
+         * @param nodeType Der erwartete Typ des Knotens.
          * @param isPlausibleLine Gibt an, ob der Knoten durch eine plausible
          * Variante erreicht wurde.
          * @return Die Tiefe, um die der Knoten zusätzlich reduziert werden soll.
          */
-        int16_t determineLMR(int16_t moveCount, int16_t moveScore, int16_t depth, bool isPlausibleLine);
+        int16_t determineLMR(int16_t moveCount, int16_t moveScore, int16_t depth, uint8_t nodeType, bool isPlausibleLine);
 
         /**
          * @brief Bestimmt, ab welchem Zug das Null Move Pruning
          * angewendet werden darf.
          * 
          * @param depth Die verbleibende Suchtiefe.
-         * @param moveScore Die Bewertung des letzten Zuges durch die Zugvorsortierung.
          * @param isCheckEvasion Gibt an, ob die Position eine
          * Schachabwehr ist.
          * @param isPlausibleLine Gibt an, ob der Knoten durch eine plausible
@@ -392,6 +393,7 @@ class PVSSearchInstance {
         constexpr void clearSearchStack(uint16_t ply) {
             clearMovesInSearchStack(ply);
             searchStack[ply].preliminaryScore = 0;
+            searchStack[ply].isPlausibleLine = false;
         }
 
         constexpr void addKillerMove(uint16_t ply, Move move) {

@@ -131,7 +131,7 @@ class HandcraftedEvaluator: public Evaluator {
             return evaluation;
         }
 
-        constexpr double getGamePhase() const {
+        inline double getGamePhase() const {
             return evaluationVars.phase;
         }
 

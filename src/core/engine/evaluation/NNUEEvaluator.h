@@ -46,6 +46,10 @@ class NNUEEvaluator: public Evaluator {
             return evaluation;
         }
 
+        inline double getGamePhase() const {
+            return gamePhase;
+        }
+
         inline void updateBeforeMove(Move move) override {
             int32_t capturedPiece = board.pieceAt(move.getDestination());
             int32_t promotedPieceType = EMPTY;
