@@ -277,10 +277,10 @@ class HandcraftedEvaluator: public Evaluator {
 
         static constexpr size_t NUM_ATTACKER_WEIGHT_SIZE = sizeof(NUM_ATTACKER_WEIGHT) / sizeof(NUM_ATTACKER_WEIGHT[0]);
 
-        static constexpr int32_t KNIGHT_ATTACK_WEIGHT = 20;
-        static constexpr int32_t BISHOP_ATTACK_WEIGHT = 20;
-        static constexpr int32_t ROOK_ATTACK_WEIGHT = 37;
-        static constexpr int32_t QUEEN_ATTACK_WEIGHT = 65;
+        static constexpr int32_t KNIGHT_ATTACK_WEIGHT = 15;
+        static constexpr int32_t BISHOP_ATTACK_WEIGHT = 15;
+        static constexpr int32_t ROOK_ATTACK_WEIGHT = 43;
+        static constexpr int32_t QUEEN_ATTACK_WEIGHT = 85;
 
         static constexpr Bitboard kingAttackZone[64] = {
             0x30707ULL,0x70f0fULL,0xe0e0eULL,0x1c1c1cULL,0x383838ULL,0x707070ULL,0xe0f0f0ULL,0xc0e0e0ULL,
@@ -294,7 +294,7 @@ class HandcraftedEvaluator: public Evaluator {
         };
 
         static constexpr int32_t PAWN_SHIELD_SIZE_BONUS[4] = {
-            -32, 4, 16, 30
+            0, 23, 81, 100
         };
 
         static constexpr size_t PAWN_SHIELD_SIZE_BONUS_SIZE = sizeof(PAWN_SHIELD_SIZE_BONUS) / sizeof(PAWN_SHIELD_SIZE_BONUS[0]);
@@ -326,7 +326,7 @@ class HandcraftedEvaluator: public Evaluator {
 
         // Bestrafung für offene Linien (keine eigenen Bauern) in der Nähe des Königs
         static constexpr int32_t KING_OPEN_FILE_BONUS[4] = {
-            0, -25, -65, -69
+            0, -18, -25, -30
         };
 
         static constexpr Bitboard fileMasks[8] = {
@@ -354,7 +354,7 @@ class HandcraftedEvaluator: public Evaluator {
         // Bestrafung für fortgeschrittene gegnerische Bauern
         // in der Nähe des Königs pro Rang
         static constexpr int32_t PAWN_STORM_BONUS[8] = {
-            0, -3, -3, -8, -19, -25, -26, 0
+            0, -3, -3, -14, -25, -40, -50, 0
         };
 
         static constexpr Bitboard pawnStormMask[2][64] = {

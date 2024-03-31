@@ -74,25 +74,20 @@ static constexpr int16_t NEUTRAL_SCORE = 0;
  * Bewertungen für die Zugvorsortierung
  */
 
-static constexpr int32_t BAD_CAPTURE_MOVES_MIN = MIN_SCORE + 1;
-static constexpr int32_t BAD_CAPTURE_MOVES_NEUTRAL = BAD_CAPTURE_MOVES_MIN + 900;
-static constexpr int32_t BAD_CAPTURE_MOVES_MAX = BAD_CAPTURE_MOVES_NEUTRAL;
 static constexpr int32_t HASH_MOVE_SCORE = MAX_SCORE - 1;
 static constexpr int32_t GOOD_CAPTURE_MOVES_MAX = HASH_MOVE_SCORE - 1;
 static constexpr int32_t GOOD_CAPTURE_MOVES_NEUTRAL = GOOD_CAPTURE_MOVES_MAX - 900;
 static constexpr int32_t GOOD_CAPTURE_MOVES_MIN = GOOD_CAPTURE_MOVES_NEUTRAL;
 static constexpr int32_t KILLER_MOVE_SCORE = GOOD_CAPTURE_MOVES_MIN - 1;
-static constexpr int32_t QUIET_MOVES_MIN = BAD_CAPTURE_MOVES_MAX + 1;
+static constexpr int32_t QUIET_MOVES_MIN = MIN_SCORE + 1;
 static constexpr int32_t QUIET_MOVES_NEUTRAL = NEUTRAL_SCORE;
 static constexpr int32_t QUIET_MOVES_MAX = KILLER_MOVE_SCORE - 1;
 
 static_assert(MIN_SCORE < QUIET_MOVES_MIN);
 static_assert(QUIET_MOVES_MIN < QUIET_MOVES_NEUTRAL && QUIET_MOVES_NEUTRAL < QUIET_MOVES_MAX);
-static_assert(BAD_CAPTURE_MOVES_MIN < BAD_CAPTURE_MOVES_NEUTRAL && BAD_CAPTURE_MOVES_NEUTRAL <= BAD_CAPTURE_MOVES_MAX);
-static_assert(BAD_CAPTURE_MOVES_MAX < KILLER_MOVE_SCORE && KILLER_MOVE_SCORE < GOOD_CAPTURE_MOVES_MIN);
+static_assert(KILLER_MOVE_SCORE < GOOD_CAPTURE_MOVES_MIN);
 static_assert(GOOD_CAPTURE_MOVES_MIN <= GOOD_CAPTURE_MOVES_NEUTRAL && GOOD_CAPTURE_MOVES_NEUTRAL < GOOD_CAPTURE_MOVES_MAX);
 static_assert(GOOD_CAPTURE_MOVES_MAX < HASH_MOVE_SCORE && HASH_MOVE_SCORE < MAX_SCORE);
-static_assert(BAD_CAPTURE_MOVES_MAX < QUIET_MOVES_MIN);
 static_assert(QUIET_MOVES_MIN < NEUTRAL_SCORE && NEUTRAL_SCORE < QUIET_MOVES_MAX);
 static_assert(QUIET_MOVES_MAX < KILLER_MOVE_SCORE);
 static_assert(KILLER_MOVE_SCORE < GOOD_CAPTURE_MOVES_MIN);
@@ -119,10 +114,7 @@ static constexpr uint8_t ALL_NODE = 2;
  * @return Die Reduktion in Plies.
  */
 static constexpr int16_t calculateNullMoveReduction(int16_t depth, int16_t staticEval, int16_t beta) {
-    int16_t reduction = 2 * ONE_PLY + depth / 3 + std::min((staticEval - beta) / 128, 3) * ONE_PLY;
-
-    // Runde auf nächstes Vielfaches von ONE_PLY ab
-    return (reduction / ONE_PLY) * ONE_PLY;
+    return 2 * ONE_PLY + (std::min((staticEval - beta) / 384, 2) + depth / (16 * ONE_PLY)) * ONE_PLY;
 }
 
 /**

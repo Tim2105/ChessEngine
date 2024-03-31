@@ -158,6 +158,13 @@ class PVSSearchInstance {
         size_t numThreads = 1;
 
         /**
+         * @brief Speichert die Anzahl der Varianten, die von der
+         * Suche konstruiert werden sollen. Diese Variable wird automatisch
+         * im Konstruktor auf den Wert der UCI-Option "MultiPV" gesetzt.
+         */
+        size_t numPVs = 1;
+
+        /**
          * @brief Eine Funktion, die von der Suchinstanz während der Suche
          * regelmaßig aufgerufen wird.
          */
@@ -183,11 +190,9 @@ class PVSSearchInstance {
          * @param moveScore Die Bewertung des letzten Zuges durch die Zugvorsortierung.
          * @param depth Die verbleibende Suchtiefe.
          * @param nodeType Der erwartete Typ des Knotens.
-         * @param isPlausibleLine Gibt an, ob der Knoten durch eine plausible
-         * Variante erreicht wurde.
          * @return Die Tiefe, um die der Knoten zusätzlich reduziert werden soll.
          */
-        int16_t determineLMR(int16_t moveCount, int16_t moveScore, int16_t depth, uint8_t nodeType, bool isPlausibleLine);
+        int16_t determineLMR(int16_t moveCount, int16_t moveScore, int16_t depth, uint8_t nodeType);
 
         /**
          * @brief Bestimmt, ab welchem Zug das Null Move Pruning
@@ -295,6 +300,9 @@ class PVSSearchInstance {
 
             // Setze die Anzahl der Threads.
             numThreads = UCI::options["Threads"].getValue<size_t>();
+
+            // Setze die Anzahl der Varianten.
+            numPVs = UCI::options["MultiPV"].getValue<size_t>();
         }
 
         /**

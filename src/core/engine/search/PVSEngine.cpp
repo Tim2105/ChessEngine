@@ -356,12 +356,12 @@ void PVSEngine::search(const UCI::SearchParams& params) {
             searchMoves.remove_first(bestMove);
 
             // Soll die Suche abgebrochen werden?
-            if(stopFlag.load() && maxDepthReached > 0)
+            if(stopFlag.load() && maxDepthReached > 4)
                 break;
         }
 
         // Soll die Suche abgebrochen werden?
-        if(stopFlag.load() && maxDepthReached > 0)
+        if(stopFlag.load() && maxDepthReached > 4)
             break;
 
         // Wir haben eine Tiefe vollständig durchsucht.
