@@ -144,9 +144,14 @@ void HandcraftedEvaluator::calculatePawnScore() {
     Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
     Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);
 
+    Bitboard whitePawnAttacks = board.getPieceAttackBitboard(WHITE_PAWN);
+    Bitboard blackPawnAttacks = board.getPieceAttackBitboard(BLACK_PAWN);
+
     Bitboard doubleWhitePawns = 0, doubleBlackPawns = 0;
     Bitboard isolatedWhitePawns = 0, isolatedBlackPawns = 0;
+    Bitboard backwardWhitePawns = 0, backwardBlackPawns = 0;
     Bitboard whitePassedPawns = 0, blackPassedPawns = 0;
+    Bitboard whiteStrongSqaures = 0, blackStrongSqaures = 0;
 
     Bitboard tmp = whitePawns;
     while(tmp) {
@@ -154,15 +159,32 @@ void HandcraftedEvaluator::calculatePawnScore() {
 
         // Doppelbauern
         doubleWhitePawns |= whitePawns & fileFacingEnemy[WHITE / COLOR_MASK][sq];
-        
+
         // Isolierte Bauern
-        int32_t file = SQ2F(sq);
+        int32_t file = Square::fileOf(sq);
         if(!(whitePawns & neighboringFiles[file]))
             isolatedWhitePawns.setBit(sq);
+        else {
+            // Rückständige Bauern
+            int32_t rank = Square::rankOf(sq);
+            if(!(whitePawns & backwardPawnMask[WHITE / COLOR_MASK][sq]) &&
+            blackPawnAttacks.getBit(Square::fromFileRank(file, rank + 1)) &&
+            !whitePawnAttacks.getBit(Square::fromFileRank(file, rank + 1)))
+                backwardWhitePawns.setBit(sq);
+        }
 
         // Freibauern
-        if(!(sentryMasks[WHITE / COLOR_MASK][sq] & blackPawns))
+        if(!(sentryMask[WHITE / COLOR_MASK][sq] & blackPawns))
             whitePassedPawns.setBit(sq);
+    }
+
+    tmp = whitePawnAttacks & ~blackPawnAttacks;
+    while(tmp) {
+        int32_t sq = tmp.popFSB();
+
+        // Starke Felder
+        if(!(blackPawns & strongSquareMask[WHITE / COLOR_MASK][sq]))
+            whiteStrongSqaures.setBit(sq);
     }
 
     tmp = blackPawns;
@@ -173,52 +195,95 @@ void HandcraftedEvaluator::calculatePawnScore() {
         doubleBlackPawns |= blackPawns & fileFacingEnemy[BLACK / COLOR_MASK][sq];
 
         // Isolierte Bauern
-        int32_t file = SQ2F(sq);
+        int32_t file = Square::fileOf(sq);
         if(!(blackPawns & neighboringFiles[file]))
             isolatedBlackPawns.setBit(sq);
+        else {
+            // Rückständige Bauern
+            int32_t rank = Square::rankOf(sq);
+            if(!(blackPawns & backwardPawnMask[BLACK / COLOR_MASK][sq]) &&
+            whitePawnAttacks.getBit(Square::fromFileRank(file, rank - 1)) &&
+            !blackPawnAttacks.getBit(Square::fromFileRank(file, rank - 1)))
+                backwardBlackPawns.setBit(sq);
+        }
 
         // Freibauern
-        if(!(sentryMasks[BLACK / COLOR_MASK][sq] & whitePawns))
+        if(!(sentryMask[BLACK / COLOR_MASK][sq] & whitePawns))
             blackPassedPawns.setBit(sq);
+    }
+
+    tmp = blackPawnAttacks & ~whitePawnAttacks;
+    while(tmp) {
+        int32_t sq = tmp.popFSB();
+
+        // Starke Felder
+        if(!(whitePawns & strongSquareMask[BLACK / COLOR_MASK][sq]))
+            blackStrongSqaures.setBit(sq);
     }
 
     // Doppelbauern
     while(doubleWhitePawns) {
-        int32_t file = SQ2F(doubleWhitePawns.popFSB());
+        int32_t file = Square::fileOf(doubleWhitePawns.popFSB());
         score.mg += MG_DOUBLED_PAWN_PENALTY[file];
         score.eg += EG_DOUBLED_PAWN_PENALTY[file];
     }
 
     while(doubleBlackPawns) {
-        int32_t file = SQ2F(doubleBlackPawns.popFSB());
+        int32_t file = Square::fileOf(doubleBlackPawns.popFSB());
         score.mg -= MG_DOUBLED_PAWN_PENALTY[file];
         score.eg -= EG_DOUBLED_PAWN_PENALTY[file];
     }
 
     // Isolierte Bauern
     while(isolatedWhitePawns) {
-        int32_t file = SQ2F(isolatedWhitePawns.popFSB());
+        int32_t file = Square::fileOf(isolatedWhitePawns.popFSB());
         score.mg += MG_ISOLATED_PAWN_PENALTY[file];
         score.eg += EG_ISOLATED_PAWN_PENALTY[file];
     }
 
     while(isolatedBlackPawns) {
-        int32_t file = SQ2F(isolatedBlackPawns.popFSB());
+        int32_t file = Square::fileOf(isolatedBlackPawns.popFSB());
         score.mg -= MG_ISOLATED_PAWN_PENALTY[file];
         score.eg -= EG_ISOLATED_PAWN_PENALTY[file];
     }
 
+    // Rückständige Bauern
+    while(backwardWhitePawns) {
+        int32_t rank = Square::rankOf(backwardWhitePawns.popFSB());
+        score.mg += MG_BACKWARD_PAWN_PENALTY[rank];
+        score.eg += EG_BACKWARD_PAWN_PENALTY[rank];
+    }
+
+    while(backwardBlackPawns) {
+        int32_t rank = Square::rankOf(Square::flipY(backwardBlackPawns.popFSB()));
+        score.mg -= MG_BACKWARD_PAWN_PENALTY[rank];
+        score.eg -= EG_BACKWARD_PAWN_PENALTY[rank];
+    }
+
     // Freibauern
     while(whitePassedPawns) {
-        int32_t rank = SQ2R(whitePassedPawns.popFSB());
+        int32_t rank = Square::rankOf(whitePassedPawns.popFSB());
         score.mg += MG_PASSED_PAWN_BONUS[rank];
         score.eg += EG_PASSED_PAWN_BONUS[rank];
     }
 
     while(blackPassedPawns) {
-        int32_t rank = SQ2R(blackPassedPawns.popFSB());
+        int32_t rank = Square::rankOf(Square::flipY(blackPassedPawns.popFSB()));
         score.mg -= MG_PASSED_PAWN_BONUS[rank];
         score.eg -= EG_PASSED_PAWN_BONUS[rank];
+    }
+
+    // Starke Felder
+    while(whiteStrongSqaures) {
+        int32_t sq = whiteStrongSqaures.popFSB();
+        score.mg += MG_STRONG_SQUARE_BONUS[sq];
+        score.eg += EG_STRONG_SQUARE_BONUS[sq];
+    }
+
+    while(blackStrongSqaures) {
+        int32_t sq = Square::flipY(blackStrongSqaures.popFSB());
+        score.mg -= MG_STRONG_SQUARE_BONUS[sq];
+        score.eg -= EG_STRONG_SQUARE_BONUS[sq];
     }
 
     evaluationVars.pawnScore = score;

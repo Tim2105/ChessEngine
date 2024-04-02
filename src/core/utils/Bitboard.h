@@ -106,6 +106,15 @@ class Bitboard {
         }
 
         /**
+         * @brief Führt ein Byteswap auf dem Bitboard durch.
+         * Ein Byteswap spiegelt die Bits an der horizontalen Achse.
+         */
+        constexpr Bitboard bswap() const {
+            // TODO: Ersetze die intrinsische Funktion durch std::byteswap aus C++23.
+            return Bitboard(__builtin_bswap64(bitboard));
+        }
+
+        /**
          * @brief Erlaubt explizite und implizite Konvertierung in bool.
          */
         constexpr operator bool() const {

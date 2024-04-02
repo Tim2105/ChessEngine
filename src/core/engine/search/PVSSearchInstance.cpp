@@ -258,7 +258,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     int16_t singularExtension = 0;
     int16_t singularDepth = std::min(depth / (2 * ONE_PLY) * ONE_PLY, depth - 4 * ONE_PLY);
 
-    if(nodeType == CUT_NODE && singularDepth > 0 && !(isMateScore(alpha) && alpha < NEUTRAL_SCORE) &&
+    if(nodeType == CUT_NODE && singularDepth > 0 && !isMateScore(alpha) &&
        entryExists && entry.depth * ONE_PLY >= singularDepth && entry.score > alpha &&
        entry.type != TranspositionTableEntry::UPPER_BOUND) {
 

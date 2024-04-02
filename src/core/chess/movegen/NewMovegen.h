@@ -4,6 +4,10 @@
 #include "core/chess/Board.h"
 #include "core/utils/magics/Magics.h"
 
+/**
+ * Die Klasse Movegen stellt statische Hilfsfunktionen bereit, um
+ * legale (Schlag-)Züge für eine gegebene Stellung zu generieren.
+ */
 class Movegen {
     struct PrecomputedInfo {
         Bitboard pinnedPieces;

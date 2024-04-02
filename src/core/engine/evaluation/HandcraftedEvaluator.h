@@ -182,32 +182,66 @@ class HandcraftedEvaluator: public Evaluator {
 
         // Bestrafung für Doppelbauern pro Linie im Mittelspiel
         static constexpr int16_t MG_DOUBLED_PAWN_PENALTY[8] = {
-            -28, -35, -17, -31, -34, -26, -31, -30
+            -3, -4, -5, -6, -6, -5, -4, -3
         };
 
         // Bestrafung für Doppelbauern pro Linie im Endspiel
         static constexpr int16_t EG_DOUBLED_PAWN_PENALTY[8] = {
-            -19, -22, -23, -30, -32, -25, -21, -19
+            -5, -7, -8, -10, -10, -8, -7, -5
         };
 
         // Bestrafung für isolierte Bauern pro Linie im Mittelspiel
         static constexpr int16_t MG_ISOLATED_PAWN_PENALTY[8] = {
-            -34, -19, -16, -34, -35, -15, -8, -40
+            -7, -7, -8, -9, -9, -8, -7, -7
         };
 
         // Bestrafung für isolierte Bauern pro Linie im Endspiel
         static constexpr int16_t EG_ISOLATED_PAWN_PENALTY[8] = {
-            -2, -9, -15, -19, -18, -13, -8, -3
+            -7, -9, -10, -12, -12, -10, -9, -7
+        };
+
+        // Bestrafung für rückständige Bauern pro Rang im Mittelspiel
+        static constexpr int16_t MG_BACKWARD_PAWN_PENALTY[8] = {
+            0, -15, -18, -25, -17, 0, 0, 0
+        };
+
+        // Bestrafung für rückständige Bauern pro Rang im Endspiel
+        static constexpr int16_t EG_BACKWARD_PAWN_PENALTY[8] = {
+            0, -18, -16, -5, 0, 0, 0, 0
         };
 
         // Bonus für Freibauern pro Rang im Mittelspiel
         static constexpr int16_t MG_PASSED_PAWN_BONUS[8] = {
-            0, 7, 7, 13, 20, 31, 49, 0
+            0, 5, 5, 8, 12, 17, 25, 0
         };
 
         // Bonus für Freibauern pro Rang im Endspiel
         static constexpr int16_t EG_PASSED_PAWN_BONUS[8] = {
-            0, 35, 35, 46, 67, 91, 150, 0
+            0, 28, 28, 37, 52, 70, 100, 0
+        };
+
+        // Bonus für starke Felder pro Feld im Mittelspiel
+        static constexpr int16_t MG_STRONG_SQUARE_BONUS[64] = {
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            5, 7, 14, 21, 21, 14, 7, 5,
+            9, 21, 22, 37, 37, 22, 21, 9,
+            17, 26, 24, 21, 21, 24, 26, 17,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0
+        };
+
+        // Bonus für starke Felder pro Feld im Endspiel
+        static constexpr int16_t EG_STRONG_SQUARE_BONUS[64] = {
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 1, 2, 6, 6, 2, 1, 0,
+            2, 3, 4, 7, 7, 4, 3, 2,
+            5, 6, 8, 10, 10, 8, 6, 5,
+            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0
         };
 
         static constexpr Bitboard fileFacingEnemy[2][64] = {
@@ -246,7 +280,32 @@ class HandcraftedEvaluator: public Evaluator {
             0x4040404040404040ULL // H
         };
 
-        static constexpr Bitboard sentryMasks[2][64] = {
+        static constexpr Bitboard backwardPawnMask[2][64] = {
+            // White
+            {
+                0x0ULL, 0x0ULL, 0x0ULL, 0x0ULL, 0x0ULL, 0x0ULL, 0x0ULL, 0x0ULL,
+                0x2ULL, 0x5ULL, 0xaULL, 0x14ULL, 0x28ULL, 0x50ULL, 0xa0ULL, 0x40ULL,
+                0x202ULL, 0x505ULL, 0xa0aULL, 0x1414ULL, 0x2828ULL, 0x5050ULL, 0xa0a0ULL, 0x4040ULL,
+                0x20202ULL, 0x50505ULL, 0xa0a0aULL, 0x141414ULL, 0x282828ULL, 0x505050ULL, 0xa0a0a0ULL, 0x404040ULL,
+                0x2020202ULL, 0x5050505ULL, 0xa0a0a0aULL, 0x14141414ULL, 0x28282828ULL, 0x50505050ULL, 0xa0a0a0a0ULL, 0x40404040ULL,
+                0x202020202ULL, 0x505050505ULL, 0xa0a0a0a0aULL, 0x1414141414ULL, 0x2828282828ULL, 0x5050505050ULL, 0xa0a0a0a0a0ULL, 0x4040404040ULL,
+                0x20202020202ULL, 0x50505050505ULL, 0xa0a0a0a0a0aULL, 0x141414141414ULL, 0x282828282828ULL, 0x505050505050ULL, 0xa0a0a0a0a0a0ULL, 0x404040404040ULL,
+                0x2020202020202ULL, 0x5050505050505ULL, 0xa0a0a0a0a0a0aULL, 0x14141414141414ULL, 0x28282828282828ULL, 0x50505050505050ULL, 0xa0a0a0a0a0a0a0ULL, 0x40404040404040ULL,
+            },
+            // Black
+            {
+                0x202020202020200ULL, 0x505050505050500ULL, 0xa0a0a0a0a0a0a00ULL, 0x1414141414141400ULL, 0x2828282828282800ULL, 0x5050505050505000ULL, 0xa0a0a0a0a0a0a000ULL, 0x4040404040404000ULL,
+                0x202020202020000ULL, 0x505050505050000ULL, 0xa0a0a0a0a0a0000ULL, 0x1414141414140000ULL, 0x2828282828280000ULL, 0x5050505050500000ULL, 0xa0a0a0a0a0a00000ULL, 0x4040404040400000ULL,
+                0x202020202000000ULL, 0x505050505000000ULL, 0xa0a0a0a0a000000ULL, 0x1414141414000000ULL, 0x2828282828000000ULL, 0x5050505050000000ULL, 0xa0a0a0a0a0000000ULL, 0x4040404040000000ULL,
+                0x202020200000000ULL, 0x505050500000000ULL, 0xa0a0a0a00000000ULL, 0x1414141400000000ULL, 0x2828282800000000ULL, 0x5050505000000000ULL, 0xa0a0a0a000000000ULL, 0x4040404000000000ULL,
+                0x202020000000000ULL, 0x505050000000000ULL, 0xa0a0a0000000000ULL, 0x1414140000000000ULL, 0x2828280000000000ULL, 0x5050500000000000ULL, 0xa0a0a00000000000ULL, 0x4040400000000000ULL,
+                0x202000000000000ULL, 0x505000000000000ULL, 0xa0a000000000000ULL, 0x1414000000000000ULL, 0x2828000000000000ULL, 0x5050000000000000ULL, 0xa0a0000000000000ULL, 0x4040000000000000ULL,
+                0x200000000000000ULL, 0x500000000000000ULL, 0xa00000000000000ULL, 0x1400000000000000ULL, 0x2800000000000000ULL, 0x5000000000000000ULL, 0xa000000000000000ULL, 0x4000000000000000ULL,
+                0x0ULL, 0x0ULL, 0x0ULL, 0x0ULL, 0x0ULL, 0x0ULL, 0x0ULL, 0x0ULL,
+            }
+        };
+
+        static constexpr Bitboard sentryMask[2][64] = {
             // White
             {
                     0x303030303030300ULL,0x707070707070700ULL,0xE0E0E0E0E0E0E00ULL,0x1C1C1C1C1C1C1C00ULL,0x3838383838383800ULL,0x7070707070707000ULL,0xE0E0E0E0E0E0E000ULL,0xC0C0C0C0C0C0C000ULL,
@@ -271,16 +330,41 @@ class HandcraftedEvaluator: public Evaluator {
             }
         };
 
+        static constexpr Bitboard strongSquareMask[2][64] = {
+            // White
+            {
+                0x202020202020200ULL,0x505050505050500ULL,0xa0a0a0a0a0a0a00ULL,0x1414141414141400ULL,0x2828282828282800ULL,0x5050505050505000ULL,0xa0a0a0a0a0a0a000ULL,0x4040404040404000ULL,
+                0x202020202020000ULL,0x505050505050000ULL,0xa0a0a0a0a0a0000ULL,0x1414141414140000ULL,0x2828282828280000ULL,0x5050505050500000ULL,0xa0a0a0a0a0a00000ULL,0x4040404040400000ULL,
+                0x202020202000000ULL,0x505050505000000ULL,0xa0a0a0a0a000000ULL,0x1414141414000000ULL,0x2828282828000000ULL,0x5050505050000000ULL,0xa0a0a0a0a0000000ULL,0x4040404040000000ULL,
+                0x202020200000000ULL,0x505050500000000ULL,0xa0a0a0a00000000ULL,0x1414141400000000ULL,0x2828282800000000ULL,0x5050505000000000ULL,0xa0a0a0a000000000ULL,0x4040404000000000ULL,
+                0x202020000000000ULL,0x505050000000000ULL,0xa0a0a0000000000ULL,0x1414140000000000ULL,0x2828280000000000ULL,0x5050500000000000ULL,0xa0a0a00000000000ULL,0x4040400000000000ULL,
+                0x202000000000000ULL,0x505000000000000ULL,0xa0a000000000000ULL,0x1414000000000000ULL,0x2828000000000000ULL,0x5050000000000000ULL,0xa0a0000000000000ULL,0x4040000000000000ULL,
+                0x200000000000000ULL,0x500000000000000ULL,0xa00000000000000ULL,0x1400000000000000ULL,0x2800000000000000ULL,0x5000000000000000ULL,0xa000000000000000ULL,0x4000000000000000ULL,
+                0x0ULL,0x0ULL,0x0ULL,0x0ULL,0x0ULL,0x0ULL,0x0ULL,0x0ULL,
+            },
+            // Black
+            {
+                0x0ULL,0x0ULL,0x0ULL,0x0ULL,0x0ULL,0x0ULL,0x0ULL,0x0ULL,
+                0x2ULL,0x5ULL,0xaULL,0x14ULL,0x28ULL,0x50ULL,0xa0ULL,0x40ULL,
+                0x202ULL,0x505ULL,0xa0aULL,0x1414ULL,0x2828ULL,0x5050ULL,0xa0a0ULL,0x4040ULL,
+                0x20202ULL,0x50505ULL,0xa0a0aULL,0x141414ULL,0x282828ULL,0x505050ULL,0xa0a0a0ULL,0x404040ULL,
+                0x2020202ULL,0x5050505ULL,0xa0a0a0aULL,0x14141414ULL,0x28282828ULL,0x50505050ULL,0xa0a0a0a0ULL,0x40404040ULL,
+                0x202020202ULL,0x505050505ULL,0xa0a0a0a0aULL,0x1414141414ULL,0x2828282828ULL,0x5050505050ULL,0xa0a0a0a0a0ULL,0x4040404040ULL,
+                0x20202020202ULL,0x50505050505ULL,0xa0a0a0a0a0aULL,0x141414141414ULL,0x282828282828ULL,0x505050505050ULL,0xa0a0a0a0a0a0ULL,0x404040404040ULL,
+                0x2020202020202ULL,0x5050505050505ULL,0xa0a0a0a0a0a0aULL,0x14141414141414ULL,0x28282828282828ULL,0x50505050505050ULL,0xa0a0a0a0a0a0a0ULL,0x40404040404040ULL,
+            }
+        };
+
         static constexpr int32_t NUM_ATTACKER_WEIGHT[6] = {
             0, 0, 50, 75, 90, 100
         };
 
         static constexpr size_t NUM_ATTACKER_WEIGHT_SIZE = sizeof(NUM_ATTACKER_WEIGHT) / sizeof(NUM_ATTACKER_WEIGHT[0]);
 
-        static constexpr int32_t KNIGHT_ATTACK_WEIGHT = 15;
-        static constexpr int32_t BISHOP_ATTACK_WEIGHT = 15;
-        static constexpr int32_t ROOK_ATTACK_WEIGHT = 43;
-        static constexpr int32_t QUEEN_ATTACK_WEIGHT = 85;
+        static constexpr int32_t KNIGHT_ATTACK_WEIGHT = 12;
+        static constexpr int32_t BISHOP_ATTACK_WEIGHT = 12;
+        static constexpr int32_t ROOK_ATTACK_WEIGHT = 38;
+        static constexpr int32_t QUEEN_ATTACK_WEIGHT = 75;
 
         static constexpr Bitboard kingAttackZone[64] = {
             0x30707ULL,0x70f0fULL,0xe0e0eULL,0x1c1c1cULL,0x383838ULL,0x707070ULL,0xe0f0f0ULL,0xc0e0e0ULL,
@@ -294,7 +378,7 @@ class HandcraftedEvaluator: public Evaluator {
         };
 
         static constexpr int32_t PAWN_SHIELD_SIZE_BONUS[4] = {
-            0, 23, 81, 100
+            0, 15, 52, 61
         };
 
         static constexpr size_t PAWN_SHIELD_SIZE_BONUS_SIZE = sizeof(PAWN_SHIELD_SIZE_BONUS) / sizeof(PAWN_SHIELD_SIZE_BONUS[0]);
@@ -326,7 +410,7 @@ class HandcraftedEvaluator: public Evaluator {
 
         // Bestrafung für offene Linien (keine eigenen Bauern) in der Nähe des Königs
         static constexpr int32_t KING_OPEN_FILE_BONUS[4] = {
-            0, -18, -25, -30
+            0, -11, -46, -60
         };
 
         static constexpr Bitboard fileMasks[8] = {
@@ -354,7 +438,7 @@ class HandcraftedEvaluator: public Evaluator {
         // Bestrafung für fortgeschrittene gegnerische Bauern
         // in der Nähe des Königs pro Rang
         static constexpr int32_t PAWN_STORM_BONUS[8] = {
-            0, -3, -3, -14, -25, -40, -50, 0
+            0, -2, -2, -10, -18, -30, -25, 0
         };
 
         static constexpr Bitboard pawnStormMask[2][64] = {
