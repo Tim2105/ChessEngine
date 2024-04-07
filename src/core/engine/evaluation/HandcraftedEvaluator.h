@@ -13,6 +13,12 @@ class HandcraftedEvaluator: public Evaluator {
         struct EvaluationVariables {
             Score materialScore; // Bewertung des Materials und der Figurentabellen
             Score pawnScore; // Bewertung der Bauernstruktur
+            Bitboard whiteBackwardPawns; // Rückständige weiße Bauern
+            Bitboard blackBackwardPawns; // Rückständige schwarze Bauern
+            Bitboard whitePassedPawns; // Weiße Freibauern
+            Bitboard blackPassedPawns; // Schwarze Freibauern
+            Bitboard whiteStrongSquares; // Starke Felder für weiße Figuren
+            Bitboard blackStrongSquares; // Starke Felder für schwarze Figuren
             double phase; // Aktuelle Spielphase (0 = Mittelspiel, 1 = Endspiel)
             int32_t phaseWeight; // Materialgewichtung für die Spielphase
         };
@@ -25,11 +31,17 @@ class HandcraftedEvaluator: public Evaluator {
         void calculatePawnScore();
         void calculateGamePhase();
         int32_t calculateKingSafetyScore();
+        int32_t calculatePieceScore();
 
         int32_t evaluateKingAttackZone();
         int32_t evaluatePawnShield();
         int32_t evaluateOpenFiles();
         int32_t evaluatePawnStorm();
+
+        int32_t evaluatePieceMobility();
+        int32_t evaluateMinorPiecesOnStrongSquares();
+        int32_t evaluateRooksOnOpenFiles();
+        int32_t evaluateKingPawnProximity();
 
         int32_t evaluateKNBKEndgame(int32_t ownBishopSq, int32_t oppKingSq);
         int32_t evaluateWinningNoPawnsEndgame(int32_t oppKingSq);
@@ -117,7 +129,10 @@ class HandcraftedEvaluator: public Evaluator {
             // Aktualisiere die Königssicherheitsbewertung
             int32_t kingSafetyScore = calculateKingSafetyScore();
 
-            int32_t evaluation = ((1.0 - evaluationVars.phase) * score.mg + evaluationVars.phase * score.eg + kingSafetyScore) *
+            // Aktualisiere die kontextsensitiven Figurenbewertungen
+            int32_t pieceScore = calculatePieceScore();
+
+            int32_t evaluation = ((1.0 - evaluationVars.phase) * score.mg + evaluationVars.phase * score.eg + kingSafetyScore + pieceScore) *
                                  (board.getSideToMove() == WHITE ? 1 : -1);
 
             evaluation += (1.0 - evaluationVars.phase) * MG_TEMPO_BONUS + evaluationVars.phase * EG_TEMPO_BONUS;
@@ -361,10 +376,13 @@ class HandcraftedEvaluator: public Evaluator {
 
         static constexpr size_t NUM_ATTACKER_WEIGHT_SIZE = sizeof(NUM_ATTACKER_WEIGHT) / sizeof(NUM_ATTACKER_WEIGHT[0]);
 
-        static constexpr int32_t KNIGHT_ATTACK_WEIGHT = 12;
-        static constexpr int32_t BISHOP_ATTACK_WEIGHT = 12;
-        static constexpr int32_t ROOK_ATTACK_WEIGHT = 38;
-        static constexpr int32_t QUEEN_ATTACK_WEIGHT = 75;
+        static constexpr int32_t KNIGHT_ATTACK_BONUS = 12;
+        static constexpr int32_t BISHOP_ATTACK_BONUS = 12;
+        static constexpr int32_t ROOK_ATTACK_BONUS = 38;
+        static constexpr int32_t QUEEN_ATTACK_BONUS = 75;
+
+        // Ein Bonus für jede Figur, die sich innerhalb der eigenen Königszone befindet
+        static constexpr int32_t MINOR_PIECE_DEFENDER_BONUS = 17;
 
         static constexpr Bitboard kingAttackZone[64] = {
             0x30707ULL,0x70f0fULL,0xe0e0eULL,0x1c1c1cULL,0x383838ULL,0x707070ULL,0xe0f0f0ULL,0xc0e0e0ULL,
@@ -465,6 +483,44 @@ class HandcraftedEvaluator: public Evaluator {
                 0x3030303030303ULL,0x7070707070707ULL,0xe0e0e0e0e0e0eULL,0x1c1c1c1c1c1c1cULL,0x38383838383838ULL,0x70707070707070ULL,0xe0e0e0e0e0e0e0ULL,0xc0c0c0c0c0c0c0ULL,
             }
         };
+
+        // Bonus für alle Felder, die von einer Figur im nächsten Zug erreicht werden können (Mittelspiel)
+        static constexpr int32_t MG_PIECE_MOBILITY_BONUS[6] = {
+            0, // Empty
+            0, // Pawn
+            3, // Knight
+            4, // Bishop
+            2, // Rook
+            0, // Queen
+        };
+
+        // Bonus für alle Felder, die von einer Figur im nächsten Zug erreicht werden können (Endspiel)
+        static constexpr int32_t EG_PIECE_MOBILITY_BONUS[6] = {
+            0, // Empty
+            0, // Pawn
+            1, // Knight
+            1, // Bishop
+            1, // Rook
+            0, // Queen
+        };
+
+        // Bonus für alle starken Felder, auf denen eine Leichtfigur steht,
+        // oder auf die eine Leichtfigur im nächsten Zug ziehen kann
+        static constexpr int32_t MINOR_PIECE_ON_STRONG_SQUARE_BONUS = 23;
+
+        // Bonus für Türme auf offenen Linien
+        static constexpr int32_t MG_ROOK_ON_OPEN_FILE_BONUS = 20;
+
+        // Bonus für Türme auf halboffenen Linien
+        static constexpr int32_t MG_ROOK_ON_SEMI_OPEN_FILE_BONUS = 10;
+
+        // Bonus für Könige in der Nähe von Bauern
+        static constexpr int32_t EG_KING_PAWN_PROXIMITY_BONUS = 1;
+
+        // Gewichte für die Bewertung der Königsposition abhängig von den Bauern
+        static constexpr int32_t EG_KING_PROXIMITY_PAWN_WEIGHT = 2;
+        static constexpr int32_t EG_KING_PROXIMITY_BACKWARD_PAWN_WEIGHT = 3;
+        static constexpr int32_t EG_KING_PROXIMITY_PASSED_PAWN_WEIGHT = 5;
 };
 
 #endif

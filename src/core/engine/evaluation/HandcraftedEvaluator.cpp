@@ -221,6 +221,13 @@ void HandcraftedEvaluator::calculatePawnScore() {
             blackStrongSqaures.setBit(sq);
     }
 
+    evaluationVars.whiteBackwardPawns = backwardWhitePawns;
+    evaluationVars.blackBackwardPawns = backwardBlackPawns;
+    evaluationVars.whitePassedPawns = whitePassedPawns;
+    evaluationVars.blackPassedPawns = blackPassedPawns;
+    evaluationVars.whiteStrongSquares = whiteStrongSqaures;
+    evaluationVars.blackStrongSquares = blackStrongSqaures;
+
     // Doppelbauern
     while(doubleWhitePawns) {
         int32_t file = Square::fileOf(doubleWhitePawns.popFSB());
@@ -324,22 +331,25 @@ int32_t HandcraftedEvaluator::evaluateKingAttackZone() {
     int32_t blackAttackersWeight = 0;
 
     Bitboard blackKnights = board.getPieceBitboard(BLACK_KNIGHT);
+    Bitboard blackBishops = board.getPieceBitboard(BLACK_BISHOP);
+
+    Bitboard blackMinorPieces = blackKnights | blackBishops;
+
     while(blackKnights) {
         int32_t sq = blackKnights.popFSB();
         Bitboard attacks = knightAttackBitboard(sq) & kingZone;
         if(attacks) {
             numBlackAttackers++;
-            blackAttackersWeight += attacks.popcount() * KNIGHT_ATTACK_WEIGHT;
+            blackAttackersWeight += attacks.popcount() * KNIGHT_ATTACK_BONUS;
         }
     }
 
-    Bitboard blackBishops = board.getPieceBitboard(BLACK_BISHOP);
     while(blackBishops) {
         int32_t sq = blackBishops.popFSB();
         Bitboard attacks = diagonalAttackBitboard(sq, board.getOccupiedBitboard() | board.getPieceBitboard(BLACK_KING)) & kingZone;
         if(attacks) {
             numBlackAttackers++;
-            blackAttackersWeight += attacks.popcount() * BISHOP_ATTACK_WEIGHT;
+            blackAttackersWeight += attacks.popcount() * BISHOP_ATTACK_BONUS;
         }
     }
 
@@ -349,7 +359,7 @@ int32_t HandcraftedEvaluator::evaluateKingAttackZone() {
         Bitboard attacks = horizontalAttackBitboard(sq, board.getOccupiedBitboard() | board.getPieceBitboard(BLACK_KING)) & kingZone;
         if(attacks) {
             numBlackAttackers++;
-            blackAttackersWeight += attacks.popcount() * ROOK_ATTACK_WEIGHT;
+            blackAttackersWeight += attacks.popcount() * ROOK_ATTACK_BONUS;
         }
     }
 
@@ -361,7 +371,7 @@ int32_t HandcraftedEvaluator::evaluateKingAttackZone() {
 
         if(attacks) {
             numBlackAttackers++;
-            blackAttackersWeight += attacks.popcount() * QUEEN_ATTACK_WEIGHT;
+            blackAttackersWeight += attacks.popcount() * QUEEN_ATTACK_BONUS;
         }
     }
 
@@ -373,22 +383,25 @@ int32_t HandcraftedEvaluator::evaluateKingAttackZone() {
     int32_t whiteAttackersWeight = 0;
 
     Bitboard whiteKnights = board.getPieceBitboard(WHITE_KNIGHT);
+    Bitboard whiteBishops = board.getPieceBitboard(WHITE_BISHOP);
+
+    Bitboard whiteMinorPieces = whiteKnights | whiteBishops;
+
     while(whiteKnights) {
         int32_t sq = whiteKnights.popFSB();
         Bitboard attacks = knightAttackBitboard(sq) & kingZone;
         if(attacks) {
             numWhiteAttackers++;
-            whiteAttackersWeight += attacks.popcount() * KNIGHT_ATTACK_WEIGHT;
+            whiteAttackersWeight += attacks.popcount() * KNIGHT_ATTACK_BONUS;
         }
     }
 
-    Bitboard whiteBishops = board.getPieceBitboard(WHITE_BISHOP);
     while(whiteBishops) {
         int32_t sq = whiteBishops.popFSB();
         Bitboard attacks = diagonalAttackBitboard(sq, board.getOccupiedBitboard() | board.getPieceBitboard(WHITE_KING)) & kingZone;
         if(attacks) {
             numWhiteAttackers++;
-            whiteAttackersWeight += attacks.popcount() * BISHOP_ATTACK_WEIGHT;
+            whiteAttackersWeight += attacks.popcount() * BISHOP_ATTACK_BONUS;
         }
     }
 
@@ -398,7 +411,7 @@ int32_t HandcraftedEvaluator::evaluateKingAttackZone() {
         Bitboard attacks = horizontalAttackBitboard(sq, board.getOccupiedBitboard() | board.getPieceBitboard(WHITE_KING)) & kingZone;
         if(attacks) {
             numWhiteAttackers++;
-            whiteAttackersWeight += attacks.popcount() * ROOK_ATTACK_WEIGHT;
+            whiteAttackersWeight += attacks.popcount() * ROOK_ATTACK_BONUS;
         }
     }
 
@@ -410,15 +423,17 @@ int32_t HandcraftedEvaluator::evaluateKingAttackZone() {
                         
         if(attacks) {
             numWhiteAttackers++;
-            whiteAttackersWeight += attacks.popcount() * QUEEN_ATTACK_WEIGHT;
+            whiteAttackersWeight += attacks.popcount() * QUEEN_ATTACK_BONUS;
         }
     }
 
     numWhiteAttackers = std::min(numWhiteAttackers, (int32_t)(NUM_ATTACKER_WEIGHT_SIZE - 1));
 
     // Berechne die Bewertung
-    score += whiteAttackersWeight * NUM_ATTACKER_WEIGHT[numWhiteAttackers] / 100;
-    score -= blackAttackersWeight * NUM_ATTACKER_WEIGHT[numBlackAttackers] / 100;
+    score += std::max(whiteAttackersWeight * NUM_ATTACKER_WEIGHT[numWhiteAttackers] / 100 -
+                     (blackMinorPieces & kingAttackZone[blackKingSquare]).popcount() * MINOR_PIECE_DEFENDER_BONUS, 0);
+    score -= std::max(blackAttackersWeight * NUM_ATTACKER_WEIGHT[numBlackAttackers] / 100 -
+                     (whiteMinorPieces & kingAttackZone[whiteKingSquare]).popcount() * MINOR_PIECE_DEFENDER_BONUS, 0);
 
     return score * (1 - evaluationVars.phase);
 }
@@ -502,6 +517,121 @@ int32_t HandcraftedEvaluator::evaluatePawnStorm() {
     }
 
     return score * (1 - evaluationVars.phase);
+}
+
+int32_t HandcraftedEvaluator::calculatePieceScore() {
+    return evaluatePieceMobility() + evaluateMinorPiecesOnStrongSquares() + evaluateRooksOnOpenFiles() + evaluateKingPawnProximity();
+}
+
+int32_t HandcraftedEvaluator::evaluatePieceMobility() {
+    int32_t mgMobilityScore = board.getPieceBitboard(WHITE_PAWN).popcount() * MG_PIECE_MOBILITY_BONUS[PAWN] +
+                              board.getPieceBitboard(WHITE_KNIGHT).popcount() * MG_PIECE_MOBILITY_BONUS[KNIGHT] +
+                              board.getPieceBitboard(WHITE_BISHOP).popcount() * MG_PIECE_MOBILITY_BONUS[BISHOP] +
+                              board.getPieceBitboard(WHITE_ROOK).popcount() * MG_PIECE_MOBILITY_BONUS[ROOK] +
+                              board.getPieceBitboard(WHITE_QUEEN).popcount() * MG_PIECE_MOBILITY_BONUS[QUEEN] -
+                              board.getPieceBitboard(BLACK_PAWN).popcount() * MG_PIECE_MOBILITY_BONUS[PAWN] -
+                              board.getPieceBitboard(BLACK_KNIGHT).popcount() * MG_PIECE_MOBILITY_BONUS[KNIGHT] -
+                              board.getPieceBitboard(BLACK_BISHOP).popcount() * MG_PIECE_MOBILITY_BONUS[BISHOP] -
+                              board.getPieceBitboard(BLACK_ROOK).popcount() * MG_PIECE_MOBILITY_BONUS[ROOK] -
+                              board.getPieceBitboard(BLACK_QUEEN).popcount() * MG_PIECE_MOBILITY_BONUS[QUEEN];
+
+    int32_t egMobilityScore = board.getPieceBitboard(WHITE_PAWN).popcount() * EG_PIECE_MOBILITY_BONUS[PAWN] +
+                              board.getPieceBitboard(WHITE_KNIGHT).popcount() * EG_PIECE_MOBILITY_BONUS[KNIGHT] +
+                              board.getPieceBitboard(WHITE_BISHOP).popcount() * EG_PIECE_MOBILITY_BONUS[BISHOP] +
+                              board.getPieceBitboard(WHITE_ROOK).popcount() * EG_PIECE_MOBILITY_BONUS[ROOK] +
+                              board.getPieceBitboard(WHITE_QUEEN).popcount() * EG_PIECE_MOBILITY_BONUS[QUEEN] -
+                              board.getPieceBitboard(BLACK_PAWN).popcount() * EG_PIECE_MOBILITY_BONUS[PAWN] -
+                              board.getPieceBitboard(BLACK_KNIGHT).popcount() * EG_PIECE_MOBILITY_BONUS[KNIGHT] -
+                              board.getPieceBitboard(BLACK_BISHOP).popcount() * EG_PIECE_MOBILITY_BONUS[BISHOP] -
+                              board.getPieceBitboard(BLACK_ROOK).popcount() * EG_PIECE_MOBILITY_BONUS[ROOK] -
+                              board.getPieceBitboard(BLACK_QUEEN).popcount() * EG_PIECE_MOBILITY_BONUS[QUEEN];
+
+    return mgMobilityScore * (1.0 - evaluationVars.phase) + egMobilityScore * evaluationVars.phase;
+}
+
+int32_t HandcraftedEvaluator::evaluateMinorPiecesOnStrongSquares() {
+    Bitboard whiteMinorPieces = board.getPieceBitboard(WHITE_KNIGHT) | board.getPieceBitboard(WHITE_BISHOP);
+    Bitboard blackMinorPieces = board.getPieceBitboard(BLACK_KNIGHT) | board.getPieceBitboard(BLACK_BISHOP);
+    Bitboard whiteMinorPiecesAttacks = board.getPieceAttackBitboard(WHITE_KNIGHT) | board.getPieceAttackBitboard(WHITE_BISHOP);
+    Bitboard blackMinorPiecesAttacks = board.getPieceAttackBitboard(BLACK_KNIGHT) | board.getPieceAttackBitboard(BLACK_BISHOP);
+
+    return ((whiteMinorPieces | whiteMinorPiecesAttacks) & evaluationVars.whiteStrongSquares).popcount() * MINOR_PIECE_ON_STRONG_SQUARE_BONUS -
+           ((blackMinorPieces | blackMinorPiecesAttacks) & evaluationVars.blackStrongSquares).popcount() * MINOR_PIECE_ON_STRONG_SQUARE_BONUS;
+}
+
+int32_t HandcraftedEvaluator::evaluateRooksOnOpenFiles() {
+    Bitboard whiteRooks = board.getPieceBitboard(WHITE_ROOK);
+    Bitboard blackRooks = board.getPieceBitboard(BLACK_ROOK);
+
+    Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
+    Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);
+
+    int32_t score = 0;
+
+    while(whiteRooks) {
+        int32_t sq = whiteRooks.popFSB();
+        int32_t file = Square::fileOf(sq);
+        if(!(whitePawns & fileMasks[file])) {
+            score += MG_ROOK_ON_SEMI_OPEN_FILE_BONUS;
+
+            if(!(blackPawns & fileMasks[file]))
+                score += MG_ROOK_ON_OPEN_FILE_BONUS - MG_ROOK_ON_SEMI_OPEN_FILE_BONUS;
+        }
+    }
+
+    while(blackRooks) {
+        int32_t sq = blackRooks.popFSB();
+        int32_t file = Square::fileOf(sq);
+        if(!(blackPawns & fileMasks[file])) {
+            score -= MG_ROOK_ON_SEMI_OPEN_FILE_BONUS;
+
+            if(!(whitePawns & fileMasks[file]))
+                score -= MG_ROOK_ON_OPEN_FILE_BONUS - MG_ROOK_ON_SEMI_OPEN_FILE_BONUS;
+        }
+    }
+
+    return score * (1.0 - evaluationVars.phase);
+}
+
+int32_t kingDistance(int32_t sq1, int32_t sq2) {
+    int32_t file1 = Square::fileOf(sq1);
+    int32_t rank1 = Square::rankOf(sq1);
+    int32_t file2 = Square::fileOf(sq2);
+    int32_t rank2 = Square::rankOf(sq2);
+
+    return std::max(std::abs(file1 - file2), std::abs(rank1 - rank2));
+}
+
+int32_t HandcraftedEvaluator::evaluateKingPawnProximity() {
+    int32_t score = 0;
+
+    int32_t whiteKingSquare = board.getKingSquare(WHITE);
+    int32_t blackKingSquare = board.getKingSquare(BLACK);
+
+    Bitboard pawns = board.getPieceBitboard(WHITE_PAWN) | board.getPieceBitboard(BLACK_PAWN);
+    Bitboard backwardPawns = evaluationVars.whiteBackwardPawns | evaluationVars.blackBackwardPawns;
+    Bitboard passedPawns = evaluationVars.whitePassedPawns | evaluationVars.blackPassedPawns;
+
+    while(pawns) {
+        int32_t sq = pawns.popFSB();
+        int32_t whiteKingDist = kingDistance(whiteKingSquare, sq);
+        int32_t blackKingDist = kingDistance(blackKingSquare, sq);
+
+        if(passedPawns.getBit(sq)) {
+            score += (7 - whiteKingDist) * EG_KING_PROXIMITY_PASSED_PAWN_WEIGHT;
+            score -= (7 - blackKingDist) * EG_KING_PROXIMITY_PASSED_PAWN_WEIGHT;
+        } else if(backwardPawns.getBit(sq)) {
+            score += (7 - whiteKingDist) * EG_KING_PROXIMITY_BACKWARD_PAWN_WEIGHT;
+            score -= (7 - blackKingDist) * EG_KING_PROXIMITY_BACKWARD_PAWN_WEIGHT;
+        } else {
+            score += (7 - whiteKingDist) * EG_KING_PROXIMITY_PAWN_WEIGHT;
+            score -= (7 - blackKingDist) * EG_KING_PROXIMITY_PAWN_WEIGHT;
+        }
+    }
+
+    score *= EG_KING_PAWN_PROXIMITY_BONUS * evaluationVars.phase;
+
+    return score;
 }
 
 int32_t HandcraftedEvaluator::evaluateKNBKEndgame(int32_t b, int32_t k) {
