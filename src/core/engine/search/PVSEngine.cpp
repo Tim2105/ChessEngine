@@ -209,7 +209,7 @@ void PVSEngine::search(const UCI::SearchParams& params) {
         if(isCheckupTime()) {
             lastCheckupTime = std::chrono::system_clock::now();
 
-            if((lastCheckupTime >= stopTime.load() && maxDepthReached > 0) || // Die Zeit ist abgelaufen
+            if((lastCheckupTime >= stopTime.load() && maxDepthReached > 4) || // Die Zeit ist abgelaufen (und es wurde mindestens Tiefe 5 erreicht)
                nodesSearched.load() >= params.nodes) // Die Knotenanzahl wurde erreicht
                 stop();
 
@@ -446,6 +446,9 @@ void PVSEngine::calculateTimeLimits(const UCI::SearchParams& params) {
 }
 
 bool PVSEngine::extendSearch(bool isTimeControlled) {
+    if(maxDepthReached < 5)
+        return true;
+
     if(stopFlag.load())
         return false;
 

@@ -147,6 +147,7 @@ void HandcraftedEvaluator::calculatePawnScore() {
     Bitboard whitePawnAttacks = board.getPieceAttackBitboard(WHITE_PAWN);
     Bitboard blackPawnAttacks = board.getPieceAttackBitboard(BLACK_PAWN);
 
+    Bitboard connectedWhitePawns = 0, connectedBlackPawns = 0;
     Bitboard doubleWhitePawns = 0, doubleBlackPawns = 0;
     Bitboard isolatedWhitePawns = 0, isolatedBlackPawns = 0;
     Bitboard backwardWhitePawns = 0, backwardBlackPawns = 0;
@@ -156,6 +157,9 @@ void HandcraftedEvaluator::calculatePawnScore() {
     Bitboard tmp = whitePawns;
     while(tmp) {
         int32_t sq = tmp.popFSB();
+
+        // Verbundene Bauern
+        connectedWhitePawns |= whitePawns & connectedPawnMask[sq];
 
         // Doppelbauern
         doubleWhitePawns |= whitePawns & fileFacingEnemy[WHITE / COLOR_MASK][sq];
@@ -168,13 +172,14 @@ void HandcraftedEvaluator::calculatePawnScore() {
             // Rückständige Bauern
             int32_t rank = Square::rankOf(sq);
             if(!(whitePawns & backwardPawnMask[WHITE / COLOR_MASK][sq]) &&
-            blackPawnAttacks.getBit(Square::fromFileRank(file, rank + 1)) &&
+            (blackPawnAttacks | blackPawns).getBit(Square::fromFileRank(file, rank + 1)) &&
             !whitePawnAttacks.getBit(Square::fromFileRank(file, rank + 1)))
                 backwardWhitePawns.setBit(sq);
         }
 
         // Freibauern
-        if(!(sentryMask[WHITE / COLOR_MASK][sq] & blackPawns))
+        if(!(sentryMask[WHITE / COLOR_MASK][sq] & blackPawns) &&
+           !doubleWhitePawns.getBit(sq))
             whitePassedPawns.setBit(sq);
     }
 
@@ -191,6 +196,9 @@ void HandcraftedEvaluator::calculatePawnScore() {
     while(tmp) {
         int32_t sq = tmp.popFSB();
 
+        // Verbundene Bauern
+        connectedBlackPawns |= blackPawns & connectedPawnMask[sq];
+
         // Doppelbauern
         doubleBlackPawns |= blackPawns & fileFacingEnemy[BLACK / COLOR_MASK][sq];
 
@@ -202,13 +210,14 @@ void HandcraftedEvaluator::calculatePawnScore() {
             // Rückständige Bauern
             int32_t rank = Square::rankOf(sq);
             if(!(blackPawns & backwardPawnMask[BLACK / COLOR_MASK][sq]) &&
-            whitePawnAttacks.getBit(Square::fromFileRank(file, rank - 1)) &&
+            (whitePawnAttacks | whitePawns).getBit(Square::fromFileRank(file, rank - 1)) &&
             !blackPawnAttacks.getBit(Square::fromFileRank(file, rank - 1)))
                 backwardBlackPawns.setBit(sq);
         }
 
         // Freibauern
-        if(!(sentryMask[BLACK / COLOR_MASK][sq] & whitePawns))
+        if(!(sentryMask[BLACK / COLOR_MASK][sq] & whitePawns) &&
+           !doubleBlackPawns.getBit(sq))
             blackPassedPawns.setBit(sq);
     }
 
@@ -227,6 +236,19 @@ void HandcraftedEvaluator::calculatePawnScore() {
     evaluationVars.blackPassedPawns = blackPassedPawns;
     evaluationVars.whiteStrongSquares = whiteStrongSqaures;
     evaluationVars.blackStrongSquares = blackStrongSqaures;
+
+    // Verbundene Bauern
+    while(connectedWhitePawns) {
+        int32_t rank = Square::rankOf(connectedWhitePawns.popFSB());
+        score.mg += MG_CONNECTED_PAWN_BONUS[rank];
+        score.eg += EG_CONNECTED_PAWN_BONUS[rank];
+    }
+
+    while(connectedBlackPawns) {
+        int32_t rank = Square::rankOf(Square::flipY(connectedBlackPawns.popFSB()));
+        score.mg -= MG_CONNECTED_PAWN_BONUS[rank];
+        score.eg -= EG_CONNECTED_PAWN_BONUS[rank];
+    }
 
     // Doppelbauern
     while(doubleWhitePawns) {
@@ -520,7 +542,7 @@ int32_t HandcraftedEvaluator::evaluatePawnStorm() {
 }
 
 int32_t HandcraftedEvaluator::calculatePieceScore() {
-    return evaluatePieceMobility() + evaluateMinorPiecesOnStrongSquares() + evaluateRooksOnOpenFiles() + evaluateKingPawnProximity();
+    return evaluatePieceMobility() + evaluateMinorPiecesOnStrongSquares() + evaluateRooksOnOpenFiles() + evaluateRooksBehindPassedPawns() + evaluateKingPawnProximity();
 }
 
 int32_t HandcraftedEvaluator::evaluatePieceMobility() {
@@ -593,6 +615,29 @@ int32_t HandcraftedEvaluator::evaluateRooksOnOpenFiles() {
     return score * (1.0 - evaluationVars.phase);
 }
 
+int32_t HandcraftedEvaluator::evaluateRooksBehindPassedPawns() {
+    Bitboard whiteRooks = board.getPieceBitboard(WHITE_ROOK);
+    Bitboard blackRooks = board.getPieceBitboard(BLACK_ROOK);
+
+    Bitboard passedPawns = evaluationVars.whitePassedPawns | evaluationVars.blackPassedPawns;
+
+    int32_t score = 0;
+
+    while(whiteRooks) {
+        int32_t sq = whiteRooks.popFSB();
+        if(passedPawns & fileFacingEnemy[WHITE / COLOR_MASK][sq])
+            score += EG_ROOK_BEHIND_PASSED_PAWN_BONUS;
+    }
+
+    while(blackRooks) {
+        int32_t sq = blackRooks.popFSB();
+        if(passedPawns & fileFacingEnemy[BLACK / COLOR_MASK][sq])
+            score -= EG_ROOK_BEHIND_PASSED_PAWN_BONUS;
+    }
+
+    return score * evaluationVars.phase;
+}
+
 int32_t kingDistance(int32_t sq1, int32_t sq2) {
     int32_t file1 = Square::fileOf(sq1);
     int32_t rank1 = Square::rankOf(sq1);
@@ -637,7 +682,7 @@ int32_t HandcraftedEvaluator::evaluateKingPawnProximity() {
 int32_t HandcraftedEvaluator::evaluateKNBKEndgame(int32_t b, int32_t k) {
     int32_t evaluation = std::abs(evaluationVars.materialScore.eg);
 
-    b = -1879048192 * b >> 31;
+    b = b < 0 ? -1 : 0;
     k = (k >> 3) + ((k ^ b) & 7);
     int32_t manhattanDistToClosestCornerOfBishopSqColor = (15 * (k >> 3) ^ k) - (k >> 3);
     evaluation += (7 - manhattanDistToClosestCornerOfBishopSqColor) * EG_SPECIAL_MATE_PROGRESS_BONUS;

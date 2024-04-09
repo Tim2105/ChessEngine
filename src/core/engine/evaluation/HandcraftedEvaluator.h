@@ -41,6 +41,7 @@ class HandcraftedEvaluator: public Evaluator {
         int32_t evaluatePieceMobility();
         int32_t evaluateMinorPiecesOnStrongSquares();
         int32_t evaluateRooksOnOpenFiles();
+        int32_t evaluateRooksBehindPassedPawns();
         int32_t evaluateKingPawnProximity();
 
         int32_t evaluateKNBKEndgame(int32_t ownBishopSq, int32_t oppKingSq);
@@ -195,6 +196,16 @@ class HandcraftedEvaluator: public Evaluator {
         static constexpr double MIN_PHASE = -0.5;
         static constexpr double MAX_PHASE = 1.25;
 
+        // Bonus für verbundene Bauern pro Rang im Mittelspiel
+        static constexpr int16_t MG_CONNECTED_PAWN_BONUS[8] = {
+            0, 0, 3, 10, 10, 12, 12, 0
+        };
+
+        // Bonus für verbundene Bauern pro Rang im Endspiel
+        static constexpr int16_t EG_CONNECTED_PAWN_BONUS[8] = {
+            0, 2, 4, 10, 11, 13, 15, 0
+        };
+
         // Bestrafung für Doppelbauern pro Linie im Mittelspiel
         static constexpr int16_t MG_DOUBLED_PAWN_PENALTY[8] = {
             -3, -4, -5, -6, -6, -5, -4, -3
@@ -217,12 +228,12 @@ class HandcraftedEvaluator: public Evaluator {
 
         // Bestrafung für rückständige Bauern pro Rang im Mittelspiel
         static constexpr int16_t MG_BACKWARD_PAWN_PENALTY[8] = {
-            0, -15, -18, -25, -17, 0, 0, 0
+            0, -15, -20, -25, -17, -10, 0, 0
         };
 
         // Bestrafung für rückständige Bauern pro Rang im Endspiel
         static constexpr int16_t EG_BACKWARD_PAWN_PENALTY[8] = {
-            0, -18, -16, -5, 0, 0, 0, 0
+            0, -10, -15, -15, -6, -6, 0, 0
         };
 
         // Bonus für Freibauern pro Rang im Mittelspiel
@@ -241,9 +252,9 @@ class HandcraftedEvaluator: public Evaluator {
             0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0,
             5, 7, 14, 21, 21, 14, 7, 5,
-            9, 21, 22, 37, 37, 22, 21, 9,
-            17, 26, 24, 21, 21, 24, 26, 17,
-            0, 0, 0, 0, 0, 0, 0, 0,
+            9, 21, 22, 30, 30, 22, 21, 9,
+            17, 26, 24, 25, 25, 24, 26, 17,
+            24, 29, 30, 34, 34, 30, 29, 24,
             0, 0, 0, 0, 0, 0, 0, 0
         };
 
@@ -255,8 +266,19 @@ class HandcraftedEvaluator: public Evaluator {
             0, 1, 2, 6, 6, 2, 1, 0,
             2, 3, 4, 7, 7, 4, 3, 2,
             5, 6, 8, 10, 10, 8, 6, 5,
-            0, 0, 0, 0, 0, 0, 0, 0,
+            8, 10, 12, 14, 14, 12, 10, 8,
             0, 0, 0, 0, 0, 0, 0, 0
+        };
+
+        static constexpr Bitboard connectedPawnMask[64] = {
+                0x2,0x5,0xA,0x14,0x28,0x50,0xA0,0x40,
+                0x200,0x500,0xA00,0x1400,0x2800,0x5000,0xA000,0x4000,
+                0x20000,0x50000,0xA0000,0x140000,0x280000,0x500000,0xA00000,0x400000,
+                0x2000000,0x5000000,0xA000000,0x14000000,0x28000000,0x50000000,0xA0000000,0x40000000,
+                0x200000000,0x500000000,0xA00000000,0x1400000000,0x2800000000,0x5000000000,0xA000000000,0x4000000000,
+                0x20000000000,0x50000000000,0xA0000000000,0x140000000000,0x280000000000,0x500000000000,0xA00000000000,0x400000000000,
+                0x2000000000000,0x5000000000000,0xA000000000000,0x14000000000000,0x28000000000000,0x50000000000000,0xA0000000000000,0x40000000000000,
+                0x200000000000000,0x500000000000000,0xA00000000000000,0x1400000000000000,0x2800000000000000,0x5000000000000000,0xA000000000000000,0x4000000000000000,
         };
 
         static constexpr Bitboard fileFacingEnemy[2][64] = {
@@ -428,7 +450,7 @@ class HandcraftedEvaluator: public Evaluator {
 
         // Bestrafung für offene Linien (keine eigenen Bauern) in der Nähe des Königs
         static constexpr int32_t KING_OPEN_FILE_BONUS[4] = {
-            0, -11, -46, -60
+            0, -10, -52, -71
         };
 
         static constexpr Bitboard fileMasks[8] = {
@@ -491,7 +513,7 @@ class HandcraftedEvaluator: public Evaluator {
             3, // Knight
             4, // Bishop
             2, // Rook
-            0, // Queen
+            -1, // Queen
         };
 
         // Bonus für alle Felder, die von einer Figur im nächsten Zug erreicht werden können (Endspiel)
@@ -514,13 +536,16 @@ class HandcraftedEvaluator: public Evaluator {
         // Bonus für Türme auf halboffenen Linien
         static constexpr int32_t MG_ROOK_ON_SEMI_OPEN_FILE_BONUS = 10;
 
+        // Bonus für Türme hinter eigenen Freibauern oder vor gegnerischen Freibauern im Endspiel
+        static constexpr int32_t EG_ROOK_BEHIND_PASSED_PAWN_BONUS = 30;
+
         // Bonus für Könige in der Nähe von Bauern
         static constexpr int32_t EG_KING_PAWN_PROXIMITY_BONUS = 1;
 
         // Gewichte für die Bewertung der Königsposition abhängig von den Bauern
         static constexpr int32_t EG_KING_PROXIMITY_PAWN_WEIGHT = 2;
         static constexpr int32_t EG_KING_PROXIMITY_BACKWARD_PAWN_WEIGHT = 3;
-        static constexpr int32_t EG_KING_PROXIMITY_PASSED_PAWN_WEIGHT = 5;
+        static constexpr int32_t EG_KING_PROXIMITY_PASSED_PAWN_WEIGHT = 6;
 };
 
 #endif

@@ -32,8 +32,10 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     // Stelle sicher, dass wir uns nicht im Wurzelknoten befinden,
     // damit wir immer mindestens einen Zug in der PV haben.
     uint16_t repetitionCount = board.repetitionCount();
-    if(ply > 0 && (repetitionCount >= 2 || board.getFiftyMoveCounter() >= 100))
+    if(ply > 0 && (repetitionCount >= 2 || board.getFiftyMoveCounter() >= 100)) {
+        clearPVTable(ply);
         return DRAW_SCORE;
+    }
 
     /**
      * Mate Distance Pruning:
@@ -714,7 +716,7 @@ int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore, in
     if(historyScore < 0)
         historyScore /= numPVs;
 
-    double historyReduction = -historyScore * ONE_PLY / 15000.0;
+    double historyReduction = -historyScore * ONE_PLY / 20000.0;
     reduction += historyReduction;
 
     // In Endspielen existieren in der Regel weniger Züge, deshalb skalieren wir die Reduktion.
@@ -822,24 +824,6 @@ void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t
             // Führe die interne iterative Tiefensuche durch.
             int16_t iidScore = searchStack[ply].preliminaryScore;
 
-            Array<Move, 256> searchMoves;
-
-            // Setze das Alter der Position auf das Alter der Wurzelposition + 1,
-            // sodass das IID Priorität in der Transpositionstabelle, die Einträge
-            // aber ab dem nächsten Zug überschrieben werden.
-            uint16_t currentAge = board.getAge();
-            board.setAge(rootAge + 1);
-
-            // Erstelle eine neue Suchinstanz für die interne iterative Tiefensuche.
-            PVSSearchInstance iidInstance(board, transpositionTable, stopFlag, startTime,
-                                          stopTime, nodesSearched, checkupFunction);
-            iidInstance.setSearchMoves(searchMoves);
-            iidInstance.setMainThread(isMainThread);
-
-            // Das Alter der Position kann hier bereits zurückgesetzt werden,
-            // weil der Konstruktor der Suchinstanz eine Kopie der Position erstellt.
-            board.setAge(currentAge);
-
             for(int16_t d = ONE_PLY; d <= reducedDepth; d += ONE_PLY) {
                 // Prüfe, ob die Suche abgebrochen werden soll.
                 if(stopFlag.load() && currentSearchDepth > 1)
@@ -850,7 +834,7 @@ void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t
                 int16_t beta = iidScore + IID_ASPIRATION_WINDOW_SIZE;
                 bool alphaAlreadyWidened = false, betaAlreadyWidened = false;
 
-                iidScore = iidInstance.pvs(d, 0, alpha, beta, true, PV_NODE);
+                iidScore = pvs(d, ply, alpha, beta, true, PV_NODE);
 
                 while(iidScore <= alpha || iidScore >= beta) {
                     // Wenn die Suche außerhalb des Aspirationsfensters liegt,
@@ -871,11 +855,11 @@ void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t
                         }
                     }
 
-                    iidScore = iidInstance.pvs(d, 0, alpha, beta, true, PV_NODE);
+                    iidScore = pvs(d, ply, alpha, beta, true, PV_NODE);
                 }
             }
 
-            iidMove = iidInstance.getPV().front();
+            iidMove = pvTable[ply].front();
         }
 
         // Füge den besten Zug aus der internen Tiefensuche
