@@ -152,101 +152,6 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     bool isCheckEvasion = board.isCheck();
 
     /**
-     * Multi-Cut:
-     * Wenn wir uns in einem Cut-Knoten oder All-Knoten mit vorläufiger Bewertung >= beta befinden,
-     * d.h. wir erwarten einen Beta-Schnitt, überprüfen wir, ob C der ersten M >= C Züge
-     * in einer reduzierten Suche zu einem Beta-Schnitt führen.
-     * 
-     * Wenn das der Fall ist, gehen wir davon aus, dass mindestens einer
-     * dieser Züge auch bei einer vollständigen Suche zu einem Beta-Schnitt
-     * führen wird und brechen die Suche ab vorzeitig ab.
-     */
-    if((nodeType == CUT_NODE || (searchStack[ply].preliminaryScore >= beta && nodeType == ALL_NODE)) &&
-       depth > 4 * ONE_PLY && searchStack[ply].moveScorePairs.size() >= MULTICUT_C) {
-
-        int16_t reducedDepth = depth - 4 * ONE_PLY;
-
-        int16_t numFailHighs = 0, bestScore = MIN_SCORE;
-        Move bestMove;
-
-        // Durchsuche die ersten M Züge mit reduzierter Suchtiefe.
-        for(MoveScorePair& pair : searchStack[ply].moveScorePairs) {
-            move = pair.move;
-            moveScore = pair.score;
-
-            // Wir haben bereits M Züge betrachtet. Wir gehen
-            // in die reguläre Suche über.
-            if(moveCount >= MULTICUT_M)
-                break;
-
-            // Führe den Zug aus und informiere den Evaluator.
-            evaluator.updateBeforeMove(move);
-            board.makeMove(move);
-            evaluator.updateAfterMove();
-
-            // Durchsuche den Kindknoten mit reduzierter Suchtiefe.
-            int16_t score = -pvs(reducedDepth, ply + 1, -beta, -beta + 1, true, ALL_NODE);
-
-            // Mache den Zug rückgängig und informiere den Evaluator.
-            evaluator.updateBeforeUndo();
-            board.undoMove();
-            evaluator.updateAfterUndo(move);
-
-            moveCount++;
-
-            // Überprüfe auf einen Beta-Schnitt.
-            if(score >= beta) {
-                if(score > bestScore) {
-                    bestScore = score;
-                    bestMove = move;
-                }
-
-                numFailHighs++;
-
-                // Wenn wir genug Beta-Schnitte haben, brechen wir die Suche ab.
-                if(numFailHighs >= MULTICUT_C) {
-                    TranspositionTableEntry entry(
-                        bestMove,
-                        bestScore,
-                        rootAge,
-                        (uint8_t)(reducedDepth / ONE_PLY),
-                        TranspositionTableEntry::LOWER_BOUND
-                    );
-
-                    transpositionTable.put(board.getHashValue(), entry);
-
-                    // Verbessere die relative Bewertung des Zuges
-                    incrementHistoryScore(bestMove, reducedDepth);
-
-                    if(!bestMove.isCapture() && !bestMove.isPromotion()) {
-                        // Setze einen Eintrag in der Konterzug-Tabelle.
-                        Move previousMove = board.getLastMove();
-                        if(previousMove.exists()) {
-                            int32_t previousMoveDestination = previousMove.getDestination();
-                            int32_t prevoiuslyMovedPieceType = TYPEOF(board.pieceAt(previousMoveDestination));
-
-                            setCounterMove(bestMove, board.getSideToMove(), prevoiuslyMovedPieceType, previousMoveDestination);
-                        }
-                    }
-
-                    return bestScore;
-                }
-            } else {
-                // Verschlechtere die relative Bewertung des Zuges,
-                // er führte nicht zu einem Beta-Schnitt.
-                decrementHistoryScore(move, reducedDepth);
-            }
-
-            // Überprüfe, ob es überhaupt noch möglich ist C Beta-Schnitte in den
-            // ersten M Zügen zu erreichen. Wenn nicht, gehen wir in die reguläre Suche über.
-            if(MULTICUT_M - moveCount + numFailHighs < MULTICUT_C)
-                break;
-        }
-    }
-
-    moveCount = 0;
-
-    /**
      * Singular Reply Extension (nur in Cut-Knoten):
      * 
      * Wir haben diese Position bereits einmal betrachtet und
@@ -271,8 +176,8 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
             move = pair.move;
             moveScore = pair.score;
 
-            // Wir betrachten maximal soviele Züge, wie in der Multi-Cut-Heuristik.
-            if(moveCount >= MULTICUT_M)
+            // Wir betrachten maximal 5 Züge.
+            if(moveCount >= 5)
                 break;
             else if(move == entry.hashMove) // Der Hashzug wurde bereits betrachtet.
                 continue;
@@ -292,6 +197,9 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
             // Überprüfe, ob wir über unserem reduzierten Alpha-Wert liegen.
             if(score > reducedAlpha) {
+                if(score >= beta && entry.score >= beta)
+                    return beta; // fail-hard
+
                 singularExtension = 0;
                 break;
             }
@@ -303,11 +211,10 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     // Ermittele, ob wir Heuristiken anwenden dürfen, um die Suchtiefe zu erweitern.
     // Dies ist der Fall, wenn wir entweder noch nicht viele Erweiterungen auf dem aktuellen
     // Pfad durchgeführt haben oder wir uns in einem Pfad mit reduzierter Suchtiefe befinden.
-    bool allowHeuristicExtensions = extensionsOnPath < currentSearchDepth - (4 - 2 * isPlausibleLine) * ONE_PLY ||
-                                    ply + depth / ONE_PLY < currentSearchDepth;
+    bool allowHeuristicExtensions = extensionsOnPath < currentSearchDepth / (3 - isPlausibleLine) * ONE_PLY;
 
     uint8_t ttEntryType = TranspositionTableEntry::UPPER_BOUND;
-    int16_t bestScore = MIN_SCORE, lmpCount = determineLMPCount(depth, isCheckEvasion, isPlausibleLine);
+    int16_t bestScore = MIN_SCORE;
     moveCount = 0;
     Move bestMove;
 
@@ -365,27 +272,6 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
         int16_t score;
 
-        /**
-         * Late Move Pruning:
-         * Späte Züge in All-/Cut-Knoten mit geringer Tiefe, die weder eine Figur schlagen, einen Bauern
-         * aufwerten oder den Gegner in Schach setzen, werden sehr wahrscheinlich nicht zu einem
-         * Beta-Schnitt führen. Deshalb überspringen wir diese Züge.
-         * 
-         * Als Failsafe wenden wir LMP nicht an, wenn wir im Schach stehen oder alpha eine Mattbewertung ist.
-         * Dadurch vermeiden wir, versehentlich eine Mattverteidigung zu übersehen.
-         * Außerdem wird LMP nur auf Züge mit einer neutralen oder negativen Vergangenheitsbewertung angewandt.
-         */
-        if(nodeType != PV_NODE && moveCount >= lmpCount && !(move.isCapture() || move.isPromotion()) &&
-           moveScore <= NEUTRAL_SCORE && !isMateScore(alpha) && !board.isCheck()) {
-
-            evaluator.updateBeforeUndo();
-            board.undoMove();
-            evaluator.updateAfterUndo(move);
-
-            moveCount++;
-            continue;
-        }
-
         // Sage den Knotentyp des Kindknotens voraus.
         uint8_t childType = CUT_NODE;
         if(nodeType == PV_NODE && moveCount == 0)
@@ -414,6 +300,8 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
             isCheck = true;
         }
 
+        extensionsOnPath += extension;
+
         if(moveCount == 0) {
             // Führe eine vollständige Suche durch.
             score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, true, childType);
@@ -422,11 +310,32 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
             // auf ersten Blick, uninteressanten Zügen mit einer reduzierten Suchtiefe
             // (=> Late Move Reductions).
             int16_t reduction = 0;
-            if(depth >= 3 * ONE_PLY && extension == 0 && !isCheckEvasion) {
+            if(extension == 0 && !isCheckEvasion) {
                 reduction = determineLMR(moveCount + 1, moveScore, depth, nodeType);
 
                 if(isCheck)
                     reduction = std::max(reduction - ONE_PLY, 0);
+        	    else if(reduction > depth && nodeType != PV_NODE && !(move.isCapture() || move.isPromotion()) &&
+                        moveScore <= NEUTRAL_SCORE && !isMateScore(alpha)) {
+
+                    /**
+                     * Late Move Pruning:
+                     * Späte Züge in All-/Cut-Knoten mit geringer Tiefe, die weder eine Figur schlagen, einen Bauern
+                     * aufwerten oder den Gegner in Schach setzen, werden sehr wahrscheinlich nicht zu einem
+                     * Beta-Schnitt führen. Deshalb überspringen wir diese Züge.
+                     * 
+                     * Als Failsafe wenden wir LMP nicht an, wenn wir im Schach stehen oder alpha eine Mattbewertung ist.
+                     * Dadurch vermeiden wir, versehentlich eine Mattverteidigung zu übersehen.
+                     * Außerdem wird LMP nur auf Züge mit einer neutralen oder negativen Vergangenheitsbewertung angewandt.
+                     */
+
+                    evaluator.updateBeforeUndo();
+                    board.undoMove();
+                    evaluator.updateAfterUndo(move);
+
+                    moveCount++;
+                    continue;
+                }
             }
 
             score = -pvs(depth - ONE_PLY + extension - reduction, ply + 1, -alpha - 1, -alpha, true, childType);
@@ -703,10 +612,10 @@ int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore, in
         return 0;
 
     // Reduziere standardmäßig anhand einer logarithmischen Funktion, die von der Suchtiefe abhängt.
-    double reduction = ONE_PLY * std::log(depth / ONE_PLY) / std::log(3);
+    double reduction = ONE_PLY * std::log(depth / ONE_PLY) / std::log(5);
 
-    // Passe die Reduktion an die relative Vergangenheitsbewertung des Zuges an.
-    // -> Bisher bessere Züge werden weniger reduziert und schlechtere Züge stärker.
+    // // Passe die Reduktion an die relative Vergangenheitsbewertung des Zuges an.
+    // // -> Bisher bessere Züge werden weniger reduziert und schlechtere Züge stärker.
     int32_t historyScore = getHistoryScore(lastMove, board.getSideToMove() ^ COLOR_MASK);
 
     // Dividiere negative Vergangenheitsbewertungen, die für eine Erhöhung der Reduktion sorgen,
@@ -716,33 +625,14 @@ int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore, in
     if(historyScore < 0)
         historyScore /= numPVs;
 
-    double historyReduction = -historyScore * ONE_PLY / 20000.0;
+    double historyReduction = -historyScore * ONE_PLY / 32768.0;
     reduction += historyReduction;
-
-    // In Endspielen existieren in der Regel weniger Züge, deshalb skalieren wir die Reduktion.
-    reduction *= std::min(1.5 - evaluator.getGamePhase(), 1.0);
 
     // Erhöhe die Reduktion in Cut-Knoten.
     if(nodeType == CUT_NODE)
-        reduction += 2.0 * ONE_PLY;
+        reduction += ONE_PLY;
 
-    // Wir reduzieren nie direkt in eine Quieszenzsuche hinein.
-    return std::clamp((int32_t)reduction / ONE_PLY * ONE_PLY, 0, depth - 2 * ONE_PLY);
-}
-
-int16_t PVSSearchInstance::determineLMPCount(int16_t depth, bool isCheckEvasion, bool isPlausibleLine) {
-    // LMP wird nur in geringen Tiefen,
-    // nicht in Schachabwehrzügen angewandt.
-    if(depth >= 10 * ONE_PLY || isCheckEvasion || isPlausibleLine)
-        return std::numeric_limits<int16_t>::max();
-
-    // Standardmäßig müssen mindestens 8 Züge betrachtet werden.
-    int16_t result = 8;
-
-    // Erhöhe die Anzahl der zu betrachtenden Züge mit der verbleibenden Suchtiefe.
-    result += (depth / ONE_PLY - 1) * 5;
-
-    return result;
+    return std::max((int32_t)reduction / ONE_PLY * ONE_PLY, 0);
 }
 
 bool PVSSearchInstance::deactivateNullMove() {
