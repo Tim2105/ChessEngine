@@ -198,7 +198,7 @@ class HandcraftedEvaluator: public Evaluator {
 
         // Bonus für verbundene Bauern pro Rang im Mittelspiel
         static constexpr int16_t MG_CONNECTED_PAWN_BONUS[8] = {
-            0, 0, 3, 10, 10, 12, 12, 0
+            0, 0, 3, 6, 8, 10, 12, 0
         };
 
         // Bonus für verbundene Bauern pro Rang im Endspiel
@@ -228,12 +228,12 @@ class HandcraftedEvaluator: public Evaluator {
 
         // Bestrafung für rückständige Bauern pro Rang im Mittelspiel
         static constexpr int16_t MG_BACKWARD_PAWN_PENALTY[8] = {
-            0, -15, -20, -25, -17, -10, 0, 0
+            0, -15, -18, -25, -17, 0, 0, 0
         };
 
         // Bestrafung für rückständige Bauern pro Rang im Endspiel
         static constexpr int16_t EG_BACKWARD_PAWN_PENALTY[8] = {
-            0, -10, -15, -15, -6, -6, 0, 0
+            0, -18, -16, -5, 0, 0, 0, 0
         };
 
         // Bonus für Freibauern pro Rang im Mittelspiel
@@ -450,7 +450,7 @@ class HandcraftedEvaluator: public Evaluator {
 
         // Bestrafung für offene Linien (keine eigenen Bauern) in der Nähe des Königs
         static constexpr int32_t KING_OPEN_FILE_BONUS[4] = {
-            0, -10, -52, -71
+            0, -11, -46, -60
         };
 
         static constexpr Bitboard fileMasks[8] = {
@@ -513,7 +513,7 @@ class HandcraftedEvaluator: public Evaluator {
             3, // Knight
             4, // Bishop
             2, // Rook
-            -1, // Queen
+            0, // Queen
         };
 
         // Bonus für alle Felder, die von einer Figur im nächsten Zug erreicht werden können (Endspiel)
@@ -545,7 +545,7 @@ class HandcraftedEvaluator: public Evaluator {
         // Gewichte für die Bewertung der Königsposition abhängig von den Bauern
         static constexpr int32_t EG_KING_PROXIMITY_PAWN_WEIGHT = 2;
         static constexpr int32_t EG_KING_PROXIMITY_BACKWARD_PAWN_WEIGHT = 3;
-        static constexpr int32_t EG_KING_PROXIMITY_PASSED_PAWN_WEIGHT = 6;
+        static constexpr int32_t EG_KING_PROXIMITY_PASSED_PAWN_WEIGHT = 5;
 };
 
 #endif

@@ -209,12 +209,10 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     }
 
     // Ermittele, ob wir Heuristiken anwenden dürfen, um die Suchtiefe zu erweitern.
-    // Dies ist der Fall, wenn wir entweder noch nicht viele Erweiterungen auf dem aktuellen
-    // Pfad durchgeführt haben oder wir uns in einem Pfad mit reduzierter Suchtiefe befinden.
     bool allowHeuristicExtensions = extensionsOnPath < currentSearchDepth / (3 - isPlausibleLine) * ONE_PLY;
 
     uint8_t ttEntryType = TranspositionTableEntry::UPPER_BOUND;
-    int16_t bestScore = MIN_SCORE;
+    int16_t bestScore = MIN_SCORE, lmpCount = determineLMPCount(depth, isCheckEvasion, isPlausibleLine);
     moveCount = 0;
     Move bestMove;
 
@@ -272,6 +270,27 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
         int16_t score;
 
+        /**
+         * Late Move Pruning:
+         * Späte Züge in All-/Cut-Knoten mit geringer Tiefe, die weder eine Figur schlagen, einen Bauern
+         * aufwerten oder den Gegner in Schach setzen, werden sehr wahrscheinlich nicht zu einem
+         * Beta-Schnitt führen. Deshalb überspringen wir diese Züge.
+         * 
+         * Als Failsafe wenden wir LMP nicht an, wenn wir im Schach stehen oder alpha eine Mattbewertung ist.
+         * Dadurch vermeiden wir, versehentlich eine Mattverteidigung zu übersehen.
+         * Außerdem wird LMP nur auf Züge mit einer neutralen oder negativen Vergangenheitsbewertung angewandt.
+         */
+        if(nodeType != PV_NODE && moveCount >= lmpCount && !(move.isCapture() || move.isPromotion()) &&
+           moveScore <= NEUTRAL_SCORE && !isMateScore(alpha) && !board.isCheck()) {
+
+            evaluator.updateBeforeUndo();
+            board.undoMove();
+            evaluator.updateAfterUndo(move);
+
+            moveCount++;
+            continue;
+        }
+
         // Sage den Knotentyp des Kindknotens voraus.
         uint8_t childType = CUT_NODE;
         if(nodeType == PV_NODE && moveCount == 0)
@@ -280,7 +299,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
             childType = ALL_NODE;
         
         int16_t extension = singularExtension * (moveCount == 0);
-        bool isCheck = false;
+        bool isCheck = false, isPassedPawnPush = false;
 
         /**
          * Erweiterungen:
@@ -298,6 +317,24 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
                 extension += ONE_PLY;
             
             isCheck = true;
+        } else {
+            /**
+             * Freibauer-Erweiterung:
+             * Wenn der Zug einen Freibauern erzeugt oder bewegt, erweitern wir die Suchtiefe.
+             */
+            int32_t movedPieceType = TYPEOF(board.pieceAt(move.getDestination()));
+            if(movedPieceType == PAWN) {
+                int32_t side = board.getSideToMove() ^ COLOR_MASK;
+                int32_t otherSide = side ^ COLOR_MASK;
+                if(!(sentryMasks[side / COLOR_MASK][move.getDestination()]
+                    & board.getPieceBitboard(otherSide | PAWN))) {
+                    
+                    if(extension == 0 && allowHeuristicExtensions)
+                        extension += ONE_PLY;
+
+                    isPassedPawnPush = true;
+                }
+            }
         }
 
         extensionsOnPath += extension;
@@ -313,29 +350,8 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
             if(extension == 0 && !isCheckEvasion) {
                 reduction = determineLMR(moveCount + 1, moveScore, depth, nodeType);
 
-                if(isCheck)
+                if(isCheck || isPassedPawnPush)
                     reduction = std::max(reduction - ONE_PLY, 0);
-        	    else if(reduction > depth && nodeType != PV_NODE && !(move.isCapture() || move.isPromotion()) &&
-                        moveScore <= NEUTRAL_SCORE && !isMateScore(alpha)) {
-
-                    /**
-                     * Late Move Pruning:
-                     * Späte Züge in All-/Cut-Knoten mit geringer Tiefe, die weder eine Figur schlagen, einen Bauern
-                     * aufwerten oder den Gegner in Schach setzen, werden sehr wahrscheinlich nicht zu einem
-                     * Beta-Schnitt führen. Deshalb überspringen wir diese Züge.
-                     * 
-                     * Als Failsafe wenden wir LMP nicht an, wenn wir im Schach stehen oder alpha eine Mattbewertung ist.
-                     * Dadurch vermeiden wir, versehentlich eine Mattverteidigung zu übersehen.
-                     * Außerdem wird LMP nur auf Züge mit einer neutralen oder negativen Vergangenheitsbewertung angewandt.
-                     */
-
-                    evaluator.updateBeforeUndo();
-                    board.undoMove();
-                    evaluator.updateAfterUndo(move);
-
-                    moveCount++;
-                    continue;
-                }
             }
 
             score = -pvs(depth - ONE_PLY + extension - reduction, ply + 1, -alpha - 1, -alpha, true, childType);
@@ -601,6 +617,8 @@ int16_t PVSSearchInstance::quiescence(uint16_t ply, int16_t alpha, int16_t beta)
 }
 
 int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore, int16_t depth, uint8_t nodeType) {
+    UNUSED(nodeType);
+
     // LMR reduziert nie den ersten Zug
     if(moveCount <= 1)
         return 0;
@@ -612,7 +630,7 @@ int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore, in
         return 0;
 
     // Reduziere standardmäßig anhand einer logarithmischen Funktion, die von der Suchtiefe abhängt.
-    double reduction = ONE_PLY * std::log(depth / ONE_PLY) / std::log(5);
+    double reduction = ONE_PLY * (std::log(depth / ONE_PLY) / std::log(6) + 1.0);
 
     // // Passe die Reduktion an die relative Vergangenheitsbewertung des Zuges an.
     // // -> Bisher bessere Züge werden weniger reduziert und schlechtere Züge stärker.
@@ -628,11 +646,23 @@ int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore, in
     double historyReduction = -historyScore * ONE_PLY / 32768.0;
     reduction += historyReduction;
 
-    // Erhöhe die Reduktion in Cut-Knoten.
-    if(nodeType == CUT_NODE)
-        reduction += ONE_PLY;
-
+    // Runde die Reduktion auf ein Vielfaches von ONE_PLY ab.
     return std::max((int32_t)reduction / ONE_PLY * ONE_PLY, 0);
+}
+
+int16_t PVSSearchInstance::determineLMPCount(int16_t depth, bool isCheckEvasion, bool isPlausibleLine) {
+    // LMP wird nur in geringen Tiefen,
+    // nicht in Schachabwehrzügen angewandt.
+    if(depth >= 10 * ONE_PLY || isCheckEvasion || isPlausibleLine)
+        return std::numeric_limits<int16_t>::max();
+
+    // Standardmäßig müssen mindestens 6 Züge betrachtet werden.
+    int16_t result = 6;
+
+    // Erhöhe die Anzahl der zu betrachtenden Züge mit der verbleibenden Suchtiefe.
+    result += (depth / ONE_PLY - 1) * 5;
+
+    return result;
 }
 
 bool PVSSearchInstance::deactivateNullMove() {
@@ -714,6 +744,14 @@ void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t
             // Führe die interne iterative Tiefensuche durch.
             int16_t iidScore = searchStack[ply].preliminaryScore;
 
+            Array<Move, 256> searchMoves;
+
+            // Erstelle eine neue Suchinstanz für die interne iterative Tiefensuche.
+            PVSSearchInstance iidInstance(board, transpositionTable, stopFlag, startTime,
+                                          stopTime, nodesSearched, checkupFunction);
+            iidInstance.setSearchMoves(searchMoves);
+            iidInstance.setMainThread(isMainThread);
+
             for(int16_t d = ONE_PLY; d <= reducedDepth; d += ONE_PLY) {
                 // Prüfe, ob die Suche abgebrochen werden soll.
                 if(stopFlag.load() && currentSearchDepth > 1)
@@ -724,7 +762,7 @@ void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t
                 int16_t beta = iidScore + IID_ASPIRATION_WINDOW_SIZE;
                 bool alphaAlreadyWidened = false, betaAlreadyWidened = false;
 
-                iidScore = pvs(d, ply, alpha, beta, true, PV_NODE);
+                iidScore = iidInstance.pvs(d, 0, alpha, beta, true, PV_NODE);
 
                 while(iidScore <= alpha || iidScore >= beta) {
                     // Wenn die Suche außerhalb des Aspirationsfensters liegt,
@@ -745,11 +783,11 @@ void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t
                         }
                     }
 
-                    iidScore = pvs(d, ply, alpha, beta, true, PV_NODE);
+                    iidScore = iidInstance.pvs(d, 0, alpha, beta, true, PV_NODE);
                 }
             }
 
-            iidMove = pvTable[ply].front();
+            iidMove = iidInstance.getPV().front();
         }
 
         // Füge den besten Zug aus der internen Tiefensuche

@@ -172,7 +172,7 @@ void HandcraftedEvaluator::calculatePawnScore() {
             // Rückständige Bauern
             int32_t rank = Square::rankOf(sq);
             if(!(whitePawns & backwardPawnMask[WHITE / COLOR_MASK][sq]) &&
-            (blackPawnAttacks | blackPawns).getBit(Square::fromFileRank(file, rank + 1)) &&
+            blackPawnAttacks.getBit(Square::fromFileRank(file, rank + 1)) &&
             !whitePawnAttacks.getBit(Square::fromFileRank(file, rank + 1)))
                 backwardWhitePawns.setBit(sq);
         }
@@ -210,7 +210,7 @@ void HandcraftedEvaluator::calculatePawnScore() {
             // Rückständige Bauern
             int32_t rank = Square::rankOf(sq);
             if(!(blackPawns & backwardPawnMask[BLACK / COLOR_MASK][sq]) &&
-            (whitePawnAttacks | whitePawns).getBit(Square::fromFileRank(file, rank - 1)) &&
+            whitePawnAttacks.getBit(Square::fromFileRank(file, rank - 1)) &&
             !blackPawnAttacks.getBit(Square::fromFileRank(file, rank - 1)))
                 backwardBlackPawns.setBit(sq);
         }

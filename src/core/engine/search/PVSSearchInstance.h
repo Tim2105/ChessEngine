@@ -195,6 +195,20 @@ class PVSSearchInstance {
         int16_t determineLMR(int16_t moveCount, int16_t moveScore, int16_t depth, uint8_t nodeType);
 
         /**
+         * @brief Bestimmt, ab welchem Zug das Null Move Pruning
+         * angewendet werden darf.
+         * 
+         * @param depth Die verbleibende Suchtiefe.
+         * @param isCheckEvasion Gibt an, ob die Position eine
+         * Schachabwehr ist.
+         * @param isPlausibleLine Gibt an, ob der Knoten durch eine plausible
+         * Variante erreicht wurde.
+         * @return Die Anzahl der Züge, die mindestens durchsucht werden
+         * müssen, bevor das Null Move Pruning angewendet werden darf.
+         */
+        int16_t determineLMPCount(int16_t depth, bool isCheckEvasion, bool isPlausibleLine);
+
+        /**
          * @brief Überprüft anhand der momentanen Position, ob das
          * Null Move Pruning durchgeführt werden darf.
          */
