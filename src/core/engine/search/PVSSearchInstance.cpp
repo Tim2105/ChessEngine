@@ -632,8 +632,8 @@ int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore, in
     // Reduziere standardmäßig anhand einer logarithmischen Funktion, die von der Suchtiefe abhängt.
     double reduction = ONE_PLY * (std::log(depth / ONE_PLY) / std::log(6) + 1.0);
 
-    // // Passe die Reduktion an die relative Vergangenheitsbewertung des Zuges an.
-    // // -> Bisher bessere Züge werden weniger reduziert und schlechtere Züge stärker.
+    // Passe die Reduktion an die relative Vergangenheitsbewertung des Zuges an.
+    // -> Bisher bessere Züge werden weniger reduziert und schlechtere Züge stärker.
     int32_t historyScore = getHistoryScore(lastMove, board.getSideToMove() ^ COLOR_MASK);
 
     // Dividiere negative Vergangenheitsbewertungen, die für eine Erhöhung der Reduktion sorgen,

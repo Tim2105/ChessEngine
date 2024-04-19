@@ -338,7 +338,7 @@ void HandcraftedEvaluator::calculateGamePhase() {
 }
 
 int32_t HandcraftedEvaluator::calculateKingSafetyScore() {
-    return evaluateKingAttackZone() + evaluatePawnShield() + evaluateOpenFiles() + evaluatePawnStorm();
+    return evaluateKingAttackZone() + evaluateOpenFiles() + evaluatePawnStorm();
 }
 
 int32_t HandcraftedEvaluator::evaluateKingAttackZone() {
@@ -451,21 +451,6 @@ int32_t HandcraftedEvaluator::evaluateKingAttackZone() {
 
     numWhiteAttackers = std::min(numWhiteAttackers, (int32_t)(NUM_ATTACKER_WEIGHT_SIZE - 1));
 
-    // Berechne die Bewertung
-    score += std::max(whiteAttackersWeight * NUM_ATTACKER_WEIGHT[numWhiteAttackers] / 100 -
-                     (blackMinorPieces & kingAttackZone[blackKingSquare]).popcount() * MINOR_PIECE_DEFENDER_BONUS, 0);
-    score -= std::max(blackAttackersWeight * NUM_ATTACKER_WEIGHT[numBlackAttackers] / 100 -
-                     (whiteMinorPieces & kingAttackZone[whiteKingSquare]).popcount() * MINOR_PIECE_DEFENDER_BONUS, 0);
-
-    return score * (1 - evaluationVars.phase);
-}
-
-int32_t HandcraftedEvaluator::evaluatePawnShield() {
-    int32_t score = 0;
-
-    int32_t whiteKingSquare = board.getKingSquare(WHITE);
-    int32_t blackKingSquare = board.getKingSquare(BLACK);
-
     Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
     Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);
 
@@ -481,8 +466,13 @@ int32_t HandcraftedEvaluator::evaluatePawnShield() {
     whitePawnShieldSize = std::min(whitePawnShieldSize, (int32_t)(PAWN_SHIELD_SIZE_BONUS_SIZE - 1));
     blackPawnShieldSize = std::min(blackPawnShieldSize, (int32_t)(PAWN_SHIELD_SIZE_BONUS_SIZE - 1));
 
-    score += PAWN_SHIELD_SIZE_BONUS[whitePawnShieldSize];
-    score -= PAWN_SHIELD_SIZE_BONUS[blackPawnShieldSize];
+    // Berechne die Bewertung
+    score += std::max(whiteAttackersWeight * NUM_ATTACKER_WEIGHT[numWhiteAttackers] / 100 -
+                     (blackMinorPieces & kingAttackZone[blackKingSquare]).popcount() * MINOR_PIECE_DEFENDER_BONUS -
+                      PAWN_SHIELD_SIZE_BONUS[blackPawnShieldSize], 0);
+    score -= std::max(blackAttackersWeight * NUM_ATTACKER_WEIGHT[numBlackAttackers] / 100 -
+                     (whiteMinorPieces & kingAttackZone[whiteKingSquare]).popcount() * MINOR_PIECE_DEFENDER_BONUS -
+                      PAWN_SHIELD_SIZE_BONUS[whitePawnShieldSize], 0);
 
     return score * (1 - evaluationVars.phase);
 }
@@ -542,31 +532,46 @@ int32_t HandcraftedEvaluator::evaluatePawnStorm() {
 }
 
 int32_t HandcraftedEvaluator::calculatePieceScore() {
-    return evaluatePieceMobility() + evaluateMinorPiecesOnStrongSquares() + evaluateRooksOnOpenFiles() + evaluateRooksBehindPassedPawns() + evaluateKingPawnProximity();
+    return evaluatePieceMobility() + evaluateMinorPiecesOnStrongSquares() + evaluateBishopPairs() +
+           evaluateRooksOnOpenFiles() + evaluateRooksBehindPassedPawns() + evaluateKingPawnProximity();
 }
 
 int32_t HandcraftedEvaluator::evaluatePieceMobility() {
-    int32_t mgMobilityScore = board.getPieceBitboard(WHITE_PAWN).popcount() * MG_PIECE_MOBILITY_BONUS[PAWN] +
-                              board.getPieceBitboard(WHITE_KNIGHT).popcount() * MG_PIECE_MOBILITY_BONUS[KNIGHT] +
-                              board.getPieceBitboard(WHITE_BISHOP).popcount() * MG_PIECE_MOBILITY_BONUS[BISHOP] +
-                              board.getPieceBitboard(WHITE_ROOK).popcount() * MG_PIECE_MOBILITY_BONUS[ROOK] +
-                              board.getPieceBitboard(WHITE_QUEEN).popcount() * MG_PIECE_MOBILITY_BONUS[QUEEN] -
-                              board.getPieceBitboard(BLACK_PAWN).popcount() * MG_PIECE_MOBILITY_BONUS[PAWN] -
-                              board.getPieceBitboard(BLACK_KNIGHT).popcount() * MG_PIECE_MOBILITY_BONUS[KNIGHT] -
-                              board.getPieceBitboard(BLACK_BISHOP).popcount() * MG_PIECE_MOBILITY_BONUS[BISHOP] -
-                              board.getPieceBitboard(BLACK_ROOK).popcount() * MG_PIECE_MOBILITY_BONUS[ROOK] -
-                              board.getPieceBitboard(BLACK_QUEEN).popcount() * MG_PIECE_MOBILITY_BONUS[QUEEN];
+    Bitboard whiteMobilityMask = ~(board.getWhiteOccupiedBitboard() | board.getPieceBitboard(WHITE_KING) | board.getPieceAttackBitboard(BLACK_PAWN));
+    Bitboard blackMobilityMask = ~(board.getBlackOccupiedBitboard() | board.getPieceBitboard(BLACK_KING) | board.getPieceAttackBitboard(WHITE_PAWN));
 
-    int32_t egMobilityScore = board.getPieceBitboard(WHITE_PAWN).popcount() * EG_PIECE_MOBILITY_BONUS[PAWN] +
-                              board.getPieceBitboard(WHITE_KNIGHT).popcount() * EG_PIECE_MOBILITY_BONUS[KNIGHT] +
-                              board.getPieceBitboard(WHITE_BISHOP).popcount() * EG_PIECE_MOBILITY_BONUS[BISHOP] +
-                              board.getPieceBitboard(WHITE_ROOK).popcount() * EG_PIECE_MOBILITY_BONUS[ROOK] +
-                              board.getPieceBitboard(WHITE_QUEEN).popcount() * EG_PIECE_MOBILITY_BONUS[QUEEN] -
-                              board.getPieceBitboard(BLACK_PAWN).popcount() * EG_PIECE_MOBILITY_BONUS[PAWN] -
-                              board.getPieceBitboard(BLACK_KNIGHT).popcount() * EG_PIECE_MOBILITY_BONUS[KNIGHT] -
-                              board.getPieceBitboard(BLACK_BISHOP).popcount() * EG_PIECE_MOBILITY_BONUS[BISHOP] -
-                              board.getPieceBitboard(BLACK_ROOK).popcount() * EG_PIECE_MOBILITY_BONUS[ROOK] -
-                              board.getPieceBitboard(BLACK_QUEEN).popcount() * EG_PIECE_MOBILITY_BONUS[QUEEN];
+    Bitboard whitePawnAttacks = board.getPieceAttackBitboard(WHITE_PAWN) & whiteMobilityMask;
+    Bitboard blackPawnAttacks = board.getPieceAttackBitboard(BLACK_PAWN) & blackMobilityMask;
+    Bitboard whiteKnightAttacks = board.getPieceAttackBitboard(WHITE_KNIGHT) & whiteMobilityMask;
+    Bitboard blackKnightAttacks = board.getPieceAttackBitboard(BLACK_KNIGHT) & blackMobilityMask;
+    Bitboard whiteBishopAttacks = board.getPieceAttackBitboard(WHITE_BISHOP) & whiteMobilityMask;
+    Bitboard blackBishopAttacks = board.getPieceAttackBitboard(BLACK_BISHOP) & blackMobilityMask;
+    Bitboard whiteRookAttacks = board.getPieceAttackBitboard(WHITE_ROOK) & whiteMobilityMask;
+    Bitboard blackRookAttacks = board.getPieceAttackBitboard(BLACK_ROOK) & blackMobilityMask;
+    Bitboard whiteQueenAttacks = board.getPieceAttackBitboard(WHITE_QUEEN) & whiteMobilityMask;
+    Bitboard blackQueenAttacks = board.getPieceAttackBitboard(BLACK_QUEEN) & blackMobilityMask;
+
+    int32_t mgMobilityScore = whitePawnAttacks.popcount() * MG_PIECE_MOBILITY_BONUS[PAWN] +
+                              whiteKnightAttacks.popcount() * MG_PIECE_MOBILITY_BONUS[KNIGHT] +
+                              whiteBishopAttacks.popcount() * MG_PIECE_MOBILITY_BONUS[BISHOP] +
+                              whiteRookAttacks.popcount() * MG_PIECE_MOBILITY_BONUS[ROOK] +
+                              whiteQueenAttacks.popcount() * MG_PIECE_MOBILITY_BONUS[QUEEN] -
+                              blackPawnAttacks.popcount() * MG_PIECE_MOBILITY_BONUS[PAWN] -
+                              blackKnightAttacks.popcount() * MG_PIECE_MOBILITY_BONUS[KNIGHT] -
+                              blackBishopAttacks.popcount() * MG_PIECE_MOBILITY_BONUS[BISHOP] -
+                              blackRookAttacks.popcount() * MG_PIECE_MOBILITY_BONUS[ROOK] -
+                              blackQueenAttacks.popcount() * MG_PIECE_MOBILITY_BONUS[QUEEN];
+
+    int32_t egMobilityScore = whitePawnAttacks.popcount() * EG_PIECE_MOBILITY_BONUS[PAWN] +
+                              whiteKnightAttacks.popcount() * EG_PIECE_MOBILITY_BONUS[KNIGHT] +
+                              whiteBishopAttacks.popcount() * EG_PIECE_MOBILITY_BONUS[BISHOP] +
+                              whiteRookAttacks.popcount() * EG_PIECE_MOBILITY_BONUS[ROOK] +
+                              whiteQueenAttacks.popcount() * EG_PIECE_MOBILITY_BONUS[QUEEN] -
+                              blackPawnAttacks.popcount() * EG_PIECE_MOBILITY_BONUS[PAWN] -
+                              blackKnightAttacks.popcount() * EG_PIECE_MOBILITY_BONUS[KNIGHT] -
+                              blackBishopAttacks.popcount() * EG_PIECE_MOBILITY_BONUS[BISHOP] -
+                              blackRookAttacks.popcount() * EG_PIECE_MOBILITY_BONUS[ROOK] -
+                              blackQueenAttacks.popcount() * EG_PIECE_MOBILITY_BONUS[QUEEN];
 
     return mgMobilityScore * (1.0 - evaluationVars.phase) + egMobilityScore * evaluationVars.phase;
 }
@@ -579,6 +584,24 @@ int32_t HandcraftedEvaluator::evaluateMinorPiecesOnStrongSquares() {
 
     return ((whiteMinorPieces | whiteMinorPiecesAttacks) & evaluationVars.whiteStrongSquares).popcount() * MINOR_PIECE_ON_STRONG_SQUARE_BONUS -
            ((blackMinorPieces | blackMinorPiecesAttacks) & evaluationVars.blackStrongSquares).popcount() * MINOR_PIECE_ON_STRONG_SQUARE_BONUS;
+}
+
+int32_t HandcraftedEvaluator::evaluateBishopPairs() {
+    Bitboard whiteBishops = board.getPieceBitboard(WHITE_BISHOP);
+    Bitboard blackBishops = board.getPieceBitboard(BLACK_BISHOP);
+
+    int32_t numWhiteBishops = whiteBishops.popcount();
+    int32_t numBlackBishops = blackBishops.popcount();
+
+    int32_t score = 0;
+
+    if(numWhiteBishops >= 2)
+        score += MG_BISHOP_PAIR_BONUS * (1.0 - evaluationVars.phase) + EG_BISHOP_PAIR_BONUS * evaluationVars.phase;
+
+    if(numBlackBishops >= 2)
+        score -= MG_BISHOP_PAIR_BONUS * (1.0 - evaluationVars.phase) + EG_BISHOP_PAIR_BONUS * evaluationVars.phase;
+
+    return score;
 }
 
 int32_t HandcraftedEvaluator::evaluateRooksOnOpenFiles() {

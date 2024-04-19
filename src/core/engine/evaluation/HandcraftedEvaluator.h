@@ -34,12 +34,12 @@ class HandcraftedEvaluator: public Evaluator {
         int32_t calculatePieceScore();
 
         int32_t evaluateKingAttackZone();
-        int32_t evaluatePawnShield();
         int32_t evaluateOpenFiles();
         int32_t evaluatePawnStorm();
 
         int32_t evaluatePieceMobility();
         int32_t evaluateMinorPiecesOnStrongSquares();
+        int32_t evaluateBishopPairs();
         int32_t evaluateRooksOnOpenFiles();
         int32_t evaluateRooksBehindPassedPawns();
         int32_t evaluateKingPawnProximity();
@@ -398,13 +398,13 @@ class HandcraftedEvaluator: public Evaluator {
 
         static constexpr size_t NUM_ATTACKER_WEIGHT_SIZE = sizeof(NUM_ATTACKER_WEIGHT) / sizeof(NUM_ATTACKER_WEIGHT[0]);
 
-        static constexpr int32_t KNIGHT_ATTACK_BONUS = 12;
-        static constexpr int32_t BISHOP_ATTACK_BONUS = 12;
-        static constexpr int32_t ROOK_ATTACK_BONUS = 38;
-        static constexpr int32_t QUEEN_ATTACK_BONUS = 75;
+        static constexpr int32_t KNIGHT_ATTACK_BONUS = 16;
+        static constexpr int32_t BISHOP_ATTACK_BONUS = 16;
+        static constexpr int32_t ROOK_ATTACK_BONUS = 40;
+        static constexpr int32_t QUEEN_ATTACK_BONUS = 82;
 
         // Ein Bonus für jede Figur, die sich innerhalb der eigenen Königszone befindet
-        static constexpr int32_t MINOR_PIECE_DEFENDER_BONUS = 17;
+        static constexpr int32_t MINOR_PIECE_DEFENDER_BONUS = 20;
 
         static constexpr Bitboard kingAttackZone[64] = {
             0x30707ULL,0x70f0fULL,0xe0e0eULL,0x1c1c1cULL,0x383838ULL,0x707070ULL,0xe0f0f0ULL,0xc0e0e0ULL,
@@ -418,7 +418,7 @@ class HandcraftedEvaluator: public Evaluator {
         };
 
         static constexpr int32_t PAWN_SHIELD_SIZE_BONUS[4] = {
-            0, 15, 52, 61
+            0, 27, 95, 110
         };
 
         static constexpr size_t PAWN_SHIELD_SIZE_BONUS_SIZE = sizeof(PAWN_SHIELD_SIZE_BONUS) / sizeof(PAWN_SHIELD_SIZE_BONUS[0]);
@@ -450,7 +450,7 @@ class HandcraftedEvaluator: public Evaluator {
 
         // Bestrafung für offene Linien (keine eigenen Bauern) in der Nähe des Königs
         static constexpr int32_t KING_OPEN_FILE_BONUS[4] = {
-            0, -11, -46, -60
+            0, -31, -76, -85
         };
 
         static constexpr Bitboard fileMasks[8] = {
@@ -529,6 +529,10 @@ class HandcraftedEvaluator: public Evaluator {
         // Bonus für alle starken Felder, auf denen eine Leichtfigur steht,
         // oder auf die eine Leichtfigur im nächsten Zug ziehen kann
         static constexpr int32_t MINOR_PIECE_ON_STRONG_SQUARE_BONUS = 23;
+
+        // Bonus für das Läuferpaar
+        static constexpr int32_t MG_BISHOP_PAIR_BONUS = 15;
+        static constexpr int32_t EG_BISHOP_PAIR_BONUS = 30;
 
         // Bonus für Türme auf offenen Linien
         static constexpr int32_t MG_ROOK_ON_OPEN_FILE_BONUS = 20;
