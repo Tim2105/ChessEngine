@@ -17,8 +17,8 @@ void HandcraftedEvaluator::updateBeforeMove(Move m) {
         destinationPSQT = Square::flipY(destinationPSQT);
     }
 
-    delta.mg += MG_PSQT[piece][destinationPSQT] - MG_PSQT[piece][originPSQT];
-    delta.eg += EG_PSQT[piece][destinationPSQT] - EG_PSQT[piece][originPSQT];
+    delta.mg += parameters.getMGPSQT(piece,destinationPSQT) - parameters.getMGPSQT(piece, originPSQT);
+    delta.eg += parameters.getEGPSQT(piece, destinationPSQT) - parameters.getEGPSQT(piece, originPSQT);
 
     // Spezialfall: Schlagzug
     if(m.isCapture()) {
@@ -35,11 +35,11 @@ void HandcraftedEvaluator::updateBeforeMove(Move m) {
         // um die Positionstabelle zu indizieren
         capturedPieceSquare = Square::flipY(capturedPieceSquare);
 
-        delta.mg += MG_PIECE_VALUE[TYPEOF(capturedPiece)];
-        delta.eg += EG_PIECE_VALUE[TYPEOF(capturedPiece)];
+        delta.mg += parameters.getMGPieceValue(TYPEOF(capturedPiece));
+        delta.eg += parameters.getEGPieceValue(TYPEOF(capturedPiece));
 
-        delta.mg += MG_PSQT[TYPEOF(capturedPiece)][capturedPieceSquare];
-        delta.eg += EG_PSQT[TYPEOF(capturedPiece)][capturedPieceSquare];
+        delta.mg += parameters.getMGPSQT(TYPEOF(capturedPiece), capturedPieceSquare);
+        delta.eg += parameters.getEGPSQT(TYPEOF(capturedPiece), capturedPieceSquare);
 
         // Aktualisiere die Phasengewichte
         evaluationVars.phaseWeight += PIECE_WEIGHT[TYPEOF(capturedPiece)];
@@ -49,12 +49,12 @@ void HandcraftedEvaluator::updateBeforeMove(Move m) {
     if(m.isCastle()) {
         if(m.isKingsideCastle()) {
             // Königsseite
-            delta.mg += MG_PSQT[ROOK][F1] - MG_PSQT[ROOK][H1];
-            delta.eg += EG_PSQT[ROOK][F1] - EG_PSQT[ROOK][H1];
+            delta.mg += parameters.getMGPSQT(ROOK, F1) - parameters.getMGPSQT(ROOK, H1);
+            delta.eg += parameters.getEGPSQT(ROOK, F1) - parameters.getEGPSQT(ROOK, H1);
         } else {
             // Damenseite
-            delta.mg += MG_PSQT[ROOK][D1] - MG_PSQT[ROOK][A1];
-            delta.eg += EG_PSQT[ROOK][D1] - EG_PSQT[ROOK][A1];
+            delta.mg += parameters.getMGPSQT(ROOK, D1) - parameters.getMGPSQT(ROOK, A1);
+            delta.eg += parameters.getEGPSQT(ROOK, D1) - parameters.getEGPSQT(ROOK, A1);
         }
     }
 
@@ -69,11 +69,11 @@ void HandcraftedEvaluator::updateBeforeMove(Move m) {
         else if(m.isPromotionBishop())
             promotedPiece = BISHOP;
 
-        delta.mg += MG_PIECE_VALUE[promotedPiece] - MG_PIECE_VALUE[PAWN];
-        delta.eg += EG_PIECE_VALUE[promotedPiece] - EG_PIECE_VALUE[PAWN];
+        delta.mg += parameters.getMGPieceValue(promotedPiece) - parameters.getMGPieceValue(PAWN);
+        delta.eg += parameters.getEGPieceValue(promotedPiece) - parameters.getEGPieceValue(PAWN);
 
-        delta.mg += MG_PSQT[promotedPiece][destinationPSQT] - MG_PSQT[PAWN][destinationPSQT];
-        delta.eg += EG_PSQT[promotedPiece][destinationPSQT] - EG_PSQT[PAWN][destinationPSQT];
+        delta.mg += parameters.getMGPSQT(promotedPiece, destinationPSQT) - parameters.getMGPSQT(PAWN, destinationPSQT);
+        delta.eg += parameters.getEGPSQT(promotedPiece, destinationPSQT) - parameters.getEGPSQT(PAWN, destinationPSQT);
 
         // Aktualisiere die Phasengewichte
         evaluationVars.phaseWeight -= PIECE_WEIGHT[promotedPiece] - PIECE_WEIGHT[PAWN];
@@ -107,11 +107,11 @@ void HandcraftedEvaluator::calculateMaterialScore() {
     Score score{0, 0};
 
     // Material
-    for(int32_t piece = PAWN; piece <= KING; piece++) {
-        score.mg += board.getPieceBitboard(WHITE | piece).popcount() * MG_PIECE_VALUE[piece];
-        score.eg += board.getPieceBitboard(WHITE | piece).popcount() * EG_PIECE_VALUE[piece];
-        score.mg -= board.getPieceBitboard(BLACK | piece).popcount() * MG_PIECE_VALUE[piece];
-        score.eg -= board.getPieceBitboard(BLACK | piece).popcount() * EG_PIECE_VALUE[piece];
+    for(int32_t piece = PAWN; piece < KING; piece++) {
+        score.mg += board.getPieceBitboard(WHITE | piece).popcount() * parameters.getMGPieceValue(piece);
+        score.eg += board.getPieceBitboard(WHITE | piece).popcount() * parameters.getEGPieceValue(piece);
+        score.mg -= board.getPieceBitboard(BLACK | piece).popcount() * parameters.getMGPieceValue(piece);
+        score.eg -= board.getPieceBitboard(BLACK | piece).popcount() * parameters.getEGPieceValue(piece);
     }
 
     // Positionstabellen
@@ -119,8 +119,8 @@ void HandcraftedEvaluator::calculateMaterialScore() {
         Bitboard pieceBB = board.getPieceBitboard(WHITE | piece);
         while(pieceBB) {
             int32_t square = pieceBB.popFSB();
-            score.mg += MG_PSQT[piece][square];
-            score.eg += EG_PSQT[piece][square];
+            score.mg += parameters.getMGPSQT(piece, square);
+            score.eg += parameters.getEGPSQT(piece, square);
         }
 
         pieceBB = board.getPieceBitboard(BLACK | piece);
@@ -130,8 +130,8 @@ void HandcraftedEvaluator::calculateMaterialScore() {
             // Für schwarze Figuren muss der Rang gespiegelt werden
             square = Square::flipY(square);
 
-            score.mg -= MG_PSQT[piece][square];
-            score.eg -= EG_PSQT[piece][square];
+            score.mg -= parameters.getMGPSQT(piece, square);
+            score.eg -= parameters.getEGPSQT(piece, square);
         }
     }
 
@@ -240,79 +240,81 @@ void HandcraftedEvaluator::calculatePawnScore() {
     // Verbundene Bauern
     while(connectedWhitePawns) {
         int32_t rank = Square::rankOf(connectedWhitePawns.popFSB());
-        score.mg += MG_CONNECTED_PAWN_BONUS[rank];
-        score.eg += EG_CONNECTED_PAWN_BONUS[rank];
+        score.mg += parameters.getMGConnectedPawnBonus(rank);
+        score.eg += parameters.getEGConnectedPawnBonus(rank);
     }
 
     while(connectedBlackPawns) {
         int32_t rank = Square::rankOf(Square::flipY(connectedBlackPawns.popFSB()));
-        score.mg -= MG_CONNECTED_PAWN_BONUS[rank];
-        score.eg -= EG_CONNECTED_PAWN_BONUS[rank];
+        score.mg -= parameters.getMGConnectedPawnBonus(rank);
+        score.eg -= parameters.getEGConnectedPawnBonus(rank);
     }
 
     // Doppelbauern
     while(doubleWhitePawns) {
         int32_t file = Square::fileOf(doubleWhitePawns.popFSB());
-        score.mg += MG_DOUBLED_PAWN_PENALTY[file];
-        score.eg += EG_DOUBLED_PAWN_PENALTY[file];
+        score.mg += parameters.getMGDoubledPawnPenalty(file);
+        score.eg += parameters.getEGDoubledPawnPenalty(file);
     }
 
     while(doubleBlackPawns) {
         int32_t file = Square::fileOf(doubleBlackPawns.popFSB());
-        score.mg -= MG_DOUBLED_PAWN_PENALTY[file];
-        score.eg -= EG_DOUBLED_PAWN_PENALTY[file];
+        score.mg -= parameters.getMGDoubledPawnPenalty(file);
+        score.eg -= parameters.getEGDoubledPawnPenalty(file);
     }
 
     // Isolierte Bauern
     while(isolatedWhitePawns) {
         int32_t file = Square::fileOf(isolatedWhitePawns.popFSB());
-        score.mg += MG_ISOLATED_PAWN_PENALTY[file];
-        score.eg += EG_ISOLATED_PAWN_PENALTY[file];
+        score.mg += parameters.getMGIsolatedPawnPenalty(file);
+        score.eg += parameters.getEGIsolatedPawnPenalty(file);
     }
 
     while(isolatedBlackPawns) {
         int32_t file = Square::fileOf(isolatedBlackPawns.popFSB());
-        score.mg -= MG_ISOLATED_PAWN_PENALTY[file];
-        score.eg -= EG_ISOLATED_PAWN_PENALTY[file];
+        score.mg -= parameters.getMGIsolatedPawnPenalty(file);
+        score.eg -= parameters.getEGIsolatedPawnPenalty(file);
     }
 
     // Rückständige Bauern
     while(backwardWhitePawns) {
         int32_t rank = Square::rankOf(backwardWhitePawns.popFSB());
-        score.mg += MG_BACKWARD_PAWN_PENALTY[rank];
-        score.eg += EG_BACKWARD_PAWN_PENALTY[rank];
+        score.mg += parameters.getMGBackwardPawnPenalty(rank);
+        score.eg += parameters.getEGBackwardPawnPenalty(rank);
     }
 
     while(backwardBlackPawns) {
         int32_t rank = Square::rankOf(Square::flipY(backwardBlackPawns.popFSB()));
-        score.mg -= MG_BACKWARD_PAWN_PENALTY[rank];
-        score.eg -= EG_BACKWARD_PAWN_PENALTY[rank];
+        score.mg -= parameters.getMGBackwardPawnPenalty(rank);
+        score.eg -= parameters.getEGBackwardPawnPenalty(rank);
     }
 
     // Freibauern
     while(whitePassedPawns) {
         int32_t rank = Square::rankOf(whitePassedPawns.popFSB());
-        score.mg += MG_PASSED_PAWN_BONUS[rank];
-        score.eg += EG_PASSED_PAWN_BONUS[rank];
+        score.mg += parameters.getMGPassedPawnBonus(rank);
+        score.eg += parameters.getEGPassedPawnBonus(rank);
     }
 
     while(blackPassedPawns) {
         int32_t rank = Square::rankOf(Square::flipY(blackPassedPawns.popFSB()));
-        score.mg -= MG_PASSED_PAWN_BONUS[rank];
-        score.eg -= EG_PASSED_PAWN_BONUS[rank];
+        score.mg -= parameters.getMGPassedPawnBonus(rank);
+        score.eg -= parameters.getEGPassedPawnBonus(rank);
     }
 
     // Starke Felder
     while(whiteStrongSqaures) {
         int32_t sq = whiteStrongSqaures.popFSB();
-        score.mg += MG_STRONG_SQUARE_BONUS[sq];
-        score.eg += EG_STRONG_SQUARE_BONUS[sq];
+        int32_t rank = Square::rankOf(sq), file = Square::fileOf(sq);
+        score.mg += parameters.getMGStrongSquareBonus(rank, file);
+        score.eg += parameters.getEGStrongSquareBonus(rank, file);
     }
 
     while(blackStrongSqaures) {
         int32_t sq = Square::flipY(blackStrongSqaures.popFSB());
-        score.mg -= MG_STRONG_SQUARE_BONUS[sq];
-        score.eg -= EG_STRONG_SQUARE_BONUS[sq];
+        int32_t rank = Square::rankOf(sq), file = Square::fileOf(sq);
+        score.mg -= parameters.getMGStrongSquareBonus(rank, file);
+        score.eg -= parameters.getEGStrongSquareBonus(rank, file);
     }
 
     evaluationVars.pawnScore = score;
@@ -362,7 +364,7 @@ int32_t HandcraftedEvaluator::evaluateKingAttackZone() {
         Bitboard attacks = knightAttackBitboard(sq) & kingZone;
         if(attacks) {
             numBlackAttackers++;
-            blackAttackersWeight += attacks.popcount() * KNIGHT_ATTACK_BONUS;
+            blackAttackersWeight += attacks.popcount() * parameters.getKnightAttackBonus();
         }
     }
 
@@ -371,7 +373,7 @@ int32_t HandcraftedEvaluator::evaluateKingAttackZone() {
         Bitboard attacks = diagonalAttackBitboard(sq, board.getOccupiedBitboard() | board.getPieceBitboard(BLACK_KING)) & kingZone;
         if(attacks) {
             numBlackAttackers++;
-            blackAttackersWeight += attacks.popcount() * BISHOP_ATTACK_BONUS;
+            blackAttackersWeight += attacks.popcount() * parameters.getBishopAttackBonus();
         }
     }
 
@@ -381,7 +383,7 @@ int32_t HandcraftedEvaluator::evaluateKingAttackZone() {
         Bitboard attacks = horizontalAttackBitboard(sq, board.getOccupiedBitboard() | board.getPieceBitboard(BLACK_KING)) & kingZone;
         if(attacks) {
             numBlackAttackers++;
-            blackAttackersWeight += attacks.popcount() * ROOK_ATTACK_BONUS;
+            blackAttackersWeight += attacks.popcount() * parameters.getRookAttackBonus();
         }
     }
 
@@ -393,11 +395,11 @@ int32_t HandcraftedEvaluator::evaluateKingAttackZone() {
 
         if(attacks) {
             numBlackAttackers++;
-            blackAttackersWeight += attacks.popcount() * QUEEN_ATTACK_BONUS;
+            blackAttackersWeight += attacks.popcount() * parameters.getQueenAttackBonus();
         }
     }
 
-    numBlackAttackers = std::min(numBlackAttackers, (int32_t)(NUM_ATTACKER_WEIGHT_SIZE - 1));
+    numBlackAttackers = std::min(numBlackAttackers, 5);
 
     // Bestimme die Anzahl der Angreifer pro Figurentyp auf die Felder um den schwarzen König
     kingZone = kingAttackZone[blackKingSquare];
@@ -414,7 +416,7 @@ int32_t HandcraftedEvaluator::evaluateKingAttackZone() {
         Bitboard attacks = knightAttackBitboard(sq) & kingZone;
         if(attacks) {
             numWhiteAttackers++;
-            whiteAttackersWeight += attacks.popcount() * KNIGHT_ATTACK_BONUS;
+            whiteAttackersWeight += attacks.popcount() * parameters.getKnightAttackBonus();
         }
     }
 
@@ -423,7 +425,7 @@ int32_t HandcraftedEvaluator::evaluateKingAttackZone() {
         Bitboard attacks = diagonalAttackBitboard(sq, board.getOccupiedBitboard() | board.getPieceBitboard(WHITE_KING)) & kingZone;
         if(attacks) {
             numWhiteAttackers++;
-            whiteAttackersWeight += attacks.popcount() * BISHOP_ATTACK_BONUS;
+            whiteAttackersWeight += attacks.popcount() * parameters.getBishopAttackBonus();
         }
     }
 
@@ -433,7 +435,7 @@ int32_t HandcraftedEvaluator::evaluateKingAttackZone() {
         Bitboard attacks = horizontalAttackBitboard(sq, board.getOccupiedBitboard() | board.getPieceBitboard(WHITE_KING)) & kingZone;
         if(attacks) {
             numWhiteAttackers++;
-            whiteAttackersWeight += attacks.popcount() * ROOK_ATTACK_BONUS;
+            whiteAttackersWeight += attacks.popcount() * parameters.getRookAttackBonus();
         }
     }
 
@@ -445,11 +447,11 @@ int32_t HandcraftedEvaluator::evaluateKingAttackZone() {
                         
         if(attacks) {
             numWhiteAttackers++;
-            whiteAttackersWeight += attacks.popcount() * QUEEN_ATTACK_BONUS;
+            whiteAttackersWeight += attacks.popcount() * parameters.getQueenAttackBonus();
         }
     }
 
-    numWhiteAttackers = std::min(numWhiteAttackers, (int32_t)(NUM_ATTACKER_WEIGHT_SIZE - 1));
+    numWhiteAttackers = std::min(numWhiteAttackers, 5);
 
     Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
     Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);
@@ -463,16 +465,16 @@ int32_t HandcraftedEvaluator::evaluateKingAttackZone() {
     int32_t whitePawnShieldSize = whitePawnShield.popcount();
     int32_t blackPawnShieldSize = blackPawnShield.popcount();
 
-    whitePawnShieldSize = std::min(whitePawnShieldSize, (int32_t)(PAWN_SHIELD_SIZE_BONUS_SIZE - 1));
-    blackPawnShieldSize = std::min(blackPawnShieldSize, (int32_t)(PAWN_SHIELD_SIZE_BONUS_SIZE - 1));
+    whitePawnShieldSize = std::min(whitePawnShieldSize, 3);
+    blackPawnShieldSize = std::min(blackPawnShieldSize, 3);
 
     // Berechne die Bewertung
-    score += std::max(whiteAttackersWeight * NUM_ATTACKER_WEIGHT[numWhiteAttackers] / 100 -
-                     (blackMinorPieces & kingAttackZone[blackKingSquare]).popcount() * MINOR_PIECE_DEFENDER_BONUS -
-                      PAWN_SHIELD_SIZE_BONUS[blackPawnShieldSize], 0);
-    score -= std::max(blackAttackersWeight * NUM_ATTACKER_WEIGHT[numBlackAttackers] / 100 -
-                     (whiteMinorPieces & kingAttackZone[whiteKingSquare]).popcount() * MINOR_PIECE_DEFENDER_BONUS -
-                      PAWN_SHIELD_SIZE_BONUS[whitePawnShieldSize], 0);
+    score += std::max(whiteAttackersWeight * parameters.getNumAttackerWeight(numWhiteAttackers) / 100 -
+                     (blackMinorPieces & kingAttackZone[blackKingSquare]).popcount() * parameters.getMinorPieceDefenderBonus() -
+                      parameters.getPawnShieldSizeBonus(blackPawnShieldSize), 0);
+    score -= std::max(blackAttackersWeight * parameters.getNumAttackerWeight(numBlackAttackers) / 100 -
+                     (whiteMinorPieces & kingAttackZone[whiteKingSquare]).popcount() * parameters.getMinorPieceDefenderBonus() -
+                      parameters.getPawnShieldSizeBonus(whitePawnShieldSize), 0);
 
     return score * (1 - evaluationVars.phase);
 }
@@ -500,8 +502,8 @@ int32_t HandcraftedEvaluator::evaluateOpenFiles() {
         if(!(blackPawns & fileMasks[file]))
             blackOpenFiles++;
 
-    score += KING_OPEN_FILE_BONUS[whiteOpenFiles];
-    score -= KING_OPEN_FILE_BONUS[blackOpenFiles];
+    score += parameters.getKingOpenFilePenalty(whiteOpenFiles);
+    score -= parameters.getKingOpenFilePenalty(blackOpenFiles);
 
     return score * (1 - evaluationVars.phase);
 }
@@ -520,12 +522,12 @@ int32_t HandcraftedEvaluator::evaluatePawnStorm() {
 
     while(whitePawnStorm) {
         int32_t sq = whitePawnStorm.popFSB();
-        score += PAWN_STORM_BONUS[Square::rankOf(sq)];
+        score += parameters.getPawnStormBonus(Square::rankOf(sq));
     }
 
     while(blackPawnStorm) {
         int32_t sq = blackPawnStorm.popFSB();
-        score -= PAWN_STORM_BONUS[Square::rankOf(Square::flipY(sq))];
+        score -= parameters.getPawnStormBonus(Square::rankOf(Square::flipY(sq)));
     }
 
     return score * (1 - evaluationVars.phase);
@@ -539,9 +541,6 @@ int32_t HandcraftedEvaluator::calculatePieceScore() {
 int32_t HandcraftedEvaluator::evaluatePieceMobility() {
     Bitboard whiteMobilityMask = ~(board.getWhiteOccupiedBitboard() | board.getPieceBitboard(WHITE_KING) | board.getPieceAttackBitboard(BLACK_PAWN));
     Bitboard blackMobilityMask = ~(board.getBlackOccupiedBitboard() | board.getPieceBitboard(BLACK_KING) | board.getPieceAttackBitboard(WHITE_PAWN));
-
-    Bitboard whitePawnAttacks = board.getPieceAttackBitboard(WHITE_PAWN) & whiteMobilityMask;
-    Bitboard blackPawnAttacks = board.getPieceAttackBitboard(BLACK_PAWN) & blackMobilityMask;
     Bitboard whiteKnightAttacks = board.getPieceAttackBitboard(WHITE_KNIGHT) & whiteMobilityMask;
     Bitboard blackKnightAttacks = board.getPieceAttackBitboard(BLACK_KNIGHT) & blackMobilityMask;
     Bitboard whiteBishopAttacks = board.getPieceAttackBitboard(WHITE_BISHOP) & whiteMobilityMask;
@@ -551,27 +550,23 @@ int32_t HandcraftedEvaluator::evaluatePieceMobility() {
     Bitboard whiteQueenAttacks = board.getPieceAttackBitboard(WHITE_QUEEN) & whiteMobilityMask;
     Bitboard blackQueenAttacks = board.getPieceAttackBitboard(BLACK_QUEEN) & blackMobilityMask;
 
-    int32_t mgMobilityScore = whitePawnAttacks.popcount() * MG_PIECE_MOBILITY_BONUS[PAWN] +
-                              whiteKnightAttacks.popcount() * MG_PIECE_MOBILITY_BONUS[KNIGHT] +
-                              whiteBishopAttacks.popcount() * MG_PIECE_MOBILITY_BONUS[BISHOP] +
-                              whiteRookAttacks.popcount() * MG_PIECE_MOBILITY_BONUS[ROOK] +
-                              whiteQueenAttacks.popcount() * MG_PIECE_MOBILITY_BONUS[QUEEN] -
-                              blackPawnAttacks.popcount() * MG_PIECE_MOBILITY_BONUS[PAWN] -
-                              blackKnightAttacks.popcount() * MG_PIECE_MOBILITY_BONUS[KNIGHT] -
-                              blackBishopAttacks.popcount() * MG_PIECE_MOBILITY_BONUS[BISHOP] -
-                              blackRookAttacks.popcount() * MG_PIECE_MOBILITY_BONUS[ROOK] -
-                              blackQueenAttacks.popcount() * MG_PIECE_MOBILITY_BONUS[QUEEN];
+    int32_t mgMobilityScore = whiteKnightAttacks.popcount() * parameters.getMGPieceMobilityBonus(KNIGHT) +
+                              whiteBishopAttacks.popcount() * parameters.getMGPieceMobilityBonus(BISHOP) +
+                              whiteRookAttacks.popcount() * parameters.getMGPieceMobilityBonus(ROOK) +
+                              whiteQueenAttacks.popcount() * parameters.getMGPieceMobilityBonus(QUEEN) -
+                              blackKnightAttacks.popcount() * parameters.getMGPieceMobilityBonus(KNIGHT) -
+                              blackBishopAttacks.popcount() * parameters.getMGPieceMobilityBonus(BISHOP) -
+                              blackRookAttacks.popcount() * parameters.getMGPieceMobilityBonus(ROOK) -
+                              blackQueenAttacks.popcount() * parameters.getMGPieceMobilityBonus(QUEEN);
 
-    int32_t egMobilityScore = whitePawnAttacks.popcount() * EG_PIECE_MOBILITY_BONUS[PAWN] +
-                              whiteKnightAttacks.popcount() * EG_PIECE_MOBILITY_BONUS[KNIGHT] +
-                              whiteBishopAttacks.popcount() * EG_PIECE_MOBILITY_BONUS[BISHOP] +
-                              whiteRookAttacks.popcount() * EG_PIECE_MOBILITY_BONUS[ROOK] +
-                              whiteQueenAttacks.popcount() * EG_PIECE_MOBILITY_BONUS[QUEEN] -
-                              blackPawnAttacks.popcount() * EG_PIECE_MOBILITY_BONUS[PAWN] -
-                              blackKnightAttacks.popcount() * EG_PIECE_MOBILITY_BONUS[KNIGHT] -
-                              blackBishopAttacks.popcount() * EG_PIECE_MOBILITY_BONUS[BISHOP] -
-                              blackRookAttacks.popcount() * EG_PIECE_MOBILITY_BONUS[ROOK] -
-                              blackQueenAttacks.popcount() * EG_PIECE_MOBILITY_BONUS[QUEEN];
+    int32_t egMobilityScore = whiteKnightAttacks.popcount() * parameters.getEGPieceMobilityBonus(KNIGHT) +
+                              whiteBishopAttacks.popcount() * parameters.getEGPieceMobilityBonus(BISHOP) +
+                              whiteRookAttacks.popcount() * parameters.getEGPieceMobilityBonus(ROOK) +
+                              whiteQueenAttacks.popcount() * parameters.getEGPieceMobilityBonus(QUEEN) -
+                              blackKnightAttacks.popcount() * parameters.getEGPieceMobilityBonus(KNIGHT) -
+                              blackBishopAttacks.popcount() * parameters.getEGPieceMobilityBonus(BISHOP) -
+                              blackRookAttacks.popcount() * parameters.getEGPieceMobilityBonus(ROOK) -
+                              blackQueenAttacks.popcount() * parameters.getEGPieceMobilityBonus(QUEEN);
 
     return mgMobilityScore * (1.0 - evaluationVars.phase) + egMobilityScore * evaluationVars.phase;
 }
@@ -604,7 +599,7 @@ int32_t HandcraftedEvaluator::evaluateSafeCenterSpace() {
         blackNumSafeCenterSquares += RANK_7 - rank;
     }
 
-    return (whiteNumSafeCenterSquares * whitePieceCount - blackNumSafeCenterSquares * blackPieceCount) * MG_SPACE_BONUS_PER_PIECE;
+    return (whiteNumSafeCenterSquares * whitePieceCount - blackNumSafeCenterSquares * blackPieceCount) * parameters.getMGSpaceBonusPerPiece();
 }
 
 int32_t HandcraftedEvaluator::evaluateMinorPiecesOnStrongSquares() {
@@ -613,8 +608,8 @@ int32_t HandcraftedEvaluator::evaluateMinorPiecesOnStrongSquares() {
     Bitboard whiteMinorPiecesAttacks = board.getPieceAttackBitboard(WHITE_KNIGHT) | board.getPieceAttackBitboard(WHITE_BISHOP);
     Bitboard blackMinorPiecesAttacks = board.getPieceAttackBitboard(BLACK_KNIGHT) | board.getPieceAttackBitboard(BLACK_BISHOP);
 
-    return ((whiteMinorPieces | whiteMinorPiecesAttacks) & evaluationVars.whiteStrongSquares).popcount() * MINOR_PIECE_ON_STRONG_SQUARE_BONUS -
-           ((blackMinorPieces | blackMinorPiecesAttacks) & evaluationVars.blackStrongSquares).popcount() * MINOR_PIECE_ON_STRONG_SQUARE_BONUS;
+    return ((whiteMinorPieces | whiteMinorPiecesAttacks) & evaluationVars.whiteStrongSquares).popcount() * parameters.getMGMinorPieceOnStrongSquareBonus() -
+           ((blackMinorPieces | blackMinorPiecesAttacks) & evaluationVars.blackStrongSquares).popcount() * parameters.getMGMinorPieceOnStrongSquareBonus();
 }
 
 int32_t HandcraftedEvaluator::evaluateBishopPairs() {
@@ -627,10 +622,10 @@ int32_t HandcraftedEvaluator::evaluateBishopPairs() {
     int32_t score = 0;
 
     if(numWhiteBishops >= 2)
-        score += MG_BISHOP_PAIR_BONUS * (1.0 - evaluationVars.phase) + EG_BISHOP_PAIR_BONUS * evaluationVars.phase;
+        score += parameters.getMGBishopPairBonus() * (1.0 - evaluationVars.phase) + parameters.getEGBishopPairBonus() * evaluationVars.phase;
 
     if(numBlackBishops >= 2)
-        score -= MG_BISHOP_PAIR_BONUS * (1.0 - evaluationVars.phase) + EG_BISHOP_PAIR_BONUS * evaluationVars.phase;
+        score -= parameters.getMGBishopPairBonus() * (1.0 - evaluationVars.phase) + parameters.getEGBishopPairBonus() * evaluationVars.phase;
 
     return score;
 }
@@ -648,10 +643,10 @@ int32_t HandcraftedEvaluator::evaluateRooksOnOpenFiles() {
         int32_t sq = whiteRooks.popFSB();
         int32_t file = Square::fileOf(sq);
         if(!(whitePawns & fileMasks[file])) {
-            score += MG_ROOK_ON_SEMI_OPEN_FILE_BONUS;
+            score += parameters.getMGRookOnSemiOpenFileBonus();
 
             if(!(blackPawns & fileMasks[file]))
-                score += MG_ROOK_ON_OPEN_FILE_BONUS - MG_ROOK_ON_SEMI_OPEN_FILE_BONUS;
+                score += parameters.getMGRookOnOpenFileBonus() - parameters.getMGRookOnSemiOpenFileBonus();
         }
     }
 
@@ -659,10 +654,10 @@ int32_t HandcraftedEvaluator::evaluateRooksOnOpenFiles() {
         int32_t sq = blackRooks.popFSB();
         int32_t file = Square::fileOf(sq);
         if(!(blackPawns & fileMasks[file])) {
-            score -= MG_ROOK_ON_SEMI_OPEN_FILE_BONUS;
+            score -= parameters.getMGRookOnSemiOpenFileBonus();
 
             if(!(whitePawns & fileMasks[file]))
-                score -= MG_ROOK_ON_OPEN_FILE_BONUS - MG_ROOK_ON_SEMI_OPEN_FILE_BONUS;
+                score -= parameters.getMGRookOnOpenFileBonus() - parameters.getMGRookOnSemiOpenFileBonus();
         }
     }
 
@@ -680,13 +675,13 @@ int32_t HandcraftedEvaluator::evaluateRooksBehindPassedPawns() {
     while(whiteRooks) {
         int32_t sq = whiteRooks.popFSB();
         if(passedPawns & fileFacingEnemy[WHITE / COLOR_MASK][sq])
-            score += EG_ROOK_BEHIND_PASSED_PAWN_BONUS;
+            score += parameters.getEGRookBehindPassedPawnBonus();
     }
 
     while(blackRooks) {
         int32_t sq = blackRooks.popFSB();
         if(passedPawns & fileFacingEnemy[BLACK / COLOR_MASK][sq])
-            score -= EG_ROOK_BEHIND_PASSED_PAWN_BONUS;
+            score -= parameters.getEGRookBehindPassedPawnBonus();
     }
 
     return score * evaluationVars.phase;
@@ -717,18 +712,18 @@ int32_t HandcraftedEvaluator::evaluateKingPawnProximity() {
         int32_t blackKingDist = kingDistance(blackKingSquare, sq);
 
         if(passedPawns.getBit(sq)) {
-            score += (7 - whiteKingDist) * EG_KING_PROXIMITY_PASSED_PAWN_WEIGHT;
-            score -= (7 - blackKingDist) * EG_KING_PROXIMITY_PASSED_PAWN_WEIGHT;
+            score += (7 - whiteKingDist) * parameters.getEGKingProximityPassedPawnWeight();
+            score -= (7 - blackKingDist) * parameters.getEGKingProximityPassedPawnWeight();
         } else if(backwardPawns.getBit(sq)) {
-            score += (7 - whiteKingDist) * EG_KING_PROXIMITY_BACKWARD_PAWN_WEIGHT;
-            score -= (7 - blackKingDist) * EG_KING_PROXIMITY_BACKWARD_PAWN_WEIGHT;
+            score += (7 - whiteKingDist) * parameters.getEGKingProximityBackwardPawnWeight();
+            score -= (7 - blackKingDist) * parameters.getEGKingProximityBackwardPawnWeight();
         } else {
-            score += (7 - whiteKingDist) * EG_KING_PROXIMITY_PAWN_WEIGHT;
-            score -= (7 - blackKingDist) * EG_KING_PROXIMITY_PAWN_WEIGHT;
+            score += (7 - whiteKingDist) * parameters.getEGKingProximityPawnWeight();
+            score -= (7 - blackKingDist) * parameters.getEGKingProximityPawnWeight();
         }
     }
 
-    score *= EG_KING_PAWN_PROXIMITY_BONUS * evaluationVars.phase;
+    score *= evaluationVars.phase;
 
     return score;
 }

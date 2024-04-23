@@ -2,9 +2,9 @@
 #define HANDCRAFTED_EVALUATOR_H
 
 #include "core/engine/evaluation/EvaluationDefinitons.h"
-#include "core/engine/evaluation/PSQT.h"
 #include "core/engine/evaluation/Evaluator.h"
 #include "core/engine/search/SearchDefinitions.h"
+#include "core/utils/hce/HCEParameters.h"
 
 #include <vector>
 
@@ -22,6 +22,8 @@ class HandcraftedEvaluator: public Evaluator {
             double phase; // Aktuelle Spielphase (0 = Mittelspiel, 1 = Endspiel)
             int32_t phaseWeight; // Materialgewichtung für die Spielphase
         };
+
+        HCEParameters parameters;
 
         EvaluationVariables evaluationVars;
 
@@ -50,32 +52,8 @@ class HandcraftedEvaluator: public Evaluator {
         int32_t evaluateKNBKEndgame(int32_t ownBishopSq, int32_t oppKingSq);
         int32_t evaluateWinningNoPawnsEndgame(int32_t oppKingSq);
 
-        static constexpr int16_t MG_PIECE_VALUE[7] = {
-            0, // Empty
-            100, // Pawn
-            400, // Knight
-            410, // Bishop
-            600, // Rook
-            1200, // Queen
-            0 // King
-        };
-
-        static constexpr int16_t EG_PIECE_VALUE[7] = {
-            0, // Empty
-            110, // Pawn
-            380, // Knight
-            430, // Bishop
-            640, // Rook
-            1250, // Queen
-            0 // King
-        };
-
-        static constexpr int16_t EG_WINNING_MATERIAL_ADVANTAGE = (EG_PIECE_VALUE[ROOK] - EG_PIECE_VALUE[BISHOP]) / 2 + EG_PIECE_VALUE[BISHOP];
         static constexpr int16_t EG_WINNING_BONUS = 800;
         static constexpr int16_t EG_SPECIAL_MATE_PROGRESS_BONUS = 150;
-
-        static constexpr int32_t MG_TEMPO_BONUS = 25;
-        static constexpr int32_t EG_TEMPO_BONUS = 16;
 
     public:
         HandcraftedEvaluator(Board& b) : Evaluator(b) {
@@ -96,7 +74,7 @@ class HandcraftedEvaluator: public Evaluator {
                 int32_t blackKingSq = board.getKingSquare(BLACK);
 
                 // Wenn der Materialvorteil kleiner als das Gewicht eines Turms ist, dann ist es Unentschieden
-                if(std::abs(evaluationVars.materialScore.eg) < EG_WINNING_MATERIAL_ADVANTAGE) {
+                if(std::abs(evaluationVars.materialScore.eg) < parameters.getEGWinningMaterialAdvantage()) {
 
                     // Außer im Fall von 2 Läufer gegen einen Springer (da ist es manchmal möglich zu gewinnen)
                     if(evaluationVars.materialScore.eg > DRAW_SCORE) {
@@ -114,7 +92,7 @@ class HandcraftedEvaluator: public Evaluator {
                     return DRAW_SCORE;
                 }
 
-                if(evaluationVars.materialScore.eg >= EG_WINNING_MATERIAL_ADVANTAGE) {
+                if(evaluationVars.materialScore.eg >= parameters.getEGWinningMaterialAdvantage()) {
                     bool isKBNK = (board.getPieceBitboard(WHITE_KNIGHT).popcount() == 1 && board.getPieceBitboard(WHITE_BISHOP).popcount() == 1 &&
                                     board.getPieceBitboard(WHITE_ROOK).popcount() == 0 && board.getPieceBitboard(WHITE_QUEEN).popcount() == 0);
 
@@ -127,7 +105,7 @@ class HandcraftedEvaluator: public Evaluator {
                         return DRAW_SCORE;
                     else // Jede andere Kombination -> Matt
                         return evaluateWinningNoPawnsEndgame(blackKingSq) * (board.getSideToMove() == WHITE ? 1 : -1);
-                } else if(evaluationVars.materialScore.eg <= -EG_WINNING_MATERIAL_ADVANTAGE) {
+                } else if(evaluationVars.materialScore.eg <= -parameters.getEGWinningMaterialAdvantage()) {
                     bool isKBNK = (board.getPieceBitboard(BLACK_KNIGHT).popcount() == 1 && board.getPieceBitboard(BLACK_BISHOP).popcount() == 1 &&
                                     board.getPieceBitboard(BLACK_ROOK).popcount() == 0 && board.getPieceBitboard(BLACK_QUEEN).popcount() == 0);
 
@@ -154,7 +132,7 @@ class HandcraftedEvaluator: public Evaluator {
             int32_t evaluation = ((1.0 - evaluationVars.phase) * score.mg + evaluationVars.phase * score.eg + kingSafetyScore + pieceScore) *
                                  (board.getSideToMove() == WHITE ? 1 : -1);
 
-            evaluation += (1.0 - evaluationVars.phase) * MG_TEMPO_BONUS + evaluationVars.phase * EG_TEMPO_BONUS;
+            evaluation += (1.0 - evaluationVars.phase) * parameters.getMGTempoBonus() + evaluationVars.phase * parameters.getEGTempoBonus();
 
             // Skaliere die Bewertung in Richtung 0, wenn wir uns der 50-Züge-Regel annähern.
             // (Starte erst nach 10 Zügen, damit die Bewertung nicht zu früh verzerrt wird.)
@@ -219,80 +197,6 @@ class HandcraftedEvaluator: public Evaluator {
         // die berechnete Phase wird aber zwischen 0 und 1 eingeschränkt
         static constexpr double MIN_PHASE = -0.5;
         static constexpr double MAX_PHASE = 1.25;
-
-        // Bonus für verbundene Bauern pro Rang im Mittelspiel
-        static constexpr int16_t MG_CONNECTED_PAWN_BONUS[8] = {
-            0, 0, 3, 6, 8, 10, 12, 0
-        };
-
-        // Bonus für verbundene Bauern pro Rang im Endspiel
-        static constexpr int16_t EG_CONNECTED_PAWN_BONUS[8] = {
-            0, 2, 4, 10, 11, 13, 15, 0
-        };
-
-        // Bestrafung für Doppelbauern pro Linie im Mittelspiel
-        static constexpr int16_t MG_DOUBLED_PAWN_PENALTY[8] = {
-            -3, -4, -5, -6, -6, -5, -4, -3
-        };
-
-        // Bestrafung für Doppelbauern pro Linie im Endspiel
-        static constexpr int16_t EG_DOUBLED_PAWN_PENALTY[8] = {
-            -5, -7, -8, -10, -10, -8, -7, -5
-        };
-
-        // Bestrafung für isolierte Bauern pro Linie im Mittelspiel
-        static constexpr int16_t MG_ISOLATED_PAWN_PENALTY[8] = {
-            -7, -7, -8, -9, -9, -8, -7, -7
-        };
-
-        // Bestrafung für isolierte Bauern pro Linie im Endspiel
-        static constexpr int16_t EG_ISOLATED_PAWN_PENALTY[8] = {
-            -7, -9, -10, -12, -12, -10, -9, -7
-        };
-
-        // Bestrafung für rückständige Bauern pro Rang im Mittelspiel
-        static constexpr int16_t MG_BACKWARD_PAWN_PENALTY[8] = {
-            0, -15, -18, -25, -17, 0, 0, 0
-        };
-
-        // Bestrafung für rückständige Bauern pro Rang im Endspiel
-        static constexpr int16_t EG_BACKWARD_PAWN_PENALTY[8] = {
-            0, -18, -16, -5, 0, 0, 0, 0
-        };
-
-        // Bonus für Freibauern pro Rang im Mittelspiel
-        static constexpr int16_t MG_PASSED_PAWN_BONUS[8] = {
-            0, 5, 5, 8, 12, 17, 25, 0
-        };
-
-        // Bonus für Freibauern pro Rang im Endspiel
-        static constexpr int16_t EG_PASSED_PAWN_BONUS[8] = {
-            0, 28, 28, 37, 52, 70, 100, 0
-        };
-
-        // Bonus für starke Felder pro Feld im Mittelspiel
-        static constexpr int16_t MG_STRONG_SQUARE_BONUS[64] = {
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0,
-            5, 7, 14, 21, 21, 14, 7, 5,
-            9, 21, 22, 30, 30, 22, 21, 9,
-            17, 26, 24, 25, 25, 24, 26, 17,
-            24, 29, 30, 34, 34, 30, 29, 24,
-            0, 0, 0, 0, 0, 0, 0, 0
-        };
-
-        // Bonus für starke Felder pro Feld im Endspiel
-        static constexpr int16_t EG_STRONG_SQUARE_BONUS[64] = {
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 1, 2, 6, 6, 2, 1, 0,
-            2, 3, 4, 7, 7, 4, 3, 2,
-            5, 6, 8, 10, 10, 8, 6, 5,
-            8, 10, 12, 14, 14, 12, 10, 8,
-            0, 0, 0, 0, 0, 0, 0, 0
-        };
 
         static constexpr Bitboard connectedPawnMask[64] = {
                 0x2,0x5,0xA,0x14,0x28,0x50,0xA0,0x40,
@@ -418,22 +322,6 @@ class HandcraftedEvaluator: public Evaluator {
 
         static constexpr Bitboard extendedCenter = 0x3c3c3c3c0000;
 
-        static constexpr int32_t MG_SPACE_BONUS_PER_PIECE = 4;
-
-        static constexpr int32_t NUM_ATTACKER_WEIGHT[6] = {
-            0, 0, 50, 75, 90, 100
-        };
-
-        static constexpr size_t NUM_ATTACKER_WEIGHT_SIZE = sizeof(NUM_ATTACKER_WEIGHT) / sizeof(NUM_ATTACKER_WEIGHT[0]);
-
-        static constexpr int32_t KNIGHT_ATTACK_BONUS = 16;
-        static constexpr int32_t BISHOP_ATTACK_BONUS = 16;
-        static constexpr int32_t ROOK_ATTACK_BONUS = 40;
-        static constexpr int32_t QUEEN_ATTACK_BONUS = 82;
-
-        // Ein Bonus für jede Figur, die sich innerhalb der eigenen Königszone befindet
-        static constexpr int32_t MINOR_PIECE_DEFENDER_BONUS = 20;
-
         static constexpr Bitboard kingAttackZone[64] = {
             0x30707ULL,0x70f0fULL,0xe0e0eULL,0x1c1c1cULL,0x383838ULL,0x707070ULL,0xe0f0f0ULL,0xc0e0e0ULL,
             0x3070707ULL,0x70f0f0fULL,0xe0e0e0eULL,0x1c1c1c1cULL,0x38383838ULL,0x70707070ULL,0xe0f0f0f0ULL,0xc0e0e0e0ULL,
@@ -444,12 +332,6 @@ class HandcraftedEvaluator: public Evaluator {
             0x707070300000000ULL,0xf0f0f0700000000ULL,0xe0e0e0e00000000ULL,0x1c1c1c1c00000000ULL,0x3838383800000000ULL,0x7070707000000000ULL,0xf0f0f0e000000000ULL,0xe0e0e0c000000000ULL,
             0x707030000000000ULL,0xf0f070000000000ULL,0xe0e0e0000000000ULL,0x1c1c1c0000000000ULL,0x3838380000000000ULL,0x7070700000000000ULL,0xf0f0e00000000000ULL,0xe0e0c00000000000ULL,
         };
-
-        static constexpr int32_t PAWN_SHIELD_SIZE_BONUS[4] = {
-            0, 27, 95, 110
-        };
-
-        static constexpr size_t PAWN_SHIELD_SIZE_BONUS_SIZE = sizeof(PAWN_SHIELD_SIZE_BONUS) / sizeof(PAWN_SHIELD_SIZE_BONUS[0]);
 
         static constexpr Bitboard pawnShieldMask[2][64] = {
             // White
@@ -476,11 +358,6 @@ class HandcraftedEvaluator: public Evaluator {
             }
         };
 
-        // Bestrafung für offene Linien (keine eigenen Bauern) in der Nähe des Königs
-        static constexpr int32_t KING_OPEN_FILE_BONUS[4] = {
-            0, -31, -76, -85
-        };
-
         static constexpr Bitboard fileMasks[8] = {
             0x101010101010101ULL,
             0x202020202020202ULL,
@@ -501,12 +378,6 @@ class HandcraftedEvaluator: public Evaluator {
             {5, 6, 7},
             {5, 6, 7},
             {5, 6, 7}
-        };
-
-        // Bestrafung für fortgeschrittene gegnerische Bauern
-        // in der Nähe des Königs pro Rang
-        static constexpr int32_t PAWN_STORM_BONUS[8] = {
-            0, -2, -2, -10, -18, -30, -25, 0
         };
 
         static constexpr Bitboard pawnStormMask[2][64] = {
@@ -533,51 +404,6 @@ class HandcraftedEvaluator: public Evaluator {
                 0x7070707070707ULL,0x7070707070707ULL,0x7070707070707ULL,0x1c1c1c1c1c1c1cULL,0x38383838383838ULL,0xe0e0e0e0e0e0e0ULL,0xe0e0e0e0e0e0e0ULL,0xe0e0e0e0e0e0e0ULL,
             }
         };
-
-        // Bonus für alle Felder, die von einer Figur im nächsten Zug erreicht werden können (Mittelspiel)
-        static constexpr int32_t MG_PIECE_MOBILITY_BONUS[6] = {
-            0, // Empty
-            0, // Pawn
-            3, // Knight
-            4, // Bishop
-            2, // Rook
-            0, // Queen
-        };
-
-        // Bonus für alle Felder, die von einer Figur im nächsten Zug erreicht werden können (Endspiel)
-        static constexpr int32_t EG_PIECE_MOBILITY_BONUS[6] = {
-            0, // Empty
-            0, // Pawn
-            1, // Knight
-            1, // Bishop
-            1, // Rook
-            0, // Queen
-        };
-
-        // Bonus für alle starken Felder, auf denen eine Leichtfigur steht,
-        // oder auf die eine Leichtfigur im nächsten Zug ziehen kann
-        static constexpr int32_t MINOR_PIECE_ON_STRONG_SQUARE_BONUS = 23;
-
-        // Bonus für das Läuferpaar
-        static constexpr int32_t MG_BISHOP_PAIR_BONUS = 15;
-        static constexpr int32_t EG_BISHOP_PAIR_BONUS = 30;
-
-        // Bonus für Türme auf offenen Linien
-        static constexpr int32_t MG_ROOK_ON_OPEN_FILE_BONUS = 20;
-
-        // Bonus für Türme auf halboffenen Linien
-        static constexpr int32_t MG_ROOK_ON_SEMI_OPEN_FILE_BONUS = 10;
-
-        // Bonus für Türme hinter eigenen Freibauern oder vor gegnerischen Freibauern im Endspiel
-        static constexpr int32_t EG_ROOK_BEHIND_PASSED_PAWN_BONUS = 30;
-
-        // Bonus für Könige in der Nähe von Bauern
-        static constexpr int32_t EG_KING_PAWN_PROXIMITY_BONUS = 1;
-
-        // Gewichte für die Bewertung der Königsposition abhängig von den Bauern
-        static constexpr int32_t EG_KING_PROXIMITY_PAWN_WEIGHT = 2;
-        static constexpr int32_t EG_KING_PROXIMITY_BACKWARD_PAWN_WEIGHT = 3;
-        static constexpr int32_t EG_KING_PROXIMITY_PASSED_PAWN_WEIGHT = 5;
 };
 
 #endif
