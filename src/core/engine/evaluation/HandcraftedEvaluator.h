@@ -38,11 +38,14 @@ class HandcraftedEvaluator: public Evaluator {
         int32_t evaluatePawnStorm();
 
         int32_t evaluatePieceMobility();
+        int32_t evaluateSafeCenterSpace();
         int32_t evaluateMinorPiecesOnStrongSquares();
         int32_t evaluateBishopPairs();
         int32_t evaluateRooksOnOpenFiles();
         int32_t evaluateRooksBehindPassedPawns();
         int32_t evaluateKingPawnProximity();
+
+        bool isWinnable(int32_t side);
 
         int32_t evaluateKNBKEndgame(int32_t ownBishopSq, int32_t oppKingSq);
         int32_t evaluateWinningNoPawnsEndgame(int32_t oppKingSq);
@@ -71,8 +74,8 @@ class HandcraftedEvaluator: public Evaluator {
         static constexpr int16_t EG_WINNING_BONUS = 800;
         static constexpr int16_t EG_SPECIAL_MATE_PROGRESS_BONUS = 150;
 
-        static constexpr int32_t MG_TEMPO_BONUS = 12;
-        static constexpr int32_t EG_TEMPO_BONUS = 4;
+        static constexpr int32_t MG_TEMPO_BONUS = 25;
+        static constexpr int32_t EG_TEMPO_BONUS = 16;
 
     public:
         HandcraftedEvaluator(Board& b) : Evaluator(b) {
@@ -89,12 +92,27 @@ class HandcraftedEvaluator: public Evaluator {
 
         	// Spezialfall: Keine Bauern mehr auf dem Spielfeld
             if(numPawns == 0) {
-                // Wenn der Materialvorteil kleiner als das Gewicht eines Turms ist, dann ist es Unentschieden
-                if(std::abs(evaluationVars.materialScore.eg) < EG_WINNING_MATERIAL_ADVANTAGE)
-                    return DRAW_SCORE;
-
                 int32_t whiteKingSq = board.getKingSquare(WHITE);
                 int32_t blackKingSq = board.getKingSquare(BLACK);
+
+                // Wenn der Materialvorteil kleiner als das Gewicht eines Turms ist, dann ist es Unentschieden
+                if(std::abs(evaluationVars.materialScore.eg) < EG_WINNING_MATERIAL_ADVANTAGE) {
+
+                    // Außer im Fall von 2 Läufer gegen einen Springer (da ist es manchmal möglich zu gewinnen)
+                    if(evaluationVars.materialScore.eg > DRAW_SCORE) {
+                        if(board.getPieceBitboard(WHITE_KNIGHT).popcount() == 0 && board.getPieceBitboard(WHITE_BISHOP).popcount() == 2 &&
+                           board.getPieceBitboard(WHITE_ROOK).popcount() == 0 && board.getPieceBitboard(WHITE_QUEEN).popcount() == 0 &&
+                            board.getPieceBitboard(BLACK_KNIGHT).popcount() == 1 && board.getPieceBitboard(BLACK_BISHOP).popcount() == 0)
+                            return (evaluateWinningNoPawnsEndgame(blackKingSq) - EG_WINNING_BONUS) * (board.getSideToMove() == WHITE ? 1 : -1) / 10; // Skaliere dei Bewertung runter, da der Sieg nicht sicher ist
+                    } else {
+                        if(board.getPieceBitboard(BLACK_KNIGHT).popcount() == 0 && board.getPieceBitboard(BLACK_BISHOP).popcount() == 2 &&
+                           board.getPieceBitboard(BLACK_ROOK).popcount() == 0 && board.getPieceBitboard(BLACK_QUEEN).popcount() == 0 &&
+                            board.getPieceBitboard(WHITE_KNIGHT).popcount() == 1 && board.getPieceBitboard(WHITE_BISHOP).popcount() == 0)
+                            return (evaluateWinningNoPawnsEndgame(whiteKingSq) - EG_WINNING_BONUS) * (board.getSideToMove() == WHITE ? -1 : 1) / 10; // Skaliere dei Bewertung runter, da der Sieg nicht sicher ist
+                    }
+
+                    return DRAW_SCORE;
+                }
 
                 if(evaluationVars.materialScore.eg >= EG_WINNING_MATERIAL_ADVANTAGE) {
                     bool isKBNK = (board.getPieceBitboard(WHITE_KNIGHT).popcount() == 1 && board.getPieceBitboard(WHITE_BISHOP).popcount() == 1 &&
@@ -143,6 +161,12 @@ class HandcraftedEvaluator: public Evaluator {
             int32_t fiftyMoveCounter = board.getFiftyMoveCounter();
             if(fiftyMoveCounter > 20)
                 evaluation = (int32_t)evaluation * (100 - fiftyMoveCounter) / 80;
+
+            if(!isWinnable(board.getSideToMove()))
+                evaluation = std::min(evaluation, (int32_t)DRAW_SCORE);
+
+            if(!isWinnable(board.getSideToMove() ^ COLOR_MASK))
+                evaluation = std::max(evaluation, (int32_t)-DRAW_SCORE);
 
             return evaluation;
         }
@@ -392,6 +416,10 @@ class HandcraftedEvaluator: public Evaluator {
             }
         };
 
+        static constexpr Bitboard extendedCenter = 0x3c3c3c3c0000;
+
+        static constexpr int32_t MG_SPACE_BONUS_PER_PIECE = 4;
+
         static constexpr int32_t NUM_ATTACKER_WEIGHT[6] = {
             0, 0, 50, 75, 90, 100
         };
@@ -465,14 +493,14 @@ class HandcraftedEvaluator: public Evaluator {
         };
 
         static constexpr Array<int32_t, 3> nearbyFiles[8] = {
-            {0, 1},
             {0, 1, 2},
-            {1, 2, 3},
+            {0, 1, 2},
+            {0, 1, 2},
             {2, 3, 4},
             {3, 4, 5},
-            {4, 5, 6},
             {5, 6, 7},
-            {6, 7}
+            {5, 6, 7},
+            {5, 6, 7}
         };
 
         // Bestrafung für fortgeschrittene gegnerische Bauern
@@ -484,8 +512,8 @@ class HandcraftedEvaluator: public Evaluator {
         static constexpr Bitboard pawnStormMask[2][64] = {
             // White
             {
-                0x303030303030300ULL,0x707070707070700ULL,0xe0e0e0e0e0e0e00ULL,0x1c1c1c1c1c1c1c00ULL,0x3838383838383800ULL,0x7070707070707000ULL,0xe0e0e0e0e0e0e000ULL,0xc0c0c0c0c0c0c000ULL,
-                0x303030303030000ULL,0x707070707070000ULL,0xe0e0e0e0e0e0000ULL,0x1c1c1c1c1c1c0000ULL,0x3838383838380000ULL,0x7070707070700000ULL,0xe0e0e0e0e0e00000ULL,0xc0c0c0c0c0c00000ULL,
+                0x707070707070700ULL,0x707070707070700ULL,0x707070707070700ULL,0x1c1c1c1c1c1c1c00ULL,0x3838383838383800ULL,0xe0e0e0e0e0e0e000ULL,0xe0e0e0e0e0e0e000ULL,0xe0e0e0e0e0e0e000ULL,
+                0x707070707070000ULL,0x707070707070000ULL,0x707070707070000ULL,0x1c1c1c1c1c1c0000ULL,0x3838383838380000ULL,0xe0e0e0e0e0e00000ULL,0xe0e0e0e0e0e00000ULL,0xe0e0e0e0e0e00000ULL,
                 0x303030303000000ULL,0x707070707000000ULL,0xe0e0e0e0e000000ULL,0x1c1c1c1c1c000000ULL,0x3838383838000000ULL,0x7070707070000000ULL,0xe0e0e0e0e0000000ULL,0xc0c0c0c0c0000000ULL,
                 0x303030300000000ULL,0x707070700000000ULL,0xe0e0e0e00000000ULL,0x1c1c1c1c00000000ULL,0x3838383800000000ULL,0x7070707000000000ULL,0xe0e0e0e000000000ULL,0xc0c0c0c000000000ULL,
                 0x303030000000000ULL,0x707070000000000ULL,0xe0e0e0000000000ULL,0x1c1c1c0000000000ULL,0x3838380000000000ULL,0x7070700000000000ULL,0xe0e0e00000000000ULL,0xc0c0c00000000000ULL,
@@ -501,8 +529,8 @@ class HandcraftedEvaluator: public Evaluator {
                 0x30303ULL,0x70707ULL,0xe0e0eULL,0x1c1c1cULL,0x383838ULL,0x707070ULL,0xe0e0e0ULL,0xc0c0c0ULL,
                 0x3030303ULL,0x7070707ULL,0xe0e0e0eULL,0x1c1c1c1cULL,0x38383838ULL,0x70707070ULL,0xe0e0e0e0ULL,0xc0c0c0c0ULL,
                 0x303030303ULL,0x707070707ULL,0xe0e0e0e0eULL,0x1c1c1c1c1cULL,0x3838383838ULL,0x7070707070ULL,0xe0e0e0e0e0ULL,0xc0c0c0c0c0ULL,
-                0x30303030303ULL,0x70707070707ULL,0xe0e0e0e0e0eULL,0x1c1c1c1c1c1cULL,0x383838383838ULL,0x707070707070ULL,0xe0e0e0e0e0e0ULL,0xc0c0c0c0c0c0ULL,
-                0x3030303030303ULL,0x7070707070707ULL,0xe0e0e0e0e0e0eULL,0x1c1c1c1c1c1c1cULL,0x38383838383838ULL,0x70707070707070ULL,0xe0e0e0e0e0e0e0ULL,0xc0c0c0c0c0c0c0ULL,
+                0x70707070707ULL,0x70707070707ULL,0x70707070707ULL,0x1c1c1c1c1c1cULL,0x383838383838ULL,0xe0e0e0e0e0e0ULL,0xe0e0e0e0e0e0ULL,0xe0e0e0e0e0e0ULL,
+                0x7070707070707ULL,0x7070707070707ULL,0x7070707070707ULL,0x1c1c1c1c1c1c1cULL,0x38383838383838ULL,0xe0e0e0e0e0e0e0ULL,0xe0e0e0e0e0e0e0ULL,0xe0e0e0e0e0e0e0ULL,
             }
         };
 

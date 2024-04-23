@@ -172,7 +172,7 @@ void HandcraftedEvaluator::calculatePawnScore() {
             // Rückständige Bauern
             int32_t rank = Square::rankOf(sq);
             if(!(whitePawns & backwardPawnMask[WHITE / COLOR_MASK][sq]) &&
-            blackPawnAttacks.getBit(Square::fromFileRank(file, rank + 1)) &&
+            (blackPawns | blackPawnAttacks).getBit(Square::fromFileRank(file, rank + 1)) &&
             !whitePawnAttacks.getBit(Square::fromFileRank(file, rank + 1)))
                 backwardWhitePawns.setBit(sq);
         }
@@ -210,7 +210,7 @@ void HandcraftedEvaluator::calculatePawnScore() {
             // Rückständige Bauern
             int32_t rank = Square::rankOf(sq);
             if(!(blackPawns & backwardPawnMask[BLACK / COLOR_MASK][sq]) &&
-            whitePawnAttacks.getBit(Square::fromFileRank(file, rank - 1)) &&
+            (whitePawns | whitePawnAttacks).getBit(Square::fromFileRank(file, rank - 1)) &&
             !blackPawnAttacks.getBit(Square::fromFileRank(file, rank - 1)))
                 backwardBlackPawns.setBit(sq);
         }
@@ -532,7 +532,7 @@ int32_t HandcraftedEvaluator::evaluatePawnStorm() {
 }
 
 int32_t HandcraftedEvaluator::calculatePieceScore() {
-    return evaluatePieceMobility() + evaluateMinorPiecesOnStrongSquares() + evaluateBishopPairs() +
+    return evaluatePieceMobility() + evaluateSafeCenterSpace() + evaluateMinorPiecesOnStrongSquares() + evaluateBishopPairs() +
            evaluateRooksOnOpenFiles() + evaluateRooksBehindPassedPawns() + evaluateKingPawnProximity();
 }
 
@@ -574,6 +574,37 @@ int32_t HandcraftedEvaluator::evaluatePieceMobility() {
                               blackQueenAttacks.popcount() * EG_PIECE_MOBILITY_BONUS[QUEEN];
 
     return mgMobilityScore * (1.0 - evaluationVars.phase) + egMobilityScore * evaluationVars.phase;
+}
+
+int32_t HandcraftedEvaluator::evaluateSafeCenterSpace() {
+    Bitboard whiteSafeCenterSquares = extendedCenter & ~board.getPieceAttackBitboard(BLACK_PAWN);
+    Bitboard blackSafeCenterSquares = extendedCenter & ~board.getPieceAttackBitboard(WHITE_PAWN);
+
+    Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
+    Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);
+
+    int32_t whitePieceCount = board.getWhiteOccupiedBitboard() & ~whitePawns;
+    int32_t blackPieceCount = board.getBlackOccupiedBitboard() & ~blackPawns;
+
+    int32_t whiteNumSafeCenterSquares = whiteSafeCenterSquares.popcount();
+    int32_t blackNumSafeCenterSquares = blackSafeCenterSquares.popcount();
+
+    // Zähle Felder hinter eigenen Bauern doppelt
+    Bitboard whiteCenterPawns = whitePawns & extendedCenter;
+    while(whiteCenterPawns) {
+        int32_t sq = whiteCenterPawns.popFSB();
+        int32_t rank = Square::rankOf(sq);
+        whiteNumSafeCenterSquares += rank - RANK_2;
+    }
+
+    Bitboard blackCenterPawns = blackPawns & extendedCenter;
+    while(blackCenterPawns) {
+        int32_t sq = blackCenterPawns.popFSB();
+        int32_t rank = Square::rankOf(sq);
+        blackNumSafeCenterSquares += RANK_7 - rank;
+    }
+
+    return (whiteNumSafeCenterSquares * whitePieceCount - blackNumSafeCenterSquares * blackPieceCount) * MG_SPACE_BONUS_PER_PIECE;
 }
 
 int32_t HandcraftedEvaluator::evaluateMinorPiecesOnStrongSquares() {
@@ -700,6 +731,14 @@ int32_t HandcraftedEvaluator::evaluateKingPawnProximity() {
     score *= EG_KING_PAWN_PROXIMITY_BONUS * evaluationVars.phase;
 
     return score;
+}
+
+bool HandcraftedEvaluator::isWinnable(int32_t side) {
+    Bitboard pawns = board.getPieceBitboard(side | PAWN);
+    Bitboard minorPieces = board.getPieceBitboard(side | KNIGHT) | board.getPieceBitboard(side | BISHOP);
+    Bitboard heavyPieces = board.getPieceBitboard(side | ROOK) | board.getPieceBitboard(side | QUEEN);
+
+    return pawns || minorPieces.popcount() >= 2 || heavyPieces;
 }
 
 int32_t HandcraftedEvaluator::evaluateKNBKEndgame(int32_t b, int32_t k) {

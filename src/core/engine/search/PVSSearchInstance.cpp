@@ -1,6 +1,6 @@
 #include "core/engine/search/PVSSearchInstance.h"
 
-int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta, bool allowNullMove, uint8_t nodeType) {
+int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta, int8_t nullMoveCooldown, uint8_t nodeType) {
     // Setze die momentane Suchtiefe, wenn wir uns im Wurzelknoten befinden.
     if(ply == 0) {
         currentSearchDepth = depth / ONE_PLY;
@@ -116,16 +116,15 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
      * nicht, daher deaktivieren wir die Heuristik wenn wir
      * nur noch einen König und Bauern haben.
      */
-    if(allowNullMove && !board.isCheck() && nodeType != PV_NODE &&
+    if(nullMoveCooldown <= 0 && !board.isCheck() && nodeType != PV_NODE &&
        depth > ONE_PLY && !deactivateNullMove()) {
 
-        int16_t preliminaryEval = searchStack[ply].preliminaryScore;
-        if(preliminaryEval > beta) {
+        int16_t depthReduction = calculateNullMoveReduction(depth, searchStack[ply].preliminaryScore, beta);
+        if(depthReduction > ONE_PLY) {
             Move nullMove = Move::nullMove();
             board.makeMove(nullMove);
 
-            int16_t score = -pvs(depth - calculateNullMoveReduction(depth, preliminaryEval, beta),
-                                 ply + 1, -beta, -beta + 1, false, CUT_NODE);
+            int16_t score = -pvs(depth - depthReduction, ply + 1, -beta, -beta + 1, NULL_MOVE_COOLDOWN, CUT_NODE);
 
             board.undoMove();
 
@@ -188,7 +187,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
             evaluator.updateAfterMove();
 
             // Durchsuche den Kindknoten mit reduzierter Suchtiefe.
-            int16_t score = -pvs(singularDepth, ply + 1, -reducedAlpha - 1, -reducedAlpha, true, ALL_NODE);
+            int16_t score = -pvs(singularDepth, ply + 1, -reducedAlpha - 1, -reducedAlpha, nullMoveCooldown, ALL_NODE);
 
             // Mache den Zug rückgängig und informiere den Evaluator.
             evaluator.updateBeforeUndo();
@@ -341,20 +340,22 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
         if(moveCount == 0) {
             // Führe eine vollständige Suche durch.
-            score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, true, childType);
+            score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, nullMoveCooldown - 1, childType);
         } else {
             // Durchsuche die restlichen Kinder mit einem Nullfenster (nur in PV-Knoten) und bei,
             // auf ersten Blick, uninteressanten Zügen mit einer reduzierten Suchtiefe
             // (=> Late Move Reductions).
             int16_t reduction = 0;
             if(extension == 0 && !isCheckEvasion) {
-                reduction = determineLMR(moveCount + 1, moveScore, depth, nodeType);
+                reduction = determineLMR(moveCount + 1, moveScore, depth);
 
                 if(isCheck || isPassedPawnPush)
-                    reduction = std::max(reduction - ONE_PLY, 0);
+                    reduction -= ONE_PLY;
+
+                reduction = std::max(reduction, (int16_t)0);
             }
 
-            score = -pvs(depth - ONE_PLY + extension - reduction, ply + 1, -alpha - 1, -alpha, true, childType);
+            score = -pvs(depth - ONE_PLY + extension - reduction, ply + 1, -alpha - 1, -alpha, nullMoveCooldown - 1, childType);
 
             // Wenn die Bewertung über dem Nullfenster liegt,
             // führe eine vollständige Suche durch, wenn:
@@ -367,7 +368,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
                 else
                     childType = ALL_NODE;
 
-                score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, false, childType);
+                score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, std::max(nullMoveCooldown - 1, 1), childType);
             }
         }
 
@@ -548,7 +549,7 @@ int16_t PVSSearchInstance::quiescence(uint16_t ply, int16_t alpha, int16_t beta)
     int16_t standPat = searchStack[ply].preliminaryScore;
 
     // Delta Pruning:
-    // Der größtmögliche Materialgewinn in einem Zug reicht nicht aus,
+    // Ein sehr großer Materialgewinn in einem Zug reicht nicht aus,
     // um alpha zu erreichen. Wir können die Suche abbrechen.
     if(standPat < alpha - DELTA_MARGIN)
         return standPat;
@@ -616,9 +617,7 @@ int16_t PVSSearchInstance::quiescence(uint16_t ply, int16_t alpha, int16_t beta)
     return bestScore;
 }
 
-int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore, int16_t depth, uint8_t nodeType) {
-    UNUSED(nodeType);
-
+int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore, int16_t depth) {
     // LMR reduziert nie den ersten Zug
     if(moveCount <= 1)
         return 0;
@@ -647,20 +646,20 @@ int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore, in
     reduction += historyReduction;
 
     // Runde die Reduktion auf ein Vielfaches von ONE_PLY ab.
-    return std::max((int32_t)reduction / ONE_PLY * ONE_PLY, 0);
+    return (int32_t)reduction / ONE_PLY * ONE_PLY;
 }
 
 int16_t PVSSearchInstance::determineLMPCount(int16_t depth, bool isCheckEvasion, bool isPlausibleLine) {
     // LMP wird nur in geringen Tiefen,
     // nicht in Schachabwehrzügen angewandt.
-    if(depth >= 10 * ONE_PLY || isCheckEvasion || isPlausibleLine)
+    if(depth >= 12 * ONE_PLY || isCheckEvasion)
         return std::numeric_limits<int16_t>::max();
 
-    // Standardmäßig müssen mindestens 6 Züge betrachtet werden.
-    int16_t result = 6;
+    // Standardmäßig müssen mindestens 5 Züge betrachtet werden.
+    int16_t result = 5 + 3 * isPlausibleLine;
 
     // Erhöhe die Anzahl der zu betrachtenden Züge mit der verbleibenden Suchtiefe.
-    result += (depth / ONE_PLY - 1) * 5;
+    result += (depth / ONE_PLY - 1) * (3 + 2 * isPlausibleLine);
 
     return result;
 }
@@ -762,7 +761,7 @@ void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t
                 int16_t beta = iidScore + IID_ASPIRATION_WINDOW_SIZE;
                 bool alphaAlreadyWidened = false, betaAlreadyWidened = false;
 
-                iidScore = iidInstance.pvs(d, 0, alpha, beta, true, PV_NODE);
+                iidScore = iidInstance.pvs(d, 0, alpha, beta, 0, PV_NODE);
 
                 while(iidScore <= alpha || iidScore >= beta) {
                     // Wenn die Suche außerhalb des Aspirationsfensters liegt,
@@ -783,7 +782,7 @@ void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t
                         }
                     }
 
-                    iidScore = iidInstance.pvs(d, 0, alpha, beta, true, PV_NODE);
+                    iidScore = iidInstance.pvs(d, 0, alpha, beta, 0, PV_NODE);
                 }
             }
 

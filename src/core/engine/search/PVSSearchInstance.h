@@ -189,10 +189,9 @@ class PVSSearchInstance {
          * @param moveCount Die Platzierung des Knotens in der Zugvorsortierung.
          * @param moveScore Die Bewertung des letzten Zuges durch die Zugvorsortierung.
          * @param depth Die verbleibende Suchtiefe.
-         * @param nodeType Der erwartete Typ des Knotens.
          * @return Die Tiefe, um die der Knoten zusätzlich reduziert werden soll.
          */
-        int16_t determineLMR(int16_t moveCount, int16_t moveScore, int16_t depth, uint8_t nodeType);
+        int16_t determineLMR(int16_t moveCount, int16_t moveScore, int16_t depth);
 
         /**
          * @brief Bestimmt, ab welchem Zug das Null Move Pruning
@@ -315,14 +314,14 @@ class PVSSearchInstance {
          * untere Schranke bekannt ist, sollte MIN_SCORE übergeben werden.
          * @param beta Die obere Schranke des Suchfensters. Wenn keine
          * obere Schranke bekannt ist, sollte MAX_SCORE übergeben werden.
-         * @param allowNullMove Gibt an, ob Null Move Pruning verwendet werden darf.
-         * Von außerhalb der Suchinstanz sollte false übergeben werden.
+         * @param nullMoveCooldown Gibt an, in wie vielen Zügen das Null Move Pruning
+         * wieder angewendet werden darf.
          * @param nodeType Der erwartete Typ des Knotens. Von außerhalb der
          * Suchinstanz sollte PV_NODE übergeben werden.
          * @return Die Bewertung der Position (oder 0, wenn die Suche vorzeitig über die Stop-Flag abgebrochen wurde).
          * Die Hauptvariante kann über die Methode getPV() ausgelesen werden.
          */
-        int16_t pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta, bool allowNullMove, uint8_t nodeType);
+        int16_t pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta, int8_t nullMoveCooldown, uint8_t nodeType);
 
         /**
          * @brief Sagt der Suchinstanz, ob sie die Hauptinstanz
@@ -446,13 +445,6 @@ class PVSSearchInstance {
         constexpr Move getCounterMove(int32_t side, int32_t piece, int32_t destination) {
             return counterMoveTable[side / COLOR_MASK][piece - 1][destination];
         }
-
-        /**
-         * @brief Eine Konstante für das Delta-Pruning.
-         * Gibt den größtmöglichen Materialgewinn (+kleine Margin)
-         * in einem Zug an.
-         */
-        static constexpr int16_t DELTA_MARGIN = 1000;
 
         /**
          * @brief Gibt die (halbe) Breite des Aspirationsfenster für

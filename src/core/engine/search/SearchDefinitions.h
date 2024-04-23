@@ -105,6 +105,8 @@ static constexpr uint8_t PV_NODE = 0;
 static constexpr uint8_t CUT_NODE = 1;
 static constexpr uint8_t ALL_NODE = 2;
 
+static constexpr int8_t NULL_MOVE_COOLDOWN = 2;
+
 /**
  * @brief Berechnet, wie stark eine Nullzugsuche reduziert werden soll.
  * 
@@ -114,7 +116,7 @@ static constexpr uint8_t ALL_NODE = 2;
  * @return Die Reduktion in Plies.
  */
 static constexpr int16_t calculateNullMoveReduction(int16_t depth, int16_t staticEval, int16_t beta) {
-    return 2 * ONE_PLY + (std::min((staticEval - beta) / 384, 2) + depth / (16 * ONE_PLY)) * ONE_PLY;
+    return ONE_PLY + (std::min((staticEval - beta) / 256, 2) + depth / (4 * ONE_PLY)) * ONE_PLY;
 }
 
 /**
@@ -130,12 +132,9 @@ static constexpr int16_t calculateFutilityMargin(int16_t depth) {
 }
 
 /**
- * Definitionen für die Multi-Cut-Heuristik
+ * Konstanten für das Delta-Pruning
  */
 
-static constexpr int16_t MULTICUT_C = 2;
-static constexpr int16_t MULTICUT_M = 3;
-
-static_assert(MULTICUT_C <= MULTICUT_M);
+static constexpr int16_t DELTA_MARGIN = 1000;
 
 #endif
