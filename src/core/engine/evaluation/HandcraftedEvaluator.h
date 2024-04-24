@@ -23,8 +23,6 @@ class HandcraftedEvaluator: public Evaluator {
             int32_t phaseWeight; // Materialgewichtung für die Spielphase
         };
 
-        HCEParameters parameters;
-
         EvaluationVariables evaluationVars;
 
         std::vector<EvaluationVariables> evaluationHistory;
@@ -32,20 +30,20 @@ class HandcraftedEvaluator: public Evaluator {
         void calculateMaterialScore();
         void calculatePawnScore();
         void calculateGamePhase();
-        int32_t calculateKingSafetyScore();
-        int32_t calculatePieceScore();
+        Score calculateKingSafetyScore();
+        Score calculatePieceScore();
 
-        int32_t evaluateKingAttackZone();
-        int32_t evaluateOpenFiles();
-        int32_t evaluatePawnStorm();
+        Score evaluateKingAttackZone();
+        Score evaluateOpenFiles();
+        Score evaluatePawnStorm();
 
-        int32_t evaluatePieceMobility();
-        int32_t evaluateSafeCenterSpace();
-        int32_t evaluateMinorPiecesOnStrongSquares();
-        int32_t evaluateBishopPairs();
-        int32_t evaluateRooksOnOpenFiles();
-        int32_t evaluateRooksBehindPassedPawns();
-        int32_t evaluateKingPawnProximity();
+        Score evaluatePieceMobility();
+        Score evaluateSafeCenterSpace();
+        Score evaluateMinorPiecesOnStrongSquares();
+        Score evaluateBishopPairs();
+        Score evaluateRooksOnOpenFiles();
+        Score evaluateRooksBehindPassedPawns();
+        Score evaluateKingPawnProximity();
 
         bool isWinnable(int32_t side);
 
@@ -65,8 +63,9 @@ class HandcraftedEvaluator: public Evaluator {
         };
 
         inline int32_t evaluate() override {
-            int32_t numPawns = board.getPieceBitboard(WHITE_PAWN).popcount() +
-                               board.getPieceBitboard(BLACK_PAWN).popcount();
+            int32_t numWhitePawns = board.getPieceBitboard(WHITE_PAWN).popcount();
+            int32_t numBlackPawns = board.getPieceBitboard(BLACK_PAWN).popcount();
+            int32_t numPawns = numWhitePawns + numBlackPawns;
 
         	// Spezialfall: Keine Bauern mehr auf dem Spielfeld
             if(numPawns == 0) {
@@ -74,7 +73,7 @@ class HandcraftedEvaluator: public Evaluator {
                 int32_t blackKingSq = board.getKingSquare(BLACK);
 
                 // Wenn der Materialvorteil kleiner als das Gewicht eines Turms ist, dann ist es Unentschieden
-                if(std::abs(evaluationVars.materialScore.eg) < parameters.getEGWinningMaterialAdvantage()) {
+                if(std::abs(evaluationVars.materialScore.eg) < HCE_PARAMS.getEGWinningMaterialAdvantage()) {
 
                     // Außer im Fall von 2 Läufer gegen einen Springer (da ist es manchmal möglich zu gewinnen)
                     if(evaluationVars.materialScore.eg > DRAW_SCORE) {
@@ -92,7 +91,7 @@ class HandcraftedEvaluator: public Evaluator {
                     return DRAW_SCORE;
                 }
 
-                if(evaluationVars.materialScore.eg >= parameters.getEGWinningMaterialAdvantage()) {
+                if(evaluationVars.materialScore.eg >= HCE_PARAMS.getEGWinningMaterialAdvantage()) {
                     bool isKBNK = (board.getPieceBitboard(WHITE_KNIGHT).popcount() == 1 && board.getPieceBitboard(WHITE_BISHOP).popcount() == 1 &&
                                     board.getPieceBitboard(WHITE_ROOK).popcount() == 0 && board.getPieceBitboard(WHITE_QUEEN).popcount() == 0);
 
@@ -105,7 +104,7 @@ class HandcraftedEvaluator: public Evaluator {
                         return DRAW_SCORE;
                     else // Jede andere Kombination -> Matt
                         return evaluateWinningNoPawnsEndgame(blackKingSq) * (board.getSideToMove() == WHITE ? 1 : -1);
-                } else if(evaluationVars.materialScore.eg <= -parameters.getEGWinningMaterialAdvantage()) {
+                } else if(evaluationVars.materialScore.eg <= -HCE_PARAMS.getEGWinningMaterialAdvantage()) {
                     bool isKBNK = (board.getPieceBitboard(BLACK_KNIGHT).popcount() == 1 && board.getPieceBitboard(BLACK_BISHOP).popcount() == 1 &&
                                     board.getPieceBitboard(BLACK_ROOK).popcount() == 0 && board.getPieceBitboard(BLACK_QUEEN).popcount() == 0);
 
@@ -121,24 +120,41 @@ class HandcraftedEvaluator: public Evaluator {
                 }
             }
 
-            Score score = evaluationVars.materialScore + evaluationVars.pawnScore;
+            // Bestimme den Materialungleichgewichtsfaktor
+            int32_t numWhiteKnights = board.getPieceBitboard(WHITE_KNIGHT).popcount();
+            int32_t numBlackKnights = board.getPieceBitboard(BLACK_KNIGHT).popcount();
+            int32_t numWhiteBishops = board.getPieceBitboard(WHITE_BISHOP).popcount();
+            int32_t numBlackBishops = board.getPieceBitboard(BLACK_BISHOP).popcount();
+            int32_t numWhiteRooks = board.getPieceBitboard(WHITE_ROOK).popcount();
+            int32_t numBlackRooks = board.getPieceBitboard(BLACK_ROOK).popcount();
+            int32_t numWhiteQueens = board.getPieceBitboard(WHITE_QUEEN).popcount();
+            int32_t numBlackQueens = board.getPieceBitboard(BLACK_QUEEN).popcount();
+
+            int32_t materialImbalanceFactor = HCE_PARAMS.getPawnImbalanceFactor(numWhitePawns, numBlackPawns) +
+                                              HCE_PARAMS.getKnightImbalanceFactor(numWhiteKnights, numBlackKnights) +
+                                              HCE_PARAMS.getBishopImbalanceFactor(numWhiteBishops, numBlackBishops) +
+                                              HCE_PARAMS.getRookImbalanceFactor(numWhiteRooks, numBlackRooks) +
+                                              HCE_PARAMS.getQueenImbalanceFactor(numWhiteQueens, numBlackQueens);
 
             // Aktualisiere die Königssicherheitsbewertung
-            int32_t kingSafetyScore = calculateKingSafetyScore();
+            Score kingSafetyScore = calculateKingSafetyScore();
 
             // Aktualisiere die kontextsensitiven Figurenbewertungen
-            int32_t pieceScore = calculatePieceScore();
+            Score pieceScore = calculatePieceScore();
 
-            int32_t evaluation = ((1.0 - evaluationVars.phase) * score.mg + evaluationVars.phase * score.eg + kingSafetyScore + pieceScore) *
+            Score score = (evaluationVars.materialScore * materialImbalanceFactor / (500 * HCE_PARAMS.VALUE_ONE) +
+                           evaluationVars.pawnScore + pieceScore + kingSafetyScore +
+                           Score{HCE_PARAMS.getMGTempoBonus(), HCE_PARAMS.getEGTempoBonus()} * (board.getSideToMove() == WHITE ? 1 : -1)) /
+                           HCE_PARAMS.VALUE_ONE;
+
+            int32_t evaluation = ((1.0 - evaluationVars.phase) * score.mg + evaluationVars.phase * score.eg) *
                                  (board.getSideToMove() == WHITE ? 1 : -1);
-
-            evaluation += (1.0 - evaluationVars.phase) * parameters.getMGTempoBonus() + evaluationVars.phase * parameters.getEGTempoBonus();
 
             // Skaliere die Bewertung in Richtung 0, wenn wir uns der 50-Züge-Regel annähern.
             // (Starte erst nach 10 Zügen, damit die Bewertung nicht zu früh verzerrt wird.)
             int32_t fiftyMoveCounter = board.getFiftyMoveCounter();
             if(fiftyMoveCounter > 20)
-                evaluation = (int32_t)evaluation * (100 - fiftyMoveCounter) / 80;
+                evaluation = evaluation * (100 - fiftyMoveCounter) / 80;
 
             if(!isWinnable(board.getSideToMove()))
                 evaluation = std::min(evaluation, (int32_t)DRAW_SCORE);

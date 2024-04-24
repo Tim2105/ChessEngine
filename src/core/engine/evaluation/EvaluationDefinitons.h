@@ -63,6 +63,10 @@ struct Score {
     }
 };
 
+constexpr Score operator*(const int32_t& scalar, const Score& score) {
+    return score * scalar;
+}
+
 struct PawnBitboards {
     Bitboard whitePawns;
     Bitboard blackPawns;
