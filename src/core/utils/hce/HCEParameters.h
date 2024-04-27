@@ -132,7 +132,8 @@ class HCEParameters {
 
         /**
          * Ein Bonus für jede Leichtfigur,
-         * die auf einem starken Feld steht.
+         * die auf einem starken Feld steht oder
+         * im nächsten Zug erreichen kann.
          */
 
         int32_t MG_MINOR_PIECE_ON_STRONG_SQUARE_BONUS;
@@ -186,7 +187,7 @@ class HCEParameters {
 
         static constexpr size_t size() { return sizeof(HCEParameters) / sizeof(int32_t); }
 
-        static constexpr int32_t VALUE_ONE = 16;
+        static constexpr int32_t VALUE_ONE = 8;
 
         /**
          * @brief Dieses Objekt enthält einige wenige Parameter,

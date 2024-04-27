@@ -25,7 +25,7 @@ namespace UCI {
     struct SearchParams {
         uint32_t depth = std::numeric_limits<uint32_t>::max();
         uint64_t nodes = std::numeric_limits<uint64_t>::max();
-        Array<Move, 256> searchmoves;
+        Array<Move, 256> searchmoves = {};
         bool useSearchmoves = false;
         uint32_t movetime = 0;
         bool useMovetime = false;

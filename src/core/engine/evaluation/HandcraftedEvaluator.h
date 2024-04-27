@@ -130,11 +130,14 @@ class HandcraftedEvaluator: public Evaluator {
             int32_t numWhiteQueens = board.getPieceBitboard(WHITE_QUEEN).popcount();
             int32_t numBlackQueens = board.getPieceBitboard(BLACK_QUEEN).popcount();
 
-            int32_t materialImbalanceFactor = HCE_PARAMS.getPawnImbalanceFactor(numWhitePawns, numBlackPawns) +
-                                              HCE_PARAMS.getKnightImbalanceFactor(numWhiteKnights, numBlackKnights) +
-                                              HCE_PARAMS.getBishopImbalanceFactor(numWhiteBishops, numBlackBishops) +
-                                              HCE_PARAMS.getRookImbalanceFactor(numWhiteRooks, numBlackRooks) +
-                                              HCE_PARAMS.getQueenImbalanceFactor(numWhiteQueens, numBlackQueens);
+            double materialImbalanceFactor = (double)HCE_PARAMS.getPawnImbalanceFactor(numWhitePawns, numBlackPawns) / (100.0 * HCE_PARAMS.VALUE_ONE) *
+                                             (double)HCE_PARAMS.getKnightImbalanceFactor(numWhiteKnights, numBlackKnights) / (100.0 * HCE_PARAMS.VALUE_ONE) *
+                                             (double)HCE_PARAMS.getBishopImbalanceFactor(numWhiteBishops, numBlackBishops) / (100.0 * HCE_PARAMS.VALUE_ONE) *
+                                             (double)HCE_PARAMS.getRookImbalanceFactor(numWhiteRooks, numBlackRooks) / (100.0 * HCE_PARAMS.VALUE_ONE) *
+                                             (double)HCE_PARAMS.getQueenImbalanceFactor(numWhiteQueens, numBlackQueens) / (100.0 * HCE_PARAMS.VALUE_ONE);
+
+            Score scaledMaterialScore = {(int32_t)(evaluationVars.materialScore.mg * materialImbalanceFactor),
+                                         (int32_t)(evaluationVars.materialScore.eg * materialImbalanceFactor)};
 
             // Aktualisiere die Königssicherheitsbewertung
             Score kingSafetyScore = calculateKingSafetyScore();
@@ -142,8 +145,7 @@ class HandcraftedEvaluator: public Evaluator {
             // Aktualisiere die kontextsensitiven Figurenbewertungen
             Score pieceScore = calculatePieceScore();
 
-            Score score = (evaluationVars.materialScore * materialImbalanceFactor / (500 * HCE_PARAMS.VALUE_ONE) +
-                           evaluationVars.pawnScore + pieceScore + kingSafetyScore +
+            Score score = (scaledMaterialScore + evaluationVars.pawnScore + pieceScore + kingSafetyScore +
                            Score{HCE_PARAMS.getMGTempoBonus(), HCE_PARAMS.getEGTempoBonus()} * (board.getSideToMove() == WHITE ? 1 : -1)) /
                            HCE_PARAMS.VALUE_ONE;
 
