@@ -7,9 +7,12 @@
 #include "core/utils/Bitboard.h"
 
 #include <cstring>
+#include <limits>
 #include <stdalign.h>
 #include <stdint.h>
 #include <string>
+#include <sstream>
+#include <tuple>
 #include <vector>
 
 /**
@@ -121,6 +124,78 @@ class MoveHistoryEntry {
             this->move = move;
         }
 };
+
+/**
+ * @brief Enthält Meta-Informationen eines PGN-Strings.
+ */
+struct PGNData {
+    enum Result {
+        ONGOING,
+        WHITE_WINS,
+        BLACK_WINS,
+        DRAW
+    };
+
+    /**
+     * @brief Speichert das Seven Tag Roster (oder beliebige andere Schlüssel-Wert-Paare).
+     */
+    std::vector<std::tuple<std::string, std::string>> metadata;
+
+    /**
+     * @brief Speichert Kommentare in { - Klammern als Tupel
+     * mit dem Halbzug, hinter dem der Kommentar steht.
+     */
+    std::vector<std::tuple<std::string, size_t>> comments;
+
+    /**
+     * @brief Speichert das Ergebnis des Spiels.
+     * "1-0": Weiß gewinnt,
+     * "0-1": Schwarz gewinnt,
+     * "1/2-1/2": Remis,
+     * "*": Spiel läuft noch
+     */
+    Result result = ONGOING;
+
+    friend std::ostream& operator<<(std::ostream& os, const PGNData& data);
+
+    std::string metadataToString() const {
+        std::stringstream ss;
+        for(auto& [key, value] : metadata)
+            ss << "[" << key << ": \"" << value << "\"]\n";
+
+        return ss.str();
+    }
+};
+
+/**
+ * @brief Gibt die PGN-Metadaten aus.
+ */
+inline std::ostream& operator<<(std::ostream& os, const PGNData& data) {
+    os << data.metadataToString();
+
+    for(auto& [comment, halfmove] : data.comments)
+        os << "(" << halfmove << ") \""  << comment << "\"\n";
+
+    os << "Result: ";
+    switch(data.result) {
+        case PGNData::WHITE_WINS:
+            os << "1-0";
+            break;
+        case PGNData::BLACK_WINS:
+            os << "0-1";
+            break;
+        case PGNData::DRAW:
+            os << "1/2-1/2";
+            break;
+        case PGNData::ONGOING:
+            os << "*";
+            break;
+    }
+
+    os << std::endl;
+
+    return os;
+}
 
 /**
  * @brief Stellt ein Schachbrett dar.
@@ -297,10 +372,28 @@ class alignas(64) Board {
         Board(std::string fen);
 
         /**
-         * @brief Erstellt ausgehend von einem PGN-String ein neues Schachbrett.
-         * @param pgn Die PGN-Notation des Schachbretts.
+         * @brief Liest aus einem Inputstream ein Schachbrett in PGN-Notation.
+         * Der Inputstream wird sich nach dem Lesen am Ende des PGN-Strings befinden.
+         * 
+         * @param pgn Die PGN-Notation des Schachbretts als Inputstream.
+         * @param numMoves Die Anzahl der Züge, die gelesen werden sollen.
+         * 
+         * @return Ein Tupel, das das Schachbrett und die PGN-Metadaten enthält.
          */
-        static Board fromPGN(std::string pgn);
+        static std::tuple<Board, PGNData> fromPGN(std::istream& pgn, size_t numMoves = std::numeric_limits<size_t>::max());
+
+        /**
+         * @brief Liest aus einem String ein Schachbrett in PGN-Notation.
+         * 
+         * @param pgn Die PGN-Notation des Schachbretts als String.
+         * @param numMoves Die Anzahl der Züge, die gelesen werden sollen.
+         * 
+         * @return Ein Tupel, das das Schachbrett und die PGN-Metadaten enthält.
+         */
+        static inline std::tuple<Board, PGNData> fromPGN(const std::string& pgn, size_t numMoves = std::numeric_limits<size_t>::max()) {
+            std::stringstream ss(pgn);
+            return fromPGN(ss, numMoves);
+        }
 
         /**
          * @brief Erstellt ein neues Schachbrett, das eine Kopie eines anderen Schachbretts ist.
@@ -314,6 +407,22 @@ class alignas(64) Board {
         Board& operator=(Board&& other);
 
         ~Board() = default;
+
+        /**
+         * @brief Überprüft, ob zwei Schachbretter die gleiche Position darstellen.
+         * Dieser Operator betrachtet nicht die Zughistorie, sondern nur die aktuelle Position.
+         * 
+         * @param other Das andere Schachbrett.
+         */
+        bool operator==(const Board& other) const;
+
+        /**
+         * @brief Überprüft, ob zwei Schachbretter unterschiedliche Positionen darstellen.
+         * Dieser Operator betrachtet nicht die Zughistorie, sondern nur die aktuelle Position.
+         * 
+         * @param other Das andere Schachbrett.
+         */
+        inline bool operator!=(const Board& other) const { return !(*this == other); };
 
         /**
          * @brief Gibt einen Hashwert des Schachbretts zurück.
@@ -374,12 +483,19 @@ class alignas(64) Board {
         /**
          * @brief Wandelt die aktuelle Stellung in eine FEN-Notation um.
          */
-        std::string toFen() const;
+        std::string toFEN() const;
+
+        /**
+         * @brief Wandelt das Spiel in einen PGN-String um.
+         * 
+         * @param data Die PGN-Metadaten.
+         */
+        std::string toPGN(const PGNData& data) const;
 
         /**
          * @brief Wandelt das Spiel in einen PGN-String um.
          */
-        std::string toPgn() const;
+        std::string toPGN() const;
 
         /**
          * @brief Überprüft, ob ein Feld von einer bestimmten Seite angegriffen wird.

@@ -1,10 +1,12 @@
 #include "core/chess/Board.h"
+#include "core/chess/Referee.h"
 #include "core/chess/ZobristDefinitions.h"
 #include "core/chess/movegen/NewMovegen.h"
 #include "core/utils/MoveNotations.h"
 
 #include <algorithm>
 #include <stdio.h>
+#include <stdexcept>
 
 Board::Board() {
     side = WHITE;
@@ -276,33 +278,196 @@ Board::Board(std::string fen) {
     hashValue = generateHashValue();
 }
 
+bool Board::operator==(const Board& b) const {
+    for(size_t i = 0; i < 15; i++)
+        if(pieceBitboard[i] != b.pieceBitboard[i])
+            return false;
 
-Board Board::fromPGN(std::string pgn) {
-    Board board;
+    if(side != b.side)
+        return false;
 
-    std::vector<std::string> sections;
+    if(enPassantSquare != b.enPassantSquare)
+        return false;
 
-    std::string section;
-    for(char c : pgn) {
-        if(c == ' ') {
-            if(section == "")
-                continue;
-            
-            sections.push_back(section);
-            section = "";
+    if(fiftyMoveRule != b.fiftyMoveRule)
+        return false;
+
+    if(castlingPermission != b.castlingPermission)
+        return false;
+
+    if(age != b.age)
+        return false;
+
+    return true;
+}
+
+std::tuple<std::string, std::string> readMetadataLine(std::istream& ss) {
+    std::string key;
+    std::string value;
+
+    // Lese das [ - Zeichen
+    ss.get();
+    // Lese den Schlüssel
+    ss >> key;
+    // Lese das Leerzeichen
+    ss >> std::ws;
+    // Lese den Wert
+    std::getline(ss, value);
+    // Lese das Zeilenende
+    ss >> std::ws;
+
+    // Entferne das vordereste " im Wert (wenn vorhanden)
+    if(value[0] == '"')
+        value.erase(0, 1);
+    
+    // Entferne das hinterste ] im Wert
+    value.erase(value.length() - 1, 1);
+
+    // Entferne das hinterste " im Wert (wenn vorhanden)
+    if(value[value.length() - 1] == '"')
+        value.erase(value.length() - 1, 1);
+
+    return std::make_tuple(key, value);
+}
+
+std::string readToken(std::istream& ss) {
+    // Lese bis zum nächsten Leerzeichen, Tabulator,
+    // Zeilenumbruch oder einem { ; oder % - Zeichen
+
+    // Entferne alle Leerzeichen, Tabulatoren und Zeilenumbrüche
+    ss >> std::ws;
+
+    std::stringstream move;
+    char c;
+    while(ss.get(c)) {
+        if(c == '{' || c == ';' || c == '%') {
+            // Hier beginnt ein Kommentar
+            ss.unget();
+            break;
         }
-        else if(c == '.')
-            section = "";
-        else
-            section += c;
+
+        if(c == ' ' || c == '\t' || c == '\n')
+            break;
+
+        move << c;
+
+        if(c == '.') {
+            // Zugnummer
+            ss >> std::ws;
+            break;
+        }
     }
 
-    if(section != "")
-        sections.push_back(section);
+    return move.str();
+}
 
-    std::vector<std::string> stringHistory;
+std::string readComment(std::istream& ss) {
+    // Blockkommentar: Lese bis zum nächsten }-Zeichen
+    // Ersetze dabei alle Zeilenumbrüche
+    // durch Leerzeichen
+    // Zeilenkommentar: Lese bis zum nächsten Zeilenumbruch
 
-    for(std::string s : sections) {  
+    char commentType;
+    ss >> commentType;
+
+    std::stringstream comment;
+
+    if(commentType == '{') {
+        // Blockkommentar
+
+        char c;
+        while(ss.get(c)) {
+            if(c == '}')
+                break;
+            if(c != '\n')
+                comment << c;
+            else
+                comment << ' ';
+        }
+    } else {
+        // Zeilenkommentar
+
+        std::string line;
+        std::getline(ss, line);
+        comment << line;
+    }
+
+    return comment.str();
+}
+
+std::tuple<Board, PGNData> Board::fromPGN(std::istream& ss, size_t numMoves) {
+    PGNData data;
+
+    std::vector<std::string> moves;
+    std::string initialFen = "";
+
+    bool behindMoveNumber = false;
+
+    // Lese Leerzeichen, Tabulatoren und Zeilenumbrüche
+    ss >> std::ws;
+
+    std::string token;
+    while(ss.good()) {
+        // Überprüfe, was als nächstes gelesen werden soll
+        char c = ss.peek();
+        if(c == '[') {
+            // Metadaten
+            data.metadata.push_back(readMetadataLine(ss));
+
+            if(std::get<0>(data.metadata.back()) == "FEN")
+                initialFen = std::get<1>(data.metadata.back());
+
+        } else if(c == '{' || c == ';' || c == '%') // Kommentar
+            data.comments.push_back(std::make_tuple(readComment(ss), moves.size() + behindMoveNumber));
+        else {
+            token = readToken(ss);
+            if(token != "") {
+                if((token[0] >= '0' && token[0] <= '9') || token[0] == '.' || token[0] == '*') {
+                    // Zugnummer oder Ergebnis
+                    if(token == "1-0")
+                        data.result = PGNData::WHITE_WINS;
+                    else if(token == "0-1")
+                        data.result = PGNData::BLACK_WINS;
+                    else if(token == "1/2-1/2" || token == "1/2")
+                        data.result = PGNData::DRAW;
+                    else if(token == "*")
+                        data.result = PGNData::ONGOING;
+                    else
+                        behindMoveNumber = true;
+
+                    if(!behindMoveNumber)
+                        break; // Wenn der Token keine Zugnummer ist, wurde ein Ergebnis gelesen und der PGN-String ist zu Ende
+                } else {
+                    // Zug
+
+                    // Entferne alle =, (, ) und / Zeichen (für Promotionen)
+                    token.erase(std::remove(token.begin(), token.end(), '='), token.end());
+                    token.erase(std::remove(token.begin(), token.end(), '('), token.end());
+                    token.erase(std::remove(token.begin(), token.end(), ')'), token.end());
+                    token.erase(std::remove(token.begin(), token.end(), '/'), token.end());
+
+                    moves.push_back(token);
+                    behindMoveNumber = false;
+                }
+            }
+        }
+
+        // Lese Leerzeichen, Tabulatoren und Zeilenumbrüche
+        ss >> std::ws;
+    }
+
+    Board board;
+    size_t numMovesParsed = 0;
+
+    if(initialFen != "") {
+        board = Board(initialFen);
+        numMovesParsed = board.getAge();
+    }
+
+    for(const std::string& s : moves) {
+        if(numMovesParsed >= numMoves)
+            break;
+
         Move move;
 
         for(Move m : board.generateLegalMoves()) {
@@ -313,21 +478,17 @@ Board Board::fromPGN(std::string pgn) {
         }
 
         if(!board.isMoveLegal(move)) {
-            std::string error = "Illegal move in PGN: ";
-            error += s;
-            error += " after ";
+            std::stringstream error;
+            error << "Illegal move in PGN: " << s << " at halfmove " << numMovesParsed + 1;
 
-            for(std::string s : stringHistory)
-                error += s + " ";
-            
-            throw std::runtime_error(error);
+            throw std::runtime_error(error.str());
         }
 
         board.makeMove(move);
-        stringHistory.push_back(s);
+        numMovesParsed++;
     }
 
-    return board;
+    return std::make_tuple(board, data);
 }
 
 uint64_t Board::generateHashValue() {
@@ -1243,7 +1404,7 @@ void Board::generateLegalCaptures(Array<Move, 256>& legalCaptures) const noexcep
     }
 }
 
-std::string Board::toFen() const {
+std::string Board::toFEN() const {
     std::string fen = "";
 
     int32_t emptySquares = 0;
@@ -1361,39 +1522,78 @@ std::string Board::toFen() const {
     return fen;
 }
 
-std::string Board::toPgn() const {
-    std::string pgn = "";
+std::string Board::toPGN(const PGNData& data) const {
+    std::stringstream pgn;
+    std::string fenOverwrite = "";
 
-    Board temp;
+    Board temp = *this;
+    std::vector<Move> moves;
 
-    if(moveHistory.size() == 0)
-        return pgn;
+    for(size_t i = 0; i < moveHistory.size(); i++)
+        temp.undoMove();
 
-    int32_t startPly = age - moveHistory.size();
+    // Wenn das Spiel nicht im Startzustand begann,
+    // muss die FEN-Notation im PGN gespeichert werden
+    if(temp != Board())
+        fenOverwrite = temp.toFEN();
 
-    if(startPly != 0)
-        throw std::runtime_error("The game hasn't started here. Can't generate PGN string.");
+    for(auto& [key, value] : data.metadata) {
+        if(fenOverwrite == "" || (key != "FEN" && key != "SetUp"))
+            pgn << "[" << key << " \"" << value << "\"]\n";
+    }
 
-    int32_t fullMoves = 1;
-    bool white = true;
+    if(fenOverwrite != "")
+        pgn << "[SetUp \"1\"]\n[FEN \"" << fenOverwrite << "\"]\n";
+
+    pgn << "\n";
+
+    // Sortiere die Kommentare nach Zugnummer
+    std::vector<std::tuple<std::string, size_t>> comments = data.comments;
+    std::sort(comments.begin(), comments.end(), [](const std::tuple<std::string, size_t>& a, const std::tuple<std::string, size_t>& b) {
+        return std::get<1>(a) < std::get<1>(b);
+    });
+
+    uint16_t halfMoves = temp.age;
+    bool white = halfMoves % 2 == 0;
+    size_t commentIndex = 0, moveIndex = 1;
+
+    while(commentIndex < comments.size() && std::get<1>(comments[commentIndex]) == 0) {
+        pgn << "{" << std::get<0>(comments[commentIndex]) << "} ";
+        commentIndex++;
+    }
+
+    if(!white)
+        pgn << std::to_string(halfMoves / 2 + 1) << ". ... ";
 
     for(MoveHistoryEntry entry : moveHistory) {
-        if(white) {
-            pgn += std::to_string(fullMoves);
-            pgn += ". ";
+        if(white)
+            pgn << std::to_string(halfMoves / 2 + 1) << ". ";
+
+        pgn << toStandardAlgebraicNotation(entry.move, temp) << " ";
+
+        while(commentIndex < comments.size() && std::get<1>(comments[commentIndex]) == moveIndex) {
+            pgn << "{" << std::get<0>(comments[commentIndex]) << "} ";
+            commentIndex++;
         }
 
-        pgn += toStandardAlgebraicNotation(entry.move, temp);
-        pgn += " ";
         temp.makeMove(entry.move);
 
         white = !white;
-
-        if(white)
-            fullMoves++;
+        halfMoves++;
+        moveIndex++;
     }
 
-    return pgn;
+    if(Referee::isCheckmate(temp)) {
+        if(white)
+            pgn << "0-1";
+        else
+            pgn << "1-0";
+    } else if(Referee::isDraw(temp))
+        pgn << "1/2-1/2";
+    else
+        pgn << "*";
+
+    return pgn.str();
 }
 
 uint16_t Board::repetitionCount() const {

@@ -44,7 +44,7 @@ bool setBoard(const char* fen) {
 }
 
 char* getBoard() {
-    fen = board.toFen();
+    fen = board.toFEN();
     return (char*)fen.c_str();
 }
 

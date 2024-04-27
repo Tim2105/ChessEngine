@@ -35,7 +35,7 @@ void printPerftResults(Board& board, int depth) {
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
     std::cout << "Perft results for "
-        << board.toFen() << " at depth " << depth << "\n";
+        << board.toFEN() << " at depth " << depth << "\n";
 
     if(depth <= 1) {
         Array<Move, 256> moves = board.generateLegalMoves();
