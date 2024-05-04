@@ -305,6 +305,44 @@ class PVSSearchInstance {
         }
 
         /**
+         * @brief Konstruktor für eine Suchinstanz mit benutzerdefinierten Parametern für die HCE.
+         */
+        PVSSearchInstance(Board& board, const HCEParameters& hceParams, TranspositionTable& transpositionTable,
+                          std::atomic_bool& stopFlag, std::atomic<std::chrono::system_clock::time_point>& startTime,
+                          std::atomic<std::chrono::system_clock::time_point>& stopTime, std::atomic_uint64_t& nodesSearched,
+                          std::function<void()> checkupFunction) :
+            board(board), evaluator(this->board, hceParams), transpositionTable(transpositionTable), stopFlag(stopFlag), startTime(startTime), 
+            stopTime(stopTime), nodesSearched(nodesSearched), searchStack(), checkupFunction(checkupFunction) {
+
+            // Leere die Killerzüge und die Vergangenheitsbewertung.
+
+            for(int16_t i = 0; i < MAX_PLY; i++) {
+                killerMoves[i][0] = Move::nullMove();
+                killerMoves[i][1] = Move::nullMove();
+            }
+
+            for(int16_t i = 0; i < 2; i++)
+                for(int16_t j = 0; j < 64; j++)
+                    for(int16_t k = 0; k < 64; k++)
+                        historyTable[i][j][k] = 0;
+
+            for (int16_t i = 0; i < 2; i++)
+                for (int16_t j = 0; j < 6; j++)
+                    for (int16_t k = 0; k < 64; k++)
+                        counterMoveTable[i][j][k] = Move::nullMove();
+
+            // Leere die PV-Tabelle.
+            for(int16_t i = 0; i < MAX_PLY; i++)
+                pvTable[i].clear();
+
+            // Setze die Anzahl der Threads.
+            numThreads = UCI::options["Threads"].getValue<size_t>();
+
+            // Setze die Anzahl der Varianten.
+            numPVs = UCI::options["MultiPV"].getValue<size_t>();
+        }
+
+        /**
          * @brief Führt eine vollständige Hauptvariantensuche durch.
          * 
          * @param depth Die Suchtiefe.

@@ -3,7 +3,7 @@
 int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta, int8_t nullMoveCooldown, uint8_t nodeType) {
     // Setze die momentane Suchtiefe, wenn wir uns im Wurzelknoten befinden.
     if(ply == 0) {
-        currentSearchDepth = depth / ONE_PLY;
+        currentSearchDepth = std::max(depth / ONE_PLY, 1);
         rootAge = board.getAge();
     }
 

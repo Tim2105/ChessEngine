@@ -2,6 +2,7 @@ bin/*
 MovegenTestCases/*
 BenchmarkData/*
 pgn/*
+data/*
 *.txt
 *.json
 .vscode/*

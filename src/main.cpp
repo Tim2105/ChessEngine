@@ -1,4 +1,5 @@
 #ifndef __EMSCRIPTEN__
+#ifndef TUNE
 #include "core/utils/magics/Magics.h"
 
 #include "uci/UCI.h"
@@ -11,4 +12,5 @@ int main() {
     return 0;
 }
 
+#endif
 #endif

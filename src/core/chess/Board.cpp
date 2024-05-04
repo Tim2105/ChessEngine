@@ -1590,8 +1590,22 @@ std::string Board::toPGN(const PGNData& data) const {
             pgn << "1-0";
     } else if(Referee::isDraw(temp))
         pgn << "1/2-1/2";
-    else
-        pgn << "*";
+    else {
+        switch(data.result) {
+            case PGNData::Result::WHITE_WINS:
+                pgn << "1-0";
+                break;
+            case PGNData::Result::BLACK_WINS:
+                pgn << "0-1";
+                break;
+            case PGNData::Result::DRAW:
+                pgn << "1/2-1/2";
+                break;
+            case PGNData::Result::ONGOING:
+                pgn << "*";
+                break;
+        }
+    }
 
     return pgn.str();
 }

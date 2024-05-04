@@ -199,7 +199,9 @@ void PVSEngine::search(const UCI::SearchParams& params) {
     // Wenn keine legalen Züge vorhanden sind,
     // gebe den Nullzug aus und beende die Suche.
     if(legalMoves.size() == 0) {
+        #if not defined(TUNE)
         std::cout << "bestmove 0000" << std::endl;
+        #endif
         return;
     }
 
@@ -214,8 +216,10 @@ void PVSEngine::search(const UCI::SearchParams& params) {
                 stop();
 
             // Mindestens alle 2 Sekunden die Ausgabe aktualisieren
+            #if not defined(TUNE)
             if(lastCheckupTime >= lastOutputTime + std::chrono::milliseconds(MAX_TIME_BETWEEN_OUTPUTS))
                 outputNodesInfo();
+            #endif
             
             if(checkupCallback)
                 checkupCallback();
@@ -377,6 +381,7 @@ void PVSEngine::search(const UCI::SearchParams& params) {
             getBestMoveScore()
         });
 
+        #if not defined(TUNE)
         // Im Multi-PV-Modus werden Informationen zu den
         // einzelnen Varianten ausgegeben.
         if(multiPV > 1)
@@ -385,6 +390,7 @@ void PVSEngine::search(const UCI::SearchParams& params) {
 
         // Gebe die Suchinformationen zu dieser Tiefe aus.
         outputSearchInfo();
+        #endif
 
         // Sagt die dynamische Zeitkontrolle, dass die Suche
         // abgebrochen werden soll?
@@ -404,6 +410,7 @@ void PVSEngine::search(const UCI::SearchParams& params) {
     // Gebe alle Hilfsinstanzen frei.
     destroyHelperInstances();
     
+    #if not defined(TUNE)
     // Finale Ausgabe der Suchinformationen.
     outputSearchInfo();
 
@@ -416,6 +423,7 @@ void PVSEngine::search(const UCI::SearchParams& params) {
     }
 
     std::cout << std::endl;
+    #endif
 }
 
 void PVSEngine::calculateTimeLimits(const UCI::SearchParams& params) {

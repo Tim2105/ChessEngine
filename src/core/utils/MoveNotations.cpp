@@ -38,11 +38,25 @@ const std::string pieceAsciiSymbols[7] = {
 std::string toAlgebraicNotation(const Move& move, Board& board, const std::string* pieceSymbols) {
     // Rochaden werden als O-O(Königsseite) bzw. O-O-O(Damenseite) dargestellt
     if(move.isCastle()) {
-        if(move.isKingsideCastle()) {
-            return "O-O";
-        } else {
-            return "O-O-O";
+        std::string result = "";
+        if(move.isKingsideCastle())
+            result = "O-O";
+        else
+            result = "O-O-O";
+
+        // Überprüfe ob der Zug den Gegner in Schach oder Schachmatt setzt
+        board.makeMove(move);
+
+        if(board.isCheck()) {
+            if(board.generateLegalMoves().size() == 0)
+                result += '#'; // Schachmatt
+            else
+                result += '+'; // Schach
         }
+
+        board.undoMove();
+
+        return result;
     }
 
     std::string result = "";

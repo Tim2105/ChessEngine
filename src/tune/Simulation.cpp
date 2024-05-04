@@ -7,6 +7,8 @@
 
 #include <algorithm>
 #include <chrono>
+#include <iomanip>
+#include <iostream>
 #include <thread>
 
 Simulation::Simulation(std::vector<Board>& startingPositions, uint32_t timeControl, uint32_t increment) :
@@ -90,23 +92,36 @@ GameResult Simulation::simulateSingleGame(Board& board) {
 }
 
 void Simulation::run() {
+    std::cout << "Simulating " << startingPositions.size() << " games ("
+              << timeControl / 1000.0 << "s + " << increment / 1000.0 << "s increment) "
+              << "with " << numThreads << " threads..." << std::endl;
+
+    std::cout << "Remaining games: " << startingPositions.size() << std::flush;
+
     std::mutex lock;
+    int32_t currentIdx = startingPositions.size() - 1;
 
     auto threadFunction = [&]() {
         while(true) {
             lock.lock();
-            if(startingPositions.empty()) {
+            if(currentIdx < 0) {
                 lock.unlock();
                 break;
             }
 
-            size_t index = startingPositions.size() - 1;
+            int32_t index = currentIdx;
+            currentIdx--;
             Board& board = startingPositions[index];
-            startingPositions.pop_back();
             lock.unlock();
 
             GameResult result = simulateSingleGame(board);
             results[index] = result;
+
+            if(index % 10 == 0) {
+                std::stringstream ss;
+                ss << "\rRemaining games: " << std::left << std::setw(7) << index;
+                std::cout << ss.str() << std::flush;
+            }
         }
     };
 
@@ -116,6 +131,8 @@ void Simulation::run() {
 
     for(size_t i = 0; i < numThreads; i++)
         threads[i].join();
+
+    std::cout << "\rRemaining games: 0      " << std::endl;
 }
 
 #endif

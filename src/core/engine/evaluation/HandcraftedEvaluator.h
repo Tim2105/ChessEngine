@@ -23,6 +23,8 @@ class HandcraftedEvaluator: public Evaluator {
             int32_t phaseWeight; // Materialgewichtung für die Spielphase
         };
 
+        const HCEParameters& hceParams;
+
         EvaluationVariables evaluationVars;
 
         std::vector<EvaluationVariables> evaluationHistory;
@@ -54,13 +56,15 @@ class HandcraftedEvaluator: public Evaluator {
         static constexpr int16_t EG_SPECIAL_MATE_PROGRESS_BONUS = 150;
 
     public:
-        HandcraftedEvaluator(Board& b) : Evaluator(b) {
+        HandcraftedEvaluator(Board& b, const HCEParameters& hceParams) : Evaluator(b), hceParams(hceParams) {
             evaluationHistory.reserve(MAX_PLY);
 
             calculateMaterialScore();
             calculatePawnScore();
             calculateGamePhase();
         };
+
+        HandcraftedEvaluator(Board& b) : HandcraftedEvaluator(b, HCE_PARAMS) {};
 
         inline int32_t evaluate() override {
             int32_t numWhitePawns = board.getPieceBitboard(WHITE_PAWN).popcount();
@@ -73,7 +77,7 @@ class HandcraftedEvaluator: public Evaluator {
                 int32_t blackKingSq = board.getKingSquare(BLACK);
 
                 // Wenn der Materialvorteil kleiner als das Gewicht eines Turms ist, dann ist es Unentschieden
-                if(std::abs(evaluationVars.materialScore.eg) < HCE_PARAMS.getEGWinningMaterialAdvantage()) {
+                if(std::abs(evaluationVars.materialScore.eg) < hceParams.getEGWinningMaterialAdvantage()) {
 
                     // Außer im Fall von 2 Läufer gegen einen Springer (da ist es manchmal möglich zu gewinnen)
                     if(evaluationVars.materialScore.eg > DRAW_SCORE) {
@@ -91,7 +95,7 @@ class HandcraftedEvaluator: public Evaluator {
                     return DRAW_SCORE;
                 }
 
-                if(evaluationVars.materialScore.eg >= HCE_PARAMS.getEGWinningMaterialAdvantage()) {
+                if(evaluationVars.materialScore.eg >= hceParams.getEGWinningMaterialAdvantage()) {
                     bool isKBNK = (board.getPieceBitboard(WHITE_KNIGHT).popcount() == 1 && board.getPieceBitboard(WHITE_BISHOP).popcount() == 1 &&
                                     board.getPieceBitboard(WHITE_ROOK).popcount() == 0 && board.getPieceBitboard(WHITE_QUEEN).popcount() == 0);
 
@@ -104,7 +108,7 @@ class HandcraftedEvaluator: public Evaluator {
                         return DRAW_SCORE;
                     else // Jede andere Kombination -> Matt
                         return evaluateWinningNoPawnsEndgame(blackKingSq) * (board.getSideToMove() == WHITE ? 1 : -1);
-                } else if(evaluationVars.materialScore.eg <= -HCE_PARAMS.getEGWinningMaterialAdvantage()) {
+                } else if(evaluationVars.materialScore.eg <= -hceParams.getEGWinningMaterialAdvantage()) {
                     bool isKBNK = (board.getPieceBitboard(BLACK_KNIGHT).popcount() == 1 && board.getPieceBitboard(BLACK_BISHOP).popcount() == 1 &&
                                     board.getPieceBitboard(BLACK_ROOK).popcount() == 0 && board.getPieceBitboard(BLACK_QUEEN).popcount() == 0);
 
@@ -130,11 +134,11 @@ class HandcraftedEvaluator: public Evaluator {
             int32_t numWhiteQueens = board.getPieceBitboard(WHITE_QUEEN).popcount();
             int32_t numBlackQueens = board.getPieceBitboard(BLACK_QUEEN).popcount();
 
-            double materialImbalanceFactor = (double)HCE_PARAMS.getPawnImbalanceFactor(numWhitePawns, numBlackPawns) / (100.0 * HCE_PARAMS.VALUE_ONE) *
-                                             (double)HCE_PARAMS.getKnightImbalanceFactor(numWhiteKnights, numBlackKnights) / (100.0 * HCE_PARAMS.VALUE_ONE) *
-                                             (double)HCE_PARAMS.getBishopImbalanceFactor(numWhiteBishops, numBlackBishops) / (100.0 * HCE_PARAMS.VALUE_ONE) *
-                                             (double)HCE_PARAMS.getRookImbalanceFactor(numWhiteRooks, numBlackRooks) / (100.0 * HCE_PARAMS.VALUE_ONE) *
-                                             (double)HCE_PARAMS.getQueenImbalanceFactor(numWhiteQueens, numBlackQueens) / (100.0 * HCE_PARAMS.VALUE_ONE);
+            double materialImbalanceFactor = (double)hceParams.getPawnImbalanceFactor(numWhitePawns, numBlackPawns) / (100.0 * hceParams.VALUE_ONE) *
+                                             (double)hceParams.getKnightImbalanceFactor(numWhiteKnights, numBlackKnights) / (100.0 * hceParams.VALUE_ONE) *
+                                             (double)hceParams.getBishopImbalanceFactor(numWhiteBishops, numBlackBishops) / (100.0 * hceParams.VALUE_ONE) *
+                                             (double)hceParams.getRookImbalanceFactor(numWhiteRooks, numBlackRooks) / (100.0 * hceParams.VALUE_ONE) *
+                                             (double)hceParams.getQueenImbalanceFactor(numWhiteQueens, numBlackQueens) / (100.0 * hceParams.VALUE_ONE);
 
             Score scaledMaterialScore = {(int32_t)(evaluationVars.materialScore.mg * materialImbalanceFactor),
                                          (int32_t)(evaluationVars.materialScore.eg * materialImbalanceFactor)};
@@ -146,8 +150,8 @@ class HandcraftedEvaluator: public Evaluator {
             Score pieceScore = calculatePieceScore();
 
             Score score = (scaledMaterialScore + evaluationVars.pawnScore + pieceScore + kingSafetyScore +
-                           Score{HCE_PARAMS.getMGTempoBonus(), HCE_PARAMS.getEGTempoBonus()} * (board.getSideToMove() == WHITE ? 1 : -1)) /
-                           HCE_PARAMS.VALUE_ONE;
+                           Score{hceParams.getMGTempoBonus(), hceParams.getEGTempoBonus()} * (board.getSideToMove() == WHITE ? 1 : -1)) /
+                           hceParams.VALUE_ONE;
 
             int32_t evaluation = ((1.0 - evaluationVars.phase) * score.mg + evaluationVars.phase * score.eg) *
                                  (board.getSideToMove() == WHITE ? 1 : -1);

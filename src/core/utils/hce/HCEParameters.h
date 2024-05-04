@@ -182,6 +182,12 @@ class HCEParameters {
         void loadParameters(std::istream& stream);
         void saveParameters(std::ostream& stream) const;
 
+        /**
+         * @brief Gibt die Parameter in lesbarer Form auf
+         * einem Ausgabe-Stream aus.
+         */
+        void displayParameters(std::ostream& stream) const;
+
         int32_t& operator[](size_t index);
         int32_t operator[](size_t index) const;
 
@@ -322,6 +328,6 @@ class HCEParameters {
         inline int32_t getEGKingProximityPassedPawnWeight() const { return EG_KING_PROXIMITY_PASSED_PAWN_WEIGHT; }
 };
 
-extern const HCEParameters HCE_PARAMS;
+extern HCEParameters HCE_PARAMS;
 
 #endif
