@@ -57,6 +57,8 @@ GameResult Simulation::simulateSingleGame(Board& board) {
             wtime -= std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
             wtime += increment;
 
+            wtime = std::max(wtime, 0);
+
             if(Referee::isCheckmate(board))
                 return WHITE_WIN;
 
@@ -75,6 +77,8 @@ GameResult Simulation::simulateSingleGame(Board& board) {
 
             btime -= std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
             btime += increment;
+
+            btime = std::max(btime, 0);
 
             if(Referee::isCheckmate(board))
                 return BLACK_WIN;
