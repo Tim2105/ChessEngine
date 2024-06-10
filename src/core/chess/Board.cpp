@@ -301,6 +301,18 @@ bool Board::operator==(const Board& b) const {
     return true;
 }
 
+void trim(std::string& s) {
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }));
+
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }).base(), s.end());
+
+    s.shrink_to_fit();
+}
+
 std::tuple<std::string, std::string> readMetadataLine(std::istream& ss) {
     std::string key;
     std::string value;
@@ -315,6 +327,8 @@ std::tuple<std::string, std::string> readMetadataLine(std::istream& ss) {
     std::getline(ss, value);
     // Lese das Zeilenende
     ss >> std::ws;
+
+    trim(value);
 
     // Entferne das vordereste " im Wert (wenn vorhanden)
     if(value[0] == '"')
@@ -346,7 +360,8 @@ std::string readToken(std::istream& ss) {
             break;
         }
 
-        if(c == ' ' || c == '\t' || c == '\n')
+        // Überprüfe, ob das Zeichen leer ist
+        if(std::isspace(c))
             break;
 
         move << c;
@@ -379,9 +394,9 @@ std::string readComment(std::istream& ss) {
         while(ss.get(c)) {
             if(c == '}')
                 break;
-            if(c != '\n')
+            if(!std::isspace(c) || c == '\t')
                 comment << c;
-            else
+            else if(c == '\n')
                 comment << ' ';
         }
     } else {
@@ -389,6 +404,7 @@ std::string readComment(std::istream& ss) {
 
         std::string line;
         std::getline(ss, line);
+        trim(line);
         comment << line;
     }
 

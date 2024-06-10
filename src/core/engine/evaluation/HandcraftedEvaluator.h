@@ -35,14 +35,13 @@ class HandcraftedEvaluator: public Evaluator {
         Score calculateKingSafetyScore();
         Score calculatePieceScore();
 
-        Score evaluateKingAttackZone();
-        Score evaluateOpenFiles();
-        Score evaluatePawnStorm();
+        int32_t evaluateKingAttackZone();
+        int32_t evaluateOpenFiles();
+        int32_t evaluatePawnSafety();
 
         Score evaluatePieceMobility();
         Score evaluateSafeCenterSpace();
         Score evaluateMinorPiecesOnStrongSquares();
-        Score evaluateBishopPairs();
         Score evaluateRooksOnOpenFiles();
         Score evaluateRooksBehindPassedPawns();
         Score evaluateKingPawnProximity();
@@ -124,34 +123,14 @@ class HandcraftedEvaluator: public Evaluator {
                 }
             }
 
-            // Bestimme den Materialungleichgewichtsfaktor
-            int32_t numWhiteKnights = board.getPieceBitboard(WHITE_KNIGHT).popcount();
-            int32_t numBlackKnights = board.getPieceBitboard(BLACK_KNIGHT).popcount();
-            int32_t numWhiteBishops = board.getPieceBitboard(WHITE_BISHOP).popcount();
-            int32_t numBlackBishops = board.getPieceBitboard(BLACK_BISHOP).popcount();
-            int32_t numWhiteRooks = board.getPieceBitboard(WHITE_ROOK).popcount();
-            int32_t numBlackRooks = board.getPieceBitboard(BLACK_ROOK).popcount();
-            int32_t numWhiteQueens = board.getPieceBitboard(WHITE_QUEEN).popcount();
-            int32_t numBlackQueens = board.getPieceBitboard(BLACK_QUEEN).popcount();
-
-            double materialImbalanceFactor = (double)hceParams.getPawnImbalanceFactor(numWhitePawns, numBlackPawns) / (100.0 * hceParams.VALUE_ONE) *
-                                             (double)hceParams.getKnightImbalanceFactor(numWhiteKnights, numBlackKnights) / (100.0 * hceParams.VALUE_ONE) *
-                                             (double)hceParams.getBishopImbalanceFactor(numWhiteBishops, numBlackBishops) / (100.0 * hceParams.VALUE_ONE) *
-                                             (double)hceParams.getRookImbalanceFactor(numWhiteRooks, numBlackRooks) / (100.0 * hceParams.VALUE_ONE) *
-                                             (double)hceParams.getQueenImbalanceFactor(numWhiteQueens, numBlackQueens) / (100.0 * hceParams.VALUE_ONE);
-
-            Score scaledMaterialScore = {(int32_t)(evaluationVars.materialScore.mg * materialImbalanceFactor),
-                                         (int32_t)(evaluationVars.materialScore.eg * materialImbalanceFactor)};
-
             // Aktualisiere die Königssicherheitsbewertung
             Score kingSafetyScore = calculateKingSafetyScore();
 
             // Aktualisiere die kontextsensitiven Figurenbewertungen
             Score pieceScore = calculatePieceScore();
 
-            Score score = (scaledMaterialScore + evaluationVars.pawnScore + pieceScore + kingSafetyScore +
-                           Score{hceParams.getMGTempoBonus(), hceParams.getEGTempoBonus()} * (board.getSideToMove() == WHITE ? 1 : -1)) /
-                           hceParams.VALUE_ONE;
+            Score score = (evaluationVars.materialScore + evaluationVars.pawnScore + pieceScore + kingSafetyScore +
+                           Score{hceParams.getMGTempoBonus(), hceParams.getEGTempoBonus()} * (board.getSideToMove() == WHITE ? 1 : -1));
 
             int32_t evaluation = ((1.0 - evaluationVars.phase) * score.mg + evaluationVars.phase * score.eg) *
                                  (board.getSideToMove() == WHITE ? 1 : -1);

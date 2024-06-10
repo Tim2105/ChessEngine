@@ -1,4 +1,4 @@
-#ifndef DISABLE_THREADS
+#if defined(USE_HCE) && defined(TUNE)
 
 #include "tune/Simulation.h"
 
@@ -31,8 +31,11 @@ GameResult Simulation::simulateSingleGame(Board& board) {
     else if(Referee::isDraw(board))
         return DRAW;
 
-    PVSEngine white(board);
-    PVSEngine black(board);
+    HCEParameters whiteParameters = whiteParams.value_or(HCEParameters());
+    HCEParameters blackParameters = blackParams.value_or(HCEParameters());
+
+    PVSEngine white(board, whiteParameters);
+    PVSEngine black(board, blackParameters);
 
     int32_t wtime = timeControl;
     int32_t btime = timeControl;
@@ -55,9 +58,8 @@ GameResult Simulation::simulateSingleGame(Board& board) {
             board.makeMove(bestMove);
 
             wtime -= std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-            wtime += increment;
-
             wtime = std::max(wtime, 0);
+            wtime += increment;
 
             if(Referee::isCheckmate(board))
                 return WHITE_WIN;
@@ -76,9 +78,8 @@ GameResult Simulation::simulateSingleGame(Board& board) {
             board.makeMove(bestMove);
 
             btime -= std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-            btime += increment;
-
             btime = std::max(btime, 0);
+            btime += increment;
 
             if(Referee::isCheckmate(board))
                 return BLACK_WIN;
@@ -121,7 +122,7 @@ void Simulation::run() {
             GameResult result = simulateSingleGame(board);
             results[index] = result;
 
-            if(index % 10 == 0) {
+            if(index % 10 == 0 && index != 0) {
                 std::stringstream ss;
                 ss << "\rRemaining games: " << std::left << std::setw(7) << index;
                 std::cout << ss.str() << std::flush;

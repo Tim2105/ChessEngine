@@ -304,6 +304,7 @@ class PVSSearchInstance {
             numPVs = UCI::options["MultiPV"].getValue<size_t>();
         }
 
+        #if defined(USE_HCE) && defined(TUNE)
         /**
          * @brief Konstruktor für eine Suchinstanz mit benutzerdefinierten Parametern für die HCE.
          */
@@ -341,6 +342,7 @@ class PVSSearchInstance {
             // Setze die Anzahl der Varianten.
             numPVs = UCI::options["MultiPV"].getValue<size_t>();
         }
+        #endif
 
         /**
          * @brief Führt eine vollständige Hauptvariantensuche durch.

@@ -9,8 +9,15 @@
 void PVSEngine::createHelperInstances(size_t numThreads) {
     #if not defined(DISABLE_THREADS)
         for(size_t i = 0; i < numThreads; i++) {
+            #if defined(USE_HCE) && defined(TUNE)
+            // Erstelle eine Hilfsinstanz mit HCE-Parametern
+            instances.push_back(new PVSSearchInstance(board, hceParams, transpositionTable, stopFlag, startTime,
+                                                      stopTime, nodesSearched, nullptr));
+            #else
+            // Erstelle eine Hilfsinstanz
             instances.push_back(new PVSSearchInstance(board, transpositionTable, stopFlag, startTime,
                                                       stopTime, nodesSearched, nullptr));
+            #endif
 
             instances[i]->setMainThread(false);
         }
@@ -227,8 +234,14 @@ void PVSEngine::search(const UCI::SearchParams& params) {
     };
 
     // Erstelle die Hauptinstanz, die die Suche durchführt.
+    #if defined(USE_HCE) && defined(TUNE)
+    // Erstelle die Hauptinstanz mit HCE-Parametern für das Tuning
+    PVSSearchInstance mainInstance(board, hceParams, transpositionTable, stopFlag, startTime,
+                                   stopTime, nodesSearched, checkupFunction);
+    #else
     PVSSearchInstance mainInstance(board, transpositionTable, stopFlag, startTime,
                                    stopTime, nodesSearched, checkupFunction);
+    #endif
     
     this->mainInstance = &mainInstance;
     mainInstance.setMainThread(true);

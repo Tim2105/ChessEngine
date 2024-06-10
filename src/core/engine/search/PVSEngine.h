@@ -26,6 +26,13 @@ class PVSEngine {
          */
         Board& board;
 
+        #if defined(USE_HCE) && defined(TUNE)
+        /**
+         * @brief Die HCE-Parameter, die für die Suche verwendet werden.
+         */
+        HCEParameters hceParams;
+        #endif
+
         /**
          * @brief Speichert die gefundenen Varianten.
          * Im regulären Betrieb (also kein MultiPV)
@@ -183,6 +190,22 @@ class PVSEngine {
          */
         PVSEngine(Board& board, uint32_t checkupInterval = 2, std::function<void()> checkupCallback = nullptr)
                 : board(board), checkupInterval(checkupInterval), checkupCallback(checkupCallback) {}
+
+        #if defined(USE_HCE) && defined(TUNE)
+        /**
+         * @brief Konstruktor mit HCE-Parametern.
+         * 
+         * @param board Das, zu betrachtende, Schachbrett.
+         * @param hceParams Die HCE-Parameter, die für die Suche verwendet werden.
+         * @param checkupInterval Die Anzahl an Millisekunden, die zwischen
+         * zwei Checkups vergehen sollen.
+         * @param checkupCallback Die Funktion, die bei jedem Checkup aufgerufen
+         * werden soll. Wenn keine Funktion aufgerufen werden soll, kann dieser
+         * Parameter weggelassen werden.
+         */
+        PVSEngine(Board& board, HCEParameters& hceParams, uint32_t checkupInterval = 2, std::function<void()> checkupCallback = nullptr)
+                : board(board), hceParams(hceParams), checkupInterval(checkupInterval), checkupCallback(checkupCallback) {}
+        #endif
 
         PVSEngine(const PVSEngine& other) = delete;
         PVSEngine& operator=(const PVSEngine& other) = delete;

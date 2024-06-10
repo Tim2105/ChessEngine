@@ -1,3 +1,5 @@
+#if defined(USE_HCE) && defined(TUNE)
+
 #include "core/engine/search/PVSSearchInstance.h"
 #include "tune/hce/Definitions.h"
 #include "tune/hce/Tune.h"
@@ -116,23 +118,12 @@ namespace Tune {
         return sum / data.size();
     }
 
-    /**
-     * @brief Speichert für jeden Parameter, in wie vielen Iterationen
-     * er wieder betrachtet werden soll. Dadurch werden Parameter, die
-     * keine/nur geringe Auswirkungen auf den Fehler haben, seltener
-     * betrachtet.
-     */
-    std::vector<uint32_t> gradientCooldown(HCEParameters::size(), 0);
-
     std::vector<double> gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k) {
         // Rückgabevektor initialisieren
         std::vector<double> grad(hceParams.size(), 0);
 
         size_t currIndex = 0;
         std::mutex mutex;
-
-        // Signifikanzschwellwert für den Gradienten
-        double significantGradient = 0.5 / learningRate;
 
         // Berechne den aktuellen Fehler der zu betrachtenden Datenpunkte
         double currLoss = loss(data, indices, hceParams, k);
@@ -143,15 +134,9 @@ namespace Tune {
             while(currIndex < HCEParameters::size()) {
                 size_t i = currIndex++;
 
-                // Überspringe tote Parameter
-                if(hceParams.isParameterDead(i))
+                // Überspringe nicht optimierbare Parameter
+                if(!hceParams.isOptimizable(i))
                     continue;
-                
-                // Überspringe Parameter mit Cooldown
-                if(gradientCooldown[i] > 0) {
-                    gradientCooldown[i]--;
-                    continue;
-                }
 
                 mutex.unlock();
 
@@ -161,12 +146,7 @@ namespace Tune {
                 hceParamsCopy[i] += 1;
 
                 double l = loss(data, indices, hceParamsCopy, k);
-                grad[i] = (l - currLoss) * HCEParameters::VALUE_ONE / std::pow(k, 1.5);
-
-                // Setze den Cooldown für den Parameter, wenn der Gradient nicht signifikant ist
-                // Passe den Cooldown an den Betrag des Gradienten abhängig von dem Signifikanzschwellwert an
-                if(std::abs(grad[i]) < significantGradient)
-                    gradientCooldown[i] = (uint32_t)((1.0 - std::sqrt(std::abs(grad[i]) / significantGradient)) * 8.0);
+                grad[i] = (l - currLoss) / std::pow(k, 1.5);
 
                 // Sperre den Mutex um den nächsten Parameter zu extrahieren
                 mutex.lock();
@@ -186,8 +166,6 @@ namespace Tune {
 
         return grad;
     }
-
-    void resetGradientCooldown() {
-        gradientCooldown = std::vector<uint32_t>(HCEParameters::size(), 0);
-    }
 };
+
+#endif

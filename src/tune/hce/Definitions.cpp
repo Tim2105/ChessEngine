@@ -3,16 +3,21 @@
 std::string pgnFilePath = "pgn/o-deville.pgn";
 std::string samplesFilePath = "data/samples.txt";
 
-size_t numGames = 1000;
-size_t startingMovesMean = 18;
+size_t numGames = 25;
+size_t startingMovesMean = 12;
 size_t startingMovesStdDev = 4;
-uint32_t timeControl = 2000;
-uint32_t increment = 60;
-int32_t startOutputAtMove = 8;
+uint32_t timeControl = 1000;
+uint32_t increment = 30;
+int32_t startOutputAtMove = 12;
 
 double validationSplit = 0.1;
-double k = 0.006728;
-double learningRate = 10;
-size_t numEpochs = 500;
-size_t noImprovementPatience = 20;
-size_t batchSize = 2048;
+double k = 0.005618;
+double learningRate = 5;
+double learningRateDecay = 0.998;
+size_t numEpochs = 2000;
+size_t noImprovementPatience = 30;
+size_t batchSize = 1024;
+
+double evolutionDefaultVariance = 2;
+double evolutionLinearVariance = 0.02;
+size_t numGenerations = 100;

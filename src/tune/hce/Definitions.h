@@ -36,8 +36,17 @@ extern int32_t startOutputAtMove;
 extern double validationSplit;
 extern double k;
 extern double learningRate;
+extern double learningRateDecay;
 extern size_t numEpochs;
 extern size_t noImprovementPatience;
 extern size_t batchSize;
+
+/**
+ * Variablen des Lernalgorithmus.
+ */
+
+extern double evolutionDefaultVariance;
+extern double evolutionLinearVariance;
+extern size_t numGenerations;
 
 #endif

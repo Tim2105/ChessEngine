@@ -45,13 +45,6 @@ namespace Tune {
      * @return std::vector<double> Der Gradient.
      */
     std::vector<double> gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k);
-
-    /**
-     * @brief Setzt die Cooldown-Liste für die einzelnen Parameter zurück.
-     * Die Cooldown-Liste wird verwendet, um Parameter, die keinen/geringen Einfluss
-     * auf den Fehler haben, seltener zu betrachten.
-     */
-    void resetGradientCooldown();
 };
 
 #endif

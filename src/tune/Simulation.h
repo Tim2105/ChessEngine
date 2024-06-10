@@ -4,7 +4,9 @@
 #define SIMULATION_H
 
 #include "core/chess/Board.h"
+#include "core/utils/hce/HCEParameters.h"
 
+#include <optional>
 #include <stdint.h>
 #include <vector>
 
@@ -23,9 +25,12 @@ class Simulation {
         uint32_t increment;
         size_t numThreads;
 
+        std::optional<HCEParameters> whiteParams;
+        std::optional<HCEParameters> blackParams;
+
         GameResult simulateSingleGame(Board& board);
 
-        static constexpr int32_t DECISIVE_SCORE = 1000; // 10 cp
+        static constexpr int32_t DECISIVE_SCORE = 1200; // 12 cp
 
     public:
         Simulation(std::vector<Board>& startingPositions, uint32_t timeControl, uint32_t increment);
@@ -35,6 +40,14 @@ class Simulation {
 
         inline std::vector<GameResult>& getResults() {
             return results;
+        }
+
+        inline void setWhiteParams(const HCEParameters& params) {
+            whiteParams = params;
+        }
+
+        inline void setBlackParams(const HCEParameters& params) {
+            blackParams = params;
         }
 };
 
