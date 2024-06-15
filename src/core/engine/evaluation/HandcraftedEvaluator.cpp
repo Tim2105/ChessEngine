@@ -207,41 +207,35 @@ void HandcraftedEvaluator::calculatePawnScore() {
     Bitboard whitePawnsWestEast = whitePawns.shiftWest() | whitePawns.shiftEast();
     Bitboard blackPawnsWestEast = blackPawns.shiftWest() | blackPawns.shiftEast();
 
-    // Verbundene Bauern
-    Bitboard connectedWhitePawns = whitePawnsWestEast & whitePawns;
-    Bitboard connectedBlackPawns = blackPawnsWestEast & blackPawns;
-    score.mg += hceParams.getMGConnectedPawnBonus() * (connectedWhitePawns.popcount() - connectedBlackPawns.popcount());
-    score.eg += hceParams.getEGConnectedPawnBonus() * (connectedWhitePawns.popcount() - connectedBlackPawns.popcount());
-
     // Doppelbauern
     Bitboard doubleWhitePawns = whitePawns.shiftSouth().extrudeSouth() & whitePawns;
     Bitboard doubleBlackPawns = blackPawns.shiftNorth().extrudeNorth() & blackPawns;
     score.mg += hceParams.getMGDoubledPawnPenalty() * (doubleWhitePawns.popcount() - doubleBlackPawns.popcount());
     score.eg += hceParams.getEGDoubledPawnPenalty() * (doubleWhitePawns.popcount() - doubleBlackPawns.popcount());
 
-    // Isolierte Bauern
-    Bitboard isolatedWhitePawns = ~whitePawnsWestEast.extrudeVertically() & whitePawns;
-    Bitboard isolatedBlackPawns = ~blackPawnsWestEast.extrudeVertically() & blackPawns;
-    score.mg += hceParams.getMGIsolatedPawnPenalty() * (isolatedWhitePawns.popcount() - isolatedBlackPawns.popcount());
-    score.eg += hceParams.getEGIsolatedPawnPenalty() * (isolatedWhitePawns.popcount() - isolatedBlackPawns.popcount());
-
     // Bauerninseln
     uint32_t whitePawnOnFile = (uint8_t)whitePawns.extrudeSouth().toU64();
     uint32_t blackPawnOnFile = (uint8_t)blackPawns.extrudeSouth().toU64();
 
-    // Bestimme Anzahl der "Zero-Gaps" in den 8-Bit Integern
     int32_t whitePawnIslands = std::popcount(~whitePawnOnFile & (whitePawnOnFile << 1));
     int32_t blackPawnIslands = std::popcount(~blackPawnOnFile & (blackPawnOnFile << 1));
+
     score.mg += hceParams.getMGPawnIslandPenalty() * (whitePawnIslands - blackPawnIslands);
     score.eg += hceParams.getEGPawnIslandPenalty() * (whitePawnIslands - blackPawnIslands);
 
     // Rückständige Bauern
-    Bitboard backwardWhitePawns = whitePawns & ~(isolatedWhitePawns | connectedWhitePawns) & (blackPawns | blackPawnAttacks).shiftSouth() & ~whitePawnAttacks.extrudeNorth();
-    Bitboard backwardBlackPawns = blackPawns & ~(isolatedBlackPawns | connectedBlackPawns) & (whitePawns | whitePawnAttacks).shiftNorth() & ~blackPawnAttacks.extrudeSouth();
+    Bitboard backwardWhitePawns = whitePawns & ~whitePawnsWestEast & whitePawnsWestEast.extrudeSouth() & (blackPawns | blackPawnAttacks).shiftSouth() & ~whitePawnAttacks.extrudeNorth();
+    Bitboard backwardBlackPawns = blackPawns & ~blackPawnsWestEast & blackPawnsWestEast.extrudeNorth() & (whitePawns | whitePawnAttacks).shiftNorth() & ~blackPawnAttacks.extrudeSouth();
     evaluationVars.whiteBackwardPawns = backwardWhitePawns;
     evaluationVars.blackBackwardPawns = backwardBlackPawns;
     score.mg += hceParams.getMGBackwardPawnPenalty() * (backwardWhitePawns.popcount() - backwardBlackPawns.popcount());
     score.eg += hceParams.getEGBackwardPawnPenalty() * (backwardWhitePawns.popcount() - backwardBlackPawns.popcount());
+
+    // Verbundene Bauern
+    Bitboard connectedWhitePawns = (whitePawnsWestEast | whitePawnsWestEast.shiftNorth() | whitePawnsWestEast.shiftSouth()) & whitePawns & ~backwardWhitePawns;
+    Bitboard connectedBlackPawns = (blackPawnsWestEast | blackPawnsWestEast.shiftSouth() | blackPawnsWestEast.shiftNorth()) & blackPawns & ~backwardBlackPawns;
+    score.mg += hceParams.getMGConnectedPawnBonus() * (connectedWhitePawns.popcount() - connectedBlackPawns.popcount());
+    score.eg += hceParams.getEGConnectedPawnBonus() * (connectedWhitePawns.popcount() - connectedBlackPawns.popcount());
 
     // Freibauern
     Bitboard whitePassedPawns = whitePawns & ~doubleWhitePawns & ~((blackPawns | blackPawnAttacks).extrudeSouth());
@@ -524,8 +518,8 @@ Score HandcraftedEvaluator::evaluatePieceMobility() {
 }
 
 Score HandcraftedEvaluator::evaluateSafeCenterSpace() {
-    Bitboard whiteSafeCenterSquares = extendedCenter & ~board.getPieceAttackBitboard(BLACK_PAWN);
-    Bitboard blackSafeCenterSquares = extendedCenter & ~board.getPieceAttackBitboard(WHITE_PAWN);
+    Bitboard whiteSafeCenterSquares = extendedCenter & ~board.getAttackBitboard(BLACK);
+    Bitboard blackSafeCenterSquares = extendedCenter & ~board.getAttackBitboard(WHITE);
 
     Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
     Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);

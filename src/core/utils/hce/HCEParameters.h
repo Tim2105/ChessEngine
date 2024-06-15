@@ -30,9 +30,9 @@ class HCEParameters {
             // Pawn
             {
                     0, 0, 0, 0, 0, 0, 0, 0, // tote Parameterreihe
-                    1, 1, -14, -15, -15, -13, 0, 1,
-                    -3, -1, -16, -10, -5, -15, -1, -3,
-                    5, 1, 14, 19, 20, 8, 0, 2,
+                    1, 1, -14, -16, -16, -13, 0, 1,
+                    -3, -1, -16, -14, -13, -15, -1, -3,
+                    5, 1, 14, 19, 19, 8, 0, 2,
                     9, 0, 2, 28, 28, 2, 0, 6,
                     7, 4, 5, 25, 25, 6, 5, 5,
                     12, 7, 9, 28, 28, 9, 10, 12,
@@ -177,14 +177,12 @@ class HCEParameters {
          * Bauernstrukturen im Mittel- und Endspiel.
          */
 
-        int16_t mgConnectedPawnBonus = 5;
-        int16_t egConnectedPawnBonus = 5;
-        int16_t mgDoubledPawnPenalty = -6;
-        int16_t egDoubledPawnPenalty = -10;
-        int16_t mgIsolatedPawnPenalty = -3;
-        int16_t egIsolatedPawnPenalty = -4;
-        int16_t mgPawnIslandPenalty = -4;
-        int16_t egPawnIslandPenalty = -8;
+        int16_t mgConnectedPawnBonus = 8;
+        int16_t egConnectedPawnBonus = 6;
+        int16_t mgDoubledPawnPenalty = -12;
+        int16_t egDoubledPawnPenalty = -14;
+        int16_t mgPawnIslandPenalty = -7;
+        int16_t egPawnIslandPenalty = -12;
         int16_t mgBackwardPawnPenalty = -18;
         int16_t egBackwardPawnPenalty = -12;
         int16_t mgPassedPawnBonus[6] = {
@@ -208,7 +206,7 @@ class HCEParameters {
          * in der Mitte des Spielfeldes.
          */
 
-        int16_t mgSpaceBonus = 2;
+        int16_t mgSpaceBonus = 4;
 
         /**
          * Ein Bonus für jedes Feld im Königsbereich des Gegners,
@@ -377,9 +375,6 @@ class HCEParameters {
 
         inline int16_t getMGDoubledPawnPenalty() const { return mgDoubledPawnPenalty; }
         inline int16_t getEGDoubledPawnPenalty() const { return egDoubledPawnPenalty; }
-
-        inline int16_t getMGIsolatedPawnPenalty() const { return mgIsolatedPawnPenalty; }
-        inline int16_t getEGIsolatedPawnPenalty() const { return egIsolatedPawnPenalty; }
 
         inline int16_t getMGPawnIslandPenalty() const { return mgPawnIslandPenalty; }
         inline int16_t getEGPawnIslandPenalty() const { return egPawnIslandPenalty; }
