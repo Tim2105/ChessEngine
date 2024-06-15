@@ -45,6 +45,15 @@ namespace Tune {
      * @return std::vector<double> Der Gradient.
      */
     std::vector<double> gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k);
+
+    /**
+     * @brief Verbessert die Parameter eines HCE-Modells über die AdaGrad-Methode.
+     * 
+     * @param data Der Datensatz.
+     * @param hceParams Die Parameter des HCE-Modells.
+     * @return HCEParameters Die verbesserten Parameter.
+     */
+    HCEParameters adaGrad(std::vector<DataPoint>& data, const HCEParameters& hceParams);
 };
 
 #endif

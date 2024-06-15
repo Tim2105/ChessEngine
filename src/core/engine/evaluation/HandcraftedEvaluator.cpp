@@ -1,4 +1,5 @@
 #include "core/engine/evaluation/HandcraftedEvaluator.h"
+#include "core/utils/magics/Magics.h"
 
 #include <cmath>
 
@@ -203,113 +204,51 @@ void HandcraftedEvaluator::calculatePawnScore() {
     Bitboard whitePawnAttacks = board.getPieceAttackBitboard(WHITE_PAWN);
     Bitboard blackPawnAttacks = board.getPieceAttackBitboard(BLACK_PAWN);
 
-    Bitboard connectedWhitePawns = 0, connectedBlackPawns = 0;
-    Bitboard doubleWhitePawns = 0, doubleBlackPawns = 0;
-    Bitboard isolatedWhitePawns = 0, isolatedBlackPawns = 0;
-    Bitboard backwardWhitePawns = 0, backwardBlackPawns = 0;
-    Bitboard whitePassedPawns = 0, blackPassedPawns = 0;
-    Bitboard whiteStrongSqaures = 0, blackStrongSqaures = 0;
-
-    Bitboard tmp = whitePawns;
-    while(tmp) {
-        int32_t sq = tmp.popFSB();
-
-        // Verbundene Bauern
-        connectedWhitePawns |= whitePawns & connectedPawnMask[sq];
-
-        // Doppelbauern
-        doubleWhitePawns |= whitePawns & fileFacingEnemy[WHITE / COLOR_MASK][sq];
-
-        // Isolierte Bauern
-        int32_t file = Square::fileOf(sq);
-        if(!(whitePawns & neighboringFiles[file]))
-            isolatedWhitePawns.setBit(sq);
-        else {
-            // Rückständige Bauern
-            int32_t rank = Square::rankOf(sq);
-            if(!(whitePawns & backwardPawnMask[WHITE / COLOR_MASK][sq]) &&
-            (blackPawns | blackPawnAttacks).getBit(Square::fromFileRank(file, rank + 1)) &&
-            !whitePawnAttacks.getBit(Square::fromFileRank(file, rank + 1)))
-                backwardWhitePawns.setBit(sq);
-        }
-
-        // Freibauern
-        if(!(sentryMask[WHITE / COLOR_MASK][sq] & blackPawns) &&
-           !doubleWhitePawns.getBit(sq))
-            whitePassedPawns.setBit(sq);
-    }
-
-    tmp = whitePawnAttacks & ~blackPawnAttacks;
-    while(tmp) {
-        int32_t sq = tmp.popFSB();
-
-        // Starke Felder
-        if(!(blackPawns & strongSquareMask[WHITE / COLOR_MASK][sq]))
-            whiteStrongSqaures.setBit(sq);
-    }
-
-    tmp = blackPawns;
-    while(tmp) {
-        int32_t sq = tmp.popFSB();
-
-        // Verbundene Bauern
-        connectedBlackPawns |= blackPawns & connectedPawnMask[sq];
-
-        // Doppelbauern
-        doubleBlackPawns |= blackPawns & fileFacingEnemy[BLACK / COLOR_MASK][sq];
-
-        // Isolierte Bauern
-        int32_t file = Square::fileOf(sq);
-        if(!(blackPawns & neighboringFiles[file]))
-            isolatedBlackPawns.setBit(sq);
-        else {
-            // Rückständige Bauern
-            int32_t rank = Square::rankOf(sq);
-            if(!(blackPawns & backwardPawnMask[BLACK / COLOR_MASK][sq]) &&
-            (whitePawns | whitePawnAttacks).getBit(Square::fromFileRank(file, rank - 1)) &&
-            !blackPawnAttacks.getBit(Square::fromFileRank(file, rank - 1)))
-                backwardBlackPawns.setBit(sq);
-        }
-
-        // Freibauern
-        if(!(sentryMask[BLACK / COLOR_MASK][sq] & whitePawns) &&
-           !doubleBlackPawns.getBit(sq))
-            blackPassedPawns.setBit(sq);
-    }
-
-    tmp = blackPawnAttacks & ~whitePawnAttacks;
-    while(tmp) {
-        int32_t sq = tmp.popFSB();
-
-        // Starke Felder
-        if(!(whitePawns & strongSquareMask[BLACK / COLOR_MASK][sq]))
-            blackStrongSqaures.setBit(sq);
-    }
-
-    evaluationVars.whiteBackwardPawns = backwardWhitePawns;
-    evaluationVars.blackBackwardPawns = backwardBlackPawns;
-    evaluationVars.whitePassedPawns = whitePassedPawns;
-    evaluationVars.blackPassedPawns = blackPassedPawns;
-    evaluationVars.whiteStrongSquares = whiteStrongSqaures;
-    evaluationVars.blackStrongSquares = blackStrongSqaures;
+    Bitboard whitePawnsWestEast = whitePawns.shiftWest() | whitePawns.shiftEast();
+    Bitboard blackPawnsWestEast = blackPawns.shiftWest() | blackPawns.shiftEast();
 
     // Verbundene Bauern
+    Bitboard connectedWhitePawns = whitePawnsWestEast & whitePawns;
+    Bitboard connectedBlackPawns = blackPawnsWestEast & blackPawns;
     score.mg += hceParams.getMGConnectedPawnBonus() * (connectedWhitePawns.popcount() - connectedBlackPawns.popcount());
     score.eg += hceParams.getEGConnectedPawnBonus() * (connectedWhitePawns.popcount() - connectedBlackPawns.popcount());
 
     // Doppelbauern
+    Bitboard doubleWhitePawns = whitePawns.shiftSouth().extrudeSouth() & whitePawns;
+    Bitboard doubleBlackPawns = blackPawns.shiftNorth().extrudeNorth() & blackPawns;
     score.mg += hceParams.getMGDoubledPawnPenalty() * (doubleWhitePawns.popcount() - doubleBlackPawns.popcount());
     score.eg += hceParams.getEGDoubledPawnPenalty() * (doubleWhitePawns.popcount() - doubleBlackPawns.popcount());
 
     // Isolierte Bauern
+    Bitboard isolatedWhitePawns = ~whitePawnsWestEast.extrudeVertically() & whitePawns;
+    Bitboard isolatedBlackPawns = ~blackPawnsWestEast.extrudeVertically() & blackPawns;
     score.mg += hceParams.getMGIsolatedPawnPenalty() * (isolatedWhitePawns.popcount() - isolatedBlackPawns.popcount());
     score.eg += hceParams.getEGIsolatedPawnPenalty() * (isolatedWhitePawns.popcount() - isolatedBlackPawns.popcount());
 
+    // Bauerninseln
+    uint32_t whitePawnOnFile = (uint8_t)whitePawns.extrudeSouth().toU64();
+    uint32_t blackPawnOnFile = (uint8_t)blackPawns.extrudeSouth().toU64();
+
+    // Bestimme Anzahl der "Zero-Gaps" in den 8-Bit Integern
+    int32_t whitePawnIslands = std::popcount(~whitePawnOnFile & (whitePawnOnFile << 1));
+    int32_t blackPawnIslands = std::popcount(~blackPawnOnFile & (blackPawnOnFile << 1));
+    score.mg += hceParams.getMGPawnIslandPenalty() * (whitePawnIslands - blackPawnIslands);
+    score.eg += hceParams.getEGPawnIslandPenalty() * (whitePawnIslands - blackPawnIslands);
+
     // Rückständige Bauern
+    Bitboard backwardWhitePawns = whitePawns & ~(isolatedWhitePawns | connectedWhitePawns) & (blackPawns | blackPawnAttacks).shiftSouth() & ~whitePawnAttacks.extrudeNorth();
+    Bitboard backwardBlackPawns = blackPawns & ~(isolatedBlackPawns | connectedBlackPawns) & (whitePawns | whitePawnAttacks).shiftNorth() & ~blackPawnAttacks.extrudeSouth();
+    evaluationVars.whiteBackwardPawns = backwardWhitePawns;
+    evaluationVars.blackBackwardPawns = backwardBlackPawns;
     score.mg += hceParams.getMGBackwardPawnPenalty() * (backwardWhitePawns.popcount() - backwardBlackPawns.popcount());
     score.eg += hceParams.getEGBackwardPawnPenalty() * (backwardWhitePawns.popcount() - backwardBlackPawns.popcount());
 
     // Freibauern
+    Bitboard whitePassedPawns = whitePawns & ~doubleWhitePawns & ~((blackPawns | blackPawnAttacks).extrudeSouth());
+    Bitboard blackPassedPawns = blackPawns & ~doubleBlackPawns & ~((whitePawns | whitePawnAttacks).extrudeNorth());
+    evaluationVars.whitePassedPawns = whitePassedPawns;
+    evaluationVars.blackPassedPawns = blackPassedPawns;
+
     while(whitePassedPawns) {
         int32_t rank = Square::rankOf(whitePassedPawns.popFSB());
         score.mg += hceParams.getMGPassedPawnBonus(rank);
@@ -322,18 +261,16 @@ void HandcraftedEvaluator::calculatePawnScore() {
         score.eg -= hceParams.getEGPassedPawnBonus(rank);
     }
 
-    // Starke Felder
-    while(whiteStrongSqaures) {
-        int32_t sq = whiteStrongSqaures.popFSB();
-        int32_t rank = Square::rankOf(sq);
-        score.mg += hceParams.getMGStrongSquareBonus(rank);
-    }
+    // Unbewegbare Bauern
+    Bitboard pawns = whitePawns | blackPawns;
+    evaluationVars.whiteImmobilePawns = whitePawns & pawns.shiftSouth() & ~blackPawnAttacks;
+    evaluationVars.blackImmobilePawns = blackPawns & pawns.shiftNorth() & ~whitePawnAttacks;
 
-    while(blackStrongSqaures) {
-        int32_t sq = Square::flipY(blackStrongSqaures.popFSB());
-        int32_t rank = Square::rankOf(sq);
-        score.mg -= hceParams.getMGStrongSquareBonus(rank);
-    }
+    // Starke Felder
+    evaluationVars.whiteStrongSquares = whitePawnAttacks & ~blackPawnAttacks.extrudeSouth();
+    evaluationVars.blackStrongSquares = blackPawnAttacks & ~whitePawnAttacks.extrudeNorth();
+
+    score.mg += hceParams.getMGStrongSquareBonus() * (evaluationVars.whiteStrongSquares.popcount() - evaluationVars.blackStrongSquares.popcount());
 
     evaluationVars.pawnScore = score;
 }
@@ -514,17 +451,17 @@ int32_t HandcraftedEvaluator::evaluatePawnSafety() {
     Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
     Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);
 
-    Bitboard whitePawnStorm = pawnStormMask[WHITE / COLOR_MASK][whiteKingSquare] & blackPawns;
-    Bitboard blackPawnStorm = pawnStormMask[BLACK / COLOR_MASK][blackKingSquare] & whitePawns;
+    Bitboard whitePawnStorm = pawnStormMask[WHITE / COLOR_MASK][whiteKingSquare] & blackPawns & ~evaluationVars.blackImmobilePawns;
+    Bitboard blackPawnStorm = pawnStormMask[BLACK / COLOR_MASK][blackKingSquare] & whitePawns & ~evaluationVars.whiteImmobilePawns;
 
     while(whitePawnStorm) {
         int32_t rank = Square::rankOf(whitePawnStorm.popFSB());
-        score += hceParams.getMGPawnStormBonus(rank);
+        score += hceParams.getMGPawnStormPenalty(rank);
     }
 
     while(blackPawnStorm) {
         int32_t rank = Square::rankOf(Square::flipY(blackPawnStorm.popFSB()));
-        score -= hceParams.getMGPawnStormBonus(rank);
+        score -= hceParams.getMGPawnStormPenalty(rank);
     }
 
     Bitboard whitePawnShield = pawnShieldMask[WHITE / COLOR_MASK][whiteKingSquare] & whitePawns;
@@ -542,37 +479,46 @@ int32_t HandcraftedEvaluator::evaluatePawnSafety() {
 }
 
 Score HandcraftedEvaluator::calculatePieceScore() {
-    return evaluatePieceMobility() + evaluateSafeCenterSpace() + evaluateMinorPiecesOnStrongSquares() +
-           evaluateRooksOnOpenFiles() + evaluateRooksBehindPassedPawns() + evaluateKingPawnProximity();
+    return evaluatePieceMobility() + evaluateSafeCenterSpace() + evaluateMinorPiecesOnStrongSquares() + evaluateBadBishops() +
+           evaluateRooksOnOpenFiles() + evaluateRooksBehindPassedPawns() + evaluateBlockedPassedPawns() + evaluateKingPawnProximity();
 }
 
 Score HandcraftedEvaluator::evaluatePieceMobility() {
-    int32_t whiteKnightMobility = std::sqrt(board.getPieceAttackBitboard(WHITE_KNIGHT).popcount());
-    int32_t blackKnightMobility = std::sqrt(board.getPieceAttackBitboard(BLACK_KNIGHT).popcount());
-    int32_t whiteBishopMobility = std::sqrt(board.getPieceAttackBitboard(WHITE_BISHOP).popcount());
-    int32_t blackBishopMobility = std::sqrt(board.getPieceAttackBitboard(BLACK_BISHOP).popcount());
-    int32_t whiteRookMobility = std::sqrt(board.getPieceAttackBitboard(WHITE_ROOK).popcount());
-    int32_t blackRookMobility = std::sqrt(board.getPieceAttackBitboard(BLACK_ROOK).popcount());
-    int32_t whiteQueenMobility = std::sqrt(board.getPieceAttackBitboard(WHITE_QUEEN).popcount());
-    int32_t blackQueenMobility = std::sqrt(board.getPieceAttackBitboard(BLACK_QUEEN).popcount());
+    constexpr Bitboard RANK_4_TO_8 = Bitboard(0xFFFFFFFFFF000000ULL);
+    constexpr Bitboard RANK_1_TO_5 = Bitboard(0xFFFFFFFFFFULL);
 
-    int32_t mgMobilityScore = whiteKnightMobility * hceParams.getMGPieceMobilityBonus(KNIGHT) +
-                              whiteBishopMobility * hceParams.getMGPieceMobilityBonus(BISHOP) +
-                              whiteRookMobility * hceParams.getMGPieceMobilityBonus(ROOK) +
-                              whiteQueenMobility * hceParams.getMGPieceMobilityBonus(QUEEN) -
-                              blackKnightMobility * hceParams.getMGPieceMobilityBonus(KNIGHT) -
-                              blackBishopMobility * hceParams.getMGPieceMobilityBonus(BISHOP) -
-                              blackRookMobility * hceParams.getMGPieceMobilityBonus(ROOK) -
-                              blackQueenMobility * hceParams.getMGPieceMobilityBonus(QUEEN);
+    Bitboard whiteUndefendedSquares = ~board.getPieceBitboard(WHITE);
+    Bitboard blackUndefendedSquares = ~board.getPieceBitboard(BLACK);
 
-    int32_t egMobilityScore = whiteKnightMobility * hceParams.getEGPieceMobilityBonus(KNIGHT) +
-                              whiteBishopMobility * hceParams.getEGPieceMobilityBonus(BISHOP) +
-                              whiteRookMobility * hceParams.getEGPieceMobilityBonus(ROOK) +
-                              whiteQueenMobility * hceParams.getEGPieceMobilityBonus(QUEEN) -
-                              blackKnightMobility * hceParams.getEGPieceMobilityBonus(KNIGHT) -
-                              blackBishopMobility * hceParams.getEGPieceMobilityBonus(BISHOP) -
-                              blackRookMobility * hceParams.getEGPieceMobilityBonus(ROOK) -
-                              blackQueenMobility * hceParams.getEGPieceMobilityBonus(QUEEN);
+    int32_t knightMobility = (int32_t)std::sqrt(2 * board.getPieceAttackBitboard(WHITE_KNIGHT).popcount()) +
+                             (board.getPieceAttackBitboard(WHITE_KNIGHT) & blackUndefendedSquares & RANK_4_TO_8).popcount() -
+                             (int32_t)std::sqrt(2 * board.getPieceAttackBitboard(BLACK_KNIGHT).popcount()) -
+                             (board.getPieceAttackBitboard(BLACK_KNIGHT) & whiteUndefendedSquares & RANK_1_TO_5).popcount();
+
+    int32_t bishopMobility = (int32_t)std::sqrt(2 * board.getPieceAttackBitboard(WHITE_BISHOP).popcount()) +
+                             (board.getPieceAttackBitboard(WHITE_BISHOP) & blackUndefendedSquares & RANK_4_TO_8).popcount() -
+                             (int32_t)std::sqrt(2 * board.getPieceAttackBitboard(BLACK_BISHOP).popcount()) -
+                             (board.getPieceAttackBitboard(BLACK_BISHOP) & whiteUndefendedSquares & RANK_1_TO_5).popcount();
+
+    int32_t rookMobility = (int32_t)std::sqrt(2 * board.getPieceAttackBitboard(WHITE_ROOK).popcount()) +
+                           (board.getPieceAttackBitboard(WHITE_ROOK) & blackUndefendedSquares & RANK_4_TO_8).popcount() -
+                           (int32_t)std::sqrt(2 * board.getPieceAttackBitboard(BLACK_ROOK).popcount()) -
+                           (board.getPieceAttackBitboard(BLACK_ROOK) & whiteUndefendedSquares & RANK_1_TO_5).popcount();
+
+    int32_t queenMobility = (int32_t)std::sqrt(2 * board.getPieceAttackBitboard(WHITE_QUEEN).popcount()) +
+                            (board.getPieceAttackBitboard(WHITE_QUEEN) & blackUndefendedSquares & RANK_4_TO_8).popcount() -
+                            (int32_t)std::sqrt(2 * board.getPieceAttackBitboard(BLACK_QUEEN).popcount()) -
+                            (board.getPieceAttackBitboard(BLACK_QUEEN) & whiteUndefendedSquares & RANK_1_TO_5).popcount();
+    
+    int32_t mgMobilityScore = knightMobility * hceParams.getMGPieceMobilityBonus(KNIGHT) +
+                              bishopMobility * hceParams.getMGPieceMobilityBonus(BISHOP) +
+                              rookMobility * hceParams.getMGPieceMobilityBonus(ROOK) +
+                              queenMobility * hceParams.getMGPieceMobilityBonus(QUEEN);
+
+    int32_t egMobilityScore = knightMobility * hceParams.getEGPieceMobilityBonus(KNIGHT) +
+                              bishopMobility * hceParams.getEGPieceMobilityBonus(BISHOP) +
+                              rookMobility * hceParams.getEGPieceMobilityBonus(ROOK) +
+                              queenMobility * hceParams.getEGPieceMobilityBonus(QUEEN);
 
     return {mgMobilityScore, egMobilityScore};
 }
@@ -602,7 +548,7 @@ Score HandcraftedEvaluator::evaluateSafeCenterSpace() {
         blackNumSafeCenterSquares += RANK_7 - rank;
     }
 
-    return {(int16_t)(std::sqrt(whiteNumSafeCenterSquares) - std::sqrt(blackNumSafeCenterSquares)) * hceParams.getMGSpaceBonus(), 0};
+    return {(int16_t)(whiteNumSafeCenterSquares - blackNumSafeCenterSquares) * hceParams.getMGSpaceBonus(), 0};
 }
 
 Score HandcraftedEvaluator::evaluateMinorPiecesOnStrongSquares() {
@@ -618,6 +564,34 @@ Score HandcraftedEvaluator::evaluateMinorPiecesOnStrongSquares() {
             numBlackMinorPcOnStrongSquares * hceParams.getMGMinorPieceOnStrongSquareBonus(), 0};
 }
 
+Score HandcraftedEvaluator::evaluateBadBishops() {
+    Bitboard whiteBishops = board.getPieceBitboard(WHITE_BISHOP);
+    Bitboard blackBishops = board.getPieceBitboard(BLACK_BISHOP);
+
+    Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
+    Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);
+
+    Bitboard whitePawnAttacks = board.getPieceAttackBitboard(WHITE_PAWN);
+    Bitboard blackPawnAttacks = board.getPieceAttackBitboard(BLACK_PAWN);
+
+    Bitboard whiteBlockedSquares = evaluationVars.whiteImmobilePawns | (blackPawns & blackPawnAttacks);
+    Bitboard blackBlockedSquares = evaluationVars.blackImmobilePawns | (whitePawns & whitePawnAttacks);
+
+    Score score = {0, 0};
+
+    while(whiteBishops) {
+        int32_t sq = whiteBishops.popFSB();
+        score += Score{hceParams.getMGBadBishopPenalty(), hceParams.getEGBadBishopPenalty()} * (badBishopMask[WHITE / COLOR_MASK][sq] & whiteBlockedSquares).popcount();
+    }
+
+    while(blackBishops) {
+        int32_t sq = blackBishops.popFSB();
+        score -= Score{hceParams.getMGBadBishopPenalty(), hceParams.getEGBadBishopPenalty()} * (badBishopMask[BLACK / COLOR_MASK][sq] & blackBlockedSquares).popcount();
+    }
+
+    return score;
+}
+
 Score HandcraftedEvaluator::evaluateRooksOnOpenFiles() {
     Bitboard whiteRooks = board.getPieceBitboard(WHITE_ROOK);
     Bitboard blackRooks = board.getPieceBitboard(BLACK_ROOK);
@@ -625,51 +599,73 @@ Score HandcraftedEvaluator::evaluateRooksOnOpenFiles() {
     Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
     Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);
 
-    Score score = {0, 0};
+    Bitboard openFiles = ~(whitePawns | blackPawns).extrudeVertically();
+    Bitboard whiteSemiOpenFiles = ~(whitePawns.extrudeVertically() | openFiles);
+    Bitboard blackSemiOpenFiles = ~(blackPawns.extrudeVertically() | openFiles);
 
-    while(whiteRooks) {
-        int32_t sq = whiteRooks.popFSB();
-        int32_t file = Square::fileOf(sq);
-        if(!(whitePawns & fileMasks[file])) {
-            if(!(blackPawns & fileMasks[file]))
-                score.mg += hceParams.getMGRookOnOpenFileBonus();
-            else
-                score.mg += hceParams.getMGRookOnSemiOpenFileBonus();
-        }
-    }
+    int32_t numWhiteRooksOnOpenFiles = (whiteRooks & openFiles).popcount();
+    int32_t numBlackRooksOnOpenFiles = (blackRooks & openFiles).popcount();
+    int32_t numWhiteRooksOnSemiOpenFiles = (whiteRooks & whiteSemiOpenFiles).popcount();
+    int32_t numBlackRooksOnSemiOpenFiles = (blackRooks & blackSemiOpenFiles).popcount();
 
-    while(blackRooks) {
-        int32_t sq = blackRooks.popFSB();
-        int32_t file = Square::fileOf(sq);
-        if(!(blackPawns & fileMasks[file])) {
-            if(!(whitePawns & fileMasks[file]))
-                score.mg -= hceParams.getMGRookOnOpenFileBonus();
-            else
-                score.mg -= hceParams.getMGRookOnSemiOpenFileBonus();
-        }
-    }
-
-    return score;
+    return {hceParams.getMGRookOnOpenFileBonus() * (numWhiteRooksOnOpenFiles - numBlackRooksOnOpenFiles) +
+            hceParams.getMGRookOnSemiOpenFileBonus() * (numWhiteRooksOnSemiOpenFiles - numBlackRooksOnSemiOpenFiles), 0};
 }
 
 Score HandcraftedEvaluator::evaluateRooksBehindPassedPawns() {
     Bitboard whiteRooks = board.getPieceBitboard(WHITE_ROOK);
     Bitboard blackRooks = board.getPieceBitboard(BLACK_ROOK);
 
-    Bitboard passedPawns = evaluationVars.whitePassedPawns | evaluationVars.blackPassedPawns;
+    Bitboard whiteLinesBehindPassedPawns = evaluationVars.whitePassedPawns.shiftSouth().extrudeSouth();
+    Bitboard blackLinesBehindPassedPawns = evaluationVars.blackPassedPawns.shiftNorth().extrudeNorth();
+
+    Bitboard occupancy = board.getOccupiedBitboard() | board.getPieceBitboard(WHITE_KING) | board.getPieceBitboard(BLACK_KING);
 
     Score score = {0, 0};
 
-    while(whiteRooks) {
-        int32_t sq = whiteRooks.popFSB();
-        if(passedPawns & fileFacingEnemy[WHITE / COLOR_MASK][sq])
-            score.eg += hceParams.getEGRookBehindPassedPawnBonus();
+    Bitboard whiteCandidates = whiteRooks & whiteLinesBehindPassedPawns;
+    Bitboard blackCandidates = blackRooks & blackLinesBehindPassedPawns;
+
+    while(whiteCandidates) {
+        int32_t sq = whiteCandidates.popFSB();
+        score.eg += !(fileFacingEnemy[WHITE / COLOR_MASK][sq] & whiteLinesBehindPassedPawns & occupancy) * hceParams.getEGRookBehindPassedPawnBonus();
     }
 
-    while(blackRooks) {
-        int32_t sq = blackRooks.popFSB();
-        if(passedPawns & fileFacingEnemy[BLACK / COLOR_MASK][sq])
-            score.eg -= hceParams.getEGRookBehindPassedPawnBonus();
+    while(blackCandidates) {
+        int32_t sq = blackCandidates.popFSB();
+        score.eg -= !(fileFacingEnemy[BLACK / COLOR_MASK][sq] & blackLinesBehindPassedPawns & occupancy) * hceParams.getEGRookBehindPassedPawnBonus();
+    }
+
+    return score;
+}
+
+Score HandcraftedEvaluator::evaluateBlockedPassedPawns() {
+    Bitboard whitePassedPawns = evaluationVars.whitePassedPawns;
+    Bitboard blackPassedPawns = evaluationVars.blackPassedPawns;
+
+    Bitboard whitePieces = board.getWhiteOccupiedBitboard() | board.getPieceBitboard(WHITE_KING);
+    Bitboard blackPieces = board.getBlackOccupiedBitboard() | board.getPieceBitboard(BLACK_KING);
+
+    Score score = {0, 0};
+
+    while(whitePassedPawns) {
+        int32_t sq = whitePassedPawns.popFSB();
+        Bitboard pathToPromotion = fileFacingEnemy[WHITE / COLOR_MASK][sq];
+
+        if(blackPieces & pathToPromotion)
+            score.eg -= hceParams.getEGBlockedEnemyPassedPawnBonus();
+        else if(whitePieces & pathToPromotion)
+            score.eg += hceParams.getEGBlockedOwnPassedPawnPenalty();
+    }
+
+    while(blackPassedPawns) {
+        int32_t sq = blackPassedPawns.popFSB();
+        Bitboard pathToPromotion = fileFacingEnemy[BLACK / COLOR_MASK][sq];
+
+        if(whitePieces & pathToPromotion)
+            score.eg += hceParams.getEGBlockedEnemyPassedPawnBonus();
+        else if(blackPieces & pathToPromotion)
+            score.eg -= hceParams.getEGBlockedOwnPassedPawnPenalty();
     }
 
     return score;
@@ -720,6 +716,16 @@ bool HandcraftedEvaluator::isWinnable(int32_t side) {
     Bitboard heavyPieces = board.getPieceBitboard(side | ROOK) | board.getPieceBitboard(side | QUEEN);
 
     return pawns || minorPieces.popcount() >= 2 || heavyPieces;
+}
+
+bool HandcraftedEvaluator::isOppositeColorBishopEndgame() {
+    Bitboard pawns = board.getPieceBitboard(WHITE_PAWN) | board.getPieceBitboard(BLACK_PAWN);
+    Bitboard whiteBishops = board.getPieceBitboard(WHITE_BISHOP);
+    Bitboard blackBishops = board.getPieceBitboard(BLACK_BISHOP);
+
+    return (pawns | whiteBishops | blackBishops) == board.getOccupiedBitboard() &&
+            whiteBishops.popcount() == 1 && blackBishops.popcount() == 1 &&
+           (bool)(whiteBishops & lightSquares) != (bool)(blackBishops & lightSquares);
 }
 
 int32_t HandcraftedEvaluator::evaluateKNBKEndgame(int32_t b, int32_t k) {

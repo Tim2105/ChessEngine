@@ -12,7 +12,9 @@
                 "__AVX2__",
                 "__AVX__",
                 "__SSE4_2__",
-                "__SSE4_1__"
+                "__SSE4_1__",
+                // "TUNE",
+                "USE_HCE"
             ],
             "windowsSdkVersion": "10.0.17763.0",
             "compilerPath": "C:/MinGW/bin/g++.exe",

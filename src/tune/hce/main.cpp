@@ -32,8 +32,6 @@ void gradientDescent();
 
 void displayFinalEpoch();
 
-void learn();
-
 void setParameter(std::string parameter, std::string value) {
     try {
         if(parameter == "numGames")
@@ -48,14 +46,14 @@ void setParameter(std::string parameter, std::string value) {
             samplesFilePath = value;
         else if(parameter == "learningRate")
             learningRate = std::stod(value);
-        else if(parameter == "learningRateDecay")
-            learningRateDecay = std::stod(value);
         else if(parameter == "numEpochs")
             numEpochs = std::stoi(value);
         else if(parameter == "batchSize")
             batchSize = std::stoi(value);
         else if(parameter == "k")
             k = std::stod(value);
+        else if(parameter == "epsilon")
+            epsilon = std::stod(value);
         else if(parameter == "validationSplit")
             validationSplit = std::stod(value);
         else if(parameter == "noImprovementPatience")
@@ -86,10 +84,10 @@ void displayParameters() {
     std::cout << "pgnFilePath: " << pgnFilePath << std::endl;
     std::cout << "samplesFilePath: " << samplesFilePath << std::endl;
     std::cout << "learningRate: " << learningRate << std::endl;
-    std::cout << "learningRateDecay: " << learningRateDecay << std::endl;
     std::cout << "numEpochs: " << numEpochs << std::endl;
     std::cout << "batchSize: " << batchSize << std::endl;
     std::cout << "k: " << k << std::endl;
+    std::cout << "epsilon: " << epsilon << std::endl;
     std::cout << "validationSplit: " << validationSplit << std::endl;
     std::cout << "noImprovementPatience: " << noImprovementPatience << std::endl;
     std::cout << "startOutputAtMove: " << startOutputAtMove << std::endl;
@@ -121,8 +119,6 @@ int main() {
             findOptimalK();
         else if(input == "grad")
             gradientDescent();
-        else if(input == "learn")
-            learn();
         else if(input == "dpParams")
             displayFinalEpoch();
         else if(input == "dp")
@@ -279,85 +275,11 @@ void findOptimalK() {
 void gradientDescent() {
     HCEParameters currentHCEParams;
 
-    // Setze alle Parameter auf 0
-    for(size_t i = 0; i < currentHCEParams.size(); i++)
-        currentHCEParams[i] = 0;
-
-    HCEParameters bestHCEParams = currentHCEParams;
-
     std::ifstream samplesFile(samplesFilePath);
     std::vector<DataPoint> data = loadData(samplesFile);
     samplesFile.close();
 
-    std::mt19937 generator;
-
-    std::shuffle(data.begin(), data.end(), generator);
-
-    size_t validationSize = std::round(validationSplit * data.size());
-    std::vector<DataPoint> validationData(data.end() - validationSize, data.end());
-    data.resize(data.size() - validationSize);
-
-    std::vector<size_t> indices(data.size());
-    std::iota(indices.begin(), indices.end(), 0);
-
-    size_t batches = data.size() / batchSize;
-
-    double oldLearningRate = learningRate;
-
-    double bestLoss = std::numeric_limits<double>::max();
-    size_t bestEpoch = 0;
-
-    std::cout << "Starting Gradient Descent..." << std::endl;
-
-    for(size_t i = 0; i < numEpochs; i++) {
-        if(i % 10 == 0 && i != 0) {
-            std::ofstream outFile("data/epoch" + std::to_string(i) + ".hce");
-            currentHCEParams.saveParameters(outFile);
-        }
-
-        double loss = Tune::loss(validationData, currentHCEParams, k);
-        if(i == 0)
-            std::cout << "Initial Val loss: " << loss << std::flush;
-
-        if(i % 10 == 1)
-            std::cout << std::endl << "Epoch: " << std::left << std::setw(4) << i;
-        else if(i != 0)
-            std::cout << "\rEpoch: " << std::left << std::setw(4) << i;
-
-        if(i != 0)
-            std::cout << " Val loss: " << std::setw(10) << std::fixed << std::setprecision(5) << loss << std::right << std::flush;
-
-        if(loss < bestLoss) {
-            bestLoss = loss;
-            bestEpoch = i;
-            bestHCEParams = currentHCEParams;
-        } else if(i - bestEpoch >= noImprovementPatience) {
-            std::cout << std::endl << "No improvement for " << noImprovementPatience << " epochs. Stopping training." << std::endl;
-            break;
-        }
-
-        // Mische die Indizes neu, wenn alle Batches durchlaufen wurden
-        if(i % batches == 0 && i != 0)
-            std::shuffle(indices.begin(), indices.end(), generator);
-
-        size_t currBatch = i % batches;
-
-        std::vector<size_t> batchIndices(indices.begin() + currBatch * batchSize, std::min(indices.begin() + (currBatch + 1) * batchSize, indices.end()));
-
-        std::vector<double> grad = Tune::gradient(data, batchIndices, currentHCEParams, k);
-
-        for(size_t j = 0; j < currentHCEParams.size(); j++)
-            currentHCEParams[j] -= std::round(learningRate * grad[j]);
-
-        learningRate *= learningRateDecay;
-    }
-
-    learningRate = oldLearningRate;
-
-    std::cout << std::endl;
-
-    double loss = Tune::loss(validationData, bestHCEParams, k);
-    std::cout << "Final Val loss: " << loss << std::endl;
+    HCEParameters bestHCEParams = Tune::adaGrad(data, currentHCEParams);
 
     std::ofstream outFile("data/epochFinal.hce");
     bestHCEParams.saveParameters(outFile);
@@ -372,135 +294,6 @@ void displayFinalEpoch() {
 
     std::cout << "Final parameters:" << std::endl;
     finalHCEParams.displayParameters(std::cout);
-}
-
-void learn() {
-    std::cout << "Starting learning..." << std::endl;
-
-    HCEParameters currentHCEParams;
-    HCEParameters updatedHCEParams;
-
-    std::random_device rd;
-    std::mt19937 generator(rd());
-
-    std::ifstream pgnFile(pgnFilePath);
-    std::normal_distribution<double> startingMovesDistribution(startingMovesMean, startingMovesStdDev);
-
-    for(size_t gen = 1; gen <= numGenerations; gen++) {
-        std::cout << "Generation " << gen << std::endl;
-
-        // Lade die aktuellen Parameter
-        updatedHCEParams = currentHCEParams;
-
-        // Ändere die Paramater zufällig ab
-        std::cout << "Mutating parameters..." << std::endl;
-        for(size_t i = 0; i < updatedHCEParams.size(); i++)
-            if(updatedHCEParams.isOptimizable(i))
-                updatedHCEParams[i] += std::normal_distribution<double>(0, evolutionDefaultVariance + evolutionLinearVariance * std::abs(updatedHCEParams[i]))(generator);
-            
-        // Spiele die Spiele gegen die aktuelle Version
-        std::vector<Board> startingPositions;
-        startingPositions.reserve(numGames);
-
-        std::cout << "Loaded 0 games" << std::flush;
-
-        for(size_t i = 0; i < numGames; i++) {
-            size_t startingMoves = (size_t)startingMovesDistribution(generator);
-            startingPositions.push_back(std::get<0>(Board::fromPGN(pgnFile, startingMoves)));
-        }
-
-        std::cout << "\rLoaded " << startingPositions.size() << " games" << std::endl;
-
-        Simulation sim(startingPositions, timeControl, increment);
-        sim.setWhiteParams(currentHCEParams);
-        sim.setBlackParams(updatedHCEParams);
-
-        sim.run();
-
-        std::vector<GameResult>& results = sim.getResults();
-
-        // Wandle die Ergebnisse in Datenpunkte um
-        std::cout << "Converting results to data points... 0" << std::flush;
-        std::vector<DataPoint> data;
-
-        for(size_t i = 0; i < startingPositions.size(); i++) {
-            Board& board = startingPositions[i];
-
-            for(int32_t j = board.getAge(); j > startOutputAtMove; j--) {
-                Board dataX(board);
-                double dataY = 0;
-
-                switch(results[i]) {
-                    case WHITE_WIN:
-                        if(board.getSideToMove() == WHITE)
-                            dataY = 1;
-                        else
-                            dataY = 0;
-                        break;
-                    case BLACK_WIN:
-                        if(board.getSideToMove() == BLACK)
-                            dataY = 1;
-                        else
-                            dataY = 0;
-                        break;
-                    case DRAW:
-                        dataY = 0.5;
-                        break;
-                }
-
-                data.push_back({dataX, dataY});
-
-                board.undoMove();
-            }
-
-            if(i % 10 == 0)
-                std::cout << "\rConverting results to data points... " << i << std::flush;
-        }
-
-        std::cout << "\rConverting results to data points... " << startingPositions.size() << std::endl;
-
-        // Aktualisiere die Parameter mit Gradientenabstieg
-        std::cout << "Performing gradient descent... " << std::flush;
-
-        std::shuffle(data.begin(), data.end(), generator);
-
-        std::vector<size_t> indices(data.size());
-        std::iota(indices.begin(), indices.end(), 0);
-
-        std::vector<double> grad = Tune::gradient(data, indices, currentHCEParams, k);
-
-        HCEParameters oldParameters = currentHCEParams;
-
-        // Finde die größten 3 Änderungen
-        std::vector<std::tuple<size_t, int16_t>> diff(currentHCEParams.size());
-
-        double alpha = std::pow(learningRateDecay, gen - 1);
-
-        for(size_t i = 0; i < currentHCEParams.size(); i++) {
-            int16_t delta = -(int16_t)std::round(learningRate * grad[i] * alpha);
-            delta = std::sqrt(std::abs(delta)) * (delta < 0 ? -1 : 1);
-            currentHCEParams[i] += delta;
-            diff[i] = {i, delta};
-        }
-
-        std::sort(diff.begin(), diff.end(), [](const std::tuple<size_t, int16_t>& a, const std::tuple<size_t, int16_t>& b) {
-            return std::abs(std::get<1>(a)) > std::abs(std::get<1>(b));
-        });
-
-        std::cout << "Largest changes: " << std::get<0>(diff[0]) << " (" << std::get<1>(diff[0]) << "), "
-                  << std::get<0>(diff[1]) << " (" << std::get<1>(diff[1]) << "), "
-                  << std::get<0>(diff[2]) << " (" << std::get<1>(diff[2]) << ")" << std::endl;
-
-        std::ofstream outFile("data/generation" + std::to_string(gen) + ".hce");
-        currentHCEParams.saveParameters(outFile);
-    }
-
-    std::ofstream outFile("data/epochFinal.hce");
-    currentHCEParams.saveParameters(outFile);
-
-    pgnFile.close();
-
-    std::cout << "Finished learning" << std::endl;
 }
 
 #endif

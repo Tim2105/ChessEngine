@@ -6,16 +6,19 @@
 #include <iostream>
 #include <stdint.h>
 
+#include "core/chess/BoardDefinitions.h"
+#include "core/utils/magics/Magics.h"
+
 class Bitboard {
     private:
-        uint64_t bitboard;
+        uint64_t bits;
 
     public:
         static constexpr uint64_t ZEROS = 0ULL;
         static constexpr uint64_t ONES = 0xFFFFFFFFFFFFFFFFULL;
 
-        constexpr Bitboard() noexcept : bitboard(0) {};
-        constexpr Bitboard(uint64_t bitboard) noexcept : bitboard(bitboard) {};
+        constexpr Bitboard() noexcept : bits(0) {};
+        constexpr Bitboard(uint64_t bitboard) noexcept : bits(bitboard) {};
         constexpr Bitboard(const Bitboard& bitboard) noexcept = default;
 
         constexpr ~Bitboard() noexcept = default;
@@ -23,46 +26,46 @@ class Bitboard {
         friend std::ostream& operator<<(std::ostream& os, const Bitboard& bitboard);
 
         constexpr uint64_t toU64() const {
-            return bitboard;
+            return bits;
         }
 
         constexpr void fromU64(uint64_t bitboard) {
-            this->bitboard = bitboard;
+            this->bits = bitboard;
         }
 
         /**
          * @brief Setze das Bit an der Stelle index.
          */
         constexpr void setBit(int32_t index) {
-            bitboard |= (1ULL << index);
+            bits |= (1ULL << index);
         }
 
         /**
          * @brief Lösche das Bit an der Stelle index.
          */
         constexpr void clearBit(int32_t index) {
-            bitboard &= ~(1ULL << index);
+            bits &= ~(1ULL << index);
         }
 
         /**
          * @brief Liefere den Wert des Bits an der Stelle index zurück.
          */
         constexpr bool getBit(int32_t index) const {
-            return (bitboard & (1ULL << index));
+            return (bits & (1ULL << index));
         }
 
         /**
          * @brief Gibt den Index des ersten gesetzten Bits zurück.
          */
         constexpr int32_t getFSB() const {
-            return std::countr_zero(bitboard);
+            return std::countr_zero(bits);
         }
 
         /**
          * @brief Gibt den Index des letzten gesetzten Bits zurück.
          */
         constexpr int32_t getLSB() const {
-            return 63 - std::countl_zero(bitboard);
+            return 63 - std::countl_zero(bits);
         }
 
         /**
@@ -70,7 +73,7 @@ class Bitboard {
          */
         constexpr int32_t popFSB() {
             int32_t index = getFSB();
-            bitboard &= bitboard - 1;
+            bits &= bits - 1;
             return index;
         }
 
@@ -88,14 +91,14 @@ class Bitboard {
          * d.h. gibt die Anzahl der gesetzten Bits zurück.
          */
         constexpr int32_t popcount() const {
-            return std::popcount(bitboard);
+            return std::popcount(bits);
         }
 
         /**
          * @brief Gibt ein Bitboard zurück, das die Bits des Bitboards in umgekehrter Reihenfolge enthält.
          */
         constexpr Bitboard reversed() const {
-            uint64_t res = bitboard;
+            uint64_t res = bits;
             res = ((res >> 1) & 0x5555555555555555ULL) | ((res & 0x5555555555555555ULL) << 1);
             res = ((res >> 2) & 0x3333333333333333ULL) | ((res & 0x3333333333333333ULL) << 2);
             res = ((res >> 4) & 0x0F0F0F0F0F0F0F0FULL) | ((res & 0x0F0F0F0F0F0F0F0FULL) << 4);
@@ -111,35 +114,202 @@ class Bitboard {
          */
         constexpr Bitboard bswap() const {
             // TODO: Ersetze die intrinsische Funktion durch std::byteswap aus C++23.
-            return Bitboard(__builtin_bswap64(bitboard));
+            return Bitboard(__builtin_bswap64(bits));
+        }
+
+        /**
+         * @brief Verschiebt alle gesetzten Bits in Richtung Norden.
+         */
+        constexpr Bitboard shiftNorth(int32_t shift) const {
+            return Bitboard(bits << (8 * shift));
+        }
+
+        /**
+         * @brief Verschiebt alle gesetzten Bits in Richtung Süden.
+         */
+        constexpr Bitboard shiftSouth(int32_t shift) const {
+            return Bitboard(bits >> (8 * shift));
+        }
+
+        /**
+         * @brief Verschiebt alle gesetzten Bits eine Position nach Norden.
+         */
+        constexpr Bitboard shiftNorth() const {
+            return Bitboard(bits << 8);
+        }
+
+        /**
+         * @brief Verschiebt alle gesetzten Bits eine Position nach Süden.
+         */
+        constexpr Bitboard shiftSouth() const {
+            return Bitboard(bits >> 8);
+        }
+
+        /**
+         * @brief Verschiebt alle gesetzten Bits eine Position nach Osten.
+         */
+        constexpr Bitboard shiftEast() const {
+            return Bitboard((bits << 1) & 0xFEFEFEFEFEFEFEFEULL);
+        }
+
+        /**
+         * @brief Verschiebt alle gesetzten Bits eine Position nach Westen.
+         */
+        constexpr Bitboard shiftWest() const {
+            return Bitboard((bits >> 1) & 0x7F7F7F7F7F7F7F7FULL);
+        }
+
+        /**
+         * @brief Verschiebt alle gesetzten Bits eine Position diagonal nach Nordosten.
+         */
+        constexpr Bitboard shiftNorthEast() const {
+            return Bitboard((bits << 9) & 0xFEFEFEFEFEFEFEFEULL);
+        }
+
+        /**
+         * @brief Verschiebt alle gesetzten Bits eine Position diagonal nach Nordwesten.
+         */
+        constexpr Bitboard shiftNorthWest() const {
+            return Bitboard((bits << 7) & 0x7F7F7F7F7F7F7F7FULL);
+        }
+
+        /**
+         * @brief Verschiebt alle gesetzten Bits eine Position diagonal nach Südosten.
+         */
+        constexpr Bitboard shiftSouthEast() const {
+            return Bitboard((bits >> 7) & 0xFEFEFEFEFEFEFEFEULL);
+        }
+
+        /**
+         * @brief Verschiebt alle gesetzten Bits eine Position diagonal nach Südwesten.
+         */
+        constexpr Bitboard shiftSouthWest() const {
+            return Bitboard((bits >> 9) & 0x7F7F7F7F7F7F7F7FULL);
+        }
+
+        /**
+         * @brief Verschiebt alle gesetzten Bits eine Position diagonal nach Nordwesten und Nordosten.
+         */
+        constexpr Bitboard shiftNorthWestEast() const {
+            return shiftNorthWest() | shiftNorthEast();
+        }
+
+        /**
+         * @brief Verschiebt alle gesetzten Bits eine Position diagonal nach Südwesten und Südosten.
+         */
+        constexpr Bitboard shiftSouthWestEast() const {
+            return shiftSouthWest() | shiftSouthEast();
+        }
+
+        /**
+         * @brief Setzt alle ungesetzten Bits nördlich der gesetzten Bits.
+         */
+        constexpr Bitboard extrudeNorth() const {
+            uint64_t temp = bits;
+            temp |= temp << 8;
+            temp |= temp << 16;
+            temp |= temp << 32;
+            return Bitboard(temp);
+        }
+
+        /**
+         * @brief Setzt alle ungesetzten Bits südlich der gesetzten Bits.
+         */
+        constexpr Bitboard extrudeSouth() const {
+            uint64_t temp = bits;
+            temp |= temp >> 8;
+            temp |= temp >> 16;
+            temp |= temp >> 32;
+            return Bitboard(temp);
+        }
+
+        /**
+         * @brief Setzt alle ungesetzten Bits östlich der gesetzten Bits.
+         */
+        constexpr Bitboard extrudeEast() const {
+            uint64_t step1 = bits | (bits << 1);
+            step1 &= 0xFEFEFEFEFEFEFEFEULL | bits;
+            uint64_t step2 = step1 | (step1 << 2);
+            step2 &= 0xFCFCFCFCFCFCFCFCULL | step1;
+            uint64_t step3 = step2 | (step2 << 4);
+            step3 &= 0xF0F0F0F0F0F0F0F0ULL | step2;
+            return Bitboard(step3);
+        }
+
+        /**
+         * @brief Setzt alle ungesetzten Bits westlich der gesetzten Bits.
+         */
+        constexpr Bitboard extrudeWest() const {
+            uint64_t step1 = bits | (bits >> 1);
+            step1 &= 0x7F7F7F7F7F7F7F7FULL | bits;
+            uint64_t step2 = step1 | (step1 >> 2);
+            step2 &= 0x3F3F3F3F3F3F3F3FULL | step1;
+            uint64_t step3 = step2 | (step2 >> 4);
+            step3 &= 0x0F0F0F0F0F0F0F0FULL | step2;
+            return Bitboard(step3);
+        }
+
+        /**
+         * @brief Setzt alle ungesetzten Bits auf derselben Linie (vertikal)
+         * wie die gesetzten Bits.
+         */
+        constexpr Bitboard extrudeVertically() const {
+            uint64_t temp = bits;
+            temp |= temp << 8;
+            temp |= temp >> 8;
+            temp |= temp << 16;
+            temp |= temp >> 16;
+            temp |= temp << 32;
+            temp |= temp >> 32;
+            return Bitboard(temp);
+        }
+
+        /**
+         * @brief Setzt alle ungesetzten Bits auf derselben Reihe (horizontal)
+         * wie die gesetzten Bits.
+         */
+        constexpr Bitboard extrudeHorizontally() const {
+            uint64_t step1 = bits | (bits << 1);
+            step1 &= 0xFEFEFEFEFEFEFEFEULL | bits;
+            uint64_t step2 = step1 | (step1 >> 1);
+            step2 &= 0x7F7F7F7F7F7F7F7FULL | step1;
+            uint64_t step3 = step2 | (step2 << 2);
+            step3 &= 0xFCFCFCFCFCFCFCFCULL | step2;
+            uint64_t step4 = step3 | (step3 >> 2);
+            step4 &= 0x3F3F3F3F3F3F3F3FULL | step3;
+            uint64_t step5 = step4 | (step4 << 4);
+            step5 &= 0xF0F0F0F0F0F0F0F0ULL | step4;
+            uint64_t step6 = step5 | (step5 >> 4);
+            step6 &= 0x0F0F0F0F0F0F0F0FULL | step5;
+            return Bitboard(step6);
         }
 
         /**
          * @brief Erlaubt explizite und implizite Konvertierung in bool.
          */
         constexpr operator bool() const {
-            return bitboard != 0;
+            return bits != 0;
         }
 
         /**
          * @brief Erlaubt explizite und implizite Konvertierung in uint64_t.
          */
         constexpr operator uint64_t() const {
-            return bitboard;
+            return bits;
         }
 
         /**
          * @brief Bitweises AND.
          */
         constexpr Bitboard operator&(const Bitboard& bitboard) const {
-            return Bitboard(bitboard.bitboard & this->bitboard);
+            return Bitboard(bitboard.bits & this->bits);
         }
 
         /**
          * @brief Bitweises AND mit Zuweisung.
          */
         constexpr Bitboard operator&=(const Bitboard& bitboard) {
-            this->bitboard &= bitboard.bitboard;
+            this->bits &= bitboard.bits;
             return *this;
         }
 
@@ -147,14 +317,14 @@ class Bitboard {
          * @brief Bitweises OR.
          */
         constexpr Bitboard operator|(const Bitboard& bitboard) const {
-            return Bitboard(bitboard.bitboard | this->bitboard);
+            return Bitboard(bitboard.bits | this->bits);
         }
 
         /**
          * @brief Bitweises OR mit Zuweisung.
          */
         constexpr Bitboard operator|= (const Bitboard& bitboard) {
-            this->bitboard |= bitboard.bitboard;
+            this->bits |= bitboard.bits;
             return *this;
         }
 
@@ -162,42 +332,42 @@ class Bitboard {
          * @brief Bitweises XOR.
          */
         constexpr Bitboard operator^(const Bitboard& bitboard) const {
-            return Bitboard(bitboard.bitboard ^ this->bitboard);
+            return Bitboard(bitboard.bits ^ this->bits);
         }
 
         /**
          * @brief Bitweises NOT.
          */
         constexpr Bitboard operator~() const {
-            return Bitboard(~bitboard);
+            return Bitboard(~bits);
         }
 
         /**
          * @brief Bitweises Verschieben nach links.
          */
         constexpr Bitboard operator<<(int32_t shift) const {
-            return Bitboard(bitboard << shift);
+            return Bitboard(bits << shift);
         }
 
         /**
          * @brief Bitweises Verschieben nach rechts.
          */
         constexpr Bitboard operator>>(int32_t shift) const {
-            return Bitboard(bitboard >> shift);
+            return Bitboard(bits >> shift);
         }
 
         /**
-         * @brief Überprüft zwei Bitboards auf Gleichheit..
+         * @brief Überprüft zwei Bitboards auf Gleichheit.
          */
         constexpr bool operator==(const Bitboard& bitboard) const {
-            return this->bitboard == bitboard.bitboard;
+            return this->bits == bitboard.bits;
         }
 
         /**
          * @brief Überprüft zwei Bitboards auf Ungleichheit.
          */
         constexpr bool operator!=(const Bitboard& bitboard) const {
-            return this->bitboard != bitboard.bitboard;
+            return this->bits != bitboard.bits;
         }
 
         /**
@@ -277,7 +447,9 @@ constexpr Bitboard kingAttacks[64] = {
  * @param sq Das Feld.
  * @param occupied Das Bitboard mit den besetzten Feldern.
  */
-Bitboard diagonalAttackBitboard(int32_t sq, const Bitboard occupied);
+inline Bitboard diagonalAttackBitboard(int32_t sq, const Bitboard occupied) {
+    return Magics::lookupBishopAttacks(sq, occupied);
+}
 
 /**
  * @brief Liefert ein Bitboard, dass, ausgehend von einem Feld, alle Felder enthält die von einer horizontal/vertikal laufenden Figur angegriffen werden.
@@ -285,14 +457,18 @@ Bitboard diagonalAttackBitboard(int32_t sq, const Bitboard occupied);
  * @param sq Das Feld.
  * @param occupied Das Bitboard mit den besetzten Feldern.
  */
-Bitboard horizontalAttackBitboard(int32_t sq, const Bitboard occupied);
+inline Bitboard horizontalAttackBitboard(int32_t sq, const Bitboard occupied) {
+    return Magics::lookupRookAttacks(sq, occupied);
+}
 
 /**
  * @brief Liefert ein Bitboard, dass, ausgehend von einem Feld, alle Felder enthält die von einer Springer angegriffen werden.
  * 
  * @param sq Das Feld.
  */
-Bitboard knightAttackBitboard(int32_t sq);
+inline Bitboard knightAttackBitboard(int32_t sq) {
+    return knightAttacks[sq];
+}
 
 /**
  * @brief Liefert ein Bitboard, dass, ausgehend von einem Feld, alle Felder enthält die von einem Bauern angegriffen werden.
@@ -300,14 +476,18 @@ Bitboard knightAttackBitboard(int32_t sq);
  * @param sq Das Feld.
  * @param side Die Farbe des Bauern.
  */
-Bitboard pawnAttackBitboard(int32_t sq, int32_t side);
+inline Bitboard pawnAttackBitboard(int32_t sq, int32_t side) {
+    return pawnAttacks[side / COLOR_MASK][sq];
+}
 
 /**
  * @brief Liefert ein Bitboard, dass, ausgehend von einem Feld, alle Felder enthält die von einem König angegriffen werden.
  * 
  * @param sq Das Feld.
  */
-Bitboard kingAttackBitboard(int32_t sq);
+inline Bitboard kingAttackBitboard(int32_t sq) {
+    return kingAttacks[sq];
+}
 
 /**
  * @brief Gibt ein Bitboard aller Diagonalen zurück, die von einem Feld aus eine Liste von Zielen angreifen.

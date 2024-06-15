@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <iostream>
 #include <mutex>
+#include <random>
 #include <thread>
 
 namespace Tune {
@@ -146,7 +147,7 @@ namespace Tune {
                 hceParamsCopy[i] += 1;
 
                 double l = loss(data, indices, hceParamsCopy, k);
-                grad[i] = (l - currLoss) / std::pow(k, 1.5);
+                grad[i] = l - currLoss;
 
                 // Sperre den Mutex um den nächsten Parameter zu extrahieren
                 mutex.lock();
@@ -165,6 +166,108 @@ namespace Tune {
             t.join();
 
         return grad;
+    }
+
+    HCEParameters adaGrad(std::vector<DataPoint>& data, const HCEParameters& hceParams) {
+        HCEParameters currentParams = hceParams;
+        HCEParameters bestParams = hceParams;
+
+        // Teile die Daten in Trainings- und Validierungsdaten auf
+        std::random_shuffle(data.begin(), data.end());
+        size_t validationSize = data.size() * validationSplit;
+        std::vector<DataPoint> validationData(data.end() - validationSize, data.end());
+        data.erase(data.end() - validationSize, data.end());
+        
+        // Initialisiere den Gradienten
+        std::vector<double> grad(hceParams.size(), 0);
+
+        // Initialisiere den Gradientenquadratsummenvektor
+        std::vector<double> gradSqSum(hceParams.size(), 0);
+
+        // Konvertiere die Parameter in einen double-Vektor
+        std::vector<double> parameters(hceParams.size());
+        for(size_t i = 0; i < hceParams.size(); i++)
+            parameters[i] = hceParams[i];
+
+        // Initialisiere den Indexvektor
+        std::vector<size_t> indices(batchSize);
+
+        // Bestimme einen Zufallszahlengenerator
+        std::random_device rd;
+        std::mt19937 gen(rd());
+
+        // Initialisiere den Zähler für die Geduld
+        size_t patience = 0;
+
+        // Initialisiere den besten Fehler
+        double bestLoss = std::numeric_limits<double>::infinity();
+
+        std::cout << "Starting Gradient Descent..." << std::endl;
+
+        // Iteriere über die Epochen
+        for(size_t epoch = 0; epoch < numEpochs; epoch++) {
+            // Berechne den Fehler
+            double loss = Tune::loss(validationData, currentParams, k);
+
+            if(epoch == 0)
+                std::cout << "Initial val loss: " << loss << std::flush;
+
+            if(epoch % 10 == 1)
+                std::cout << std::endl << "Epoch: " << std::left << std::setw(4) << epoch;
+            else if(epoch != 0)
+                std::cout << "\rEpoch: " << std::left << std::setw(4) << epoch;
+
+            if(epoch != 0)
+                std::cout << " Val loss: " << std::setw(10) << std::fixed << std::setprecision(6) << loss << std::right << std::flush;
+
+            // Überprüfe, ob der Fehler besser ist
+            if(loss < bestLoss) {
+                bestLoss = loss;
+                patience = 0;
+                bestParams = currentParams;
+            } else {
+                patience++;
+            }
+
+            // Überprüfe, ob die Geduld erschöpft ist
+            if(patience >= noImprovementPatience) {
+                std::cout << std::endl << "Early stopping at epoch " << epoch << std::endl;
+                break;
+            }
+
+            // Bestimme zufällige Indizes
+            std::uniform_int_distribution<size_t> dist(0, data.size() - 1);
+            for(size_t& i : indices)
+                i = dist(gen);
+
+            // Berechne den Gradienten
+            grad = Tune::gradient(data, indices, currentParams, k);
+
+            // Berechne die Gradientenquadratsumme
+            for(size_t i = 0; i < currentParams.size(); i++)
+                gradSqSum[i] += grad[i] * grad[i];
+
+            // Aktualisiere die Parameter
+            for(size_t i = 0; i < currentParams.size(); i++) {
+                // Überspringe nicht optimierbare Parameter
+                if(!currentParams.isOptimizable(i))
+                    continue;
+
+                // Berechne die Lernrate
+                double lr = learningRate / (std::sqrt(gradSqSum[i]) + epsilon);
+
+                // Aktualisiere den Parameter
+                parameters[i] -= lr * grad[i];
+
+                // Aktualisiere den Parameter im Parametersatz
+                currentParams[i] = std::round(parameters[i]);
+            }
+        }
+
+        double loss = Tune::loss(validationData, bestParams, k);
+        std::cout << std::endl << "Final val loss: " << loss << std::endl;
+
+        return bestParams;
     }
 };
 

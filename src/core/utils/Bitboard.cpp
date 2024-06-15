@@ -1,6 +1,4 @@
-#include "core/chess/BoardDefinitions.h"
 #include "core/utils/Bitboard.h"
-#include "core/utils/magics/Magics.h"
 
 std::ostream& operator<<(std::ostream& os, const Bitboard& bitboard) {
     for(int r = RANK_8; r >= RANK_1; r--) {
@@ -14,26 +12,6 @@ std::ostream& operator<<(std::ostream& os, const Bitboard& bitboard) {
     }
 
     return os;
-}
-
-Bitboard diagonalAttackBitboard(int32_t sq, const Bitboard occupied) {
-    return Magics::lookupBishopAttacks(sq, occupied);
-}
-
-Bitboard horizontalAttackBitboard(int32_t sq, const Bitboard occupied) {
-    return Magics::lookupRookAttacks(sq, occupied);
-}
-
-Bitboard knightAttackBitboard(int32_t sq) {
-    return knightAttacks[sq];
-}
-
-Bitboard pawnAttackBitboard(int32_t sq, int32_t side) {
-    return pawnAttacks[side / COLOR_MASK][sq];
-}
-
-Bitboard kingAttackBitboard(int32_t sq) {
-    return kingAttacks[sq];
 }
 
 Bitboard diagonalAttackUntilBlocked(int32_t sq, Bitboard targets, Bitboard occupied) {

@@ -194,10 +194,7 @@ void HCEParameters::displayParameters(std::ostream& os) const {
 
     os << "  0]\n";
 
-    os << "Strong Square Bonus MG: [  0,   0, ";
-    for(size_t i = 0; i < 5; i++)
-        os << std::setw(3) << mgStrongSquareBonus[i] << ", ";
-    os << "  0]\n";
+    os << "Strong Square Bonus MG: " << mgStrongSquareBonus << "\n";
 
     os << "Space Bonus MG: " << mgSpaceBonus << "\n";
 
@@ -220,7 +217,7 @@ void HCEParameters::displayParameters(std::ostream& os) const {
 
     os << "Pawn Storm Bonus MG: [  0, ";
     for(size_t i = 0; i < 6; i++)
-        os << std::setw(3) << mgPawnStormBonus[i] << ", ";
+        os << std::setw(3) << mgPawnStormPenalty[i] << ", ";
 
     os << "  0]\n";
 
@@ -234,9 +231,15 @@ void HCEParameters::displayParameters(std::ostream& os) const {
 
     os << "Minor Piece On Strong Square Bonus MG: " << mgMinorPieceOnStrongSquareBonus << "\n";
 
+    os << "Bad Bishop Penalty MG: " << mgBadBishopPenalty << "\n";
+    os << "Bad Bishop Penalty EG: " << egBadBishopPenalty << "\n";
+
     os << "Rook On Open File Bonus MG: " << mgRookOnOpenFileBonus << "\n";
     os << "Rook On Semi-Open File Bonus MG: " << mgRookOnSemiOpenFileBonus << "\n";
     os << "Rook behind Passed Pawn Bonus EG: " << egRookBehindPassedPawnBonus << "\n";
+
+    os << "Enemy Passed Pawn Blocked Bonus EG: " << egBlockedEnemyPassedPawnBonus << "\n";
+    os << "Own Passed Pawn Blocked Penalty EG: " << egBlockedOwnPassedPawnPenalty << "\n";
 
     os << "King Pawn Proximity Weight: " << egKingProximityPawnWeight << "\n";
     os << "King Backward Pawn Proximity Weight: " << egKingProximityBackwardPawnWeight << "\n";

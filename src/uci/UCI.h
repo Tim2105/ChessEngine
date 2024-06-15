@@ -13,9 +13,9 @@ namespace UCI {
     static std::string ENGINE_NAME = "Chess Engine";
 
     #if defined(USE_HCE)
-    static std::string ENGINE_VERSION = "4.0 (HCE)";
+    static std::string ENGINE_VERSION = "5.0 (HCE)";
     #else
-    static std::string ENGINE_VERSION = "4.0 (NNUE)";
+    static std::string ENGINE_VERSION = "5.0 (NNUE)";
     #endif
     
     static std::string ENGINE_AUTHOR = "Tim Plotzki";

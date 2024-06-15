@@ -37,7 +37,6 @@ bool debug = false;
 
 void readAndHandleNextCommand(std::istream& is);
 
-bool hasReceivedInput();
 std::string getNextToken(std::istream& is);
 std::string getNextLine(std::istream& is);
 
@@ -73,8 +72,6 @@ void UCI::listen() {
 void readAndHandleNextCommand(std::istream& is) {
     std::string command = getNextToken(is);
 
-    std::cout << std::endl;
-
     if(command == "uci")
         handleUCICommand();
     else if(command == "isready")
@@ -95,24 +92,19 @@ void readAndHandleNextCommand(std::istream& is) {
         handleSetOptionCommand(getNextLine(std::cin));
     else if(command == "register")
         handleRegisterCommand();
-    else if(command == "quit") {
+    else if(command == "quit")
         quitFlag = true;
-        engine.stop();
-    }
-
-    std::cout << std::endl;
 }
 
 std::string getNextToken(std::istream& is) {
     std::stringstream ss;
 
-    while(is.good() && (is.peek() == ' ' || is.peek() == '\t' || is.peek() == '\n'))
-        is.get();
+    is >> std::ws;
 
-    while(is.good() && !(is.peek() == ' ' || is.peek() == '\t' || is.peek() == '\n' || is.peek() == EOF))
+    while(is.good() && !(std::isspace(is.peek()) || is.peek() == EOF))
         ss << (char)is.get();
 
-    while(is.good() && (is.peek() == ' ' || is.peek() == '\t'))
+    while(is.good() && std::isspace(is.peek()) && is.peek() != '\n') // Skip whitespace until the next token
         is.get();
         
     return ss.str();

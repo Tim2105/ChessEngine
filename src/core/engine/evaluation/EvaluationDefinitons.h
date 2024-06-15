@@ -67,6 +67,11 @@ constexpr Score operator*(const int32_t& scalar, const Score& score) {
     return score * scalar;
 }
 
+inline std::ostream& operator<<(std::ostream& os, const Score& score) {
+    os << "{" << score.mg << ", " << score.eg << "}";
+    return os;
+}
+
 struct PawnBitboards {
     Bitboard whitePawns;
     Bitboard blackPawns;
