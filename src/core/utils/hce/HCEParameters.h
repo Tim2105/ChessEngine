@@ -64,12 +64,12 @@ class HCEParameters {
             {
                     -12, -17, 3, 11, 9, 0, -18, -14,
                     -15, -8, -1, 4, 4, -4, -10, -16,
-                    -26, -9, -8, -3, -5, -16, -17, -29,
-                    -16, -9, -5, 6, 9, -10, -18, -30,
-                    0, 6, 16, 23, 22, 14, 6, -1,
+                    -10, -9, -8, -3, -5, -16, -17, -11,
+                    -8, -9, -5, 6, 9, -10, -18, -8,
+                    4, 6, 16, 23, 22, 14, 6, 4,
                     27, 18, 14, 10, 7, 13, 15, 24,
-                    38, 30, 41, 46, 42, 32, 25, 27,
-                    32, 27, 34, 34, 32, 27, 19, 26,
+                    51, 39, 35, 46, 42, 35, 39, 50,
+                    48, 34, 34, 34, 32, 34, 33, 48,
             },
             // Queen
             {
@@ -77,9 +77,9 @@ class HCEParameters {
                     -27, -35, 3, 0, -1, -7, -47, -40,
                     -8, -5, -5, -9, -12, -12, -7, -21,
                     -24, -19, -11, -34, -27, -10, -15, -21,
-                    -20, -21, -25, -28, -24, -17, -19, -19,
-                    -9, 11, 6, -8, -10, 0, 7, -9,
-                    30, 37, 21, 8, 7, 18, 33, 28,
+                    -6, -21, -25, -28, -24, -17, -19, -6,
+                    10, 11, 6, -8, -10, 0, 7, 9,
+                    40, 37, 21, 8, 7, 18, 33, 40,
                     35, 47, 43, 25, 21, 36, 45, 35,
 
             },
@@ -136,10 +136,10 @@ class HCEParameters {
                     -1, -5, -4, -4, 1, 0, -3, -3, 
                     -8, -4, -6, -3, 0, -2, 0, -2, 
                     -5, -4, -3, -2, 2, 4, 2, 1, 
-                    1, 0, 0, 1, 0, 6, 1, 2, 
-                    -1, -2, -1, 2, 2, 3, 3, 3, 
-                    1, 4, 1, -1, 5, 6, 6, 5, 
-                    2, 4, 6, 6, 7, 9, 5, 6, 
+                    0, 0, -1, -2, -2, -1, -1, 0,
+                    13, 10, 8, 6, 6, 8, 10, 13,
+                    21, 18, 10, 9, 9, 10, 18, 21,
+                    21, 19, 14, 13, 13, 14, 19, 21,
             },
             // Queen
             {
@@ -147,10 +147,10 @@ class HCEParameters {
                     -5, 0, -1, 2, 1, -2, 0, -4,
                     -3, -1, 2, 4, 3, 2, 0, -2,
                     -1, 1, 3, 4, 5, 3, 2, 0,
-                    -2, -1, 1, 3, 2, 2, 1, -1,
-                    1, 2, 4, 6, 6, 5, 3, 0,
-                    3, 5, 2, 8, 9, 6, 5, 2,
-                    7, 5, 4, 11, 11, 8, 6, 6,
+                    5, 2, 0, -1, 0, 1, 3, 5,
+                    10, 6, 4, 3, 3, 4, 6, 10,
+                    18, 14, 9, 7, 7, 9, 14, 18,
+                    20, 15, 11, 9, 9, 11, 15, 20,
             },
             // King
             {
@@ -177,12 +177,12 @@ class HCEParameters {
          * Bauernstrukturen im Mittel- und Endspiel.
          */
 
-        int16_t mgConnectedPawnBonus = 8;
-        int16_t egConnectedPawnBonus = 6;
+        int16_t mgConnectedPawnBonus = 5;
+        int16_t egConnectedPawnBonus = 5;
         int16_t mgDoubledPawnPenalty = -12;
-        int16_t egDoubledPawnPenalty = -14;
+        int16_t egDoubledPawnPenalty = -18;
         int16_t mgPawnIslandPenalty = -7;
-        int16_t egPawnIslandPenalty = -12;
+        int16_t egPawnIslandPenalty = -16;
         int16_t mgBackwardPawnPenalty = -18;
         int16_t egBackwardPawnPenalty = -12;
         int16_t mgPassedPawnBonus[6] = {
@@ -190,6 +190,12 @@ class HCEParameters {
         }; // pro Rang (2 - 7)
         int16_t egPassedPawnBonus[6] = {
             28, 28, 40, 58, 82, 110
+        }; // pro Rang (2 - 7)
+        int16_t mgCandidatePassedPawnBonus[6] = {
+            2, 2, 6, 9, 14, 18
+        }; // pro Rang (2 - 7)
+        int16_t egCandidatePassedPawnBonus[6] = {
+            12, 12, 18, 26, 35, 45
         }; // pro Rang (2 - 7)
 
         /**
@@ -214,13 +220,13 @@ class HCEParameters {
          */
 
         int16_t numAttackerWeight[5] = {
-            0, 50, 75, 90, 100
+            0, 40, 75, 90, 100
         };
 
-        int16_t knightAttackBonus = 12;
-        int16_t bishopAttackBonus = 7;
-        int16_t rookAttackBonus = 32;
-        int16_t queenAttackBonus = 65;
+        int16_t knightAttackBonus = 15;
+        int16_t bishopAttackBonus = 10;
+        int16_t rookAttackBonus = 36;
+        int16_t queenAttackBonus = 72;
 
         /**
          * Bewertungen für verschiedene Merkmale in
@@ -384,6 +390,9 @@ class HCEParameters {
 
         inline int16_t getMGPassedPawnBonus(int32_t rank) const { return mgPassedPawnBonus[rank - 1]; }
         inline int16_t getEGPassedPawnBonus(int32_t rank) const { return egPassedPawnBonus[rank - 1]; }
+
+        inline int16_t getMGCandidatePassedPawnBonus(int32_t rank) const { return mgCandidatePassedPawnBonus[rank - 1]; }
+        inline int16_t getEGCandidatePassedPawnBonus(int32_t rank) const { return egCandidatePassedPawnBonus[rank - 1]; }
 
         inline int16_t getMGStrongSquareBonus() const { return mgStrongSquareBonus; }
 
