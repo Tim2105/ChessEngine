@@ -46,34 +46,14 @@ class MoveHistoryEntry {
         uint64_t hashValue;
 
         /**
-         * @brief Speichert das weiße Figurenbitboard vor diesem Zug.
-        */
-        Bitboard whitePiecesBitboard;
-
-        /**
-         * @brief Speichert das schwarze Figurenbitboard vor diesem Zug.
-        */
-        Bitboard blackPiecesBitboard;
-
-        /**
          * @brief Speichert alle individuellen Figurenbitboards vor diesem Zug.
         */
         Bitboard pieceBitboard[15];
 
         /**
-         * @brief Speichert das weiße Angriffsbitboard vor diesem Zug.
-         */
-        Bitboard whiteAttackBitboard;
-
-        /**
-         * @brief Speichert das schwarze Angriffsbitboard vor diesem Zug.
-         */
-        Bitboard blackAttackBitboard;
-
-        /**
          * @brief Speichert die Angriffsbitboards der Figuren vor diesem Zug.
          */
-        Bitboard pieceAttackBitboard[15];
+        Bitboard attackBitboard[15];
 
         /**
          * @brief Der Zug der rückgängig gemacht werden soll.
@@ -97,23 +77,16 @@ class MoveHistoryEntry {
          */
         constexpr MoveHistoryEntry(Move move, int32_t capturedPiece, int32_t castlePermission,
                         int32_t enPassantSquare, int32_t fiftyMoveRule, uint64_t hashValue,
-                        Bitboard whitePiecesBitboard, Bitboard blackPiecesBitboard, Bitboard pieceBitboards[15],
-                        Bitboard whiteAttackBitboard, Bitboard blackAttackBitboard, Bitboard pieceAttackBitboards[15]) {
+                        Bitboard pieceBitboards[15], Bitboard attackBitboards[15]) {
             this->move = move;
             this->capturedPiece = capturedPiece;
             this->castlingPermission = castlePermission;
             this->enPassantSquare = enPassantSquare;
             this->fiftyMoveRule = fiftyMoveRule;
             this->hashValue = hashValue;
-            this->whitePiecesBitboard = whitePiecesBitboard;
-            this->blackPiecesBitboard = blackPiecesBitboard;
 
-            memcpy(this->pieceBitboard, pieceBitboards, sizeof(Bitboard) * 15);
-
-            this->whiteAttackBitboard = whiteAttackBitboard;
-            this->blackAttackBitboard = blackAttackBitboard;
-            
-            memcpy(this->pieceAttackBitboard, pieceAttackBitboards, sizeof(Bitboard) * 15);
+            std::copy(pieceBitboards, pieceBitboards + 15, this->pieceBitboard);
+            std::copy(attackBitboards, attackBitboards + 15, this->attackBitboard);
         }
 
         /**
@@ -220,18 +193,18 @@ class alignas(64) Board {
         };
 
         /**
-         * @brief Speichert Belegbitboards für alle Figurentypen.
+         * @brief Speichert Belegbitboards für alle Figurentypen und Farben.
          */
         Bitboard pieceBitboard[15] = {
-            0x0ULL,
+            0xffefULL,
             0xff00ULL,
             0x42ULL,
             0x24ULL,
             0x81ULL,
             0x8ULL,
             0x10ULL,
-            0x0ULL,
-            0x0ULL,
+            0xefff00000000ffefULL,
+            0xefff000000000000ULL,
             0xff000000000000ULL,
             0x4200000000000000ULL,
             0x2400000000000000ULL,
@@ -241,24 +214,48 @@ class alignas(64) Board {
         };
 
         /**
+         * @brief Speichert alle Felder, die ein Figurentyp angreift(In Pseudo-Legalen Zügen).
+         */
+        Bitboard attackBitboard[15] = {
+            0xffff7eULL,
+            0xff0000ULL,
+            0xa51800ULL,
+            0x5a00ULL,
+            0x8142ULL,
+            0x1c14ULL,
+            0x3828ULL,
+            0x7effff0000ffff7eULL,
+            0x7effff0000000000ULL,
+            0xff0000000000ULL,
+            0x18a50000000000ULL,
+            0x5a000000000000ULL,
+            0x4281000000000000ULL,
+            0x141c000000000000ULL,
+            0x2838000000000000ULL
+        };
+
+        /**
          * @brief Speichert die Farbe, die am Zug ist.
          */
-        int32_t side;
+        int32_t side = WHITE;
 
         /**
          * @brief Speichert den Index des Feldes, auf dem ein Bauer En Passant geschlagen werden kann(wenn vorhanden).
          */
-        int32_t enPassantSquare;
+        int32_t enPassantSquare = NO_SQ;
 
         /**
          * @brief Speichert die Anzahl der Halbzüge, die seit dem letzten Bauer- oder Schlagzug vergangen sind.
          */
-        int32_t fiftyMoveRule;
+        int32_t fiftyMoveRule = 0;
 
         /**
          * @brief Speichert alle noch offenen Rochaden.
          */
-        int32_t castlingPermission;
+        int32_t castlingPermission = WHITE_KINGSIDE_CASTLE  |
+                                     WHITE_QUEENSIDE_CASTLE |
+                                     BLACK_KINGSIDE_CASTLE  |
+                                     BLACK_QUEENSIDE_CASTLE;
 
         /**
          * @brief Ein Zobristhash des Schachbretts.
@@ -267,44 +264,14 @@ class alignas(64) Board {
         uint64_t hashValue;
 
         /**
-         * @brief Speichert alle von Figuren(nicht Könige) belegten Felder.
-         */
-        Bitboard allPiecesBitboard;
-
-        /**
-         * @brief Speichert alle Felder, auf denen sich weiße Figuren(außer König) befinden.
-         */
-        Bitboard whitePiecesBitboard;
-
-        /**
-         * @brief Speichert alle Felder, auf denen sich schwarze Figuren(außer König) befinden.
-         */
-        Bitboard blackPiecesBitboard;
-
-        /**
-         * @brief Speichert alle Felder, die Weiß angreift(In Pseudo-Legalen Zügen).
-         */
-        Bitboard whiteAttackBitboard;
-
-        /**
-         * @brief Speichert alle Felder, die Schwarz angreift(In Pseudo-Legalen Zügen).
-         */
-        Bitboard blackAttackBitboard;
-
-        /**
-         * @brief Speichert alle Felder, die ein Figurentyp angreift(In Pseudo-Legalen Zügen).
-         */
-        Bitboard pieceAttackBitboard[15];
-
-        /**
          * @brief Speichert alle gespielten Züge und notwendige Informationen um diesen effizient rückgängig zu machen.
          */
-        std::vector<MoveHistoryEntry> moveHistory = {};
+        std::vector<MoveHistoryEntry> moveHistory;
 
         /**
          * @brief Speichert die Anzahl der Halbzüge, die seit dem Anfang des Spiels vergangen sind.
          */
-        uint16_t age;
+        uint16_t age = 0;
 
         /**
          * @brief Generiert einen Zobrist-Hash für das aktuelle Schachbrett.
@@ -318,24 +285,24 @@ class alignas(64) Board {
         void generateSpecialBitboards();
 
         /**
-         * @brief Generiert ein Bitboard mit allen Feldern, die von einer Seite angegriffen werden.
-         * Die Angriffsbitboard der einzelnen Figurentypen werden aktualisiert.
+         * @brief Aktualisiert die Angriffsbitboards der Figuren und
+         * die allgemeinen Figurenbitboards von beiden Seiten.
          * 
          * @param side Die Seite.
          */
-        Bitboard generateAttackBitboard(int32_t side);
+        void updateAttackBitboards(int32_t side);
 
         /**
-         * @brief Generiert ein Bitboard mit allen Feldern, die von einer Seite angegriffen werden.
-         * Die Angriffsbitboard der einzelnen Figurentypen werden aktualisiert. Es werden nur
-         * notwendige Bitboards aktualisiert, um die Effizienz zu steigern.
+         * @brief Aktualisiert die Angriffsbitboards der Figuren und
+         * die allgemeinen Figurenbitboards von beiden Seiten.
+         * Betrachtet dabei nur die Bitboards, die sich geändert haben.
          * 
          * @param side Die Seite.
          * @param updatedSquares Das Bitboard, das alle Felder enthält, dessen Belegung sich geändert hat.
          * @param capturedPiece Der Typ der geschlagenen Figur, oder EMPTY, wenn keine Figur geschlagen wurde.
          * @param wasPromotion Gibt an, ob der letzte Zug eine Bauernaufwertung war.
          */
-        Bitboard generateAttackBitboard(int32_t side, Bitboard updatedSquares, int32_t capturedPiece, bool wasPromotion);
+        void updateAttackBitboards(int32_t side, Bitboard updatedSquares, int32_t capturedPiece, bool wasPromotion);
 
         /**
          * @brief Generiert ein Bitboard, das alle Felder enthält, auf denen sich gefesselte Figuren befinden.
@@ -353,17 +320,6 @@ class alignas(64) Board {
          * @brief Erstellt ein neues Schachbrett.
          */
         Board();
-
-        /**
-         * @brief Erstellt ein neues Schachbrett, das eine Kopie eines anderen Schachbretts ist.
-         * @param other Das andere Schachbrett.
-         */
-        Board(const Board& other);
-
-        /**
-         * @brief Movekonstruktor.
-         */
-        Board(Board&& other);
 
         /**
          * @brief Erstellt ausgehend von einem FEN-String ein neues Schachbrett.
@@ -394,19 +350,6 @@ class alignas(64) Board {
             std::stringstream ss(pgn);
             return fromPGN(ss, numMoves);
         }
-
-        /**
-         * @brief Erstellt ein neues Schachbrett, das eine Kopie eines anderen Schachbretts ist.
-         * @param other Das andere Schachbrett.
-         */
-        Board& operator=(const Board& other);
-
-        /**
-         * @brief Movezuweisungsoperator.
-         */
-        Board& operator=(Board&& other);
-
-        ~Board() = default;
 
         /**
          * @brief Überprüft, ob zwei Schachbretter die gleiche Position darstellen.
@@ -493,11 +436,6 @@ class alignas(64) Board {
         std::string toPGN(const PGNData& data) const;
 
         /**
-         * @brief Wandelt das Spiel in einen PGN-String um.
-         */
-        std::string toPGN() const;
-
-        /**
          * @brief Überprüft, ob ein Feld von einer bestimmten Seite angegriffen wird.
          * 
          * @param square Das Feld, das überprüft werden soll.
@@ -578,34 +516,24 @@ class alignas(64) Board {
         constexpr const std::vector<MoveHistoryEntry>& getMoveHistory() const { return moveHistory; };
 
         /**
-         * @brief Gibt alle Positionen eines bestimmten Figurentyps als Bitboard zurück.
+         * @brief Gibt alle Positionen eines bestimmten Figurentyps oder einer Farbe zurück.
          */
         constexpr Bitboard getPieceBitboard(int32_t piece) const { return pieceBitboard[piece]; };
 
         /**
-         * @brief Gibt alle Felder zurück, die von einer bestimmten Figur angegriffen werden.
-         */
-        constexpr Bitboard getPieceAttackBitboard(int32_t piece) const { return pieceAttackBitboard[piece]; };
-
-        /**
-         * @brief Gibt alle Felder zurück, die von einer bestimmten Seite angegriffen werden.
-         */
-        constexpr Bitboard getAttackBitboard(int32_t side) const { return side == WHITE ? whiteAttackBitboard : blackAttackBitboard; };
-
-        /**
          * @brief Gibt alle Felder zurück, auf denen eine Figur steht(Könige ausgenommen).
          */
-        constexpr Bitboard getOccupiedBitboard() const { return allPiecesBitboard; };
+        constexpr Bitboard getPieceBitboard() const { return pieceBitboard[ALL_PIECES]; };
 
         /**
-         * @brief Gibt alle Felder zurück, auf denen eine weiße Figur steht(Könige ausgenommen).
+         * @brief Gibt alle Felder zurück, die von einer bestimmten Figur oder Farbe angegriffen werden.
          */
-        constexpr Bitboard getWhiteOccupiedBitboard() const { return whitePiecesBitboard; };
+        constexpr Bitboard getAttackBitboard(int32_t piece) const { return attackBitboard[piece]; };
 
         /**
-         * @brief Gibt alle Felder zurück, auf denen eine schwarze Figur steht(Könige ausgenommen).
+         * @brief Gibt alle Felder zurück, die von irgendeiner Figur angegriffen werden.
          */
-        constexpr Bitboard getBlackOccupiedBitboard() const { return blackPiecesBitboard; };
+        constexpr Bitboard getAttackBitboard() const { return attackBitboard[ALL_PIECES]; };
 
         /**
          * @brief Überprüft, wie häufig die momentane Position schon aufgetreten ist. 

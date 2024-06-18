@@ -246,8 +246,8 @@ inline int32_t EndgameEvaluator::evalEG_PSQT() {
         }
     }
 
-    Bitboard whiteEnPrise = board.getWhiteOccupiedBitboard() & ~board.getAttackBitboard(WHITE);
-    Bitboard blackEnPrise = board.getBlackOccupiedBitboard() & ~board.getAttackBitboard(BLACK);
+    Bitboard whiteEnPrise = board.getPieceBitboard(WHITE) & ~board.getAttackBitboard(WHITE);
+    Bitboard blackEnPrise = board.getPieceBitboard(BLACK) & ~board.getAttackBitboard(BLACK);
 
     if(board.getSideToMove() == WHITE) {
         score += whiteScore;
@@ -269,7 +269,7 @@ int32_t EndgameEvaluator::evalPawnStructure(int32_t side) {
 
     Bitboard ownPawns = board.getPieceBitboard(side | PAWN);
     Bitboard otherPawns = board.getPieceBitboard((side ^ COLOR_MASK) | PAWN);
-    Bitboard ownPawnAttacks = board.getPieceAttackBitboard(side | PAWN);
+    Bitboard ownPawnAttacks = board.getAttackBitboard(side | PAWN);
 
     Bitboard doublePawns = findDoublePawns(ownPawns, side);
     Bitboard isolatedPawns = findIsolatedPawns(ownPawns);
@@ -327,24 +327,24 @@ int32_t EndgameEvaluator::evalEGMobility() {
     int32_t side = board.getSideToMove();
     int32_t otherSide = side ^ COLOR_MASK;
 
-    Bitboard ownPieces = board.getWhiteOccupiedBitboard() | board.getPieceBitboard(WHITE_KING);
-    Bitboard otherPieces = board.getBlackOccupiedBitboard() | board.getPieceBitboard(BLACK_KING);
+    Bitboard ownPieces = board.getPieceBitboard(WHITE) | board.getPieceBitboard(WHITE_KING);
+    Bitboard otherPieces = board.getPieceBitboard(BLACK) | board.getPieceBitboard(BLACK_KING);
 
     if(side == BLACK) {
-        ownPieces = board.getBlackOccupiedBitboard() | board.getPieceBitboard(BLACK_KING);
-        otherPieces = board.getWhiteOccupiedBitboard() | board.getPieceBitboard(WHITE_KING);
+        ownPieces = board.getPieceBitboard(BLACK) | board.getPieceBitboard(BLACK_KING);
+        otherPieces = board.getPieceBitboard(WHITE) | board.getPieceBitboard(WHITE_KING);
     }
 
-    Bitboard ownPawnMobility = board.getPieceAttackBitboard(side | PAWN);
-    Bitboard otherPawnMobility = board.getPieceAttackBitboard(otherSide | PAWN);
-    Bitboard ownKnightMobility = board.getPieceAttackBitboard(side | KNIGHT) & ~board.getPieceAttackBitboard(otherSide | PAWN);
-    Bitboard otherKnightMobility = board.getPieceAttackBitboard(otherSide | KNIGHT) & ~board.getPieceAttackBitboard(side | PAWN);
-    Bitboard ownBishopMobility = board.getPieceAttackBitboard(side | BISHOP) & ~board.getPieceAttackBitboard(otherSide | PAWN);
-    Bitboard otherBishopMobility = board.getPieceAttackBitboard(otherSide | BISHOP) & ~board.getPieceAttackBitboard(side | PAWN);
-    Bitboard ownRookMobility = board.getPieceAttackBitboard(side | ROOK) & ~board.getPieceAttackBitboard(otherSide | PAWN);
-    Bitboard otherRookMobility = board.getPieceAttackBitboard(otherSide | ROOK) & ~board.getPieceAttackBitboard(side | PAWN);
-    Bitboard ownQueenMobility = board.getPieceAttackBitboard(side | QUEEN) & ~board.getPieceAttackBitboard(otherSide | PAWN);
-    Bitboard otherQueenMobility = board.getPieceAttackBitboard(otherSide | QUEEN) & ~board.getPieceAttackBitboard(side | PAWN);
+    Bitboard ownPawnMobility = board.getAttackBitboard(side | PAWN);
+    Bitboard otherPawnMobility = board.getAttackBitboard(otherSide | PAWN);
+    Bitboard ownKnightMobility = board.getAttackBitboard(side | KNIGHT) & ~board.getAttackBitboard(otherSide | PAWN);
+    Bitboard otherKnightMobility = board.getAttackBitboard(otherSide | KNIGHT) & ~board.getAttackBitboard(side | PAWN);
+    Bitboard ownBishopMobility = board.getAttackBitboard(side | BISHOP) & ~board.getAttackBitboard(otherSide | PAWN);
+    Bitboard otherBishopMobility = board.getAttackBitboard(otherSide | BISHOP) & ~board.getAttackBitboard(side | PAWN);
+    Bitboard ownRookMobility = board.getAttackBitboard(side | ROOK) & ~board.getAttackBitboard(otherSide | PAWN);
+    Bitboard otherRookMobility = board.getAttackBitboard(otherSide | ROOK) & ~board.getAttackBitboard(side | PAWN);
+    Bitboard ownQueenMobility = board.getAttackBitboard(side | QUEEN) & ~board.getAttackBitboard(otherSide | PAWN);
+    Bitboard otherQueenMobility = board.getAttackBitboard(otherSide | QUEEN) & ~board.getAttackBitboard(side | PAWN);
 
     score += ownPawnMobility.popcount() * EG_PAWN_MOBILITY_VALUE;
     score -= otherPawnMobility.popcount() * EG_PAWN_MOBILITY_VALUE;

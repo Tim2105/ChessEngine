@@ -113,7 +113,7 @@ inline void Movegen::generatePawnMoves(const Board& board, Array<Move, 256>& mov
     constexpr int32_t ownColor = color == WHITE ? WHITE : BLACK;
     constexpr int32_t enPasRankReq = color == WHITE ? RANK_5 : RANK_4;
 
-    Bitboard enemyPieces = color == WHITE ? board.blackPiecesBitboard : board.whitePiecesBitboard;
+    Bitboard enemyPieces = color == WHITE ? board.pieceBitboard[BLACK] : board.pieceBitboard[WHITE];
     
     Bitboard pawns = board.getPieceBitboard(pawnPiece);
 
@@ -225,7 +225,7 @@ inline void Movegen::generatePawnMoves(const Board& board, Array<Move, 256>& mov
                                 board.pieceBitboard[BLACK_QUEEN] | board.pieceBitboard[BLACK_ROOK] :
                                 board.pieceBitboard[WHITE_QUEEN] | board.pieceBitboard[WHITE_ROOK];
 
-                            Bitboard piecesAfterMove = board.allPiecesBitboard | enemyKing;
+                            Bitboard piecesAfterMove = board.pieceBitboard[ALL_PIECES] | enemyKing;
                             piecesAfterMove.clearBit(sq);
                             piecesAfterMove.clearBit(captureSq - forw);
                             piecesAfterMove.setBit(enPasSq);
@@ -321,7 +321,7 @@ template <int32_t color>
 inline void Movegen::generateKnightMoves(const Board& board, Array<Move, 256>& moves, const PrecomputedInfo& precomputedInfo) noexcept {
     constexpr int32_t knightPiece = color == WHITE ? WHITE_KNIGHT : BLACK_KNIGHT;
     Bitboard ownPieces = color == WHITE ?
-        board.whitePiecesBitboard : board.blackPiecesBitboard;
+        board.pieceBitboard[WHITE] : board.pieceBitboard[BLACK];
     Bitboard ownKing = color == WHITE ?
         board.pieceBitboard[WHITE_KING] : board.pieceBitboard[BLACK_KING];
     
@@ -357,7 +357,7 @@ inline void Movegen::generateDiagonalSlidingMoves(const Board& board, Array<Move
     constexpr int32_t bishopPiece = color == WHITE ? WHITE_BISHOP : BLACK_BISHOP;
     constexpr int32_t queenPiece = color == WHITE ? WHITE_QUEEN : BLACK_QUEEN;
     Bitboard ownPieces = color == WHITE ?
-        board.whitePiecesBitboard : board.blackPiecesBitboard;
+        board.pieceBitboard[WHITE] : board.pieceBitboard[BLACK];
     Bitboard ownKing = color == WHITE ?
         board.pieceBitboard[WHITE_KING] : board.pieceBitboard[BLACK_KING];
     
@@ -373,7 +373,7 @@ inline void Movegen::generateDiagonalSlidingMoves(const Board& board, Array<Move
                 continue;
 
             Bitboard attacks = diagonalAttackBitboard(sq,
-                                board.allPiecesBitboard | ownKing)
+                                board.pieceBitboard[ALL_PIECES] | ownKing)
                                 & ~(ownPieces | ownKing)
                                 & precomputedInfo.attackingRays;
 
@@ -407,7 +407,7 @@ inline void Movegen::generateDiagonalSlidingMoves(const Board& board, Array<Move
             }
 
             attacks &= diagonalAttackBitboard(sq,
-                        board.allPiecesBitboard | ownKing)
+                        board.pieceBitboard[ALL_PIECES] | ownKing)
                         & ~(ownPieces | ownKing);
 
             while(attacks) {
@@ -427,7 +427,7 @@ inline void Movegen::generateHorizontalSlidingMoves(const Board& board, Array<Mo
     constexpr int32_t rookPiece = color == WHITE ? WHITE_ROOK : BLACK_ROOK;
     constexpr int32_t queenPiece = color == WHITE ? WHITE_QUEEN : BLACK_QUEEN;
     Bitboard ownPieces = color == WHITE ?
-        board.whitePiecesBitboard : board.blackPiecesBitboard;
+        board.pieceBitboard[WHITE] : board.pieceBitboard[BLACK];
     Bitboard ownKing = color == WHITE ?
         board.pieceBitboard[WHITE_KING] : board.pieceBitboard[BLACK_KING];
     
@@ -443,7 +443,7 @@ inline void Movegen::generateHorizontalSlidingMoves(const Board& board, Array<Mo
                 continue;
 
             Bitboard attacks = horizontalAttackBitboard(sq,
-                                board.allPiecesBitboard | ownKing)
+                                board.pieceBitboard[ALL_PIECES] | ownKing)
                                 & ~(ownPieces | ownKing)
                                 & precomputedInfo.attackingRays;
 
@@ -477,7 +477,7 @@ inline void Movegen::generateHorizontalSlidingMoves(const Board& board, Array<Mo
             }
 
             attacks &= horizontalAttackBitboard(sq,
-                        board.allPiecesBitboard | ownKing)
+                        board.pieceBitboard[ALL_PIECES] | ownKing)
                         & ~(ownPieces | ownKing);
 
             while(attacks) {
@@ -495,14 +495,14 @@ inline void Movegen::generateHorizontalSlidingMoves(const Board& board, Array<Mo
 template <int32_t color>
 inline void Movegen::generateKingMoves(const Board& board, Array<Move, 256>& moves) noexcept {
     Bitboard ownPieces = color == WHITE ?
-        board.whitePiecesBitboard : board.blackPiecesBitboard;
+        board.pieceBitboard[WHITE] : board.pieceBitboard[BLACK];
 
     int32_t kingSq = color == WHITE ?
         board.pieceBitboard[WHITE_KING].getFSB() :
         board.pieceBitboard[BLACK_KING].getFSB();
 
     Bitboard enemyAttacks = color == WHITE ?
-        board.blackAttackBitboard : board.whiteAttackBitboard;
+        board.attackBitboard[BLACK] : board.attackBitboard[WHITE];
 
     constexpr int32_t kingsideCastlingFlag = color == WHITE ?
         WHITE_KINGSIDE_CASTLE : BLACK_KINGSIDE_CASTLE;
@@ -549,7 +549,7 @@ inline void Movegen::generateKingMoves(const Board& board, Array<Move, 256>& mov
         constexpr Bitboard reqNotAttackedSqs = color == WHITE ?
             (sqE1 | sqF1 | sqG1) : (sqE8 | sqF8 | sqG8);
 
-        if(!(reqEmptySqs & board.allPiecesBitboard) &&
+        if(!(reqEmptySqs & board.pieceBitboard[ALL_PIECES]) &&
            !(reqNotAttackedSqs & enemyAttacks)) {
 
             moves.push_back(Move(castingOrigin, castingDestination, MOVE_KINGSIDE_CASTLE));
@@ -566,7 +566,7 @@ inline void Movegen::generateKingMoves(const Board& board, Array<Move, 256>& mov
         constexpr Bitboard reqNotAttackedSqs = color == WHITE ?
             (sqC1 | sqD1 | sqE1) : (sqC8 | sqD8 | sqE8);
 
-        if(!(reqEmptySqs & board.allPiecesBitboard) &&
+        if(!(reqEmptySqs & board.pieceBitboard[ALL_PIECES]) &&
            !(reqNotAttackedSqs & enemyAttacks)) {
 
             moves.push_back(Move(castingOrigin, castingDestination, MOVE_QUEENSIDE_CASTLE));
@@ -582,7 +582,7 @@ inline void Movegen::generatePawnCaptures(const Board& board, Array<Move, 256>& 
     constexpr int32_t ownColor = color == WHITE ? WHITE : BLACK;
     constexpr int32_t enPasRankReq = color == WHITE ? RANK_5 : RANK_4;
 
-    Bitboard enemyPieces = color == WHITE ? board.blackPiecesBitboard : board.whitePiecesBitboard;
+    Bitboard enemyPieces = color == WHITE ? board.pieceBitboard[BLACK] : board.pieceBitboard[WHITE];
     
     Bitboard pawns = board.getPieceBitboard(pawnPiece);
 
@@ -671,7 +671,7 @@ inline void Movegen::generatePawnCaptures(const Board& board, Array<Move, 256>& 
                                 board.pieceBitboard[BLACK_QUEEN] | board.pieceBitboard[BLACK_ROOK] :
                                 board.pieceBitboard[WHITE_QUEEN] | board.pieceBitboard[WHITE_ROOK];
 
-                            Bitboard piecesAfterMove = board.allPiecesBitboard | enemyKing;
+                            Bitboard piecesAfterMove = board.pieceBitboard[ALL_PIECES] | enemyKing;
                             piecesAfterMove.clearBit(sq);
                             piecesAfterMove.clearBit(captureSq - forw);
                             piecesAfterMove.setBit(enPasSq);
@@ -734,7 +734,7 @@ template <int32_t color>
 inline void Movegen::generateKnightCaptures(const Board& board, Array<Move, 256>& moves, const PrecomputedInfo& precomputedInfo) noexcept {
     constexpr int32_t knightPiece = color == WHITE ? WHITE_KNIGHT : BLACK_KNIGHT;
     Bitboard enemyPieces = color == WHITE ?
-        board.blackPiecesBitboard : board.whitePiecesBitboard;
+        board.pieceBitboard[BLACK] : board.pieceBitboard[WHITE];
     
     Bitboard knights = board.getPieceBitboard(knightPiece);
 
@@ -765,7 +765,7 @@ inline void Movegen::generateDiagonalSlidingCaptures(const Board& board, Array<M
     Bitboard ownKing = color == WHITE ?
         board.pieceBitboard[WHITE_KING] : board.pieceBitboard[BLACK_KING];
     Bitboard enemyPieces = color == WHITE ?
-        board.blackPiecesBitboard : board.whitePiecesBitboard;
+        board.pieceBitboard[BLACK] : board.pieceBitboard[WHITE];
     
     Bitboard diagSlidingPieces = board.getPieceBitboard(bishopPiece) |
                                  board.getPieceBitboard(queenPiece);
@@ -779,7 +779,7 @@ inline void Movegen::generateDiagonalSlidingCaptures(const Board& board, Array<M
                 continue;
 
             Bitboard attacks = diagonalAttackBitboard(sq,
-                                board.allPiecesBitboard | ownKing)
+                                board.pieceBitboard[ALL_PIECES] | ownKing)
                                 & enemyPieces
                                 & precomputedInfo.attackingRays;
 
@@ -809,7 +809,7 @@ inline void Movegen::generateDiagonalSlidingCaptures(const Board& board, Array<M
             }
 
             attacks &= diagonalAttackBitboard(sq,
-                        board.allPiecesBitboard | ownKing)
+                        board.pieceBitboard[ALL_PIECES] | ownKing)
                         & enemyPieces;
 
             while(attacks) {
@@ -827,7 +827,7 @@ inline void Movegen::generateHorizontalSlidingCaptures(const Board& board, Array
     Bitboard ownKing = color == WHITE ?
         board.pieceBitboard[WHITE_KING] : board.pieceBitboard[BLACK_KING];
     Bitboard enemyPieces = color == WHITE ?
-        board.blackPiecesBitboard : board.whitePiecesBitboard;
+        board.pieceBitboard[BLACK] : board.pieceBitboard[WHITE];
     
     Bitboard horSlidingPieces = board.getPieceBitboard(rookPiece) |
                                 board.getPieceBitboard(queenPiece);
@@ -841,7 +841,7 @@ inline void Movegen::generateHorizontalSlidingCaptures(const Board& board, Array
                 continue;
 
             Bitboard attacks = horizontalAttackBitboard(sq,
-                                board.allPiecesBitboard | ownKing)
+                                board.pieceBitboard[ALL_PIECES] | ownKing)
                                 & enemyPieces
                                 & precomputedInfo.attackingRays;
 
@@ -871,7 +871,7 @@ inline void Movegen::generateHorizontalSlidingCaptures(const Board& board, Array
             }
 
             attacks &= horizontalAttackBitboard(sq,
-                        board.allPiecesBitboard | ownKing)
+                        board.pieceBitboard[ALL_PIECES] | ownKing)
                         & enemyPieces;
 
             while(attacks) {
@@ -885,14 +885,14 @@ inline void Movegen::generateHorizontalSlidingCaptures(const Board& board, Array
 template <int32_t color>
 inline void Movegen::generateKingCaptures(const Board& board, Array<Move, 256>& moves) noexcept {
     Bitboard enemyPieces = color == WHITE ?
-        board.blackPiecesBitboard : board.whitePiecesBitboard;
+        board.pieceBitboard[BLACK] : board.pieceBitboard[WHITE];
 
     int32_t kingSq = color == WHITE ?
         board.pieceBitboard[WHITE_KING].getFSB() :
         board.pieceBitboard[BLACK_KING].getFSB();
 
     Bitboard enemyAttacks = color == WHITE ?
-        board.blackAttackBitboard : board.whiteAttackBitboard;
+        board.attackBitboard[BLACK] : board.attackBitboard[WHITE];
 
     // Es gibt immer exakt einen König, deshalb brauchen wir keine Schleife
     Bitboard kingAttacks = kingAttackBitboard(kingSq) &

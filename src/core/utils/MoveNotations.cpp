@@ -156,7 +156,7 @@ std::string toAlgebraicNotation(const Move& move, Board& board, const std::strin
             }
             break;
         } case BISHOP: {
-            Bitboard bishopsAttackingDest = diagonalAttackBitboard(dest, board.getOccupiedBitboard() |
+            Bitboard bishopsAttackingDest = diagonalAttackBitboard(dest, board.getPieceBitboard() |
                                             board.getPieceBitboard(WHITE | KING) |
                                             board.getPieceBitboard(BLACK | KING)) &
                         board.getPieceBitboard(side | BISHOP);
@@ -190,7 +190,7 @@ std::string toAlgebraicNotation(const Move& move, Board& board, const std::strin
             }
             break;
         } case ROOK: {
-            Bitboard rooksAttackingDest = horizontalAttackBitboard(dest, board.getOccupiedBitboard() |
+            Bitboard rooksAttackingDest = horizontalAttackBitboard(dest, board.getPieceBitboard() |
                                             board.getPieceBitboard(WHITE | KING) |
                                             board.getPieceBitboard(BLACK | KING)) &
                         board.getPieceBitboard(side | ROOK);
@@ -224,10 +224,10 @@ std::string toAlgebraicNotation(const Move& move, Board& board, const std::strin
             }
             break;
         } case QUEEN: {
-            Bitboard queensAttackingDest = (horizontalAttackBitboard(dest, board.getOccupiedBitboard() |
+            Bitboard queensAttackingDest = (horizontalAttackBitboard(dest, board.getPieceBitboard() |
                                             board.getPieceBitboard(WHITE | KING) |
                                             board.getPieceBitboard(BLACK | KING)) |
-                                            diagonalAttackBitboard(dest, board.getOccupiedBitboard() |
+                                            diagonalAttackBitboard(dest, board.getPieceBitboard() |
                                             board.getPieceBitboard(WHITE | KING) |
                                             board.getPieceBitboard(BLACK | KING))) &
                             board.getPieceBitboard(side | QUEEN);

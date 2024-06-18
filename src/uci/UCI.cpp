@@ -52,8 +52,6 @@ void handleStopCommand();
 void handlePonderHitCommand();
 
 void UCI::listen() {
-    board = Board();
-
     std::cout << ENGINE_NAME << " " << ENGINE_VERSION << std::endl << std::endl;
 
     std::string command;

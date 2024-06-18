@@ -668,8 +668,7 @@ bool PVSSearchInstance::deactivateNullMove() {
     // Deaktiviere den Null-Zug, wenn der Spieler nur noch
     // einen König und Bauern hat.
     int32_t side = board.getSideToMove();
-    Bitboard ownPieces = side == WHITE ? board.getWhiteOccupiedBitboard() : board.getBlackOccupiedBitboard();
-    return ownPieces == board.getPieceBitboard(side | PAWN);
+    return board.getPieceBitboard(side) == board.getPieceBitboard(side | PAWN);
 }
 
 bool PVSSearchInstance::verifyNullMove() {

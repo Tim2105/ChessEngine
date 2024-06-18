@@ -31,18 +31,18 @@ int32_t Evaluator::getSmallestAttacker(int32_t to, int32_t side) {
     if(knightAttackers)
         return knightAttackers.getFSB();
 
-    Bitboard bishopAttackers = diagonalAttackBitboard(to, board.getOccupiedBitboard() | board.getPieceBitboard(side | KING))
+    Bitboard bishopAttackers = diagonalAttackBitboard(to, board.getPieceBitboard() | board.getPieceBitboard(side | KING))
                                                         & board.getPieceBitboard(side | BISHOP);
     if(bishopAttackers)
         return bishopAttackers.getFSB();
 
-    Bitboard rookAttackers = horizontalAttackBitboard(to, board.getOccupiedBitboard() | board.getPieceBitboard(side | KING))
+    Bitboard rookAttackers = horizontalAttackBitboard(to, board.getPieceBitboard() | board.getPieceBitboard(side | KING))
                                                         & board.getPieceBitboard(side | ROOK);
     if(rookAttackers)
         return rookAttackers.getFSB();
 
-    Bitboard queenAttackers = (diagonalAttackBitboard(to, board.getOccupiedBitboard() | board.getPieceBitboard(side | KING))
-                                | horizontalAttackBitboard(to, board.getOccupiedBitboard() | board.getPieceBitboard(side | KING)))
+    Bitboard queenAttackers = (diagonalAttackBitboard(to, board.getPieceBitboard() | board.getPieceBitboard(side | KING))
+                                | horizontalAttackBitboard(to, board.getPieceBitboard() | board.getPieceBitboard(side | KING)))
                                 & board.getPieceBitboard(side | QUEEN);
     if(queenAttackers)
         return queenAttackers.getFSB();
