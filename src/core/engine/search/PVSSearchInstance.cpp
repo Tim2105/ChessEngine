@@ -27,12 +27,8 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     localNodeCounter++;
     selectiveDepth = std::max(selectiveDepth, ply);
 
-    // Überprüfe, ob dieser Knoten zu einem Unentschieden durch
-    // dreifache Stellungswiederholung oder die 50-Züge-Regel führt.
-    // Stelle sicher, dass wir uns nicht im Wurzelknoten befinden,
-    // damit wir immer mindestens einen Zug in der PV haben.
-    uint16_t repetitionCount = board.repetitionCount();
-    if(ply > 0 && (repetitionCount >= 2 || board.getFiftyMoveCounter() >= 100)) {
+    // Überprüfe, ob wir uns in einer Remisstellung befinden.
+    if(ply > 0 && evaluator.isDraw()) {
         clearPVTable(ply);
         return DRAW_SCORE;
     }
@@ -510,9 +506,8 @@ int16_t PVSSearchInstance::quiescence(uint16_t ply, int16_t alpha, int16_t beta)
     localNodeCounter++;
     selectiveDepth = std::max(selectiveDepth, ply);
 
-    // Überprüfe, ob dieser Knoten zu einem Unentschieden durch
-    // dreifache Stellungswiederholung oder die 50-Züge-Regel führt.
-    if(board.repetitionCount() >= 2 || board.getFiftyMoveCounter() >= 100)
+    // Überprüfe, ob wir uns in einer Remisstellung befinden.
+    if(evaluator.isDraw())
         return DRAW_SCORE;
 
     // Wenn die maximale Suchdistanz erreicht wurde,

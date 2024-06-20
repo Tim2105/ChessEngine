@@ -9,12 +9,13 @@ bool Evaluator::isDraw() {
     if(board.getFiftyMoveCounter() >= 100)
         return true;
     
-    // Dreifache Stellungswiederholung
-    if(board.repetitionCount() >= 3)
+    // Anstatt der 3-fachen Stellungswiederholung wird die 2-fache Stellungswiederholung,
+    // um Zugwiederholungen in der Suche zu vermeiden
+    if(board.repetitionCount() >= 2)
         return true;
 
-    // Unzureichendes Material
-    return Referee::isDrawByMaterial(board);
+    // Unzureichendes Material oder Remisstellung
+    return isDrawnKPKEndgame() || Referee::isDrawByMaterial(board);
 }
 
 int32_t Evaluator::getSmallestAttacker(int32_t to, int32_t side) {
@@ -97,6 +98,27 @@ bool Evaluator::seeGreaterEqual(Move m, int32_t threshold) {
     board.undoMove();
 
     return capturedPieceValue >= threshold;
+}
+
+bool Evaluator::isDrawnKPKEndgame() {
+    Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
+    Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);
+
+    // Das Endspiel ist nicht KPK
+    if(whitePawns.popcount() + blackPawns.popcount() != 1 || board.getPieceBitboard() != (whitePawns | blackPawns))
+        return false;
+
+    int32_t whiteKingSquare = board.getKingSquare(WHITE);
+    int32_t blackKingSquare = board.getKingSquare(BLACK);
+
+    if(whitePawns)
+        return (whitePawns.shiftSouth() | whitePawns.shiftSouthWestEast()).getBit(whiteKingSquare) &&
+               (blackPawns.shiftNorth() | blackPawns.shiftNorthWestEast()).getBit(blackKingSquare) &&
+                board.getSideToMove() == WHITE && Square::rankOf(blackKingSquare) != RANK_8;
+    else
+        return (blackPawns.shiftNorth() | blackPawns.shiftNorthWestEast()).getBit(blackKingSquare) &&
+               (whitePawns.shiftSouth() | whitePawns.shiftSouthWestEast()).getBit(whiteKingSquare) &&
+                board.getSideToMove() == BLACK && Square::rankOf(whiteKingSquare) != RANK_1;
 }
 
 int16_t Evaluator::evaluateMoveSEE(Move m) {

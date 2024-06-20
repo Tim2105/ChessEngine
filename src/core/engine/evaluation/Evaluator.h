@@ -42,7 +42,12 @@ class Evaluator {
          * Bauernaufwertung und En-Passant nicht berücksichtigt.
          */
         bool seeGreaterEqual(Move m, int32_t threshold);
-    
+
+        /**
+         * @brief Überprüft, ob eine gegebene Stellung eine KPK-Remisstellung ist.
+         */
+        bool isDrawnKPKEndgame();
+
     protected:
         Board& board;
 
@@ -69,6 +74,7 @@ class Evaluator {
          * auch wenn beide Spieler kooperieren würden.
          * Andere Möglichkeiten für ein Unentschieden sind z.B. 50 Züge ohne Bauern- oder Schlagzug
          * oder dreimal dieselbe Stellung.
+         * Außer dem werden auch theoretische Remisstellungen wie bestimme KPK-Stellungen überprüft.
          * 
          * @note Patt wird hier nicht überprüft, weil das eine Aufgabe der Suche ist.
          */

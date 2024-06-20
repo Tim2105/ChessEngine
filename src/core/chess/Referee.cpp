@@ -18,42 +18,46 @@ bool Referee::isDraw(Board& b) {
 }
 
 bool Referee::isDrawByMaterial(Board& b) {
-    int32_t whitePawns = b.getPieceBitboard(WHITE_PAWN).popcount();
-    int32_t blackPawns = b.getPieceBitboard(BLACK_PAWN).popcount();
-    int32_t whiteKnights = b.getPieceBitboard(WHITE_KNIGHT).popcount();
-    int32_t blackKnights = b.getPieceBitboard(BLACK_KNIGHT).popcount();
-    int32_t whiteBishops = b.getPieceBitboard(WHITE_BISHOP).popcount();
-    int32_t blackBishops = b.getPieceBitboard(BLACK_BISHOP).popcount();
-    int32_t whiteRooks = b.getPieceBitboard(WHITE_ROOK).popcount();
-    int32_t blackRooks = b.getPieceBitboard(BLACK_ROOK).popcount();
-    int32_t whiteQueens = b.getPieceBitboard(WHITE_QUEEN).popcount();
-    int32_t blackQueens = b.getPieceBitboard(BLACK_QUEEN).popcount();
+    Bitboard whitePawns = b.getPieceBitboard(WHITE_PAWN);
+    Bitboard blackPawns = b.getPieceBitboard(BLACK_PAWN);
+    Bitboard whiteRooks = b.getPieceBitboard(WHITE_ROOK);
+    Bitboard blackRooks = b.getPieceBitboard(BLACK_ROOK);
+    Bitboard whiteQueens = b.getPieceBitboard(WHITE_QUEEN);
+    Bitboard blackQueens = b.getPieceBitboard(BLACK_QUEEN);
 
     // Wenn Bauern, Türme oder Damen auf dem Spielfeld sind, ist noch genug Material vorhanden
-    if(!(whitePawns > 0 || blackPawns > 0 || whiteRooks > 0 ||
-       blackRooks > 0 || whiteQueens > 0 || blackQueens > 0)) {
+    if(!(whitePawns || blackPawns || whiteRooks ||
+         blackRooks || whiteQueens || blackQueens)) {
+
+        Bitboard whiteKnights = b.getPieceBitboard(WHITE_KNIGHT);
+        Bitboard blackKnights = b.getPieceBitboard(BLACK_KNIGHT);
+        Bitboard whiteBishops = b.getPieceBitboard(WHITE_BISHOP);
+        Bitboard blackBishops = b.getPieceBitboard(BLACK_BISHOP);
         
         // König gegen König
-        if(whiteKnights == 0 && whiteBishops == 0 &&
-        blackKnights == 0 && blackBishops == 0)
+        if(!(whiteKnights || whiteBishops ||
+             blackKnights || blackBishops))
             return true;
         
         // König und Springer gegen König
-        if(whiteBishops == 0 && blackBishops == 0 &&
-        ((whiteKnights == 1 && blackKnights == 0) || (whiteKnights == 0 && blackKnights == 1)))
+        if(!(whiteBishops || blackBishops) &&
+          ((whiteKnights.popcount() == 1 && !blackKnights) || (!whiteKnights && blackKnights.popcount() == 1)))
             return true;
+
+        int32_t numWhiteBishops = whiteBishops.popcount();
+        int32_t numBlackBishops = blackBishops.popcount();
         
         // König und Läufer gegen König
-        if(whiteKnights == 0 && blackKnights == 0 &&
-        ((whiteBishops == 1 && blackBishops == 0) || (whiteBishops == 0 && blackBishops == 1)))
+        if(!(whiteKnights || blackKnights) &&
+          ((numWhiteBishops == 1 && !blackBishops) || (!whiteBishops && numBlackBishops == 1)))
             return true;
         
         // König und Läufer gegen König und Läufer mit gleicher Farbe
-        if(whiteKnights == 0 && blackKnights == 0 &&
-        whiteBishops == 1 && blackBishops == 1) {
+        if(!(whiteKnights || blackKnights) &&
+             numWhiteBishops == 1 && numBlackBishops == 1) {
             
-            int32_t whiteBishopSq = b.getPieceBitboard(WHITE_BISHOP).getFSB();
-            int32_t blackBishopSq = b.getPieceBitboard(BLACK_BISHOP).getFSB();
+            int32_t whiteBishopSq = whiteBishops.getFSB();
+            int32_t blackBishopSq = blackBishops.getFSB();
 
             if(lightSquares.getBit(whiteBishopSq) == lightSquares.getBit(blackBishopSq))
                 return true;
