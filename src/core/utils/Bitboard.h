@@ -2,7 +2,6 @@
 #define BITBOARD_H
 
 #include <bit>
-#include <functional>
 #include <iostream>
 #include <stdint.h>
 

@@ -100,12 +100,12 @@ class HCEParameters {
             // Pawn
             {
                     0, 0, 0, 0, 0, 0, 0, 0, // tote Parameterreihe
-                    -21, -24, -31, -39, -40, -18, -10, -25,
-                    -32, -28, -43, -39, -40, -33, -24, -25,
-                    -10, -9, -14, -17, -17, -6, 5, -4,
-                    1, 1, 5, 8, 10, -5, 9, 2,
-                    28, 23, 22, 19, 18, 18, 20, 25,
-                    53, 45, 39, 34, 31, 35, 41, 49,
+                    -41, -24, -31, -39, -40, -18, -10, -45,
+                    -52, -28, -43, -39, -40, -33, -24, -45,
+                    -30, -9, -14, -17, -17, -6, 5, -24,
+                    -19, 1, 5, 8, 10, -5, 9, -18,
+                    8, 23, 22, 19, 18, 18, 20, 5,
+                    23, 45, 39, 34, 31, 35, 41, 19,
                     0, 0, 0, 0, 0, 0, 0, 0, // tote Parameterreihe
             },
             // Knight
@@ -178,25 +178,25 @@ class HCEParameters {
          */
 
         int16_t mgConnectedPawnBonus = 5;
-        int16_t egConnectedPawnBonus = 5;
+        int16_t egConnectedPawnBonus = 8;
         int16_t mgDoubledPawnPenalty = -12;
-        int16_t egDoubledPawnPenalty = -18;
+        int16_t egDoubledPawnPenalty = -22;
         int16_t mgPawnIslandPenalty = -7;
         int16_t egPawnIslandPenalty = -16;
-        int16_t mgBackwardPawnPenalty = -18;
-        int16_t egBackwardPawnPenalty = -12;
+        int16_t mgBackwardPawnPenalty = -20;
+        int16_t egBackwardPawnPenalty = -10;
         int16_t mgPassedPawnBonus[6] = {
             3, 3, 10, 17, 28, 35
         }; // pro Rang (2 - 7)
         int16_t egPassedPawnBonus[6] = {
-            28, 28, 40, 58, 82, 110
+            30, 30, 56, 71, 98, 125
         }; // pro Rang (2 - 7)
-        int16_t mgCandidatePassedPawnBonus[6] = {
-            2, 2, 6, 9, 14, 18
-        }; // pro Rang (2 - 7)
-        int16_t egCandidatePassedPawnBonus[6] = {
-            12, 12, 18, 26, 35, 45
-        }; // pro Rang (2 - 7)
+        int16_t mgCandidatePassedPawnBonus[5] = {
+            2, 2, 6, 9, 14
+        }; // pro Rang (2 - 6)
+        int16_t egCandidatePassedPawnBonus[5] = {
+            19, 19, 35, 46, 60
+        }; // pro Rang (2 - 6)
 
         /**
          * Bewertungen für starke Felder im Mittelspiel.
@@ -219,14 +219,14 @@ class HCEParameters {
          * dass von einer eigenen Figur angegriffen wird.
          */
 
-        int16_t numAttackerWeight[5] = {
-            0, 40, 75, 90, 100
+        int16_t numAttackerWeight[9] = {
+            0, 0, 15, 40, 50, 70, 80, 92, 100
         };
 
         int16_t knightAttackBonus = 15;
         int16_t bishopAttackBonus = 10;
-        int16_t rookAttackBonus = 36;
-        int16_t queenAttackBonus = 72;
+        int16_t rookAttackBonus = 41;
+        int16_t queenAttackBonus = 83;
 
         /**
          * Bewertungen für verschiedene Merkmale in
@@ -234,15 +234,15 @@ class HCEParameters {
          */
 
         int16_t mgPawnShieldSizeBonus[4] = {
-            0, 27, 95, 110
+            0, 15, 48, 60
         };
 
         int16_t mgKingOpenFilePenalty[4] = {
-            0, -31, -76, -85
+            0, -31, -45, -52
         };
 
         int16_t mgPawnStormPenalty[6] = {
-            -2, -2, -10, -16, -25, -27
+            -2, -2, -16, -24, -28, -30
         }; // pro Rang (2 - 7)
 
         /**
@@ -323,6 +323,13 @@ class HCEParameters {
         int16_t egKingProximityPawnWeight = 2;
         int16_t egKingProximityBackwardPawnWeight = 3;
         int16_t egKingProximityPassedPawnWeight = 5;
+
+        /**
+         * @brief Bonus für Freibauern in einem Bauernendspiel,
+         * die nicht mehr vom gegnerischen König erreicht werden können.
+         */
+
+        int16_t ruleOfTheSquareBonus = 700;
 
     public:
         HCEParameters();
@@ -427,6 +434,8 @@ class HCEParameters {
         inline int16_t getEGKingProximityPawnWeight() const { return egKingProximityPawnWeight; }
         inline int16_t getEGKingProximityBackwardPawnWeight() const { return egKingProximityBackwardPawnWeight; }
         inline int16_t getEGKingProximityPassedPawnWeight() const { return egKingProximityPassedPawnWeight; }
+
+        inline int16_t getRuleOfTheSquareBonus() const { return ruleOfTheSquareBonus; }
 };
 
 extern HCEParameters HCE_PARAMS;
