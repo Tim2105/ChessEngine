@@ -108,17 +108,45 @@ bool Evaluator::isDrawnKPKEndgame() {
     if(whitePawns.popcount() + blackPawns.popcount() != 1 || board.getPieceBitboard() != (whitePawns | blackPawns))
         return false;
 
-    int32_t whiteKingSquare = board.getKingSquare(WHITE);
-    int32_t blackKingSquare = board.getKingSquare(BLACK);
+    Bitboard whiteKing = board.getPieceBitboard(WHITE_KING);
+    Bitboard blackKing = board.getPieceBitboard(BLACK_KING);
+    int32_t sideToMove = board.getSideToMove();
 
-    if(whitePawns)
-        return (whitePawns.shiftSouth() | whitePawns.shiftSouthWestEast()).getBit(whiteKingSquare) &&
-               (blackPawns.shiftNorth() | blackPawns.shiftNorthWestEast()).getBit(blackKingSquare) &&
-                board.getSideToMove() == WHITE && Square::rankOf(blackKingSquare) != RANK_8;
-    else
-        return (blackPawns.shiftNorth() | blackPawns.shiftNorthWestEast()).getBit(blackKingSquare) &&
-               (whitePawns.shiftSouth() | whitePawns.shiftSouthWestEast()).getBit(whiteKingSquare) &&
-                board.getSideToMove() == BLACK && Square::rankOf(whiteKingSquare) != RANK_1;
+    if(whitePawns) {
+        if(whitePawns.shiftNorth() & blackKing &&
+         ((whitePawns.shiftSouth() & whiteKing && sideToMove == BLACK) ||
+          (whitePawns.shiftSouthWestEast() & whiteKing && sideToMove == WHITE)))
+            return true;
+
+        // Opposition
+        if(sideToMove == WHITE) {
+            Bitboard whiteKingNextToPawn = (whitePawns.shiftWest() | whitePawns.shiftEast()) & whiteKing;
+            if(whiteKingNextToPawn && whiteKingNextToPawn.shiftNorth(2) & blackKing)
+                return true;
+        } else {
+            Bitboard whiteKingDiagBehindPawn = whitePawns.shiftSouthWestEast() & whiteKing;
+            if(whiteKingDiagBehindPawn && whiteKingDiagBehindPawn.shiftNorth(2) & blackKing)
+                return true;
+        }
+    } else {
+        if(blackPawns.shiftSouth() & whiteKing &&
+         ((blackPawns.shiftNorth() & blackKing && sideToMove == WHITE) ||
+          (blackPawns.shiftNorthWestEast() & blackKing && sideToMove == BLACK)))
+            return true;
+
+        // Opposition
+        if(sideToMove == BLACK) {
+            Bitboard blackKingNextToPawn = (blackPawns.shiftWest() | blackPawns.shiftEast()) & blackKing;
+            if(blackKingNextToPawn && blackKingNextToPawn.shiftSouth(2) & whiteKing)
+                return true;
+        } else {
+            Bitboard blackKingDiagBehindPawn = blackPawns.shiftNorthWestEast() & blackKing;
+            if(blackKingDiagBehindPawn && blackKingDiagBehindPawn.shiftSouth(2) & whiteKing)
+                return true;
+        }
+    }
+
+    return false;
 }
 
 int16_t Evaluator::evaluateMoveSEE(Move m) {
