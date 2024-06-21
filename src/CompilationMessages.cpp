@@ -9,8 +9,6 @@
 #pragma message "Using scalar code for NNUE inference. This will be slow. Check if your machine supports the SSE4.1 or AVX2 instruction set."
 #endif
 #endif
-#else
-#pragma message "Using HCE (Handcrafted Evaluation) instead of NNUE (Efficiently Updatable Neural Networks) will weaken the engine's playing strength."
 #endif
 
 #ifdef DISABLE_THREADS

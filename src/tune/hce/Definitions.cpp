@@ -10,12 +10,12 @@ uint32_t timeControl = 1000;
 uint32_t increment = 30;
 int32_t startOutputAtMove = 12;
 
-double validationSplit = 0.05;
+double validationSplit = 0.1;
 double k = 0.005618;
 double learningRate = 1;
-size_t numEpochs = 1000;
-size_t noImprovementPatience = 20;
-size_t batchSize = 32;
+size_t numEpochs = 500;
+size_t noImprovementPatience = 10;
+size_t batchSize = 512;
 double epsilon = 1e-8;
 
 double evolutionDefaultVariance = 2;

@@ -198,13 +198,13 @@ void HCEParameters::displayParameters(std::ostream& os) const {
     for(size_t i = 0; i < 5; i++)
         os << std::setw(3) << mgCandidatePassedPawnBonus[i] << ", ";
 
-    os << "  0  0]\n";
+    os << "  0,   0]\n";
 
     os << "Candidate Passed Pawn Bonus EG: [  0, ";
     for(size_t i = 0; i < 5; i++)
         os << std::setw(3) << egCandidatePassedPawnBonus[i] << ", ";
 
-    os << "  0  0]\n";
+    os << "  0,   0]\n";
 
     os << "Strong Square Bonus MG: " << mgStrongSquareBonus << "\n";
 
