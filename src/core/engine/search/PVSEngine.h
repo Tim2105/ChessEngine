@@ -2,16 +2,20 @@
 #define PVS_ENGINE_H
 
 #include <array>
-#include <atomic>
 #include <chrono>
-#include <mutex>
-#include <thread>
+
+#if not defined(DISABLE_THREADS)
+    #include <condition_variable>
+    #include <mutex>
+    #include <thread>
+#endif
 
 #include "core/engine/search/PVSSearchInstance.h"
 #include "core/engine/search/SearchDefinitions.h"
 #include "core/engine/search/Variation.h"
 #include "core/engine/evaluation/Evaluator.h"
 
+#include "core/utils/Atomic.h"
 #include "core/utils/tables/TranspositionTable.h"
 
 #include "uci/UCI.h"
@@ -55,15 +59,21 @@ class PVSEngine {
         std::function<void()> checkupCallback;
 
         /**
+         * Variable für die Kontrolle der Threads.
+         */
+
+        AtomicBool threadSleepFlag = true;
+        AtomicBool exitSearch = false;
+
+        /**
          * Variablen für die Zeitkontrolle.
          */
 
-        std::atomic_bool stopFlag = true;
         bool isTimeControlled = false;
-        bool searching = false;
-        std::atomic_bool isPondering = false;
-        std::atomic<std::chrono::system_clock::time_point> startTime;
-        std::atomic<std::chrono::system_clock::time_point> stopTime;
+        AtomicBool searching = false;
+        AtomicBool isPondering = false;
+        Atomic<std::chrono::system_clock::time_point> startTime;
+        Atomic<std::chrono::system_clock::time_point> stopTime;
         std::chrono::system_clock::time_point lastOutputTime;
         std::chrono::milliseconds timeMin;
         std::chrono::milliseconds timeMax;
@@ -72,7 +82,7 @@ class PVSEngine {
          * @brief Die Anzahl der bisher durchsuchten Knoten.
          * Diese Variable wird von allen Suchinstanzen geteilt.
          */
-        std::atomic_uint64_t nodesSearched = 0;
+        AtomicU64 nodesSearched = 0;
 
         /**
          * @brief Die maximale Suchtiefe, die bisher erreicht wurde.
@@ -85,6 +95,32 @@ class PVSEngine {
          * für die dynamische Zeitkontrolle verwendet.
          */
         Array<MoveScorePair, 5> pvHistory;
+
+        #if not defined(DISABLE_THREADS)
+        /**
+         * @brief Ein Mutex, der für die
+         * Bedingungsvariablen verwendet wird.
+         */
+        std::mutex cvMutex;
+
+        /**
+         * @brief Eine Bedingungsvariable, die verwendet
+         * wird, damit die Threads aufgeweckt werden können.
+         */
+        std::condition_variable cv;
+
+        /**
+         * @brief Eine Bedingungsvariable, die verwendet wird,
+         * damit der Hauptthread aufgeweckt werden kann sobald
+         * alle Helper-Threads zurückgekehrt sind.
+         */
+        std::condition_variable cvMain;
+
+        /**
+         * @brief Die dazugehörige Variable, die zählt,
+         * wie viele Helper-Threads noch laufen.
+         */
+        std::atomic_size_t numThreadsBusy;
 
         /**
          * @brief Ein Vektor mit allen Threads, auf denen
@@ -100,10 +136,26 @@ class PVSEngine {
          */
         std::vector<PVSSearchInstance*> instances;
 
+        /*
+         * Suchparameter für die zusätzlichen Suchinstanzen.
+         */
+
+        int16_t currentDepth;
+        int16_t currentAlpha;
+        int16_t currentBeta;
+
+        #endif
+
         /**
          * @brief Ein Pointer auf die Haupt-Suchinstanz.
          */
         PVSSearchInstance* mainInstance = nullptr;
+
+        /**
+         * @brief Die Funktion, die von den
+         * Helper-Threads ausgeführt wird.
+         */
+        void helperThreadLoop(PVSSearchInstance* instance);
 
         /**
          * @brief Erstellt die zusätzlichen Suchinstanzen.
@@ -119,8 +171,9 @@ class PVSEngine {
         void destroyHelperInstances();
 
         /**
-         * @brief Erstellt für jede Suchinstanz einen Thread und
-         * startet die Suche.
+         * @brief Übergibt Suchparameter an die zusätzlichen Suchinstanzen
+         * und startet sie. Wenn exitSearch auf true gesetzt ist,
+         * werden die Helper-Threads zurückgegeben.
          * 
          * @param depth Die Suchtiefe.
          * @param alpha Der untere Wert des Suchfensters.
@@ -130,11 +183,11 @@ class PVSEngine {
         void startHelperThreads(int16_t depth, int16_t alpha, int16_t beta, const Array<Move, 256>& searchMoves);
 
         /**
-         * @brief Stoppt alle Suchinstanzen auf den
-         * Helper-Threads. Diese Funktion gibt erst zurück,
-         * wenn alle Instanzen zurückgekehrt sind.
+         * @brief Pausiert alle Helper-Threads,
+         * d.h. die Threads werden in den Schlafmodus
+         * versetzt (nicht beendet!).
          */
-        void stopHelperThreads();
+        void pauseHelperThreads();
 
         /**
          * Funktionen für die Ausgabe von Informationen
@@ -165,7 +218,7 @@ class PVSEngine {
         inline void updateStopFlag() {
             if(std::chrono::system_clock::now() >= startTime.load() + timeMax &&
                maxDepthReached > 0)
-                stopFlag.store(true);
+               stop();
         }
 
         inline void checkup() {
@@ -221,7 +274,8 @@ class PVSEngine {
          * @brief Stoppt die Suche.
          */
         inline void stop() {
-            stopFlag.store(true);
+            exitSearch.store(true);
+            threadSleepFlag.store(true);
         }
 
         /**
@@ -304,7 +358,7 @@ class PVSEngine {
         }
 
         inline bool isSearching() const {
-            return searching;
+            return searching.load();
         }
 
         /**
@@ -343,8 +397,10 @@ class PVSEngine {
         inline uint16_t getSelectiveDepth() {
             uint16_t selDepth = mainInstance->getSelectiveDepth();
 
+            #if not defined(DISABLE_THREADS)
             for(PVSSearchInstance* instance : instances)
                 selDepth = std::max(selDepth, instance->getSelectiveDepth());
+            #endif
 
             return selDepth;
         }

@@ -7,12 +7,12 @@
 #include "core/engine/evaluation/NNUEEvaluator.h"
 #include "core/engine/search/SearchDefinitions.h"
 
+#include "core/utils/Atomic.h"
 #include "core/utils/tables/TranspositionTable.h"
 
 #include "uci/Options.h"
 
 #include <array>
-#include <atomic>
 #include <chrono>
 #include <functional>
 #include <random>
@@ -112,7 +112,7 @@ class PVSSearchInstance {
          * auf true gesetzt wird, bringt die Suchinstanz ihre Suche
          * ab und gibt aus pvs() zurück.
          */
-        std::atomic_bool& stopFlag;
+        AtomicBool& stopFlag;
 
         /**
          * @brief Gibt an, ob die Suchinstanz die Hauptinstanz innerhalb
@@ -124,15 +124,15 @@ class PVSSearchInstance {
          * Eine Referenz auf die Start- und Stoppzeit der momentanen Suche.
          */
 
-        std::atomic<std::chrono::system_clock::time_point>& startTime;
-        std::atomic<std::chrono::system_clock::time_point>& stopTime;
+        Atomic<std::chrono::system_clock::time_point>& startTime;
+        Atomic<std::chrono::system_clock::time_point>& stopTime;
 
         /**
          * Verfolgt die Anzahl der Knoten (Schachpositionen),
          * die während der aktuellen Suche betrchet wurden.
          */
 
-        std::atomic_uint64_t& nodesSearched;
+        AtomicU64& nodesSearched;
         uint64_t localNodeCounter = 0;
         int16_t currentSearchDepth = 0;
 
@@ -270,8 +270,8 @@ class PVSSearchInstance {
          * @brief Konstruktor für eine Suchinstanz.
          */
         PVSSearchInstance(Board& board, TranspositionTable& transpositionTable,
-                          std::atomic_bool& stopFlag, std::atomic<std::chrono::system_clock::time_point>& startTime,
-                          std::atomic<std::chrono::system_clock::time_point>& stopTime, std::atomic_uint64_t& nodesSearched,
+                          AtomicBool& stopFlag, Atomic<std::chrono::system_clock::time_point>& startTime,
+                          Atomic<std::chrono::system_clock::time_point>& stopTime, AtomicU64& nodesSearched,
                           std::function<void()> checkupFunction) :
             board(board), evaluator(this->board), transpositionTable(transpositionTable), stopFlag(stopFlag), startTime(startTime), 
             stopTime(stopTime), nodesSearched(nodesSearched), searchStack(), checkupFunction(checkupFunction) {
@@ -309,8 +309,8 @@ class PVSSearchInstance {
          * @brief Konstruktor für eine Suchinstanz mit benutzerdefinierten Parametern für die HCE.
          */
         PVSSearchInstance(Board& board, const HCEParameters& hceParams, TranspositionTable& transpositionTable,
-                          std::atomic_bool& stopFlag, std::atomic<std::chrono::system_clock::time_point>& startTime,
-                          std::atomic<std::chrono::system_clock::time_point>& stopTime, std::atomic_uint64_t& nodesSearched,
+                          AtomicBool& stopFlag, Atomic<std::chrono::system_clock::time_point>& startTime,
+                          Atomic<std::chrono::system_clock::time_point>& stopTime, AtomicU64& nodesSearched,
                           std::function<void()> checkupFunction) :
             board(board), evaluator(this->board, hceParams), transpositionTable(transpositionTable), stopFlag(stopFlag), startTime(startTime), 
             stopTime(stopTime), nodesSearched(nodesSearched), searchStack(), checkupFunction(checkupFunction) {

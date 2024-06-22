@@ -6,20 +6,84 @@
 #include <algorithm>
 #include <math.h>
 
+void PVSEngine::helperThreadLoop(PVSSearchInstance* instance) {
+    #if not defined(DISABLE_THREADS)
+        int16_t score;
+
+        do {
+            // Warte auf die Bedingungsvariable
+            std::unique_lock<std::mutex> lock(cvMutex);
+            cv.wait(lock, [&]() { return !threadSleepFlag.load(); });
+
+            // Der Thread ist jetzt beschäftigt
+            numThreadsBusy += 1;
+            lock.unlock();
+
+            // Kopiere die aktuellen Suchparameter in lokale Variablen
+            int16_t depth = currentDepth;
+            int16_t alpha = currentAlpha;
+            int16_t beta = currentBeta;
+
+            // Schleife, die die Aspirationsfenster erweitert,
+            // wenn die Bewertung außerhalb des Fensters liegt
+            while(!(instance->shouldStop() || exitSearch.load())) {
+                score = instance->pvs(depth * ONE_PLY, 0, alpha, beta, 0, PV_NODE);
+
+                bool alphaAlreadyWidened = false, betaAlreadyWidened = false;
+
+                while(score <= alpha || score >= beta) {
+                    if(score <= alpha) {
+                        if(alphaAlreadyWidened)
+                            alpha = MIN_SCORE;
+                        else {
+                            alphaAlreadyWidened = true;
+                            alpha -= PVSEngine::WIDENED_ASPIRATION_WINDOW - PVSEngine::ASPIRATION_WINDOW;
+                        }
+                    } else {
+                        if(betaAlreadyWidened)
+                            beta = MAX_SCORE;
+                        else {
+                            betaAlreadyWidened = true;
+                            beta += PVSEngine::WIDENED_ASPIRATION_WINDOW - PVSEngine::ASPIRATION_WINDOW;
+                        }
+                    }
+
+                    score = instance->pvs(depth * ONE_PLY, 0, alpha, beta, 0, PV_NODE);
+                }
+
+                alpha = score - PVSEngine::ASPIRATION_WINDOW;
+                beta = score + PVSEngine::ASPIRATION_WINDOW;
+            }
+
+            // Der Thread ist fertig und wartet auf die nächste Suche
+            cvMutex.lock();
+            numThreadsBusy -= 1;
+            cvMutex.unlock();
+            cvMain.notify_one();
+
+        } while(!exitSearch.load());
+    #else
+        UNUSED(instance);
+    #endif
+}
+
 void PVSEngine::createHelperInstances(size_t numThreads) {
     #if not defined(DISABLE_THREADS)
         for(size_t i = 0; i < numThreads; i++) {
             #if defined(USE_HCE) && defined(TUNE)
             // Erstelle eine Hilfsinstanz mit HCE-Parametern
-            instances.push_back(new PVSSearchInstance(board, hceParams, transpositionTable, stopFlag, startTime,
+            instances.push_back(new PVSSearchInstance(board, hceParams, transpositionTable, threadSleepFlag, startTime,
                                                       stopTime, nodesSearched, nullptr));
             #else
             // Erstelle eine Hilfsinstanz
-            instances.push_back(new PVSSearchInstance(board, transpositionTable, stopFlag, startTime,
+            instances.push_back(new PVSSearchInstance(board, transpositionTable, threadSleepFlag, startTime,
                                                       stopTime, nodesSearched, nullptr));
             #endif
 
             instances[i]->setMainThread(false);
+
+            // Erstelle einen Hilfsthread
+            threads.push_back(std::thread(&PVSEngine::helperThreadLoop, this, instances[i]));
         }
     #else
         UNUSED(numThreads);
@@ -28,6 +92,22 @@ void PVSEngine::createHelperInstances(size_t numThreads) {
 
 void PVSEngine::destroyHelperInstances() {
     #if not defined(DISABLE_THREADS)
+        // Wenn die Threads noch laufen, stoppe sie
+        if(!exitSearch.load()) {
+            exitSearch.store(true);
+
+            cvMutex.lock();
+            threadSleepFlag.store(false);
+            cvMutex.unlock();
+            cv.notify_all();
+        }
+
+        // Joine alle Hilfsthreads
+        for(std::thread& thread : threads)
+            thread.join();
+
+        threads.clear();
+
         for(PVSSearchInstance* instance : instances)
             delete instance;
 
@@ -35,79 +115,43 @@ void PVSEngine::destroyHelperInstances() {
     #endif
 }
 
-void helperThreadLoop(PVSSearchInstance* instance, int16_t depth, int16_t alpha, int16_t beta) {
-    int16_t score;
-
-    // Schleife, die die Aspirationsfenster erweitert,
-    // wenn die Bewertung außerhalb des Fensters liegt
-    do {
-        score = instance->pvs(depth * ONE_PLY, 0, alpha, beta, 0, PV_NODE);
-
-        bool alphaAlreadyWidened = false, betaAlreadyWidened = false;
-
-        while(score <= alpha || score >= beta) {
-            if(score <= alpha) {
-                if(alphaAlreadyWidened)
-                    alpha = MIN_SCORE;
-                else {
-                    alphaAlreadyWidened = true;
-                    alpha -= PVSEngine::WIDENED_ASPIRATION_WINDOW - PVSEngine::ASPIRATION_WINDOW;
-                }
-            } else {
-                if(betaAlreadyWidened)
-                    beta = MAX_SCORE;
-                else {
-                    betaAlreadyWidened = true;
-                    beta += PVSEngine::WIDENED_ASPIRATION_WINDOW - PVSEngine::ASPIRATION_WINDOW;
-                }
-            }
-
-            score = instance->pvs(depth * ONE_PLY, 0, alpha, beta, 0, PV_NODE);
-        }
-
-        alpha = score - PVSEngine::ASPIRATION_WINDOW;
-        beta = score + PVSEngine::ASPIRATION_WINDOW;
-    } while(!instance->shouldStop());
-}
-
 void PVSEngine::startHelperThreads(int16_t depth, int16_t alpha, int16_t beta, const Array<Move, 256>& searchMoves) {
     #if not defined(DISABLE_THREADS)
+        currentDepth = depth;
+        currentAlpha = alpha;
+        currentBeta = beta;
+
+        // Bereite die Hilfsinstanzen für die nächste Suche vor
         for(PVSSearchInstance* instance : instances) {
             instance->resetSelectiveDepth();
             instance->setSearchMoves(searchMoves);
-
-            // Starte den Hilfsthread
-            threads.push_back(std::thread(helperThreadLoop, instance, depth, alpha, beta));
         }
+
+        // Wecke alle Hilfsthreads auf
+        cvMutex.lock();
+        threadSleepFlag.store(false);
+        cvMutex.unlock();
+        cv.notify_all();
     #else
         UNUSED(depth);
         UNUSED(alpha);
         UNUSED(beta);
         UNUSED(searchMoves);
+
+        threadSleepFlag.store(false);
     #endif
 }
 
-void PVSEngine::stopHelperThreads() {
+void PVSEngine::pauseHelperThreads() {
     #if not defined(DISABLE_THREADS)
-        if(stopFlag.load()) {
-            // Fall 1: Die Suche wurde global gestoppt
+        threadSleepFlag.store(true);
 
-            for(std::thread& thread: threads)
-                thread.join();
-
-            threads.clear();
-        } else {
-            // Fall 2: Die Suche wurde nicht global gestoppt, sondern
-            // nur die Hilfsthreads sollen gestoppt werden
-
-            stopFlag.store(true);
-
-            for(std::thread& thread: threads)
-                thread.join();
-
-            threads.clear();
-            stopFlag.store(false);
-        }
+        // Warte, bis alle Hilfsthreads zurückgekehrt sind
+        std::unique_lock<std::mutex> lock(cvMutex);
+        cvMain.wait(lock, [&]() { return numThreadsBusy.load() == 0; });
+        cvMutex.unlock();
+    #else
+        threadSleepFlag.store(true);
     #endif
 }
 
@@ -184,14 +228,18 @@ void PVSEngine::outputMultiPVInfo(size_t pvIndex) {
 
 void PVSEngine::search(const UCI::SearchParams& params) {
     // Setze die Flags und Variablen für die Suche zurück.
-    stopFlag.store(false);
-    searching = true;
+    exitSearch.store(false);
+    searching.store(true);
     isTimeControlled = params.useWBTime;
     isPondering.store(params.ponder);
     nodesSearched.store(0);
     maxDepthReached = 0;
     clearPVHistory();
     variations.clear();
+
+    #if not defined(DISABLE_THREADS)
+        numThreadsBusy.store(0);
+    #endif
 
     // Bestimme die Start- und Stopzeit der Suche.
     startTime.store(std::chrono::system_clock::now());
@@ -235,12 +283,12 @@ void PVSEngine::search(const UCI::SearchParams& params) {
 
     // Erstelle die Hauptinstanz, die die Suche durchführt.
     #if defined(USE_HCE) && defined(TUNE)
-    // Erstelle die Hauptinstanz mit HCE-Parametern für das Tuning
-    PVSSearchInstance mainInstance(board, hceParams, transpositionTable, stopFlag, startTime,
-                                   stopTime, nodesSearched, checkupFunction);
+        // Erstelle die Hauptinstanz mit HCE-Parametern für das Tuning
+        PVSSearchInstance mainInstance(board, hceParams, transpositionTable, threadSleepFlag, startTime,
+                                       stopTime, nodesSearched, checkupFunction);
     #else
-    PVSSearchInstance mainInstance(board, transpositionTable, stopFlag, startTime,
-                                   stopTime, nodesSearched, checkupFunction);
+        PVSSearchInstance mainInstance(board, transpositionTable, threadSleepFlag, startTime,
+                                       stopTime, nodesSearched, checkupFunction);
     #endif
     
     this->mainInstance = &mainInstance;
@@ -319,7 +367,7 @@ void PVSEngine::search(const UCI::SearchParams& params) {
             }
 
             // Stoppe die Hilfsthreads.
-            stopHelperThreads();
+            pauseHelperThreads();
 
             // Speichere die Hauptvariante und die Bewertung.
             std::vector<Move> pvMoves;
@@ -373,12 +421,12 @@ void PVSEngine::search(const UCI::SearchParams& params) {
             searchMoves.remove_first(bestMove);
 
             // Soll die Suche abgebrochen werden?
-            if(stopFlag.load() && maxDepthReached > 4)
+            if(exitSearch.load() && maxDepthReached > 4)
                 break;
         }
 
         // Soll die Suche abgebrochen werden?
-        if(stopFlag.load() && maxDepthReached > 4)
+        if(exitSearch.load() && maxDepthReached > 4)
             break;
 
         // Wir haben eine Tiefe vollständig durchsucht.
@@ -395,14 +443,14 @@ void PVSEngine::search(const UCI::SearchParams& params) {
         });
 
         #if not defined(TUNE)
-        // Im Multi-PV-Modus werden Informationen zu den
-        // einzelnen Varianten ausgegeben.
-        if(multiPV > 1)
-            for(size_t i = 0; i < multiPV; i++)
-                outputMultiPVInfo(i);
+            // Im Multi-PV-Modus werden Informationen zu den
+            // einzelnen Varianten ausgegeben.
+            if(multiPV > 1)
+                for(size_t i = 0; i < multiPV; i++)
+                    outputMultiPVInfo(i);
 
-        // Gebe die Suchinformationen zu dieser Tiefe aus.
-        outputSearchInfo();
+            // Gebe die Suchinformationen zu dieser Tiefe aus.
+            outputSearchInfo();
         #endif
 
         // Sagt die dynamische Zeitkontrolle, dass die Suche
@@ -416,26 +464,25 @@ void PVSEngine::search(const UCI::SearchParams& params) {
             break;
     }
 
-    // Wir suchen nicht mehr.
-    stopFlag.store(false);
-    searching = false;
-
     // Gebe alle Hilfsinstanzen frei.
     destroyHelperInstances();
+
+    // Wir suchen nicht mehr.
+    searching.store(false);
     
     #if not defined(TUNE)
-    // Finale Ausgabe der Suchinformationen.
-    outputSearchInfo();
+        // Finale Ausgabe der Suchinformationen.
+        outputSearchInfo();
 
-    std::cout << "\n" << "bestmove " << getBestMove().toString();
+        std::cout << "\n" << "bestmove " << getBestMove().toString();
 
-    if(UCI::options["Ponder"].getValue<bool>()) {
-        std::vector<Move> pv = getPrincipalVariation();
-        if(pv.size() > 1)
-            std::cout << " ponder " << pv[1].toString();
-    }
+        if(UCI::options["Ponder"].getValue<bool>()) {
+            std::vector<Move> pv = getPrincipalVariation();
+            if(pv.size() > 1)
+                std::cout << " ponder " << pv[1].toString();
+        }
 
-    std::cout << std::endl;
+        std::cout << std::endl;
     #endif
 }
 
@@ -470,7 +517,7 @@ bool PVSEngine::extendSearch(bool isTimeControlled) {
     if(maxDepthReached < 5)
         return true;
 
-    if(stopFlag.load())
+    if(exitSearch.load())
         return false;
 
     std::chrono::milliseconds timeElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime.load());

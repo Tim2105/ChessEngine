@@ -2,8 +2,8 @@
 #define TRANSPOSITION_TABLE_H
 
 #include "core/chess/Move.h"
+#include "core/utils/Atomic.h"
 
-#include <atomic>
 #include <stdint.h>
 
 /**
@@ -100,7 +100,7 @@ class TranspositionTable {
     private:
         Entry* entries;
         size_t capacity;
-        std::atomic<size_t> entriesWritten;
+        AtomicSize entriesWritten;
     
     public:
         /**
