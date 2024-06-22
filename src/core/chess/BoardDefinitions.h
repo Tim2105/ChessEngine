@@ -103,6 +103,10 @@ namespace Square {
         return rank * 8 + file;
     }
 
+    constexpr int32_t flipX(int32_t sq) {
+        return sq ^ 7;
+    }
+
     constexpr int32_t flipY(int32_t sq) {
         return sq ^ 56;
     }

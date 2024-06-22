@@ -145,6 +145,7 @@ namespace Tune {
                 // f'(x) = (f(x + h) - f(x)) / h
                 HCEParameters hceParamsCopy = hceParams;
                 hceParamsCopy[i] += 1;
+                hceParamsCopy.unpackPSQT();
 
                 double l = loss(data, indices, hceParamsCopy, k);
                 grad[i] = l - currLoss;
@@ -262,6 +263,9 @@ namespace Tune {
                 // Aktualisiere den Parameter im Parametersatz
                 currentParams[i] = std::round(parameters[i]);
             }
+
+            // Die Positionstabellen müssen neu entpackt werden
+            currentParams.unpackPSQT();
         }
 
         double loss = Tune::loss(validationData, bestParams, k);

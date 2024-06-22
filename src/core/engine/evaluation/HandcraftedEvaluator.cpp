@@ -232,23 +232,31 @@ void HandcraftedEvaluator::calculatePawnScore() {
     score.eg += hceParams.getEGBackwardPawnPenalty() * (backwardWhitePawns.popcount() - backwardBlackPawns.popcount());
 
     // Verbundene Bauern
-    Bitboard connectedWhitePawns = (whitePawnsWestEast | whitePawnsWestEast.shiftNorth() | whitePawnsWestEast.shiftSouth()) & whitePawns & ~backwardWhitePawns;
-    Bitboard connectedBlackPawns = (blackPawnsWestEast | blackPawnsWestEast.shiftSouth() | blackPawnsWestEast.shiftNorth()) & blackPawns & ~backwardBlackPawns;
-    score.mg += hceParams.getMGConnectedPawnBonus() * (connectedWhitePawns.popcount() - connectedBlackPawns.popcount());
-    score.eg += hceParams.getEGConnectedPawnBonus() * (connectedWhitePawns.popcount() - connectedBlackPawns.popcount());
+    Bitboard connectedWhitePawns = (whitePawnsWestEast | whitePawnsWestEast.shiftNorth() | whitePawnsWestEast.shiftSouth()) & whitePawns;
+    while(connectedWhitePawns) {
+        int32_t rank = Square::rankOf(connectedWhitePawns.popFSB());
+        score.mg += hceParams.getMGConnectedPawnBonus(rank);
+        score.eg += hceParams.getEGConnectedPawnBonus(rank);
+    }
+
+    Bitboard connectedBlackPawns = (blackPawnsWestEast | blackPawnsWestEast.shiftSouth() | blackPawnsWestEast.shiftNorth()) & blackPawns;
+    while(connectedBlackPawns) {
+        int32_t rank = Square::rankOf(Square::flipY(connectedBlackPawns.popFSB()));
+        score.mg -= hceParams.getMGConnectedPawnBonus(rank);
+        score.eg -= hceParams.getEGConnectedPawnBonus(rank);
+    }
 
     // Freibauern
     Bitboard whitePassedPawns = whitePawns & ~doubledWhitePawns & ~((blackPawns | blackPawnAttacks).extrudeSouth());
-    Bitboard blackPassedPawns = blackPawns & ~doubledBlackPawns & ~((whitePawns | whitePawnAttacks).extrudeNorth());
     evaluationVars.whitePassedPawns = whitePassedPawns;
-    evaluationVars.blackPassedPawns = blackPassedPawns;
-
     while(whitePassedPawns) {
         int32_t rank = Square::rankOf(whitePassedPawns.popFSB());
         score.mg += hceParams.getMGPassedPawnBonus(rank);
         score.eg += hceParams.getEGPassedPawnBonus(rank);
     }
 
+    Bitboard blackPassedPawns = blackPawns & ~doubledBlackPawns & ~((whitePawns | whitePawnAttacks).extrudeNorth());
+    evaluationVars.blackPassedPawns = blackPassedPawns;
     while(blackPassedPawns) {
         int32_t rank = Square::rankOf(Square::flipY(blackPassedPawns.popFSB()));
         score.mg -= hceParams.getMGPassedPawnBonus(rank);
@@ -292,8 +300,10 @@ void HandcraftedEvaluator::calculatePawnScore() {
     evaluationVars.blackImmobilePawns = blackPawns & pawns.shiftNorth() & ~whitePawnAttacks;
 
     // Starke Felder
-    evaluationVars.whiteStrongSquares = whitePawnAttacks & ~blackPawnAttacks.extrudeSouth();
-    evaluationVars.blackStrongSquares = blackPawnAttacks & ~whitePawnAttacks.extrudeNorth();
+    constexpr Bitboard RANK_4_TO_6 = 0xFFFFFF000000ULL;
+    constexpr Bitboard RANK_3_TO_5 = 0xFFFFFF0000ULL;
+    evaluationVars.whiteStrongSquares = whitePawnAttacks & ~blackPawnAttacks.extrudeSouth() & RANK_4_TO_6;
+    evaluationVars.blackStrongSquares = blackPawnAttacks & ~whitePawnAttacks.extrudeNorth() & RANK_3_TO_5;
 
     score.mg += hceParams.getMGStrongSquareBonus() * (evaluationVars.whiteStrongSquares.popcount() - evaluationVars.blackStrongSquares.popcount());
 
@@ -511,82 +521,268 @@ int32_t HandcraftedEvaluator::evaluatePawnSafety() {
 }
 
 Score HandcraftedEvaluator::calculatePieceScore() {
-    return evaluatePieceMobility() + evaluateSafeCenterSpace() + evaluateMinorPiecesOnStrongSquares() + evaluateBadBishops() +
-           evaluateRooksOnOpenFiles() + evaluateRooksBehindPassedPawns() + evaluateBlockedPassedPawns() + evaluateKingPawnProximity() +
-           evaluateRuleOfTheSquare();
+    return evaluateAttackedPieces() + evaluatePieceMobility() + evaluateSafeCenterSpace() + evaluateMinorPiecesOnStrongSquares() +
+           evaluateBadBishops() + evaluateRooksOnOpenFiles() + evaluateRooksBehindPassedPawns() + evaluateBlockedPassedPawns() +
+           evaluateKingPawnProximity() + evaluateRuleOfTheSquare();
+}
+
+Score HandcraftedEvaluator::evaluateAttackedPieces() {
+    Score score{0, 0};
+
+    Bitboard whitePawnAttacks = board.getAttackBitboard(WHITE_PAWN);
+    Bitboard blackPawnAttacks = board.getAttackBitboard(BLACK_PAWN);
+
+    Bitboard whiteMinorPieceAttacks = board.getAttackBitboard(WHITE_KNIGHT) | board.getAttackBitboard(WHITE_BISHOP);
+    Bitboard blackMinorPieceAttacks = board.getAttackBitboard(BLACK_KNIGHT) | board.getAttackBitboard(BLACK_BISHOP);
+
+    Bitboard whiteRookAttacks = board.getAttackBitboard(WHITE_ROOK);
+    Bitboard blackRookAttacks = board.getAttackBitboard(BLACK_ROOK);
+
+    int32_t attackDiff = (board.getPieceBitboard(BLACK_PAWN) & ~blackPawnAttacks & whiteMinorPieceAttacks).popcount() -
+                         (board.getPieceBitboard(WHITE_PAWN) & ~whitePawnAttacks & blackMinorPieceAttacks).popcount();
+
+    score += {
+        attackDiff * hceParams.getMGAttackByMinorPieceBonus(PAWN),
+        attackDiff * hceParams.getEGAttackByMinorPieceBonus(PAWN)
+    };
+
+    attackDiff = (board.getPieceBitboard(BLACK_PAWN) & ~blackPawnAttacks & whiteRookAttacks).popcount() -
+                 (board.getPieceBitboard(WHITE_PAWN) & ~whitePawnAttacks & blackRookAttacks).popcount();
+
+    score += {
+        attackDiff * hceParams.getMGAttackByRookBonus(PAWN),
+        attackDiff * hceParams.getEGAttackByRookBonus(PAWN)
+    };
+
+    attackDiff = (board.getPieceBitboard(BLACK_KNIGHT) & whiteMinorPieceAttacks).popcount() -
+                 (board.getPieceBitboard(WHITE_KNIGHT) & blackMinorPieceAttacks).popcount();
+
+    score += {
+        attackDiff * hceParams.getMGAttackByMinorPieceBonus(KNIGHT),
+        attackDiff * hceParams.getEGAttackByMinorPieceBonus(KNIGHT)
+    };
+
+    attackDiff = (board.getPieceBitboard(BLACK_KNIGHT) & ~blackPawnAttacks & whiteRookAttacks).popcount() -
+                 (board.getPieceBitboard(WHITE_KNIGHT) & ~whitePawnAttacks & blackRookAttacks).popcount();
+
+    score += {
+        attackDiff * hceParams.getMGAttackByRookBonus(KNIGHT),
+        attackDiff * hceParams.getEGAttackByRookBonus(KNIGHT)
+    };
+
+    attackDiff = (board.getPieceBitboard(BLACK_BISHOP) & whiteMinorPieceAttacks).popcount() -
+                 (board.getPieceBitboard(WHITE_BISHOP) & blackMinorPieceAttacks).popcount();
+
+    score += {
+        attackDiff * hceParams.getMGAttackByMinorPieceBonus(BISHOP),
+        attackDiff * hceParams.getEGAttackByMinorPieceBonus(BISHOP)
+    };
+
+    attackDiff = (board.getPieceBitboard(BLACK_BISHOP) & ~blackPawnAttacks & whiteRookAttacks).popcount() -
+                 (board.getPieceBitboard(WHITE_BISHOP) & ~whitePawnAttacks & blackRookAttacks).popcount();
+
+    score += {
+        attackDiff * hceParams.getMGAttackByRookBonus(BISHOP),
+        attackDiff * hceParams.getEGAttackByRookBonus(BISHOP)
+    };
+
+    attackDiff = (board.getPieceBitboard(BLACK_ROOK) & whiteMinorPieceAttacks).popcount() -
+                 (board.getPieceBitboard(WHITE_ROOK) & blackMinorPieceAttacks).popcount();
+
+    score += {
+        attackDiff * hceParams.getMGAttackByMinorPieceBonus(ROOK),
+        attackDiff * hceParams.getEGAttackByMinorPieceBonus(ROOK)
+    };
+
+    attackDiff = (board.getPieceBitboard(BLACK_ROOK) & whiteRookAttacks).popcount() -
+                 (board.getPieceBitboard(WHITE_ROOK) & blackRookAttacks).popcount();
+
+    score += {
+        attackDiff * hceParams.getMGAttackByRookBonus(ROOK),
+        attackDiff * hceParams.getEGAttackByRookBonus(ROOK)
+    };
+
+    attackDiff = (board.getPieceBitboard(BLACK_QUEEN) & whiteMinorPieceAttacks).popcount() -
+                 (board.getPieceBitboard(WHITE_QUEEN) & blackMinorPieceAttacks).popcount();
+
+    score += {
+        attackDiff * hceParams.getMGAttackByMinorPieceBonus(QUEEN),
+        attackDiff * hceParams.getEGAttackByMinorPieceBonus(QUEEN)
+    };
+
+    attackDiff = (board.getPieceBitboard(BLACK_QUEEN) & whiteRookAttacks).popcount() -
+                 (board.getPieceBitboard(WHITE_QUEEN) & blackRookAttacks).popcount();
+
+    score += {
+        attackDiff * hceParams.getMGAttackByRookBonus(QUEEN),
+        attackDiff * hceParams.getEGAttackByRookBonus(QUEEN)
+    };
+
+    return score;
 }
 
 Score HandcraftedEvaluator::evaluatePieceMobility() {
-    constexpr Bitboard RANK_5_TO_8 = 0xFFFFFFFF00000000ULL;
-    constexpr Bitboard RANK_1_TO_4 = 0xFFFFFFFFULL;
+    Score score{0, 0};
 
-    Bitboard whiteUndefendedSquares = ~board.getAttackBitboard(WHITE);
-    Bitboard blackUndefendedSquares = ~board.getAttackBitboard(BLACK);
+    Bitboard whiteBlockedPawns = board.getPieceBitboard(WHITE_PAWN) & (board.getPieceBitboard(BLACK) | board.getPieceBitboard(BLACK_KING)).shiftSouth();
+    Bitboard blackBlockedPawns = board.getPieceBitboard(BLACK_PAWN) & (board.getPieceBitboard(WHITE) | board.getPieceBitboard(WHITE_KING)).shiftNorth();
 
-    int32_t knightMobility = (int32_t)std::sqrt(2 * board.getAttackBitboard(WHITE_KNIGHT).popcount()) +
-                             (board.getAttackBitboard(WHITE_KNIGHT) & blackUndefendedSquares & RANK_5_TO_8).popcount() -
-                             (int32_t)std::sqrt(2 * board.getAttackBitboard(BLACK_KNIGHT).popcount()) -
-                             (board.getAttackBitboard(BLACK_KNIGHT) & whiteUndefendedSquares & RANK_1_TO_4).popcount();
+    Bitboard whiteNotReachableSquares = whiteBlockedPawns | board.getPieceBitboard(WHITE_KING) | board.getAttackBitboard(BLACK_PAWN);
+    Bitboard blackNotReachableSquares = blackBlockedPawns | board.getPieceBitboard(BLACK_KING) | board.getAttackBitboard(WHITE_PAWN);
 
-    int32_t bishopMobility = (int32_t)std::sqrt(2 * board.getAttackBitboard(WHITE_BISHOP).popcount()) +
-                             (board.getAttackBitboard(WHITE_BISHOP) & blackUndefendedSquares & RANK_5_TO_8).popcount() -
-                             (int32_t)std::sqrt(2 * board.getAttackBitboard(BLACK_BISHOP).popcount()) -
-                             (board.getAttackBitboard(BLACK_BISHOP) & whiteUndefendedSquares & RANK_1_TO_4).popcount();
+    Bitboard whiteKnights = board.getPieceBitboard(WHITE_KNIGHT);
+    while(whiteKnights) {
+        int32_t sq = whiteKnights.popFSB();
+        Bitboard attacks = knightAttackBitboard(sq) & ~whiteNotReachableSquares;
+        int32_t numAttacks = attacks.popcount();
 
-    int32_t rookMobility = (int32_t)std::sqrt(2 * board.getAttackBitboard(WHITE_ROOK).popcount()) +
-                           (board.getAttackBitboard(WHITE_ROOK) & blackUndefendedSquares & RANK_5_TO_8).popcount() -
-                           (int32_t)std::sqrt(2 * board.getAttackBitboard(BLACK_ROOK).popcount()) -
-                           (board.getAttackBitboard(BLACK_ROOK) & whiteUndefendedSquares & RANK_1_TO_4).popcount();
+        if(numAttacks == 0)
+            score += {hceParams.getMGPieceNoMobilityPenalty(KNIGHT), hceParams.getEGPieceNoMobilityPenalty(KNIGHT)};
+        else {
+            numAttacks = (16 - std::countl_zero((uint16_t)(numAttacks * numAttacks))) * hceParams.getMGPieceMobilityBonus(KNIGHT);
+            score += {numAttacks * hceParams.getMGPieceMobilityBonus(KNIGHT), numAttacks * hceParams.getEGPieceMobilityBonus(KNIGHT)};
+        }
+    }
 
-    int32_t queenMobility = (int32_t)std::sqrt(2 * board.getAttackBitboard(WHITE_QUEEN).popcount()) +
-                            (board.getAttackBitboard(WHITE_QUEEN) & blackUndefendedSquares & RANK_5_TO_8).popcount() -
-                            (int32_t)std::sqrt(2 * board.getAttackBitboard(BLACK_QUEEN).popcount()) -
-                            (board.getAttackBitboard(BLACK_QUEEN) & whiteUndefendedSquares & RANK_1_TO_4).popcount();
-    
-    int32_t mgMobilityScore = knightMobility * hceParams.getMGPieceMobilityBonus(KNIGHT) +
-                              bishopMobility * hceParams.getMGPieceMobilityBonus(BISHOP) +
-                              rookMobility * hceParams.getMGPieceMobilityBonus(ROOK) +
-                              queenMobility * hceParams.getMGPieceMobilityBonus(QUEEN);
+    Bitboard blackKnights = board.getPieceBitboard(BLACK_KNIGHT);
+    while(blackKnights) {
+        int32_t sq = blackKnights.popFSB();
+        Bitboard attacks = knightAttackBitboard(sq) & ~blackNotReachableSquares;
+        int32_t numAttacks = attacks.popcount();
 
-    int32_t egMobilityScore = knightMobility * hceParams.getEGPieceMobilityBonus(KNIGHT) +
-                              bishopMobility * hceParams.getEGPieceMobilityBonus(BISHOP) +
-                              rookMobility * hceParams.getEGPieceMobilityBonus(ROOK) +
-                              queenMobility * hceParams.getEGPieceMobilityBonus(QUEEN);
+        if(numAttacks == 0)
+            score -= {hceParams.getMGPieceNoMobilityPenalty(KNIGHT), hceParams.getEGPieceNoMobilityPenalty(KNIGHT)};
+        else {
+            numAttacks = (16 - std::countl_zero((uint16_t)(numAttacks * numAttacks))) * hceParams.getMGPieceMobilityBonus(KNIGHT);
+            score -= {numAttacks * hceParams.getMGPieceMobilityBonus(KNIGHT), numAttacks * hceParams.getEGPieceMobilityBonus(KNIGHT)};
+        }
+    }
 
-    return {mgMobilityScore, egMobilityScore};
+    Bitboard whiteBishops = board.getPieceBitboard(WHITE_BISHOP);
+    while(whiteBishops) {
+        int32_t sq = whiteBishops.popFSB();
+        Bitboard attacks = diagonalAttackBitboard(sq, board.getPieceBitboard() | board.getPieceBitboard(WHITE_KING)) & ~whiteNotReachableSquares;
+        int32_t numAttacks = attacks.popcount();
+
+        if(numAttacks == 0)
+            score += {hceParams.getMGPieceNoMobilityPenalty(BISHOP), hceParams.getEGPieceNoMobilityPenalty(BISHOP)};
+        else {
+            numAttacks = (16 - std::countl_zero((uint16_t)(numAttacks * numAttacks))) * hceParams.getMGPieceMobilityBonus(BISHOP);
+            score += {numAttacks * hceParams.getMGPieceMobilityBonus(BISHOP), numAttacks * hceParams.getEGPieceMobilityBonus(BISHOP)};
+        }
+    }
+
+    Bitboard blackBishops = board.getPieceBitboard(BLACK_BISHOP);
+    while(blackBishops) {
+        int32_t sq = blackBishops.popFSB();
+        Bitboard attacks = diagonalAttackBitboard(sq, board.getPieceBitboard() | board.getPieceBitboard(BLACK_KING)) & ~blackNotReachableSquares;
+        int32_t numAttacks = attacks.popcount();
+
+        if(numAttacks == 0)
+            score -= {hceParams.getMGPieceNoMobilityPenalty(BISHOP), hceParams.getEGPieceNoMobilityPenalty(BISHOP)};
+        else {
+            numAttacks = (16 - std::countl_zero((uint16_t)(numAttacks * numAttacks))) * hceParams.getMGPieceMobilityBonus(BISHOP);
+            score -= {numAttacks * hceParams.getMGPieceMobilityBonus(BISHOP), numAttacks * hceParams.getEGPieceMobilityBonus(BISHOP)};
+        }
+    }
+
+    whiteNotReachableSquares |= board.getAttackBitboard(BLACK_KNIGHT) | board.getAttackBitboard(BLACK_BISHOP);
+    blackNotReachableSquares |= board.getAttackBitboard(WHITE_KNIGHT) | board.getAttackBitboard(WHITE_BISHOP);
+
+    Bitboard whiteRooks = board.getPieceBitboard(WHITE_ROOK);
+    while(whiteRooks) {
+        int32_t sq = whiteRooks.popFSB();
+        Bitboard attacks = horizontalAttackBitboard(sq, board.getPieceBitboard() | board.getPieceBitboard(WHITE_KING)) & ~whiteNotReachableSquares;
+        int32_t numAttacks = attacks.popcount();
+
+        if(numAttacks == 0)
+            score += {hceParams.getMGPieceNoMobilityPenalty(ROOK), hceParams.getEGPieceNoMobilityPenalty(ROOK)};
+        else {
+            numAttacks = (16 - std::countl_zero((uint16_t)(numAttacks * numAttacks))) * hceParams.getMGPieceMobilityBonus(ROOK);
+            score += {numAttacks * hceParams.getMGPieceMobilityBonus(ROOK), numAttacks * hceParams.getEGPieceMobilityBonus(ROOK)};
+        }
+    }
+
+    Bitboard blackRooks = board.getPieceBitboard(BLACK_ROOK);
+    while(blackRooks) {
+        int32_t sq = blackRooks.popFSB();
+        Bitboard attacks = horizontalAttackBitboard(sq, board.getPieceBitboard() | board.getPieceBitboard(BLACK_KING)) & ~blackNotReachableSquares;
+        int32_t numAttacks = attacks.popcount();
+
+        if(numAttacks == 0)
+            score -= {hceParams.getMGPieceNoMobilityPenalty(ROOK), hceParams.getEGPieceNoMobilityPenalty(ROOK)};
+        else {
+            numAttacks = (16 - std::countl_zero((uint16_t)(numAttacks * numAttacks))) * hceParams.getMGPieceMobilityBonus(ROOK);
+            score -= {numAttacks * hceParams.getMGPieceMobilityBonus(ROOK), numAttacks * hceParams.getEGPieceMobilityBonus(ROOK)};
+        }
+    }
+
+    whiteNotReachableSquares |= board.getAttackBitboard(BLACK_ROOK);
+    blackNotReachableSquares |= board.getAttackBitboard(WHITE_ROOK);
+
+    Bitboard whiteQueens = board.getPieceBitboard(WHITE_QUEEN);
+    while(whiteQueens) {
+        int32_t sq = whiteQueens.popFSB();
+        Bitboard attacks = (diagonalAttackBitboard(sq, board.getPieceBitboard() | board.getPieceBitboard(WHITE_KING)) |
+                            horizontalAttackBitboard(sq, board.getPieceBitboard() | board.getPieceBitboard(WHITE_KING))) & ~whiteNotReachableSquares;
+        int32_t numAttacks = attacks.popcount();
+
+        if(numAttacks == 0)
+            score += {hceParams.getMGPieceNoMobilityPenalty(QUEEN), hceParams.getEGPieceNoMobilityPenalty(QUEEN)};
+        else {
+            numAttacks = (16 - std::countl_zero((uint16_t)(numAttacks * numAttacks))) * hceParams.getMGPieceMobilityBonus(QUEEN);
+            score += {numAttacks * hceParams.getMGPieceMobilityBonus(QUEEN), numAttacks * hceParams.getEGPieceMobilityBonus(QUEEN)};
+        }
+    }
+
+    Bitboard blackQueens = board.getPieceBitboard(BLACK_QUEEN);
+    while(blackQueens) {
+        int32_t sq = blackQueens.popFSB();
+        Bitboard attacks = (diagonalAttackBitboard(sq, board.getPieceBitboard() | board.getPieceBitboard(BLACK_KING)) |
+                            horizontalAttackBitboard(sq, board.getPieceBitboard() | board.getPieceBitboard(BLACK_KING))) & ~blackNotReachableSquares;
+        int32_t numAttacks = attacks.popcount();
+
+        if(numAttacks == 0)
+            score -= {hceParams.getMGPieceNoMobilityPenalty(QUEEN), hceParams.getEGPieceNoMobilityPenalty(QUEEN)};
+        else {
+            numAttacks = (16 - std::countl_zero((uint16_t)(numAttacks * numAttacks))) * hceParams.getMGPieceMobilityBonus(QUEEN);
+            score -= {numAttacks * hceParams.getMGPieceMobilityBonus(QUEEN), numAttacks * hceParams.getEGPieceMobilityBonus(QUEEN)};
+        }
+    }
+
+    return score;
 }
 
 Score HandcraftedEvaluator::evaluateSafeCenterSpace() {
-    Bitboard whiteSafeSquares = ~board.getAttackBitboard(BLACK);
-    Bitboard blackSafeSquares = ~board.getAttackBitboard(WHITE);
+    Bitboard whiteSafeCenterSquares = ~board.getAttackBitboard(BLACK) & extendedCenter.shiftSouth().extrudeSouth();
+    Bitboard blackSafeCenterSquares = ~board.getAttackBitboard(WHITE) & extendedCenter.shiftNorth().extrudeNorth();
 
-    int32_t whiteNumSafeCenterSquares = (whiteSafeSquares & extendedCenter).popcount();
-    int32_t blackNumSafeCenterSquares = (blackSafeSquares & extendedCenter).popcount();
+    int32_t numWhiteSafeCenterSquares = whiteSafeCenterSquares.popcount();
+    int32_t numBlackSafeCenterSquares = blackSafeCenterSquares.popcount();
 
     Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
     Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);
 
     // Zähle Felder hinter eigenen Bauern doppelt
-    Bitboard whiteCenterPawns = whitePawns & extendedCenter;
-    whiteNumSafeCenterSquares += (whiteCenterPawns.shiftSouth(2).extrudeSouth().shiftNorth() & whiteSafeSquares).popcount();
+    numWhiteSafeCenterSquares += (whitePawns.shiftSouth().extrudeSouth() & whiteSafeCenterSquares).popcount();
+    numBlackSafeCenterSquares += (blackPawns.shiftNorth().extrudeNorth() & blackSafeCenterSquares).popcount();
 
-    Bitboard blackCenterPawns = blackPawns & extendedCenter;
-    blackNumSafeCenterSquares += (blackCenterPawns.shiftNorth(2).extrudeNorth().shiftSouth() & blackSafeSquares).popcount();
-
-    return {(int16_t)(whiteNumSafeCenterSquares - blackNumSafeCenterSquares) * hceParams.getMGSpaceBonus(), 0};
+    return {(int16_t)(numWhiteSafeCenterSquares - numBlackSafeCenterSquares) * hceParams.getMGSpaceBonus(), 0};
 }
 
 Score HandcraftedEvaluator::evaluateMinorPiecesOnStrongSquares() {
-    Bitboard whiteMinorPieces = board.getPieceBitboard(WHITE_KNIGHT) | board.getPieceBitboard(WHITE_BISHOP);
-    Bitboard blackMinorPieces = board.getPieceBitboard(BLACK_KNIGHT) | board.getPieceBitboard(BLACK_BISHOP);
-    Bitboard whiteMinorPiecesAttacks = board.getAttackBitboard(WHITE_KNIGHT) | board.getAttackBitboard(WHITE_BISHOP);
-    Bitboard blackMinorPiecesAttacks = board.getAttackBitboard(BLACK_KNIGHT) | board.getAttackBitboard(BLACK_BISHOP);
+    Bitboard whiteKnights = board.getPieceBitboard(WHITE_KNIGHT);
+    Bitboard blackKnights = board.getPieceBitboard(BLACK_KNIGHT);
+    Bitboard whiteBishops = board.getPieceBitboard(WHITE_BISHOP);
+    Bitboard blackBishops = board.getPieceBitboard(BLACK_BISHOP);
 
-    int32_t numWhiteMinorPcOnStrongSquares = ((whiteMinorPieces | whiteMinorPiecesAttacks) & evaluationVars.whiteStrongSquares).popcount();
-    int32_t numBlackMinorPcOnStrongSquares = ((blackMinorPieces | blackMinorPiecesAttacks) & evaluationVars.blackStrongSquares).popcount();
+    int32_t numWhiteKnightsOnStrongSquares = (whiteKnights & evaluationVars.whiteStrongSquares).popcount();
+    int32_t numBlackKnightsOnStrongSquares = (blackKnights & evaluationVars.blackStrongSquares).popcount();
+    int32_t numWhiteBishopsOnStrongSquares = (whiteBishops & evaluationVars.whiteStrongSquares).popcount();
+    int32_t numBlackBishopsOnStrongSquares = (blackBishops & evaluationVars.blackStrongSquares).popcount();
 
-    return {numWhiteMinorPcOnStrongSquares * hceParams.getMGMinorPieceOnStrongSquareBonus() -
-            numBlackMinorPcOnStrongSquares * hceParams.getMGMinorPieceOnStrongSquareBonus(), 0};
+    return {hceParams.getMGKnightOnStrongSquareBonus() * (numWhiteKnightsOnStrongSquares - numBlackKnightsOnStrongSquares) +
+            hceParams.getMGBishopOnStrongSquareBonus() * (numWhiteBishopsOnStrongSquares - numBlackBishopsOnStrongSquares), 0};
 }
 
 Score HandcraftedEvaluator::evaluateBadBishops() {

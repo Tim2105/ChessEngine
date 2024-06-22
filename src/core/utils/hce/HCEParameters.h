@@ -13,8 +13,8 @@ class HCEParameters {
          */
 
         int16_t pieceValues[20] = {
-            105, 400, 405, 615, 1200, // linear
-            -2, -3, 15, -5, 15, // quadratisch
+            105, 400, 400, 615, 1200, // linear
+            -2, -3, 10, -5, 15, // quadratisch
             // gekreuzt
             2, // Springer * Bauer
             0, 0, // Läufer * Bauer, Springer * Läufer
@@ -26,142 +26,142 @@ class HCEParameters {
          * Positionstabellen für alle Figuren im Mittel- und Endspiel.
          */
 
-        int16_t mgPSQT[6][64] = {
-            // Pawn
-            {
-                    0, 0, 0, 0, 0, 0, 0, 0, // tote Parameterreihe
-                    1, 1, -14, -16, -16, -13, 0, 1,
-                    -3, -1, -16, -14, -13, -15, -1, -3,
-                    5, 1, 14, 19, 19, 8, 0, 2,
-                    9, 0, 2, 28, 28, 2, 0, 6,
-                    7, 4, 5, 25, 25, 6, 5, 5,
-                    12, 7, 9, 28, 28, 9, 10, 12,
-                    0, 0, 0, 0, 0, 0, 0, 0, // tote Parameterreihe
-            },
+        int16_t mgPSQTPawn[64] = {
+            0, 0, 0, 0, 0, 0, 0, 0, // tote Parameterreihe
+            1, 1, -14, -16, -16, -13, 0, 1,
+            -3, -1, -16, -14, -13, -15, -1, -3,
+            5, 1, 14, 19, 19, 8, 0, 2,
+            9, 0, 2, 28, 28, 2, 0, 6,
+            7, 4, 5, 25, 25, 6, 5, 5,
+            12, 7, 9, 28, 28, 9, 10, 12,
+            0, 0, 0, 0, 0, 0, 0, 0, // tote Parameterreihe
+        };
+
+        int16_t mgPSQTPacked[5][32] = {
             // Knight
             {
-                    -67, -18, -23, -26, -25, -20, -20, -64,
-                    -37, -9, -11, -9, -7, -18, -18, -29,
-                    -28, -1, 2, -6, -8, 5, -10, -27,
-                    -9, 7, 13, 18, 20, 15, 8, -8,
-                    4, 12, 18, 21, 22, 18, 12, 9,
-                    2, 9, 2, -10, -3, 3, 10, 6,
-                    -8, -19, -13, -13, -30, -13, -19, -8,
-                    -92, -55, -18, -14, -14, -6, -53, -92,
+                    -67, -18, -23, -26,
+                    -37, -9, -11, -9,
+                    -28, -1, 2, -6,
+                    -9, 7, 13, 18,
+                    4, 12, 18, 21,
+                    2, 9, 2, -10,
+                    -8, -19, -13, -13,
+                    -92, -55, -18, -14,
             },
             // Bishop
             {
-                    -41, -22, -10, -3, -4, -14, -27, -48,
-                    -34, 16, -1, 4, 3, 0, 15, -33,
-                    -7, -12, 4, 15, 15, -6, -17, -10,
-                    -15, 8, 14, 4, 6, 19, 10, -7,
-                    -27, -12, -7, -2, 0, -3, -5, -29,
-                    -5, -21, -18, -4, -5, -13, -21, 14,
-                    -23, -9, -12, -26, -20, -17, -10, -22,
-                    -52, -23, -19, -12, -11, -20, -25, -55,
+                    -41, -22, -10, -3,
+                    -34, 16, -1, 4,
+                    -7, -12, 4, 15,
+                    -15, 8, 14, 4,
+                    -27, -12, -7, -2,
+                    -5, -21, -18, -4,
+                    -23, -9, -12, -26,
+                    -52, -23, -19, -12,
             },
             // Rook
             {
-                    -12, -17, 3, 11, 9, 0, -18, -14,
-                    -15, -8, -1, 4, 4, -4, -10, -16,
-                    -10, -9, -8, -3, -5, -16, -17, -11,
-                    -8, -9, -5, 6, 9, -10, -18, -8,
-                    4, 6, 16, 23, 22, 14, 6, 4,
-                    27, 18, 14, 10, 7, 13, 15, 24,
-                    51, 39, 35, 46, 42, 35, 39, 50,
-                    48, 34, 34, 34, 32, 34, 33, 48,
+                    -12, -17, 3, 11,
+                    -15, -8, -1, 4,
+                    -10, -9, -8, -3,
+                    -8, -9, -5, 6,
+                    4, 6, 16, 23,
+                    27, 18, 14, 10,
+                    51, 39, 35, 46,
+                    48, 34, 34, 34,
             },
             // Queen
             {
-                    -45, -39, -8, 12, -15, -36, -51, -63,
-                    -27, -35, 3, 0, -1, -7, -47, -40,
-                    -8, -5, -5, -9, -12, -12, -7, -21,
-                    -24, -19, -11, -34, -27, -10, -15, -21,
-                    -6, -21, -25, -28, -24, -17, -19, -6,
-                    10, 11, 6, -8, -10, 0, 7, 9,
-                    40, 37, 21, 8, 7, 18, 33, 40,
-                    35, 47, 43, 25, 21, 36, 45, 35,
+                    -45, -39, -8, 12,
+                    -27, -35, 3, 0,
+                    -8, -5, -5, -9,
+                    -24, -19, -11, -34,
+                    -6, -21, -25, -28,
+                    10, 11, 6, -8,
+                    40, 37, 21, 8,
+                    35, 47, 43, 25,
 
             },
             // King
             {
-                    -10, 17, -1, -26, -17, -18, 21, -9,
-                    -18, 7, -24, -34, -31, -20, 9, -17,
-                    -25, -27, -29, -36, -36, -29, -17, -25,
-                    -39, -48, -57, -65, -65, -57, -48, -39,
-                    -46, -53, -64, -72, -72, -64, -53, -46,
-                    -35, -50, -65, -78, -78, -65, -50, -35,
-                    -29, -37, -53, -60, -60, -53, -37, -29,
-                    -21, -29, -40, -47, -47, -40, -29, -21,
+                    -10, 17, -1, -26,
+                    -18, 7, -24, -34,
+                    -25, -27, -29, -36,
+                    -39, -48, -57, -65,
+                    -46, -53, -64, -72,
+                    -35, -50, -65, -78,
+                    -29, -37, -53, -60,
+                    -21, -29, -40, -47,
             }
         };
 
-        int16_t egPSQT[6][64] = {
-            // Pawn
-            {
-                    0, 0, 0, 0, 0, 0, 0, 0, // tote Parameterreihe
-                    -41, -24, -31, -39, -40, -18, -10, -45,
-                    -52, -28, -43, -39, -40, -33, -24, -45,
-                    -30, -9, -14, -17, -17, -6, 5, -24,
-                    -19, 1, 5, 8, 10, -5, 9, -18,
-                    8, 23, 22, 19, 18, 18, 20, 5,
-                    23, 45, 39, 34, 31, 35, 41, 19,
-                    0, 0, 0, 0, 0, 0, 0, 0, // tote Parameterreihe
-            },
+        int16_t egPSQTPawn[64] = {
+            0, 0, 0, 0, 0, 0, 0, 0, // tote Parameterreihe
+            -41, -24, -31, -39, -40, -18, -10, -45,
+            -52, -28, -43, -39, -40, -33, -24, -45,
+            -30, -9, -14, -17, -17, -6, 5, -24,
+            -19, 1, 5, 8, 10, -5, 9, -18,
+            8, 23, 22, 19, 18, 18, 20, 5,
+            23, 45, 39, 34, 31, 35, 41, 19,
+            0, 0, 0, 0, 0, 0, 0, 0, // tote Parameterreihe
+        };
+
+        int16_t egPSQTPacked[5][32] = {
             // Knight
             {
-                    -32, -25, -9, -11, -7, -11, -25, -14, 
-                    -22, -11, -10, -1, -2, -5, -10, -21, 
-                    -11, -10, -1, 5, 7, 0, -1, -11, 
-                    -9, 2, 8, 8, 12, 8, -3, -9, 
-                    -9, 4, 5, 11, 11, 11, 1, -8, 
-                    -20, -9, -4, 0, 4, 5, -10, -12, 
-                    -26, -12, -12, -4, -1, -12, -4, -12, 
-                    -49, -31, -13, -15, -14, -6, -19, -29, 
+                    -32, -25, -9, -11,
+                    -22, -11, -10, -1,
+                    -11, -10, -1, 5,
+                    -9, 2, 8, 8,
+                    -9, 4, 5, 11,
+                    -20, -9, -4, 0,
+                    -26, -12, -12, -4,
+                    -49, -31, -13, -15,
             },
             // Bishop
             {
-                    -8, -2, -8, -4, -2, -11, -4, -11, 
-                    -13, -7, -4, 2, 0, -3, -9, -7, 
-                    -7, -3, 1, 6, 5, 4, -1, -6, 
-                    -4, -1, 5, 3, 9, 6, 1, -3, 
-                    1, 1, 5, 7, 4, 6, 4, -1, 
-                    2, 0, 3, -1, 0, 0, -4, 1, 
-                    -7, -2, -6, -1, -6, 3, -2, -4, 
-                    -12, -8, -4, -3, -4, -5, -10, -7, 
+                    -8, -2, -8, -4,
+                    -13, -7, -4, 2,
+                    -7, -3, 1, 6,
+                    -4, -1, 5, 3,
+                    1, 1, 5, 7,
+                    2, 0, 3, -1,
+                    -7, -2, -6, -1,
+                    -12, -8, -4, -3,
             },
             // Rook
             {
-                    -10, 2, -6, -2, 0, 1, 1, -4, 
-                    -1, -5, -4, -4, 1, 0, -3, -3, 
-                    -8, -4, -6, -3, 0, -2, 0, -2, 
-                    -5, -4, -3, -2, 2, 4, 2, 1, 
-                    0, 0, -1, -2, -2, -1, -1, 0,
-                    13, 10, 8, 6, 6, 8, 10, 13,
-                    21, 18, 10, 9, 9, 10, 18, 21,
-                    21, 19, 14, 13, 13, 14, 19, 21,
+                    -10, 2, -6, -2,
+                    -1, -5, -4, -4, 
+                    -8, -4, -6, -3,
+                    -5, -4, -3, -2,
+                    0, 0, -1, -2,
+                    13, 10, 8, 6,
+                    21, 18, 10, 9,
+                    21, 19, 14, 13,
             },
             // Queen
             {
-                    -4, -4, -3, 0, 1, -5, -6, -5,
-                    -5, 0, -1, 2, 1, -2, 0, -4,
-                    -3, -1, 2, 4, 3, 2, 0, -2,
-                    -1, 1, 3, 4, 5, 3, 2, 0,
-                    5, 2, 0, -1, 0, 1, 3, 5,
-                    10, 6, 4, 3, 3, 4, 6, 10,
-                    18, 14, 9, 7, 7, 9, 14, 18,
-                    20, 15, 11, 9, 9, 11, 15, 20,
+                    -4, -4, -3, 0,
+                    -5, 0, -1, 2,
+                    -3, -1, 2, 4,
+                    -1, 1, 3, 4,
+                    5, 2, 0, -1,
+                    10, 6, 4, 3,
+                    18, 14, 9, 7,
+                    20, 15, 11, 9,
             },
             // King
             {
-                    -43, -35, -39, -30, -31, -37, -29, -47,
-                    -35, -26, -30, -21, -20, -28, -24, -28,
-                    -17, -9, -7, 4, 6, -10, -8, -19,
-                    -4, 0, 5, 15, 13, 1, -1, -10,
-                    12, 7, 12, 32, 35, 10, 8, 14,
-                    26, 13, 16, 26, 28, 14, 11, 22,
-                    28, 26, 24, 18, 17, 23, 27, 31,
-                    -4, 11, 5, -1, 0, 2, 12, -1,
+                    -43, -35, -39, -30,
+                    -35, -26, -30, -21,
+                    -17, -9, -7, 4,
+                    -4, 0, 5, 15,
+                    12, 7, 12, 32,
+                    26, 13, 16, 26,
+                    28, 26, 24, 18,
+                    -4, 11, 5, -1,
             }
         };
 
@@ -173,12 +173,38 @@ class HCEParameters {
         int16_t egTempoBonus = 8;
 
         /**
+         * Bonus für angegriffene Figuren im Mittel- und Endspiel.
+         * Angriffe auf kleinere Figuren, die von einem
+         * Bauern gedeckt werden, werden nicht berücksichtigt.
+         */
+
+        int16_t mgAttackByMinorPieceBonus[5] = {
+            2, 21, 35, 39, 35
+        };
+
+        int16_t mgAttackByRookBonus[5] = {
+            1, 14, 16, 0, 23
+        };
+
+        int16_t egAttackByMinorPieceBonus[5] = {
+            14, 17, 22, 42, 50
+        };
+
+        int16_t egAttackByRookBonus[5] = {
+            20, 27, 24, 13, 14
+        };
+
+        /**
          * Bewertungen für verschiedene Merkmale in
          * Bauernstrukturen im Mittel- und Endspiel.
          */
 
-        int16_t mgConnectedPawnBonus = 5;
-        int16_t egConnectedPawnBonus = 8;
+        int16_t mgConnectedPawnBonus[6] = {
+            2, 2, 9, 17, 28, 41
+        }; // pro Rang (2 - 7)
+        int16_t egConnectedPawnBonus[6] = {
+            4, 4, 12, 19, 37, 54
+        }; // pro Rang (2 - 7)
         int16_t mgDoubledPawnPenalty = -12;
         int16_t egDoubledPawnPenalty = -22;
         int16_t mgPawnIslandPenalty = -7;
@@ -205,7 +231,7 @@ class HCEParameters {
          * angegriffen werden können.
          */
 
-        int16_t mgStrongSquareBonus = 22;
+        int16_t mgStrongSquareBonus = 19;
 
         /**
          * Ein Bonus für jedes sichere Feld
@@ -247,26 +273,34 @@ class HCEParameters {
 
         /**
          * Bewertungen für die Mobilität der Figuren
-         * im Mittel- und Endspiel. Die Mobilität ist
-         * die (gewurzelte doppelte) Anzahl der, im nächsten Zug,
-         * erreichbaren Felder, die nicht von gegnerischen Bauern
-         * angegriffen werden. Felder in der Mitte des Spielfeldes
-         * oder in gegnerischem Territorium, die nicht verteidigt
-         * werden, werden zusätzlich (linear) eingerechnet.
+         * im Mittel- und Endspiel.
          * (Springer, Läufer, Turm, Dame)
          */
 
         int16_t mgPieceMobilityBonus[4] = {
             3, // Knight
-            4, // Bishop
-            4, // Rook
+            6, // Bishop
+            5, // Rook
             0, // Queen
         };
         int16_t egPieceMobilityBonus[4] = {
             2, // Knight
-            3, // Bishop
-            3, // Rook
+            4, // Bishop
+            5, // Rook
             1, // Queen
+        };
+
+        int16_t mgPieceNoMobilityPenalty[4] = {
+            -28, // Knight
+            -46, // Bishop
+            -61, // Rook
+            -77, // Queen
+        };
+        int16_t egPieceNoMobilityPenalty[4] = {
+            -8, // Knight
+            -21, // Bishop
+            -30, // Rook
+            -48, // Queen
         };
 
         /**
@@ -275,7 +309,8 @@ class HCEParameters {
          * im nächsten Zug erreichen kann.
          */
 
-        int16_t mgMinorPieceOnStrongSquareBonus = 22;
+        int16_t mgKnightOnStrongSquareBonus = 25;
+        int16_t mgBishopOnStrongSquareBonus = 10;
 
         /**
          * Eine Bestrafung für Läufer, die durch eigene
@@ -283,8 +318,8 @@ class HCEParameters {
          * Bauern gedeckte, Bauern blockiert werden.
          */
 
-        int16_t mgBadBishopPenalty = -25;
-        int16_t egBadBishopPenalty = -6;
+        int16_t mgBadBishopPenalty = -18;
+        int16_t egBadBishopPenalty = -10;
 
         /**
          * Ein Bonus für jede offene oder halboffene
@@ -331,11 +366,22 @@ class HCEParameters {
 
         int16_t ruleOfTheSquareBonus = 700;
 
+        /**
+         * Hier werden die entpackten Positionstabellen
+         * für die Mittel- und Endspielbewertung gespeichert.
+         */
+
+        int16_t mgPSQT[6][64];
+        int16_t egPSQT[6][64];
+
+
     public:
         HCEParameters();
         HCEParameters(std::istream& stream);
 
         ~HCEParameters();
+
+        void unpackPSQT();
 
         void loadParameters(std::istream& stream);
         void saveParameters(std::ostream& stream) const;
@@ -350,7 +396,7 @@ class HCEParameters {
         int16_t operator[](size_t index) const;
         size_t indexOf(int16_t* ptr) const;
 
-        static constexpr size_t size() { return sizeof(HCEParameters) / sizeof(int16_t); }
+        static constexpr size_t size() { return (sizeof(HCEParameters) - sizeof(mgPSQT) - sizeof(egPSQT)) / sizeof(int16_t); }
 
         /**
          * @brief Dieses Objekt enthält einige wenige Parameter,
@@ -365,10 +411,10 @@ class HCEParameters {
          */
         bool isOptimizable(size_t index) const;
 
-        inline const int16_t& getLinearPieceValue(int32_t piece) const { return pieceValues[piece - 1]; }
-        inline const int16_t& getQuadraticPieceValue(int32_t piece) const { return pieceValues[piece + 4]; }
+        inline int16_t getLinearPieceValue(int32_t piece) const { return pieceValues[piece - 1]; }
+        inline int16_t getQuadraticPieceValue(int32_t piece) const { return pieceValues[piece + 4]; }
 
-        inline const int16_t& getCrossedPieceValue(int32_t piece1, int32_t piece2) const {
+        inline int16_t getCrossedPieceValue(int32_t piece1, int32_t piece2) const {
             int32_t minPiece = std::min(piece1, piece2) - 1;
             int32_t maxPiece = std::max(piece1, piece2) - 2;
 
@@ -383,8 +429,13 @@ class HCEParameters {
         inline int16_t getMGTempoBonus() const { return mgTempoBonus; }
         inline int16_t getEGTempoBonus() const { return egTempoBonus; }
 
-        inline int16_t getMGConnectedPawnBonus() const { return mgConnectedPawnBonus; }
-        inline int16_t getEGConnectedPawnBonus() const { return egConnectedPawnBonus; }
+        inline int16_t getMGAttackByMinorPieceBonus(int32_t piece) const { return mgAttackByMinorPieceBonus[piece - 1]; }
+        inline int16_t getMGAttackByRookBonus(int32_t piece) const { return mgAttackByRookBonus[piece - 1]; }
+        inline int16_t getEGAttackByMinorPieceBonus(int32_t piece) const { return egAttackByMinorPieceBonus[piece - 1]; }
+        inline int16_t getEGAttackByRookBonus(int32_t piece) const { return egAttackByRookBonus[piece - 1]; }
+
+        inline int16_t getMGConnectedPawnBonus(int32_t rank) const { return mgConnectedPawnBonus[rank - 1]; }
+        inline int16_t getEGConnectedPawnBonus(int32_t rank) const { return egConnectedPawnBonus[rank - 1]; }
 
         inline int16_t getMGDoubledPawnPenalty() const { return mgDoubledPawnPenalty; }
         inline int16_t getEGDoubledPawnPenalty() const { return egDoubledPawnPenalty; }
@@ -419,7 +470,11 @@ class HCEParameters {
         inline int16_t getMGPieceMobilityBonus(int32_t piece) const { return mgPieceMobilityBonus[piece - 2]; }
         inline int16_t getEGPieceMobilityBonus(int32_t piece) const { return egPieceMobilityBonus[piece - 2]; }
 
-        inline int16_t getMGMinorPieceOnStrongSquareBonus() const { return mgMinorPieceOnStrongSquareBonus; }
+        inline int16_t getMGPieceNoMobilityPenalty(int32_t piece) const { return mgPieceNoMobilityPenalty[piece - 2]; }
+        inline int16_t getEGPieceNoMobilityPenalty(int32_t piece) const { return egPieceNoMobilityPenalty[piece - 2]; }
+
+        inline int16_t getMGKnightOnStrongSquareBonus() const { return mgKnightOnStrongSquareBonus; }
+        inline int16_t getMGBishopOnStrongSquareBonus() const { return mgBishopOnStrongSquareBonus; }
 
         inline int16_t getMGBadBishopPenalty() const { return mgBadBishopPenalty; }
         inline int16_t getEGBadBishopPenalty() const { return egBadBishopPenalty; }

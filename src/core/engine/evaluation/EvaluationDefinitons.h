@@ -30,21 +30,21 @@ struct Score {
         return *this;
     }
 
-    constexpr Score operator*(const int32_t& scalar) const {
+    constexpr Score operator*(int32_t scalar) const {
         return Score{mg * scalar, eg * scalar};
     }
 
-    constexpr Score& operator*=(const int32_t& scalar) {
+    constexpr Score& operator*=(int32_t scalar) {
         mg *= scalar;
         eg *= scalar;
         return *this;
     }
 
-    constexpr Score operator/(const int32_t& scalar) const {
+    constexpr Score operator/(int32_t scalar) const {
         return Score{mg / scalar, eg / scalar};
     }
 
-    constexpr Score& operator/=(const int32_t& scalar) {
+    constexpr Score& operator/=(int32_t scalar) {
         mg /= scalar;
         eg /= scalar;
         return *this;
@@ -63,7 +63,7 @@ struct Score {
     }
 };
 
-constexpr Score operator*(const int32_t& scalar, const Score& score) {
+constexpr Score operator*(int32_t scalar, const Score& score) {
     return score * scalar;
 }
 
@@ -71,25 +71,5 @@ inline std::ostream& operator<<(std::ostream& os, const Score& score) {
     os << "{" << score.mg << ", " << score.eg << "}";
     return os;
 }
-
-struct PawnBitboards {
-    Bitboard whitePawns;
-    Bitboard blackPawns;
-
-    bool operator==(const PawnBitboards& other) const {
-        return whitePawns == other.whitePawns && blackPawns == other.blackPawns;
-    }
-
-    bool operator!=(const PawnBitboards& other) const {
-        return !(*this == other);
-    }
-};
-
-template <>
-struct std::hash<PawnBitboards> {
-    std::size_t operator()(const PawnBitboards& pwns) const {
-        return std::hash<Bitboard>()(pwns.whitePawns) ^ std::hash<Bitboard>()(pwns.blackPawns);
-    }
-};
 
 #endif // EVALUATION_DEFINITIONS_H
