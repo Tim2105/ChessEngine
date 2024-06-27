@@ -27,7 +27,7 @@ void PVSEngine::helperThreadLoop(PVSSearchInstance* instance) {
             // Schleife, die die Aspirationsfenster erweitert,
             // wenn die Bewertung außerhalb des Fensters liegt
             while(!(instance->shouldStop() || exitSearch.load())) {
-                score = instance->pvs(depth * ONE_PLY, 0, alpha, beta, 0, PV_NODE);
+                score = instance->pvs(depth * ONE_PLY, 0, alpha, beta, PV_NODE);
 
                 bool alphaAlreadyWidened = false, betaAlreadyWidened = false;
 
@@ -48,7 +48,7 @@ void PVSEngine::helperThreadLoop(PVSSearchInstance* instance) {
                         }
                     }
 
-                    score = instance->pvs(depth * ONE_PLY, 0, alpha, beta, 0, PV_NODE);
+                    score = instance->pvs(depth * ONE_PLY, 0, alpha, beta, PV_NODE);
                 }
 
                 alpha = score - PVSEngine::ASPIRATION_WINDOW;
@@ -342,7 +342,7 @@ void PVSEngine::search(const UCI::SearchParams& params) {
             mainInstance.setSearchMoves(searchMoves);
 
             // Führe die Suche in der Hauptinstanz durch.
-            int16_t score = mainInstance.pvs(depth * ONE_PLY, 0, alpha, beta, 0, PV_NODE);
+            int16_t score = mainInstance.pvs(depth * ONE_PLY, 0, alpha, beta, PV_NODE);
 
             // Aspirationsfenster erweitern, wenn die Bewertung außerhalb des Fensters liegt.
             bool alphaAlreadyWidened = false, betaAlreadyWidened = false;
@@ -363,7 +363,7 @@ void PVSEngine::search(const UCI::SearchParams& params) {
                     }
                 }
 
-                score = mainInstance.pvs(depth * ONE_PLY, 0, alpha, beta, 0, PV_NODE);
+                score = mainInstance.pvs(depth * ONE_PLY, 0, alpha, beta, PV_NODE);
             }
 
             // Stoppe die Hilfsthreads.

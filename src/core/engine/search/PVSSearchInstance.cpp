@@ -1,6 +1,6 @@
 #include "core/engine/search/PVSSearchInstance.h"
 
-int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta, int8_t nullMoveCooldown, uint8_t nodeType) {
+int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta, uint8_t nodeType, int8_t nullMoveCooldown) {
     // Setze die momentane Suchtiefe, wenn wir uns im Wurzelknoten befinden.
     if(ply == 0) {
         currentSearchDepth = std::max(depth / ONE_PLY, 1);
@@ -120,7 +120,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
             Move nullMove = Move::nullMove();
             board.makeMove(nullMove);
 
-            int16_t score = -pvs(depth - depthReduction, ply + 1, -beta, -beta + 1, NULL_MOVE_COOLDOWN, CUT_NODE);
+            int16_t score = -pvs(depth - depthReduction, ply + 1, -beta, -beta + 1, CUT_NODE, NULL_MOVE_COOLDOWN);
 
             board.undoMove();
 
@@ -131,11 +131,29 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
     clearPVTable(ply + 1);
 
+    /**
+     * Internal Iterative Deepening (wenn ein Hashzug existiert):
+     * 
+     * Wenn der Hashzug aus einer viel geringeren Suchtiefe stammt,
+     * führe eine reduzierte Suche durch, um Suchexplosionen zu vermeiden.
+     * Führe außerdem eine reduzierte Suche durch, wenn wir uns in einem
+     * PV-Knoten oder einem Cut-Knoten befinden und der Hashzug aus einem
+     * All-Knoten mit gleicher oder geringerer Suchtiefe stammt.
+     */
+    if(entryExists) {
+        if((entry.depth + 4) * ONE_PLY <= depth)
+            depth -= ONE_PLY;
+        else if(nodeType == CUT_NODE && entry.type == TranspositionTableEntry::UPPER_BOUND && entry.depth * ONE_PLY <= depth)
+            depth -= ONE_PLY;
+
+        depth = std::max(depth, ONE_PLY);
+    }
+
     // Generiere alle legalen Züge dieser Position.
     // In PV-Knoten und Cut-Knoten soll über interne
     // iterative Tiefensuche (IID) der beste Zug genauer
     // vorhergesagt werden, wenn kein Hashzug existiert.
-    bool fallbackToIID = nodeType != ALL_NODE;
+    bool fallbackToIID = nodeType == PV_NODE || (nodeType == CUT_NODE && depth >= 6 * ONE_PLY);
     addMovesToSearchStack(ply, fallbackToIID, depth);
 
     // Prüfe, ob die Suche abgebrochen werden soll.
@@ -171,10 +189,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
             move = pair.move;
             moveScore = pair.score;
 
-            // Wir betrachten maximal 5 Züge.
-            if(moveCount >= 5)
-                break;
-            else if(move == entry.hashMove) // Der Hashzug wurde bereits betrachtet.
+            if(move == entry.hashMove) // Der Hashzug wurde bereits betrachtet.
                 continue;
 
             // Führe den Zug aus und informiere den Evaluator.
@@ -183,7 +198,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
             evaluator.updateAfterMove();
 
             // Durchsuche den Kindknoten mit reduzierter Suchtiefe.
-            int16_t score = -pvs(singularDepth, ply + 1, -reducedAlpha - 1, -reducedAlpha, nullMoveCooldown, ALL_NODE);
+            int16_t score = -pvs(singularDepth, ply + 1, -reducedAlpha - 1, -reducedAlpha, ALL_NODE, nullMoveCooldown);
 
             // Mache den Zug rückgängig und informiere den Evaluator.
             evaluator.updateBeforeUndo();
@@ -198,8 +213,6 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
                 singularExtension = 0;
                 break;
             }
-
-            moveCount++;
         }
     }
 
@@ -208,7 +221,6 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
     uint8_t ttEntryType = TranspositionTableEntry::UPPER_BOUND;
     int16_t bestScore = MIN_SCORE, lmpCount = determineLMPCount(depth, isCheckEvasion, isPlausibleLine);
-    moveCount = 0;
     Move bestMove;
 
     // Schleife über alle legalen Züge.
@@ -336,7 +348,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
         if(moveCount == 0) {
             // Führe eine vollständige Suche durch.
-            score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, nullMoveCooldown - 1, childType);
+            score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, childType, nullMoveCooldown - 1);
         } else {
             // Durchsuche die restlichen Kinder mit einem Nullfenster (nur in PV-Knoten) und bei,
             // auf ersten Blick, uninteressanten Zügen mit einer reduzierten Suchtiefe
@@ -351,7 +363,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
                 reduction = std::max(reduction, (int16_t)0);
             }
 
-            score = -pvs(depth - ONE_PLY + extension - reduction, ply + 1, -alpha - 1, -alpha, nullMoveCooldown - 1, childType);
+            score = -pvs(depth - ONE_PLY + extension - reduction, ply + 1, -alpha - 1, -alpha, childType, nullMoveCooldown - 1);
 
             // Wenn die Bewertung über dem Nullfenster liegt,
             // führe eine vollständige Suche durch, wenn:
@@ -364,7 +376,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
                 else
                     childType = ALL_NODE;
 
-                score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, std::max(nullMoveCooldown - 1, 1), childType);
+                score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, childType, std::max(nullMoveCooldown - 1, 1));
             }
         }
 
@@ -638,6 +650,8 @@ int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore, in
         historyScore /= numPVs;
 
     double historyReduction = -historyScore * ONE_PLY / 32768.0;
+    historyReduction *= std::log(numThreads) / std::log(16) + 1.0;
+
     reduction += historyReduction;
 
     // Runde die Reduktion auf ein Vielfaches von ONE_PLY ab.
@@ -729,7 +743,7 @@ void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t
         // ein vorläufig bester Zug bestimmt wird.
 
         // Bestimme die reduzierte Suchtiefe.
-        int16_t reducedDepth = std::min(depth / 2, depth - 4 * ONE_PLY);
+        int16_t reducedDepth = depth - 3 * ONE_PLY;
 
         Move iidMove = Move::nullMove();
 
@@ -737,50 +751,44 @@ void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t
             // Führe die interne iterative Tiefensuche durch.
             int16_t iidScore = searchStack[ply].preliminaryScore;
 
-            Array<Move, 256> searchMoves;
+            // Speichere aktuelle Wurzelinformationen.
+            uint16_t rootAgeBackup = rootAge;
+            int16_t currentSearchDepthBackup = currentSearchDepth;
 
-            // Erstelle eine neue Suchinstanz für die interne iterative Tiefensuche.
-            PVSSearchInstance iidInstance(board, transpositionTable, stopFlag, startTime,
-                                          stopTime, nodesSearched, checkupFunction);
-            iidInstance.setSearchMoves(searchMoves);
-            iidInstance.setMainThread(isMainThread);
+            // Probiere eine Suche mit Aspirationsfenster.
+            int16_t alpha = iidScore - IID_ASPIRATION_WINDOW_SIZE;
+            int16_t beta = iidScore + IID_ASPIRATION_WINDOW_SIZE;
+            bool alphaAlreadyWidened = false, betaAlreadyWidened = false;
 
-            for(int16_t d = ONE_PLY; d <= reducedDepth; d += ONE_PLY) {
-                // Prüfe, ob die Suche abgebrochen werden soll.
-                if(stopFlag.load() && currentSearchDepth > 1)
-                    return;
+            iidScore = pvs(reducedDepth, ply, alpha, beta, PV_NODE);
 
-                // Probiere eine Suche mit Aspirationsfenster.
-                int16_t alpha = iidScore - IID_ASPIRATION_WINDOW_SIZE;
-                int16_t beta = iidScore + IID_ASPIRATION_WINDOW_SIZE;
-                bool alphaAlreadyWidened = false, betaAlreadyWidened = false;
-
-                iidScore = iidInstance.pvs(d, 0, alpha, beta, 0, PV_NODE);
-
-                while(iidScore <= alpha || iidScore >= beta) {
-                    // Wenn die Suche außerhalb des Aspirationsfensters liegt,
-                    // muss das Fenster erweitert werden.
-                    if(iidScore <= alpha) {
-                        if(alphaAlreadyWidened)
-                            alpha = MIN_SCORE;
-                        else {
-                            alphaAlreadyWidened = true;
-                            alpha -= IID_WIDENED_ASPIRATION_WINDOW_SIZE - IID_ASPIRATION_WINDOW_SIZE;
-                        }
-                    } else {
-                        if(betaAlreadyWidened)
-                            beta = MAX_SCORE;
-                        else {
-                            betaAlreadyWidened = true;
-                            beta += IID_WIDENED_ASPIRATION_WINDOW_SIZE - IID_ASPIRATION_WINDOW_SIZE;
-                        }
+            while(iidScore <= alpha || iidScore >= beta) {
+                // Wenn die Suche außerhalb des Aspirationsfensters liegt,
+                // muss das Fenster erweitert werden.
+                if(iidScore <= alpha) {
+                    if(alphaAlreadyWidened)
+                        alpha = MIN_SCORE;
+                    else {
+                        alphaAlreadyWidened = true;
+                        alpha -= IID_WIDENED_ASPIRATION_WINDOW_SIZE - IID_ASPIRATION_WINDOW_SIZE;
                     }
-
-                    iidScore = iidInstance.pvs(d, 0, alpha, beta, 0, PV_NODE);
+                } else {
+                    if(betaAlreadyWidened)
+                        beta = MAX_SCORE;
+                    else {
+                        betaAlreadyWidened = true;
+                        beta += IID_WIDENED_ASPIRATION_WINDOW_SIZE - IID_ASPIRATION_WINDOW_SIZE;
+                    }
                 }
+
+                iidScore = pvs(reducedDepth, ply, alpha, beta, PV_NODE);
             }
 
-            iidMove = iidInstance.getPV().front();
+            iidMove = pvTable[ply].front();
+
+            // Stelle die Wurzelinformationen wieder her.
+            rootAge = rootAgeBackup;
+            currentSearchDepth = currentSearchDepthBackup;
         }
 
         // Füge den besten Zug aus der internen Tiefensuche

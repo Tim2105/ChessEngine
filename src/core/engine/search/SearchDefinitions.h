@@ -128,7 +128,7 @@ static constexpr int16_t calculateNullMoveReduction(int16_t depth, int16_t stati
  * @return Die Margin für Futility-Pruning.
  */
 static constexpr int16_t calculateFutilityMargin(int16_t depth) {
-    return 300 + 200 * (depth / ONE_PLY - 1);
+    return 200 + 150 * (depth / ONE_PLY - 1);
 }
 
 /**

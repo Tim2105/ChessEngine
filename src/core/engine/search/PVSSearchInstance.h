@@ -354,14 +354,14 @@ class PVSSearchInstance {
          * untere Schranke bekannt ist, sollte MIN_SCORE übergeben werden.
          * @param beta Die obere Schranke des Suchfensters. Wenn keine
          * obere Schranke bekannt ist, sollte MAX_SCORE übergeben werden.
-         * @param nullMoveCooldown Gibt an, in wie vielen Zügen das Null Move Pruning
-         * wieder angewendet werden darf.
          * @param nodeType Der erwartete Typ des Knotens. Von außerhalb der
          * Suchinstanz sollte PV_NODE übergeben werden.
+         * @param nullMoveCooldown Gibt an, in wie vielen Zügen das Null Move Pruning
+         * wieder angewendet werden darf.
          * @return Die Bewertung der Position (oder 0, wenn die Suche vorzeitig über die Stop-Flag abgebrochen wurde).
          * Die Hauptvariante kann über die Methode getPV() ausgelesen werden.
          */
-        int16_t pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta, int8_t nullMoveCooldown, uint8_t nodeType);
+        int16_t pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta, uint8_t nodeType, int8_t nullMoveCooldown = 0);
 
         /**
          * @brief Sagt der Suchinstanz, ob sie die Hauptinstanz

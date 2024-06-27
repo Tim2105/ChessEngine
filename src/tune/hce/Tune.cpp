@@ -50,7 +50,7 @@ namespace Tune {
             PVSSearchInstance searchInstance(dp.board, hceParams, tt, stop, startTime, endTime, nodes, nullptr);
 
             // Berechne die Vorhersage
-            double prediction = sigmoid(searchInstance.pvs(0, 0, MIN_SCORE, MAX_SCORE, 0, PV_NODE), k);
+            double prediction = sigmoid(searchInstance.pvs(0, 0, MIN_SCORE, MAX_SCORE, PV_NODE), k);
 
             // Berechne den Fehler
             sum += mse(prediction, dp.result);
@@ -91,7 +91,7 @@ namespace Tune {
                     PVSSearchInstance searchInstance(dp.board, hceParams, tt, stop, startTime, endTime, nodes, nullptr);
 
                     // Berechne die Vorhersage
-                    double prediction = sigmoid(searchInstance.pvs(0, 0, MIN_SCORE, MAX_SCORE, 0, PV_NODE), k);
+                    double prediction = sigmoid(searchInstance.pvs(0, 0, MIN_SCORE, MAX_SCORE, PV_NODE), k);
 
                     // Berechne den Fehler
                     double l = mse(prediction, dp.result);
