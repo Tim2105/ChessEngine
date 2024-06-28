@@ -131,6 +131,28 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
     clearPVTable(ply + 1);
 
+    // Lade den Eintrag aus der Transpositionstabelle neu, da
+    // bei der Suche mit mehreren Threads ein neuer Eintrag
+    // vorliegen könnte.
+    entryExists = transpositionTable.probe(board.getHashValue(), entry);
+    if(entryExists && nodeType != PV_NODE) {
+        if(entry.depth * ONE_PLY >= depth) {
+            if(entry.type == TranspositionTableEntry::EXACT) {
+                return entry.score;
+            } else if(entry.type == TranspositionTableEntry::LOWER_BOUND) {
+                if(entry.score >= beta)
+                    return entry.score;
+                else if(entry.score > alpha)
+                    alpha = entry.score;
+            } else if(entry.type == TranspositionTableEntry::UPPER_BOUND) {
+                if(entry.score <= alpha)
+                    return entry.score;
+                else if(entry.score < beta)
+                    beta = entry.score;
+            }
+        }
+    }
+
     /**
      * Internal Iterative Deepening (wenn ein Hashzug existiert):
      * 
@@ -149,10 +171,15 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
         depth = std::max(depth, ONE_PLY);
     }
 
-    // Generiere alle legalen Züge dieser Position.
-    // In PV-Knoten und Cut-Knoten soll über interne
-    // iterative Tiefensuche (IID) der beste Zug genauer
-    // vorhergesagt werden, wenn kein Hashzug existiert.
+    /**
+     * Internal Iterative Deepening (wenn kein Hashzug existiert
+     * oder der Eintrag unzureichend ist):
+     * 
+     * Führe eine reduzierte Suche durch, um einen besseren
+     * Hashzug für die aktuelle Position zu bestimmen.
+     * IID wird nur in PV-Knoten und Cut-Knoten mit einer
+     * Suchtiefe >= 6 durchgeführt.
+     */
     bool fallbackToIID = nodeType == PV_NODE || (nodeType == CUT_NODE && depth >= 6 * ONE_PLY);
     addMovesToSearchStack(ply, fallbackToIID, depth);
 
@@ -649,7 +676,7 @@ int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore, in
     if(historyScore < 0)
         historyScore /= numPVs;
 
-    double historyReduction = -historyScore * ONE_PLY / 8192.0;
+    double historyReduction = -historyScore * ONE_PLY / 12000.0;
     historyReduction *= std::log(numThreads) / std::log(16) + 1.0;
 
     reduction += historyReduction;
