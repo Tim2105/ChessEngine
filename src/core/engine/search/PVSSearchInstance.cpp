@@ -649,7 +649,7 @@ int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore, in
     if(historyScore < 0)
         historyScore /= numPVs;
 
-    double historyReduction = -historyScore * ONE_PLY / 32768.0;
+    double historyReduction = -historyScore * ONE_PLY / 8192.0;
     historyReduction *= std::log(numThreads) / std::log(16) + 1.0;
 
     reduction += historyReduction;
@@ -708,6 +708,11 @@ void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t
         TranspositionTableEntry entry;
         if(transpositionTable.probe(board.getHashValue(), entry))
             hashMove = entry.hashMove;
+
+        // Der Eintrag ist aufgrund der Suchtiefe unzureichend.
+        // Bestimme einen genaueren Hashzug über IID (falls useIID == true).
+        if(useIID && hashMove.exists() && entry.depth * ONE_PLY <= depth - 6 * ONE_PLY)
+            hashMove = Move::nullMove();
     }
 
     if(hashMove.exists() && (ply != 0 || searchMoves.size() == 0 || searchMoves.contains(hashMove))) {
