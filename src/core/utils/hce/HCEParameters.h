@@ -16,8 +16,21 @@ class HCEParameters {
             105, 400, 400, 615, 1200, // linear
             -2, -3, 10, -5, 15, // quadratisch
             // gekreuzt
-            2, // Springer * Bauer
-            0, 0, // Läufer * Bauer, Springer * Läufer
+            1, // Springer * Bauer
+            0, 0, // Läufer * Bauer, Läufer * Springer
+            0, 0, 0, // Turm * Bauer, Turm * Springer, Turm * Läufer
+            0, 0, 0, 0 // Dame * Bauer, Dame * Springer, Dame * Läufer, Dame * Turm
+        };
+
+        /**
+         * Faktoren für die Funktion zur Berechnung
+         * des Materialungleichgewichts.
+         */
+
+        int16_t pieceImbalanceValues[10] = {
+            // gekreuzt
+            1, // Springer * Bauer
+            0, 0, // Läufer * Bauer, Läufer * Springer
             0, 0, 0, // Turm * Bauer, Turm * Springer, Turm * Läufer
             0, 0, 0, 0 // Dame * Bauer, Dame * Springer, Dame * Läufer, Dame * Turm
         };
@@ -278,15 +291,15 @@ class HCEParameters {
          */
 
         int16_t mgPieceMobilityBonus[4] = {
-            3, // Knight
-            6, // Bishop
-            5, // Rook
+            1, // Knight
+            3, // Bishop
+            3, // Rook
             0, // Queen
         };
         int16_t egPieceMobilityBonus[4] = {
-            2, // Knight
-            4, // Bishop
-            5, // Rook
+            1, // Knight
+            2, // Bishop
+            3, // Rook
             1, // Queen
         };
 
@@ -419,6 +432,13 @@ class HCEParameters {
             int32_t maxPiece = std::max(piece1, piece2) - 2;
 
             return pieceValues[10 + maxPiece * (maxPiece + 1) / 2 + minPiece];
+        }
+
+        inline int16_t getPieceImbalanceValue(int32_t piece1, int32_t piece2) const {
+            int32_t minPiece = std::min(piece1, piece2) - 1;
+            int32_t maxPiece = std::max(piece1, piece2) - 2;
+
+            return pieceImbalanceValues[maxPiece * (maxPiece + 1) / 2 + minPiece];
         }
 
         inline int16_t getEGWinningMaterialAdvantage() const { return (pieceValues[3] - pieceValues[2]) / 2 + pieceValues[2]; }

@@ -12,23 +12,25 @@ void HandcraftedEvaluator::updateBeforeMove(Move m) {
     int32_t side = board.getSideToMove();
     int32_t otherSide = side ^ COLOR_MASK;
     int32_t piece = TYPEOF(board.pieceAt(m.getOrigin()));
-    int32_t originPSQT = m.getOrigin();
-    int32_t destinationPSQT = m.getDestination();
+    int32_t origin = m.getOrigin();
+    int32_t destination = m.getDestination();
 
     // Für schwarze Figuren muss der Rang gespiegelt werden,
     // um die Positionstabelle zu indizieren
     if(side == BLACK) {
-        originPSQT = Square::flipY(originPSQT);
-        destinationPSQT = Square::flipY(destinationPSQT);
+        origin = Square::flipY(origin);
+        destination = Square::flipY(destination);
     }
 
-    psqtDelta.mg += hceParams.getMGPSQT(piece,destinationPSQT) - hceParams.getMGPSQT(piece, originPSQT);
-    psqtDelta.eg += hceParams.getEGPSQT(piece, destinationPSQT) - hceParams.getEGPSQT(piece, originPSQT);
+    psqtDelta.mg += hceParams.getMGPSQT(piece, destination) - hceParams.getMGPSQT(piece, origin);
+    psqtDelta.eg += hceParams.getEGPSQT(piece, destination) - hceParams.getEGPSQT(piece, origin);
+
+    int32_t capturedPieceType = EMPTY;
 
     // Spezialfall: Schlagzug
     if(m.isCapture()) {
         int32_t capturedPiece = board.pieceAt(m.getDestination());
-        int32_t capturedPieceSquare = destinationPSQT;
+        int32_t capturedPieceSquare = destination;
 
         // Spezialfall: En-Passant
         if(m.isEnPassant()) {
@@ -36,7 +38,7 @@ void HandcraftedEvaluator::updateBeforeMove(Move m) {
             capturedPieceSquare += SOUTH;
         }
 
-        int32_t capturedPieceType = TYPEOF(capturedPiece);
+        capturedPieceType = TYPEOF(capturedPiece);
 
         // Für geschlagene Figuren muss der Rang gespiegelt werden,
         // um die Positionstabelle zu indizieren
@@ -55,6 +57,12 @@ void HandcraftedEvaluator::updateBeforeMove(Move m) {
 
             int16_t crossedPieceValue = hceParams.getCrossedPieceValue(piece, capturedPieceType);
             pieceValueDelta += crossedPieceValue * board.getPieceBitboard(otherSide | piece).popcount();
+
+            int16_t pieceImbalanceValue = hceParams.getPieceImbalanceValue(piece, capturedPieceType);
+            if(piece > capturedPieceType)
+                pieceImbalanceValue = -pieceImbalanceValue;
+
+            pieceValueDelta += pieceImbalanceValue * board.getPieceBitboard(side | piece).popcount();
         }
 
         psqtDelta.mg += hceParams.getMGPSQT(capturedPieceType, capturedPieceSquare);
@@ -103,13 +111,23 @@ void HandcraftedEvaluator::updateBeforeMove(Move m) {
         // mit Ausnahme des Bauerns und der aufgewerteten Figur
         for(int32_t piece = KNIGHT; piece <= QUEEN; piece++) {
             int32_t numPieces = board.getPieceBitboard(side | piece).popcount();
+            int32_t numOpponentPieces = board.getPieceBitboard(otherSide | piece).popcount() - (piece == capturedPieceType);
             if(piece != promotedPiece) {
                 int16_t crossedPieceValue = hceParams.getCrossedPieceValue(piece, promotedPiece);
                 pieceValueDelta += crossedPieceValue * numPieces;
 
                 int16_t crossedPawnValue = hceParams.getCrossedPieceValue(piece, PAWN);
                 pieceValueDelta -= crossedPawnValue * numPieces;
+
+                int16_t pieceImbalanceValue = hceParams.getPieceImbalanceValue(piece, promotedPiece);
+                if(piece > promotedPiece)
+                    pieceImbalanceValue = -pieceImbalanceValue;
+
+                pieceValueDelta += pieceImbalanceValue * numOpponentPieces;
             }
+
+            int16_t pawnImbalanceValue = hceParams.getPieceImbalanceValue(PAWN, piece);
+            pieceValueDelta += pawnImbalanceValue * numOpponentPieces;
         }
 
         // Aktualisiere die gemischten Terme für das Paar Bauer und aufgewertete Figur
@@ -117,8 +135,12 @@ void HandcraftedEvaluator::updateBeforeMove(Move m) {
         pieceValueDelta -= crossedPawnValue * numPawns * numPromotedPiece;
         pieceValueDelta += crossedPawnValue * (numPawns - 1) * (numPromotedPiece + 1);
 
-        psqtDelta.mg += hceParams.getMGPSQT(promotedPiece, destinationPSQT) - hceParams.getMGPSQT(PAWN, destinationPSQT);
-        psqtDelta.eg += hceParams.getEGPSQT(promotedPiece, destinationPSQT) - hceParams.getEGPSQT(PAWN, destinationPSQT);
+        int16_t numOpponentPawns = board.getPieceBitboard(otherSide | PAWN).popcount();
+        int16_t pawnImbalanceValue = hceParams.getPieceImbalanceValue(PAWN, promotedPiece);
+        pieceValueDelta += pawnImbalanceValue * numOpponentPawns;
+
+        psqtDelta.mg += hceParams.getMGPSQT(promotedPiece, destination) - hceParams.getMGPSQT(PAWN, destination);
+        psqtDelta.eg += hceParams.getEGPSQT(promotedPiece, destination) - hceParams.getEGPSQT(PAWN, destination);
 
         // Aktualisiere die Phasengewichte
         evaluationVars.phaseWeight -= PIECE_WEIGHT[promotedPiece] - PIECE_WEIGHT[PAWN];
@@ -168,6 +190,11 @@ void HandcraftedEvaluator::calculateMaterialScore() {
             int16_t crossedPieceValue = hceParams.getCrossedPieceValue(piece, otherPiece);
             pieceScore += crossedPieceValue * (numWhitePieces * board.getPieceBitboard(WHITE | otherPiece).popcount() -
                                                numBlackPieces * board.getPieceBitboard(BLACK | otherPiece).popcount());
+
+            // Materialungleichgewicht
+            int16_t imbalanceValue = hceParams.getPieceImbalanceValue(piece, otherPiece);
+            pieceScore += imbalanceValue * (numWhitePieces * board.getPieceBitboard(BLACK | otherPiece).popcount() -
+                                            numBlackPieces * board.getPieceBitboard(WHITE | otherPiece).popcount());
         }
     }
 
