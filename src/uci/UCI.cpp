@@ -22,7 +22,7 @@ UCI::Options UCI::options = {
     #if defined(DISABLE_THREADS)
         UCI::Option("Threads", "1", "1", "1"),
     #else
-        UCI::Option("Threads", std::to_string(std::max(std::thread::hardware_concurrency(), 1u)), "1", "128"),
+        UCI::Option("Threads", "1", "1", "128"),
     #endif
     UCI::Option("MultiPV", "1", "1", "256"),
     UCI::Option("Ponder", "false")

@@ -124,8 +124,14 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
             board.undoMove();
 
-            if(score >= beta)
-                return score;
+            if(score >= beta) {
+                if(!verifyNullMove() || depthReduction >= depth + ONE_PLY)
+                    return score;
+
+                score = pvs(depth - depthReduction + ONE_PLY, ply, beta - 1, beta, CUT_NODE, std::numeric_limits<int8_t>::max());
+                if(score >= beta)
+                    return score;
+            }
         }
     }
 

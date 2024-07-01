@@ -105,7 +105,7 @@ static constexpr uint8_t PV_NODE = 0;
 static constexpr uint8_t CUT_NODE = 1;
 static constexpr uint8_t ALL_NODE = 2;
 
-static constexpr int8_t NULL_MOVE_COOLDOWN = 2;
+static constexpr int8_t NULL_MOVE_COOLDOWN = 1;
 
 /**
  * @brief Berechnet, wie stark eine Nullzugsuche reduziert werden soll.
