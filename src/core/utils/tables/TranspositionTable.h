@@ -76,14 +76,8 @@ struct Entry {
             else
                 return true;
         } else {
-            // 1. PV-Knoten
-            // 2. Cut-Knoten
-            // 3. All-Knoten
-            // Tiefe entscheidet bei gleichen Knotentypen
-            if(data.type == other.data.type)
-                return data.depth >= other.data.depth;
-            else
-                return data.type < other.data.type;
+            return (data.depth + data.age) * 2 + (data.type == TranspositionTableEntry::EXACT) >=
+                   (other.data.depth + other.data.age) * 2 + (other.data.type == TranspositionTableEntry::EXACT);
         }
     }
 };

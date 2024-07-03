@@ -170,12 +170,9 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
      */
     if(entryExists) {
         if((entry.depth + 4) * ONE_PLY <= depth)
-            depth -= ONE_PLY;
-        else if(nodeType == CUT_NODE && entry.type == TranspositionTableEntry::UPPER_BOUND && entry.depth * ONE_PLY <= depth)
-            depth -= ONE_PLY;
-
-        depth = std::max(depth, ONE_PLY);
-    }
+            depth -= ONE_PLY * (depth >= 4 * ONE_PLY);
+    } else
+        depth -= ONE_PLY * (depth >= 4 * ONE_PLY);
 
     /**
      * Internal Iterative Deepening (wenn kein Hashzug existiert
@@ -186,8 +183,11 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
      * IID wird nur in PV-Knoten und Cut-Knoten mit einer
      * Suchtiefe >= 6 durchgeführt.
      */
-    bool fallbackToIID = nodeType == PV_NODE || (nodeType == CUT_NODE && depth >= 6 * ONE_PLY);
-    addMovesToSearchStack(ply, fallbackToIID, depth);
+    bool useIID = false;
+    if(nodeType == PV_NODE || (nodeType == CUT_NODE && depth >= 6 * ONE_PLY))
+        useIID = !entryExists || entry.depth * ONE_PLY <= depth - 6 * ONE_PLY;
+
+    addMovesToSearchStack(ply, useIID, depth);
 
     // Prüfe, ob die Suche abgebrochen werden soll.
     if(stopFlag.load() && currentSearchDepth > 1)
@@ -736,44 +736,7 @@ void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t
     if(ply == 0 && pvTable[0].size() > 0) {
         // Probiere im Wurzelknoten den besten Zug aus der letzten Suche.
         hashMove = pvTable[0].front();
-    } else {
-        // Ansonsten suche in der Transpositionstabelle nach einem Hashzug.
-        TranspositionTableEntry entry;
-        if(transpositionTable.probe(board.getHashValue(), entry))
-            hashMove = entry.hashMove;
-
-        // Der Eintrag ist aufgrund der Suchtiefe unzureichend.
-        // Bestimme einen genaueren Hashzug über IID (falls useIID == true).
-        if(useIID && hashMove.exists() && entry.depth * ONE_PLY <= depth - 6 * ONE_PLY)
-            hashMove = Move::nullMove();
-    }
-
-    if(hashMove.exists() && (ply != 0 || searchMoves.size() == 0 || searchMoves.contains(hashMove))) {
-        // Es existiert ein Hashzug für die aktuelle Position.
-
-        // Generiere alle legalen Züge dieser Position.
-        Array<Move, 256> moves;
-        if(ply > 0 || searchMoves.size() == 0)
-            board.generateLegalMoves(moves);
-        else
-            moves = searchMoves;
-
-        // Füge den Hashzug als ersten Zug mit maximaler Bewertung in die Zugliste ein
-        // und bestimme die Reihenfolge der übrigen Züge über unsere Zugvorsortierung.
-        if(moves.remove_first(hashMove)) {
-            searchStack[ply].hashMove = hashMove;
-            searchStack[ply].moveScorePairs.push_back(MoveScorePair(hashMove, HASH_MOVE_SCORE));
-        } else if(useIID) {
-            // Im Fall einer super seltenen Hashkollision, ist der Hashzug nicht legal
-            // in unserer aktuellen Position. Wenn IID in diesem Fall durchgeführt werden
-            // soll, dann springe dahin.
-            goto iid;
-        }
-
-        scoreMoves(moves, ply);
     } else if(useIID) {
-        iid:
-        
         // Wir haben keinen Hashzug für die aktuelle Position gefunden,
         // aber uns ist eine akkurate Zugvorsortierung wichtig.
         // Führe daher eine interne iterative Tiefensuche durch, in
@@ -782,8 +745,6 @@ void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t
 
         // Bestimme die reduzierte Suchtiefe.
         int16_t reducedDepth = depth - 3 * ONE_PLY;
-
-        Move iidMove = Move::nullMove();
 
         if(reducedDepth > 0) {
             // Führe die interne iterative Tiefensuche durch.
@@ -822,31 +783,38 @@ void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t
                 iidScore = pvs(reducedDepth, ply, alpha, beta, PV_NODE);
             }
 
-            iidMove = pvTable[ply].front();
+            hashMove = pvTable[ply].front();
 
             // Stelle die Wurzelinformationen wieder her.
             rootAge = rootAgeBackup;
             currentSearchDepth = currentSearchDepthBackup;
         }
 
-        // Füge den besten Zug aus der internen Tiefensuche
-        // als Hashzug in den Suchstack ein.
-        searchStack[ply].hashMove = iidMove;
-        searchStack[ply].moveScorePairs.clear();
+        clearMovesInSearchStack(ply);
+    } else {
+        // Ansonsten suche in der Transpositionstabelle nach einem Hashzug.
+        TranspositionTableEntry entry;
+        if(transpositionTable.probe(board.getHashValue(), entry))
+            hashMove = entry.hashMove;
+    }
 
-        // Generiere und bewerte die restlichen Züge.
+    if(hashMove.exists() && (ply != 0 || searchMoves.size() == 0 || searchMoves.contains(hashMove))) {
+        // Es existiert ein Hashzug für die aktuelle Position.
+
+        // Generiere alle legalen Züge dieser Position.
         Array<Move, 256> moves;
         if(ply > 0 || searchMoves.size() == 0)
             board.generateLegalMoves(moves);
         else
             moves = searchMoves;
 
-        // Entferne den Hashzug aus der Zugliste, falls er existiert.
-        // Im Fall eines Schachmatts existiert kein IID-Zug,
-        // dieser Sonderfall wird hier überprüft.
-        if(iidMove.exists() && moves.remove_first(iidMove))
-            searchStack[ply].moveScorePairs.push_back(MoveScorePair(iidMove, HASH_MOVE_SCORE));
-        
+        // Füge den Hashzug als ersten Zug mit maximaler Bewertung in die Zugliste ein
+        // und bestimme die Reihenfolge der übrigen Züge über unsere Zugvorsortierung.
+        if(moves.remove_first(hashMove)) {
+            searchStack[ply].hashMove = hashMove;
+            searchStack[ply].moveScorePairs.push_back(MoveScorePair(hashMove, HASH_MOVE_SCORE));
+        }
+
         scoreMoves(moves, ply);
     } else {
         // Wir haben keinen Hashzug für die aktuelle Position gefunden
