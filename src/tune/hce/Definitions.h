@@ -8,7 +8,7 @@
 
 struct DataPoint {
     Board board;
-    double result;
+    int32_t result;
 };
 
 /**
@@ -40,6 +40,7 @@ extern size_t numEpochs;
 extern size_t noImprovementPatience;
 extern size_t batchSize;
 extern double epsilon;
+extern double gamma;
 
 /**
  * Variablen des Lernalgorithmus.

@@ -13,13 +13,13 @@
 
 namespace Tune {
     /**
-     * @brief Sigmoid-Funktion mit einem zusätzlichen Parameter.
+     * @brief Tanh-Funktion mit einem zusätzlichen Parameter.
      * 
-     * @param x Das Argument der Sigmoid-Funktion.
-     * @param k Ein Faktor, der mit dem Argument multipliziert wird.
+     * @param x Der Wert.
+     * @param k Der Parameter.
      */
-    constexpr double sigmoid(double x, double k) {
-        return 1 / (1 + std::exp(-k * x));
+    constexpr double tanh(double x, double k) {
+        return std::tanh(k * x);
     }
 
     /**
@@ -50,10 +50,19 @@ namespace Tune {
             PVSSearchInstance searchInstance(dp.board, hceParams, tt, stop, startTime, endTime, nodes, nullptr);
 
             // Berechne die Vorhersage
-            double prediction = sigmoid(searchInstance.pvs(0, 0, MIN_SCORE, MAX_SCORE, PV_NODE), k);
+            double prediction = tanh(searchInstance.pvs(0, 0, MIN_SCORE, MAX_SCORE, PV_NODE), k);
+
+            // Berechne den wahren Wert
+            double trueValue;
+            if(dp.result == 0)
+                trueValue = 0.0;
+            else if(dp.result > 0)
+                trueValue = std::pow(gamma, dp.result);
+            else
+                trueValue = -std::pow(gamma, -dp.result);
 
             // Berechne den Fehler
-            sum += mse(prediction, dp.result);
+            sum += mse(prediction, trueValue);
         }
 
         return sum / indices.size();
@@ -91,10 +100,19 @@ namespace Tune {
                     PVSSearchInstance searchInstance(dp.board, hceParams, tt, stop, startTime, endTime, nodes, nullptr);
 
                     // Berechne die Vorhersage
-                    double prediction = sigmoid(searchInstance.pvs(0, 0, MIN_SCORE, MAX_SCORE, PV_NODE), k);
+                    double prediction = tanh(searchInstance.pvs(0, 0, MIN_SCORE, MAX_SCORE, PV_NODE), k);
+
+                    // Berechne den wahren Wert
+                    double trueValue;
+                    if(dp.result == 0)
+                        trueValue = 0.0;
+                    else if(dp.result > 0)
+                        trueValue = std::pow(gamma, dp.result);
+                    else
+                        trueValue = -std::pow(gamma, -dp.result);
 
                     // Berechne den Fehler
-                    double l = mse(prediction, dp.result);
+                    double l = mse(prediction, trueValue);
 
                     // Addiere den Fehler zum Gesamtfehler
                     sum.fetch_add(l);

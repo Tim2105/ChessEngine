@@ -54,6 +54,8 @@ void setParameter(std::string parameter, std::string value) {
             k = std::stod(value);
         else if(parameter == "epsilon")
             epsilon = std::stod(value);
+        else if(parameter == "gamma")
+            gamma = std::stod(value);
         else if(parameter == "validationSplit")
             validationSplit = std::stod(value);
         else if(parameter == "noImprovementPatience")
@@ -180,21 +182,22 @@ void simulateGames(size_t n, std::istream& pgnFile, std::ostream& outFile) {
         for(int32_t j = startingPositions[i].getAge(); j > startOutputAtMove; j--) {
             std::stringstream ss;
             ss << startingPositions[i].toFEN() << ";";
+            int32_t gameEndsIn = startingPositions[i].getAge() - j;
             switch(results[i]) {
                 case WHITE_WIN:
                     if(startingPositions[i].getSideToMove() == WHITE)
-                        ss << "1";
+                        ss << gameEndsIn;
                     else
-                        ss << "0";
+                        ss << -gameEndsIn;
                     break;
                 case BLACK_WIN:
                     if(startingPositions[i].getSideToMove() == BLACK)
-                        ss << "1";
+                        ss << gameEndsIn;
                     else
-                        ss << "0";
+                        ss << -gameEndsIn;
                     break;
                 case DRAW:
-                    ss << "0.5";
+                    ss << "0";
                     break;
             }
 
@@ -232,7 +235,7 @@ std::vector<DataPoint> loadData(std::istream& resultFile, size_t n) {
         std::string result;
         std::getline(resultFile, result);
 
-        double res = std::stod(result);
+        int32_t res = std::stoi(result);
 
         data.push_back({board, res});
 

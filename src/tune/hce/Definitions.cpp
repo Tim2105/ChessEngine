@@ -17,6 +17,7 @@ size_t numEpochs = 500;
 size_t noImprovementPatience = 10;
 size_t batchSize = 512;
 double epsilon = 1e-8;
+double gamma = 0.95;
 
 double evolutionDefaultVariance = 2;
 double evolutionLinearVariance = 0.02;
