@@ -40,14 +40,12 @@ extern size_t numEpochs;
 extern size_t noImprovementPatience;
 extern size_t batchSize;
 extern double epsilon;
-extern double gamma;
+extern double discount;
 
 /**
  * Variablen des Lernalgorithmus.
  */
 
-extern double evolutionDefaultVariance;
-extern double evolutionLinearVariance;
 extern size_t numGenerations;
 
 #endif

@@ -107,12 +107,12 @@ void HCEParameters::displayParameters(std::ostream& os) const {
 
     os << "]\n";
 
-    // os << "Piece Imbalance Values: [\n";
-    // for(size_t i = 1; i < 5; i++)
-    //     for(size_t j = 0; j < i; j++)
-    //         os << std::setw(4) << pieceValues[i * (i - 1) / 2 + j] << (j == i - 1 ? "\n" : ", ");
+    os << "Piece Imbalance Values: [\n";
+    for(size_t i = 1; i < 5; i++)
+        for(size_t j = 0; j < i; j++)
+            os << std::setw(4) << pieceImbalanceValues[i * (i - 1) / 2 + j] << (j == i - 1 ? "\n" : ", ");
 
-    // os << "]\n";
+    os << "]\n";
 
     os << "Pawn PSQT MG: [\n";
     for(size_t i = 0; i < 8; i++) {

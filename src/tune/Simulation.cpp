@@ -119,14 +119,14 @@ void Simulation::run() {
             Board& board = startingPositions[index];
             lock.unlock();
 
-            GameResult result = simulateSingleGame(board);
-            results[index] = result;
-
-            if(index % 10 == 0 && index != 0) {
+            if(index % 10 == 9) {
                 std::stringstream ss;
-                ss << "\rRemaining games: " << std::left << std::setw(7) << index;
+                ss << "\rRemaining games: " << std::left << std::setw(7) << index + 1;
                 std::cout << ss.str() << std::flush;
             }
+
+            GameResult result = simulateSingleGame(board);
+            results[index] = result;
         }
     };
 

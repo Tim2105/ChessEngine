@@ -32,7 +32,7 @@ namespace Tune {
         return (x - y) * (x - y);
     }
 
-    double loss(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k) {
+    double loss(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k, double discount) {
         double sum = 0;
 
         // Initialisiere Objekte, die dem Konstruktor der Suchinstanz übergeben werden müssen
@@ -57,9 +57,9 @@ namespace Tune {
             if(dp.result == 0)
                 trueValue = 0.0;
             else if(dp.result > 0)
-                trueValue = std::pow(gamma, dp.result);
+                trueValue = std::pow(discount, dp.result);
             else
-                trueValue = -std::pow(gamma, -dp.result);
+                trueValue = -std::pow(discount, -dp.result);
 
             // Berechne den Fehler
             sum += mse(prediction, trueValue);
@@ -68,7 +68,7 @@ namespace Tune {
         return sum / indices.size();
     }
 
-    double loss(std::vector<DataPoint>& data, const HCEParameters& hceParams, double k) {
+    double loss(std::vector<DataPoint>& data, const HCEParameters& hceParams, double k, double discount) {
         std::atomic<double> sum = 0;
 
         size_t currIndex = 0;
@@ -107,9 +107,9 @@ namespace Tune {
                     if(dp.result == 0)
                         trueValue = 0.0;
                     else if(dp.result > 0)
-                        trueValue = std::pow(gamma, dp.result);
+                        trueValue = std::pow(discount, dp.result);
                     else
-                        trueValue = -std::pow(gamma, -dp.result);
+                        trueValue = -std::pow(discount, -dp.result);
 
                     // Berechne den Fehler
                     double l = mse(prediction, trueValue);
@@ -137,7 +137,7 @@ namespace Tune {
         return sum / data.size();
     }
 
-    std::vector<double> gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k) {
+    std::vector<double> gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k, double discount) {
         // Rückgabevektor initialisieren
         std::vector<double> grad(hceParams.size(), 0);
 
@@ -145,7 +145,7 @@ namespace Tune {
         std::mutex mutex;
 
         // Berechne den aktuellen Fehler der zu betrachtenden Datenpunkte
-        double currLoss = loss(data, indices, hceParams, k);
+        double currLoss = loss(data, indices, hceParams, k, discount);
 
         auto threadFunc = [&]() {
             // Sperre den Mutex um den nächsten Parameter zu extrahieren
@@ -165,7 +165,7 @@ namespace Tune {
                 hceParamsCopy[i] += 1;
                 hceParamsCopy.unpackPSQT();
 
-                double l = loss(data, indices, hceParamsCopy, k);
+                double l = loss(data, indices, hceParamsCopy, k, discount);
                 grad[i] = l - currLoss;
 
                 // Sperre den Mutex um den nächsten Parameter zu extrahieren
@@ -226,10 +226,10 @@ namespace Tune {
         // Iteriere über die Epochen
         for(size_t epoch = 0; epoch < numEpochs; epoch++) {
             // Berechne den Fehler
-            double loss = Tune::loss(validationData, currentParams, k);
+            double loss = Tune::loss(validationData, currentParams, k, discount);
 
             if(epoch == 0)
-                std::cout << "Initial val loss: " << loss << std::flush;
+                std::cout << "Initial val loss: " << std::fixed << std::setprecision(7) << loss << std::flush;
 
             if(epoch % 10 == 1)
                 std::cout << std::endl << "Epoch: " << std::left << std::setw(4) << epoch;
@@ -237,7 +237,7 @@ namespace Tune {
                 std::cout << "\rEpoch: " << std::left << std::setw(4) << epoch;
 
             if(epoch != 0)
-                std::cout << " Val loss: " << std::setw(10) << std::fixed << std::setprecision(6) << loss << std::right << std::flush;
+                std::cout << " Val loss: " << std::setw(10) << std::fixed << std::setprecision(7) << loss << std::right << std::flush;
 
             // Überprüfe, ob der Fehler besser ist
             if(loss < bestLoss) {
@@ -260,7 +260,7 @@ namespace Tune {
                 i = dist(gen);
 
             // Berechne den Gradienten
-            grad = Tune::gradient(data, indices, currentParams, k);
+            grad = Tune::gradient(data, indices, currentParams, k, discount);
 
             // Berechne die Gradientenquadratsumme
             for(size_t i = 0; i < currentParams.size(); i++)
@@ -286,8 +286,8 @@ namespace Tune {
             currentParams.unpackPSQT();
         }
 
-        double loss = Tune::loss(validationData, bestParams, k);
-        std::cout << std::endl << "Final val loss: " << loss << std::endl;
+        double loss = Tune::loss(validationData, bestParams, k, discount);
+        std::cout << std::endl << "Final val loss: " << std::fixed << std::setprecision(7) << loss << std::endl;
 
         return bestParams;
     }

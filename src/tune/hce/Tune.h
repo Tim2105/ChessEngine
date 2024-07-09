@@ -17,9 +17,10 @@ namespace Tune {
      * @param indices Die Indizes der Datenpunkte, die für die Berechnung des Fehlers verwendet werden sollen.
      * @param hceParams Der Parametersatz.
      * @param k Ein Faktor, der mit dem Argument der Sigmoid-Funktion multipliziert wird.
+     * @param discount Der Discount-Faktor.
      * @return double Der mittlere quadratische Fehler.
      */
-    double loss(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k);
+    double loss(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k, double discount);
 
     /**
      * @brief Bestimmt den MSE eines Parametersatzes auf einem Datensatz.
@@ -29,9 +30,10 @@ namespace Tune {
      * @param data Der Datensatz.
      * @param hceParams Der Parametersatz.
      * @param k Ein Faktor, der mit dem Argument der Sigmoid-Funktion multipliziert wird.
+     * @param discount Der Discount-Faktor.
      * @return double Der mittlere quadratische Fehler.
      */
-    double loss(std::vector<DataPoint>& data, const HCEParameters& hceParams, double k);
+    double loss(std::vector<DataPoint>& data, const HCEParameters& hceParams, double k, double discount);
 
     /**
      * @brief Berechnet den Gradienten des MSE eines Parametersatzes auf einem Datensatz.
@@ -42,9 +44,10 @@ namespace Tune {
      * @param indices Die Indizes der Datenpunkte, die für die Berechnung des Gradienten verwendet werden sollen.
      * @param hceParams Der Parametersatz.
      * @param k Ein Faktor, der mit dem Argument der Sigmoid-Funktion multipliziert wird.
+     * @param discount Der Discount-Faktor.
      * @return std::vector<double> Der Gradient.
      */
-    std::vector<double> gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k);
+    std::vector<double> gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k, double discount);
 
     /**
      * @brief Verbessert die Parameter eines HCE-Modells über die AdaGrad-Methode.

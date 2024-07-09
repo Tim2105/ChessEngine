@@ -30,6 +30,8 @@ void findOptimalK();
 
 void gradientDescent();
 
+void learn();
+
 void displayFinalEpoch();
 
 void setParameter(std::string parameter, std::string value) {
@@ -54,8 +56,8 @@ void setParameter(std::string parameter, std::string value) {
             k = std::stod(value);
         else if(parameter == "epsilon")
             epsilon = std::stod(value);
-        else if(parameter == "gamma")
-            gamma = std::stod(value);
+        else if(parameter == "discount")
+            discount = std::stod(value);
         else if(parameter == "validationSplit")
             validationSplit = std::stod(value);
         else if(parameter == "noImprovementPatience")
@@ -66,10 +68,6 @@ void setParameter(std::string parameter, std::string value) {
             startingMovesMean = std::stod(value);
         else if(parameter == "startingMovesStdDev")
             startingMovesStdDev = std::stod(value);
-        else if(parameter == "evolutionDefaultVariance")
-            evolutionDefaultVariance = std::stod(value);
-        else if(parameter == "evolutionLinearVariance")
-            evolutionLinearVariance = std::stod(value);
         else if(parameter == "numGenerations")
             numGenerations = std::stoi(value);
         else
@@ -95,8 +93,6 @@ void displayParameters() {
     std::cout << "startOutputAtMove: " << startOutputAtMove << std::endl;
     std::cout << "startingMovesMean: " << startingMovesMean << std::endl;
     std::cout << "startingMovesStdDev: " << startingMovesStdDev << std::endl;
-    std::cout << "evolutionDefaultVariance: " << evolutionDefaultVariance << std::endl;
-    std::cout << "evolutionLinearVariance: " << evolutionLinearVariance << std::endl;
     std::cout << "numGenerations: " << numGenerations << std::endl;
 }
 
@@ -121,6 +117,8 @@ int main() {
             findOptimalK();
         else if(input == "grad")
             gradientDescent();
+        else if(input == "learn")
+            learn();
         else if(input == "dpParams")
             displayFinalEpoch();
         else if(input == "dp")
@@ -179,10 +177,12 @@ void simulateGames(size_t n, std::istream& pgnFile, std::ostream& outFile) {
         int32_t outputSize = std::max(0, startingPositions[i].getAge() - startOutputAtMove);
         output.resize(outputSize);
 
+        int32_t numPlayedMoves = startingPositions[i].getAge();
+
         for(int32_t j = startingPositions[i].getAge(); j > startOutputAtMove; j--) {
             std::stringstream ss;
             ss << startingPositions[i].toFEN() << ";";
-            int32_t gameEndsIn = startingPositions[i].getAge() - j;
+            int32_t gameEndsIn = numPlayedMoves - j + 1;
             switch(results[i]) {
                 case WHITE_WIN:
                     if(startingPositions[i].getSideToMove() == WHITE)
@@ -255,21 +255,20 @@ void findOptimalK() {
     std::vector<DataPoint> data = loadData(samplesFile);
     samplesFile.close();
 
-    double k = 0;
-    double bestLoss = std::numeric_limits<double>::max();
+    double prevLoss = std::numeric_limits<double>::max(), loss = 1.0;
+    int32_t i = 1;
 
-    for(int32_t i = 1; i < 81; i++) {
-        double newK = 2e-6 * i * i;
-        double newLoss = Tune::loss(data, HCE_PARAMS, newK);
+    while(loss < prevLoss) {
+        prevLoss = loss;
+        double newK = 1e-6 * i * i;
 
-        if(newLoss < bestLoss) {
-            bestLoss = newLoss;
-            k = newK;
-        }
+        loss = Tune::loss(data, HCE_PARAMS, newK, discount);
 
         std::stringstream ss;
-        ss << "\r(" << i << "/" << 80 << ") Best loss: " << bestLoss << " with k = " << k;
+        ss << "\r(" << i << ") Loss: " << loss << " with k = " << newK << " at discount = " << discount;
         std::cout << std::left << std::setw(50) << ss.str() << std::right << std::flush;
+
+        i++;
     }
 
     std::cout << std::endl;
@@ -288,6 +287,81 @@ void gradientDescent() {
     bestHCEParams.saveParameters(outFile);
 
     std::cout << "Finished training" << std::endl;
+}
+
+void learn() {
+    HCEParameters currentHCEParams, oldHCEParams;
+    std::ifstream pgnFile(pgnFilePath);
+
+    std::random_device rd;
+    std::default_random_engine generator(rd());
+
+    std::normal_distribution<double> startingMovesDist(startingMovesMean, startingMovesStdDev);
+
+    for(size_t i = 0; i < numGenerations; i++) {
+        if(i > 0)
+            std::cout << "\n\n";
+
+        std::cout << "Generation " << i + 1 << " / " << numGenerations << std::endl;
+
+        std::vector<Board> startingPositions;
+        for(size_t i = 0; i < numGames; i++) {
+            size_t startingMoves = (size_t)startingMovesDist(generator);
+            startingPositions.push_back(std::get<0>(Board::fromPGN(pgnFile, startingMoves)));
+        }
+
+        Simulation sim(startingPositions, timeControl, increment);
+        sim.setWhiteParams(currentHCEParams);
+        sim.setBlackParams(oldHCEParams);
+        sim.run();
+
+        std::vector<GameResult> results = sim.getResults();
+
+        std::vector<DataPoint> data;
+
+        for(size_t i = 0; i < startingPositions.size(); i++) {
+            int32_t numPlayedMoves = startingPositions[i].getAge();
+
+            for(int32_t j = startingPositions[i].getAge(); j > startOutputAtMove; j--) {
+                DataPoint dp;
+                dp.board = startingPositions[i];
+                dp.result = 0;
+
+                int32_t gameEndsIn = numPlayedMoves - j + 1;
+                switch(results[i]) {
+                    case WHITE_WIN:
+                        if(startingPositions[i].getSideToMove() == WHITE)
+                            dp.result = gameEndsIn;
+                        else
+                            dp.result = -gameEndsIn;
+                        break;
+                    case BLACK_WIN:
+                        if(startingPositions[i].getSideToMove() == BLACK)
+                            dp.result = gameEndsIn;
+                        else
+                            dp.result = -gameEndsIn;
+                        break;
+                    case DRAW:
+                        dp.result = 0;
+                        break;
+                }
+
+                data.push_back(dp);
+
+                startingPositions[i].undoMove();
+            }
+        }
+
+        oldHCEParams = currentHCEParams;
+        currentHCEParams = Tune::adaGrad(data, currentHCEParams);
+    }
+
+    std::ofstream outFile("data/epochFinal.hce");
+    currentHCEParams.saveParameters(outFile);
+
+    std::cout << "Finished training" << std::endl;
+
+    pgnFile.close();
 }
 
 void displayFinalEpoch() {
