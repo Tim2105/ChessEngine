@@ -240,15 +240,11 @@ void HandcraftedEvaluator::calculatePawnScore() {
     score.mg += hceParams.getMGDoubledPawnPenalty() * (doubledWhitePawns.popcount() - doubledBlackPawns.popcount());
     score.eg += hceParams.getEGDoubledPawnPenalty() * (doubledWhitePawns.popcount() - doubledBlackPawns.popcount());
 
-    // Bauerninseln
-    uint32_t whitePawnOnFile = (uint8_t)whitePawns.extrudeSouth().toU64();
-    uint32_t blackPawnOnFile = (uint8_t)blackPawns.extrudeSouth().toU64();
-
-    int32_t whitePawnIslands = std::popcount(~whitePawnOnFile & (whitePawnOnFile << 1));
-    int32_t blackPawnIslands = std::popcount(~blackPawnOnFile & (blackPawnOnFile << 1));
-
-    score.mg += hceParams.getMGPawnIslandPenalty() * (whitePawnIslands - blackPawnIslands);
-    score.eg += hceParams.getEGPawnIslandPenalty() * (whitePawnIslands - blackPawnIslands);
+    // Isolierte Bauern
+    Bitboard isolatedWhitePawns = ~whitePawnsWestEast.extrudeVertically() & whitePawns;
+    Bitboard isolatedBlackPawns = ~blackPawnsWestEast.extrudeVertically() & blackPawns;
+    score.mg += hceParams.getMGIsolatedPawnPenalty() * (isolatedWhitePawns.popcount() - isolatedBlackPawns.popcount());
+    score.eg += hceParams.getEGIsolatedPawnPenalty() * (isolatedWhitePawns.popcount() - isolatedBlackPawns.popcount());
 
     // Rückständige Bauern
     Bitboard backwardWhitePawns = whitePawns & ~whitePawnsWestEast & whitePawnsWestEast.extrudeSouth() & (blackPawns | blackPawnAttacks).shiftSouth() & ~whitePawnAttacks.extrudeNorth();
@@ -666,7 +662,7 @@ Score HandcraftedEvaluator::evaluatePieceMobility() {
         if(numAttacks == 0)
             score += {hceParams.getMGPieceNoMobilityPenalty(KNIGHT), hceParams.getEGPieceNoMobilityPenalty(KNIGHT)};
         else {
-            numAttacks = (16 - std::countl_zero((uint16_t)(numAttacks * numAttacks))) * hceParams.getMGPieceMobilityBonus(KNIGHT);
+            numAttacks = std::sqrt(numAttacks);
             score += {numAttacks * hceParams.getMGPieceMobilityBonus(KNIGHT), numAttacks * hceParams.getEGPieceMobilityBonus(KNIGHT)};
         }
     }
@@ -680,7 +676,7 @@ Score HandcraftedEvaluator::evaluatePieceMobility() {
         if(numAttacks == 0)
             score -= {hceParams.getMGPieceNoMobilityPenalty(KNIGHT), hceParams.getEGPieceNoMobilityPenalty(KNIGHT)};
         else {
-            numAttacks = (16 - std::countl_zero((uint16_t)(numAttacks * numAttacks))) * hceParams.getMGPieceMobilityBonus(KNIGHT);
+            numAttacks = std::sqrt(numAttacks);
             score -= {numAttacks * hceParams.getMGPieceMobilityBonus(KNIGHT), numAttacks * hceParams.getEGPieceMobilityBonus(KNIGHT)};
         }
     }
@@ -694,7 +690,7 @@ Score HandcraftedEvaluator::evaluatePieceMobility() {
         if(numAttacks == 0)
             score += {hceParams.getMGPieceNoMobilityPenalty(BISHOP), hceParams.getEGPieceNoMobilityPenalty(BISHOP)};
         else {
-            numAttacks = (16 - std::countl_zero((uint16_t)(numAttacks * numAttacks))) * hceParams.getMGPieceMobilityBonus(BISHOP);
+            numAttacks = std::sqrt(numAttacks);
             score += {numAttacks * hceParams.getMGPieceMobilityBonus(BISHOP), numAttacks * hceParams.getEGPieceMobilityBonus(BISHOP)};
         }
     }
@@ -708,7 +704,7 @@ Score HandcraftedEvaluator::evaluatePieceMobility() {
         if(numAttacks == 0)
             score -= {hceParams.getMGPieceNoMobilityPenalty(BISHOP), hceParams.getEGPieceNoMobilityPenalty(BISHOP)};
         else {
-            numAttacks = (16 - std::countl_zero((uint16_t)(numAttacks * numAttacks))) * hceParams.getMGPieceMobilityBonus(BISHOP);
+            numAttacks = std::sqrt(numAttacks);
             score -= {numAttacks * hceParams.getMGPieceMobilityBonus(BISHOP), numAttacks * hceParams.getEGPieceMobilityBonus(BISHOP)};
         }
     }
@@ -725,7 +721,7 @@ Score HandcraftedEvaluator::evaluatePieceMobility() {
         if(numAttacks == 0)
             score += {hceParams.getMGPieceNoMobilityPenalty(ROOK), hceParams.getEGPieceNoMobilityPenalty(ROOK)};
         else {
-            numAttacks = (16 - std::countl_zero((uint16_t)(numAttacks * numAttacks))) * hceParams.getMGPieceMobilityBonus(ROOK);
+            numAttacks = std::sqrt(numAttacks);
             score += {numAttacks * hceParams.getMGPieceMobilityBonus(ROOK), numAttacks * hceParams.getEGPieceMobilityBonus(ROOK)};
         }
     }
@@ -739,7 +735,7 @@ Score HandcraftedEvaluator::evaluatePieceMobility() {
         if(numAttacks == 0)
             score -= {hceParams.getMGPieceNoMobilityPenalty(ROOK), hceParams.getEGPieceNoMobilityPenalty(ROOK)};
         else {
-            numAttacks = (16 - std::countl_zero((uint16_t)(numAttacks * numAttacks))) * hceParams.getMGPieceMobilityBonus(ROOK);
+            numAttacks = std::sqrt(numAttacks);
             score -= {numAttacks * hceParams.getMGPieceMobilityBonus(ROOK), numAttacks * hceParams.getEGPieceMobilityBonus(ROOK)};
         }
     }
@@ -757,7 +753,7 @@ Score HandcraftedEvaluator::evaluatePieceMobility() {
         if(numAttacks == 0)
             score += {hceParams.getMGPieceNoMobilityPenalty(QUEEN), hceParams.getEGPieceNoMobilityPenalty(QUEEN)};
         else {
-            numAttacks = (16 - std::countl_zero((uint16_t)(numAttacks * numAttacks))) * hceParams.getMGPieceMobilityBonus(QUEEN);
+            numAttacks = std::sqrt(numAttacks);
             score += {numAttacks * hceParams.getMGPieceMobilityBonus(QUEEN), numAttacks * hceParams.getEGPieceMobilityBonus(QUEEN)};
         }
     }
@@ -772,7 +768,7 @@ Score HandcraftedEvaluator::evaluatePieceMobility() {
         if(numAttacks == 0)
             score -= {hceParams.getMGPieceNoMobilityPenalty(QUEEN), hceParams.getEGPieceNoMobilityPenalty(QUEEN)};
         else {
-            numAttacks = (16 - std::countl_zero((uint16_t)(numAttacks * numAttacks))) * hceParams.getMGPieceMobilityBonus(QUEEN);
+            numAttacks = std::sqrt(numAttacks);
             score -= {numAttacks * hceParams.getMGPieceMobilityBonus(QUEEN), numAttacks * hceParams.getEGPieceMobilityBonus(QUEEN)};
         }
     }

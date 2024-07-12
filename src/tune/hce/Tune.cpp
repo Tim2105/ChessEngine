@@ -228,16 +228,22 @@ namespace Tune {
             // Berechne den Fehler
             double loss = Tune::loss(validationData, currentParams, k, discount);
 
-            if(epoch == 0)
-                std::cout << "Initial val loss: " << std::fixed << std::setprecision(7) << loss << std::flush;
+            if(epoch == 0) {
+                size_t currPrecision = std::cout.precision();
+                std::cout << "Initial val loss: " << std::fixed << std::setprecision(7) << loss << std::endl;
+                std::cout.precision(currPrecision);
+            }
 
             if(epoch % 10 == 1)
                 std::cout << std::endl << "Epoch: " << std::left << std::setw(4) << epoch;
             else if(epoch != 0)
                 std::cout << "\rEpoch: " << std::left << std::setw(4) << epoch;
 
-            if(epoch != 0)
+            if(epoch != 0) {
+                size_t currPrecision = std::cout.precision();
                 std::cout << " Val loss: " << std::setw(10) << std::fixed << std::setprecision(7) << loss << std::right << std::flush;
+                std::cout.precision(currPrecision);
+            }
 
             // Überprüfe, ob der Fehler besser ist
             if(loss < bestLoss) {
@@ -287,7 +293,9 @@ namespace Tune {
         }
 
         double loss = Tune::loss(validationData, bestParams, k, discount);
+        size_t currPrecision = std::cout.precision();
         std::cout << std::endl << "Final val loss: " << std::fixed << std::setprecision(7) << loss << std::endl;
+        std::cout.precision(currPrecision);
 
         return bestParams;
     }

@@ -28,6 +28,10 @@ class Simulation {
         std::optional<HCEParameters> whiteParams;
         std::optional<HCEParameters> blackParams;
 
+        bool addParameterNoise;
+        double noiseStdDev;
+        double noiseLinearStdDev;
+
         GameResult simulateSingleGame(Board& board);
 
         static constexpr int32_t DECISIVE_SCORE = 20000; // Matt
@@ -48,6 +52,20 @@ class Simulation {
 
         inline void setBlackParams(const HCEParameters& params) {
             blackParams = params;
+        }
+
+        inline void setParameterNoise(double stdDev) {
+            addParameterNoise = true;
+            noiseStdDev = stdDev;
+        }
+
+        inline void setLinearParameterNoise(double stdDev) {
+            addParameterNoise = true;
+            noiseLinearStdDev = stdDev;
+        }
+
+        inline void setNoParameterNoise() {
+            addParameterNoise = false;
         }
 };
 

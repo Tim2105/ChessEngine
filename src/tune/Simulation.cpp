@@ -9,6 +9,7 @@
 #include <chrono>
 #include <iomanip>
 #include <iostream>
+#include <random>
 #include <thread>
 
 Simulation::Simulation(std::vector<Board>& startingPositions, uint32_t timeControl, uint32_t increment) :
@@ -20,7 +21,8 @@ Simulation::Simulation(std::vector<Board>& startingPositions, uint32_t timeContr
 }
 
 Simulation::Simulation(std::vector<Board>& startingPositions, uint32_t timeControl, uint32_t increment, size_t numThreads):
-    startingPositions(startingPositions), timeControl(timeControl), increment(increment), numThreads(std::max(numThreads, (size_t)1)) {
+    startingPositions(startingPositions), timeControl(timeControl), increment(increment), numThreads(std::max(numThreads, (size_t)1)),
+    addParameterNoise(false), noiseStdDev(0.0), noiseLinearStdDev(0.0) {
 
     results.resize(startingPositions.size());
 }
@@ -33,6 +35,18 @@ GameResult Simulation::simulateSingleGame(Board& board) {
 
     HCEParameters whiteParameters = whiteParams.value_or(HCEParameters());
     HCEParameters blackParameters = blackParams.value_or(HCEParameters());
+
+    if(addParameterNoise) {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::normal_distribution<double> defaultDist(0.0, noiseStdDev);
+        std::normal_distribution<double> linearDist(0.0, noiseLinearStdDev);
+
+        for(size_t i = 0; i < whiteParameters.size(); i++) {
+            whiteParameters[i] = std::round(whiteParameters[i] + defaultDist(gen) + linearDist(gen) * std::abs(whiteParameters[i]));
+            blackParameters[i] = std::round(blackParameters[i] + defaultDist(gen) + linearDist(gen) * std::abs(blackParameters[i]));
+        }
+    }
 
     PVSEngine white(board, whiteParameters);
     PVSEngine black(board, blackParameters);

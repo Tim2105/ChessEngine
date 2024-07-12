@@ -231,8 +231,8 @@ void HCEParameters::displayParameters(std::ostream& os) const {
 
     os << "Doubled Pawn Penalty MG: " << mgDoubledPawnPenalty << "\n";
     os << "Doubled Pawn Penalty EG: " << egDoubledPawnPenalty << "\n";
-    os << "Pawn Island Penalty MG: " << mgPawnIslandPenalty << "\n";
-    os << "Pawn Island Penalty EG: " << egPawnIslandPenalty << "\n";
+    os << "Isolated Pawn Penalty MG: " << mgIsolatedPawnPenalty << "\n";
+    os << "Isolated Pawn Penalty EG: " << egIsolatedPawnPenalty << "\n";
     os << "Backward Pawn Penalty MG: " << mgBackwardPawnPenalty << "\n";
     os << "Backward Pawn Penalty EG: " << egBackwardPawnPenalty << "\n";
 

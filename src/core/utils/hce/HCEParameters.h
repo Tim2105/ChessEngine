@@ -220,8 +220,8 @@ class HCEParameters {
         }; // pro Rang (2 - 7)
         int16_t mgDoubledPawnPenalty = -12;
         int16_t egDoubledPawnPenalty = -22;
-        int16_t mgPawnIslandPenalty = -7;
-        int16_t egPawnIslandPenalty = -16;
+        int16_t mgIsolatedPawnPenalty = -7;
+        int16_t egIsolatedPawnPenalty = -16;
         int16_t mgBackwardPawnPenalty = -20;
         int16_t egBackwardPawnPenalty = -10;
         int16_t mgPassedPawnBonus[6] = {
@@ -460,8 +460,8 @@ class HCEParameters {
         inline int16_t getMGDoubledPawnPenalty() const { return mgDoubledPawnPenalty; }
         inline int16_t getEGDoubledPawnPenalty() const { return egDoubledPawnPenalty; }
 
-        inline int16_t getMGPawnIslandPenalty() const { return mgPawnIslandPenalty; }
-        inline int16_t getEGPawnIslandPenalty() const { return egPawnIslandPenalty; }
+        inline int16_t getMGIsolatedPawnPenalty() const { return mgIsolatedPawnPenalty; }
+        inline int16_t getEGIsolatedPawnPenalty() const { return egIsolatedPawnPenalty; }
 
         inline int16_t getMGBackwardPawnPenalty() const { return mgBackwardPawnPenalty; }
         inline int16_t getEGBackwardPawnPenalty() const { return egBackwardPawnPenalty; }

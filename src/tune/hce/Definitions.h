@@ -28,6 +28,9 @@ extern size_t startingMovesStdDev;
 extern uint32_t timeControl;
 extern uint32_t increment;
 extern int32_t startOutputAtMove;
+extern bool useNoisyParameters;
+extern double noiseDefaultStdDev;
+extern double noiseLinearStdDev;
 
 /**
  * Variablen des Trainings.
@@ -41,11 +44,5 @@ extern size_t noImprovementPatience;
 extern size_t batchSize;
 extern double epsilon;
 extern double discount;
-
-/**
- * Variablen des Lernalgorithmus.
- */
-
-extern size_t numGenerations;
 
 #endif
