@@ -14,7 +14,7 @@ std::ostream& operator<<(std::ostream& os, const Bitboard& bitboard) {
     return os;
 }
 
-Bitboard diagonalAttackUntilBlocked(int32_t sq, Bitboard targets, Bitboard occupied) {
+Bitboard diagonalAttackUntilBlocked(int sq, Bitboard targets, Bitboard occupied) {
     Bitboard attackBitboard;
 
     // Schließe die Targets aus dem Belegboard aus
@@ -45,7 +45,7 @@ Bitboard diagonalAttackUntilBlocked(int32_t sq, Bitboard targets, Bitboard occup
     return attackBitboard;
 }
 
-Bitboard horizontalAttackUntilBlocked(int32_t sq, Bitboard targets, Bitboard occupied) {
+Bitboard horizontalAttackUntilBlocked(int sq, Bitboard targets, Bitboard occupied) {
     Bitboard attackBitboard;
 
     // Schließe die Targets aus dem Belegboard aus
@@ -76,10 +76,10 @@ Bitboard horizontalAttackUntilBlocked(int32_t sq, Bitboard targets, Bitboard occ
     return attackBitboard;
 }
 
-int32_t getDiagonallyPinnedToSquare(int32_t sq, Bitboard ownPieces,
-                                    Bitboard enemyPieces, Bitboard occupied,
-                                    int32_t* pinnedSquares, int32_t* pinnedDirections) {
-    int32_t numPins = 0;
+int getDiagonallyPinnedToSquare(int sq, Bitboard ownPieces,
+                                Bitboard enemyPieces, Bitboard occupied,
+                                int* pinnedSquares, int* pinnedDirections) {
+    int numPins = 0;
 
     Bitboard bishopAttacks = Magics::lookupBishopAttacks(sq, occupied);
 
@@ -126,11 +126,11 @@ int32_t getDiagonallyPinnedToSquare(int32_t sq, Bitboard ownPieces,
     return numPins;
 }
 
-int32_t getHorizontallyPinnedToSquare(int32_t sq, Bitboard ownPieces,
-                                    Bitboard enemyPieces, Bitboard occupied,
-                                    int32_t* pinnedSquares, int32_t* pinnedDirections) {
+int getHorizontallyPinnedToSquare(int sq, Bitboard ownPieces,
+                                  Bitboard enemyPieces, Bitboard occupied,
+                                  int* pinnedSquares, int* pinnedDirections) {
     
-    int32_t numPins = 0;
+    int numPins = 0;
 
     Bitboard rookAttacks = Magics::lookupRookAttacks(sq, occupied);
 

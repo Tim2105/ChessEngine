@@ -12,57 +12,57 @@ class Movegen {
     struct PrecomputedInfo {
         Bitboard pinnedPieces;
         Bitboard attackingRays;
-        const Array<int32_t, 64>& pinDirections;
-        int32_t numAttackers;
+        const Array<int, 64>& pinDirections;
+        int numAttackers;
     };
 
     public:
-        template <int32_t color>
+        template <int color>
         static void generateLegalMoves(const Board& board, Array<Move, 256>& moves,
-                                int32_t numAttackers, Bitboard attackingRays,
-                                Bitboard pinnedPieces, const Array<int32_t, 64>& pinDirections) noexcept;
+                                int numAttackers, Bitboard attackingRays,
+                                Bitboard pinnedPieces, const Array<int, 64>& pinDirections) noexcept;
 
-        template <int32_t color>
+        template <int color>
         static void generateLegalCaptures(const Board& board, Array<Move, 256>& moves,
-                                int32_t numAttackers, Bitboard attackingRays,
-                                Bitboard pinnedPieces, const Array<int32_t, 64>& pinDirections) noexcept;
+                                int numAttackers, Bitboard attackingRays,
+                                Bitboard pinnedPieces, const Array<int, 64>& pinDirections) noexcept;
 
     private:
-        template <int32_t color, bool checkEnPassant>
+        template <int color, bool checkEnPassant>
         static inline void generatePawnMoves(const Board& board, Array<Move, 256>& moves, const PrecomputedInfo& precomputedInfo) noexcept;
 
-        template <int32_t color>
+        template <int color>
         static inline void generateKnightMoves(const Board& board, Array<Move, 256>& moves, const PrecomputedInfo& precomputedInfo) noexcept;
 
-        template <int32_t color>
+        template <int color>
         static inline void generateDiagonalSlidingMoves(const Board& board, Array<Move, 256>& moves, const PrecomputedInfo& precomputedInfo) noexcept;
 
-        template <int32_t color>
+        template <int color>
         static inline void generateHorizontalSlidingMoves(const Board& board, Array<Move, 256>& moves, const PrecomputedInfo& precomputedInfo) noexcept;
 
-        template <int32_t color>
+        template <int color>
         static inline void generateKingMoves(const Board& board, Array<Move, 256>& moves) noexcept;
 
-        template <int32_t color, bool checkEnPassant>
+        template <int color, bool checkEnPassant>
         static inline void generatePawnCaptures(const Board& board, Array<Move, 256>& moves, const PrecomputedInfo& precomputedInfo) noexcept;
 
-        template <int32_t color>
+        template <int color>
         static inline void generateKnightCaptures(const Board& board, Array<Move, 256>& moves, const PrecomputedInfo& precomputedInfo) noexcept;
 
-        template <int32_t color>
+        template <int color>
         static inline void generateDiagonalSlidingCaptures(const Board& board, Array<Move, 256>& moves, const PrecomputedInfo& precomputedInfo) noexcept;
 
-        template <int32_t color>
+        template <int color>
         static inline void generateHorizontalSlidingCaptures(const Board& board, Array<Move, 256>& moves, const PrecomputedInfo& precomputedInfo) noexcept;
 
-        template <int32_t color>
+        template <int color>
         static inline void generateKingCaptures(const Board& board, Array<Move, 256>& moves) noexcept;
 };
 
-template <int32_t color>
+template <int color>
 void Movegen::generateLegalMoves(const Board& board, Array<Move, 256>& moves,
-                                 int32_t numAttackers, Bitboard attackingRays,
-                                 Bitboard pinnedPieces, const Array<int32_t, 64>& pinDirections) noexcept {
+                                 int numAttackers, Bitboard attackingRays,
+                                 Bitboard pinnedPieces, const Array<int, 64>& pinDirections) noexcept {
 
     PrecomputedInfo info = {pinnedPieces, attackingRays, pinDirections, numAttackers};
 
@@ -81,10 +81,10 @@ void Movegen::generateLegalMoves(const Board& board, Array<Move, 256>& moves,
     generateKingMoves<color>(board, moves);
 }
 
-template <int32_t color>
+template <int color>
 void Movegen::generateLegalCaptures(const Board& board, Array<Move, 256>& moves,
-                                    int32_t numAttackers, Bitboard attackingRays,
-                                    Bitboard pinnedPieces, const Array<int32_t, 64>& pinDirections) noexcept {
+                                    int numAttackers, Bitboard attackingRays,
+                                    Bitboard pinnedPieces, const Array<int, 64>& pinDirections) noexcept {
 
     PrecomputedInfo info = {pinnedPieces, attackingRays, pinDirections, numAttackers};
 
@@ -103,15 +103,15 @@ void Movegen::generateLegalCaptures(const Board& board, Array<Move, 256>& moves,
     generateKingCaptures<color>(board, moves);
 }
 
-template <int32_t color, bool checkEnPassant>
+template <int color, bool checkEnPassant>
 inline void Movegen::generatePawnMoves(const Board& board, Array<Move, 256>& moves, const PrecomputedInfo& precomputedInfo) noexcept {
-    constexpr int32_t pawnPiece = color == WHITE ? WHITE_PAWN : BLACK_PAWN;
-    constexpr int32_t forw = color == WHITE ? NORTH : SOUTH;
-    constexpr int32_t forw2 = color == WHITE ? 2 * NORTH : 2 * SOUTH;
-    constexpr int32_t startingRank = color == WHITE ? RANK_2 : RANK_7;
-    constexpr int32_t promotionRank = color == WHITE ? RANK_7 : RANK_2;
-    constexpr int32_t ownColor = color == WHITE ? WHITE : BLACK;
-    constexpr int32_t enPasRankReq = color == WHITE ? RANK_5 : RANK_4;
+    constexpr int pawnPiece = color == WHITE ? WHITE_PAWN : BLACK_PAWN;
+    constexpr int forw = color == WHITE ? NORTH : SOUTH;
+    constexpr int forw2 = color == WHITE ? 2 * NORTH : 2 * SOUTH;
+    constexpr int startingRank = color == WHITE ? RANK_2 : RANK_7;
+    constexpr int promotionRank = color == WHITE ? RANK_7 : RANK_2;
+    constexpr int ownColor = color == WHITE ? WHITE : BLACK;
+    constexpr int enPasRankReq = color == WHITE ? RANK_5 : RANK_4;
 
     Bitboard enemyPieces = color == WHITE ? board.pieceBitboard[BLACK] : board.pieceBitboard[WHITE];
     
@@ -120,10 +120,10 @@ inline void Movegen::generatePawnMoves(const Board& board, Array<Move, 256>& mov
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Bauer den Angreifer schlagen oder sich dazwischen stellen
     if(precomputedInfo.numAttackers == 1) {
         while(pawns) {
-            int32_t sq = pawns.popFSB();
-            int32_t rank = SQ2R(sq);
-            int32_t forwSq = sq + forw;
-            int32_t forw2Sq = sq + forw2;
+            int sq = pawns.popFSB();
+            int rank = SQ2R(sq);
+            int forwSq = sq + forw;
+            int forw2Sq = sq + forw2;
 
             // Wenn der Bauer gefesselt ist, kann er sich nicht bewegen
             if(precomputedInfo.pinnedPieces.getBit(sq))
@@ -132,8 +132,8 @@ inline void Movegen::generatePawnMoves(const Board& board, Array<Move, 256>& mov
             if constexpr(checkEnPassant) {
                 // En-Passant könnte den Angreifer blockieren oder schlagen
                 if(rank == enPasRankReq) {
-                    int32_t captureSq = board.getEnPassantSquare();
-                    int32_t enPasSq = captureSq - forw;
+                    int captureSq = board.getEnPassantSquare();
+                    int enPasSq = captureSq - forw;
                     Bitboard captureSqBB = Bitboard(1ULL << captureSq);
                     Bitboard enPasSqBB = Bitboard(1ULL << enPasSq);
 
@@ -169,7 +169,7 @@ inline void Movegen::generatePawnMoves(const Board& board, Array<Move, 256>& mov
 
             // Es kann maximal einen Angreifer geben, also ist das hier sicher
             if(pawnAttacks) {
-                int32_t captureSq = pawnAttacks.getFSB();
+                int captureSq = pawnAttacks.getFSB();
                 if(rank == promotionRank) {
                     moves.push_back(Move(sq, captureSq, MOVE_CAPTURE | MOVE_PROMOTION_QUEEN));
                     moves.push_back(Move(sq, captureSq, MOVE_CAPTURE | MOVE_PROMOTION_ROOK));
@@ -181,24 +181,24 @@ inline void Movegen::generatePawnMoves(const Board& board, Array<Move, 256>& mov
         }
     } else {
         while(pawns) {
-            int32_t sq = pawns.popFSB();
-            int32_t rank = SQ2R(sq);
-            int32_t forwSq = sq + forw;
-            int32_t forw2Sq = sq + forw2;
+            int sq = pawns.popFSB();
+            int rank = SQ2R(sq);
+            int forwSq = sq + forw;
+            int forw2Sq = sq + forw2;
 
             bool isPinned = precomputedInfo.pinnedPieces.getBit(sq);
 
             if constexpr(checkEnPassant) {
                 // En-Passant
                 if(rank == enPasRankReq) {
-                    int32_t captureSq = board.getEnPassantSquare();
+                    int captureSq = board.getEnPassantSquare();
                     Bitboard enPassantCaptures = pawnAttackBitboard(sq, ownColor) &
                                                 Bitboard(1ULL << captureSq);
 
                     // Es kann maximal ein En-Passant pro Zug geben, also ist das hier sicher
                     if(enPassantCaptures) {
-                        int32_t enPasSq = enPassantCaptures.getFSB();
-                        int32_t captureDir = std::abs(enPasSq - sq);
+                        int enPasSq = enPassantCaptures.getFSB();
+                        int captureDir = std::abs(enPasSq - sq);
                         
                         if(isPinned) {
                             // Überprüfe, ob der Zug entlang der Pin-Richtung verläuft
@@ -210,12 +210,12 @@ inline void Movegen::generatePawnMoves(const Board& board, Array<Move, 256>& mov
                             // Rang, also muss manuell überprüft werden, ob der
                             // König danach im Schach steht
 
-                            int32_t ownKingSq = color == WHITE ?
+                            int ownKingSq = color == WHITE ?
                                 board.pieceBitboard[WHITE_KING].getFSB() :
                                 board.pieceBitboard[BLACK_KING].getFSB();
 
-                            int32_t ownKingRank = SQ2R(ownKingSq);
-                            constexpr int32_t dangerousKingRank = color == WHITE ?
+                            int ownKingRank = SQ2R(ownKingSq);
+                            constexpr int dangerousKingRank = color == WHITE ?
                                 RANK_5 : RANK_4;
 
                             Bitboard enemyKing = color == WHITE ?
@@ -248,8 +248,8 @@ inline void Movegen::generatePawnMoves(const Board& board, Array<Move, 256>& mov
 
                 // Es kann maximal einen Angreifer geben, also ist das hier sicher
                 while(pawnAttacks) {
-                    int32_t captureSq = pawnAttacks.popFSB();
-                    int32_t captureDir = std::abs(captureSq - sq);
+                    int captureSq = pawnAttacks.popFSB();
+                    int captureDir = std::abs(captureSq - sq);
 
                     // Überprüfe, ob der Zug nicht entlang der Pin-Richtung verläuft
                     if(captureDir != precomputedInfo.pinDirections[sq] &&
@@ -302,7 +302,7 @@ inline void Movegen::generatePawnMoves(const Board& board, Array<Move, 256>& mov
                                        enemyPieces;
 
                 while(pawnAttacks) {
-                    int32_t captureSq = pawnAttacks.popFSB();
+                    int captureSq = pawnAttacks.popFSB();
 
                     if(rank == promotionRank) {
                         moves.push_back(Move(sq, captureSq, MOVE_CAPTURE | MOVE_PROMOTION_QUEEN));
@@ -317,9 +317,9 @@ inline void Movegen::generatePawnMoves(const Board& board, Array<Move, 256>& mov
     }
 }
 
-template <int32_t color>
+template <int color>
 inline void Movegen::generateKnightMoves(const Board& board, Array<Move, 256>& moves, const PrecomputedInfo& precomputedInfo) noexcept {
-    constexpr int32_t knightPiece = color == WHITE ? WHITE_KNIGHT : BLACK_KNIGHT;
+    constexpr int knightPiece = color == WHITE ? WHITE_KNIGHT : BLACK_KNIGHT;
     Bitboard ownPieces = color == WHITE ?
         board.pieceBitboard[WHITE] : board.pieceBitboard[BLACK];
     Bitboard ownKing = color == WHITE ?
@@ -328,7 +328,7 @@ inline void Movegen::generateKnightMoves(const Board& board, Array<Move, 256>& m
     Bitboard knights = board.getPieceBitboard(knightPiece);
 
     while(knights) {
-        int32_t sq = knights.popFSB();
+        int sq = knights.popFSB();
 
         // Wenn der Springer gefesselt ist, kann er sich nicht bewegen
         if(precomputedInfo.pinnedPieces.getBit(sq))
@@ -342,7 +342,7 @@ inline void Movegen::generateKnightMoves(const Board& board, Array<Move, 256>& m
             knightAttacks &= precomputedInfo.attackingRays;
         
         while(knightAttacks) {
-            int32_t captureSq = knightAttacks.popFSB();
+            int captureSq = knightAttacks.popFSB();
 
             if(board.pieces[captureSq] == EMPTY)
                 moves.push_back(Move(sq, captureSq, MOVE_QUIET));
@@ -352,10 +352,10 @@ inline void Movegen::generateKnightMoves(const Board& board, Array<Move, 256>& m
     }
 }
 
-template <int32_t color>
+template <int color>
 inline void Movegen::generateDiagonalSlidingMoves(const Board& board, Array<Move, 256>& moves, const PrecomputedInfo& precomputedInfo) noexcept {
-    constexpr int32_t bishopPiece = color == WHITE ? WHITE_BISHOP : BLACK_BISHOP;
-    constexpr int32_t queenPiece = color == WHITE ? WHITE_QUEEN : BLACK_QUEEN;
+    constexpr int bishopPiece = color == WHITE ? WHITE_BISHOP : BLACK_BISHOP;
+    constexpr int queenPiece = color == WHITE ? WHITE_QUEEN : BLACK_QUEEN;
     Bitboard ownPieces = color == WHITE ?
         board.pieceBitboard[WHITE] : board.pieceBitboard[BLACK];
     Bitboard ownKing = color == WHITE ?
@@ -366,7 +366,7 @@ inline void Movegen::generateDiagonalSlidingMoves(const Board& board, Array<Move
 
     if(precomputedInfo.numAttackers == 1) {
         while(diagSlidingPieces) {
-            int32_t sq = diagSlidingPieces.popFSB();
+            int sq = diagSlidingPieces.popFSB();
 
             // Wenn die Figur gefesselt ist, kann sie sich nicht bewegen
             if(precomputedInfo.pinnedPieces.getBit(sq))
@@ -378,7 +378,7 @@ inline void Movegen::generateDiagonalSlidingMoves(const Board& board, Array<Move
                                 & precomputedInfo.attackingRays;
 
             while(attacks) {
-                int32_t captureSq = attacks.popFSB();
+                int captureSq = attacks.popFSB();
 
                 if(board.pieces[captureSq] == EMPTY)
                     moves.push_back(Move(sq, captureSq, MOVE_QUIET));
@@ -388,14 +388,14 @@ inline void Movegen::generateDiagonalSlidingMoves(const Board& board, Array<Move
         }
     } else {
         while(diagSlidingPieces) {
-            int32_t sq = diagSlidingPieces.popFSB();
+            int sq = diagSlidingPieces.popFSB();
 
             Bitboard attacks = Bitboard::ONES;
 
             // Wenn die Figur gefesselt ist, kann sie sich nur
             // entlang der Pin-Richtung bewegen
             if(precomputedInfo.pinnedPieces.getBit(sq)) {
-                int32_t pinDir = precomputedInfo.pinDirections[sq];
+                int pinDir = precomputedInfo.pinDirections[sq];
                 if(pinDir == NORTH_WEST || pinDir == SOUTH_EAST)
                     attacks = (Magics::bishopAttackTopLeftMask(sq) |
                                Magics::bishopAttackBottomRightMask(sq));
@@ -411,7 +411,7 @@ inline void Movegen::generateDiagonalSlidingMoves(const Board& board, Array<Move
                         & ~(ownPieces | ownKing);
 
             while(attacks) {
-                int32_t captureSq = attacks.popFSB();
+                int captureSq = attacks.popFSB();
 
                 if(board.pieces[captureSq] == EMPTY)
                     moves.push_back(Move(sq, captureSq, MOVE_QUIET));
@@ -422,10 +422,10 @@ inline void Movegen::generateDiagonalSlidingMoves(const Board& board, Array<Move
     }
 }
 
-template <int32_t color>
+template <int color>
 inline void Movegen::generateHorizontalSlidingMoves(const Board& board, Array<Move, 256>& moves, const PrecomputedInfo& precomputedInfo) noexcept {
-    constexpr int32_t rookPiece = color == WHITE ? WHITE_ROOK : BLACK_ROOK;
-    constexpr int32_t queenPiece = color == WHITE ? WHITE_QUEEN : BLACK_QUEEN;
+    constexpr int rookPiece = color == WHITE ? WHITE_ROOK : BLACK_ROOK;
+    constexpr int queenPiece = color == WHITE ? WHITE_QUEEN : BLACK_QUEEN;
     Bitboard ownPieces = color == WHITE ?
         board.pieceBitboard[WHITE] : board.pieceBitboard[BLACK];
     Bitboard ownKing = color == WHITE ?
@@ -436,7 +436,7 @@ inline void Movegen::generateHorizontalSlidingMoves(const Board& board, Array<Mo
 
     if(precomputedInfo.numAttackers == 1) {
         while(horSlidingPieces) {
-            int32_t sq = horSlidingPieces.popFSB();
+            int sq = horSlidingPieces.popFSB();
 
             // Wenn die Figur gefesselt ist, kann sie sich nicht bewegen
             if(precomputedInfo.pinnedPieces.getBit(sq))
@@ -448,7 +448,7 @@ inline void Movegen::generateHorizontalSlidingMoves(const Board& board, Array<Mo
                                 & precomputedInfo.attackingRays;
 
             while(attacks) {
-                int32_t captureSq = attacks.popFSB();
+                int captureSq = attacks.popFSB();
 
                 if(board.pieces[captureSq] == EMPTY)
                     moves.push_back(Move(sq, captureSq, MOVE_QUIET));
@@ -458,14 +458,14 @@ inline void Movegen::generateHorizontalSlidingMoves(const Board& board, Array<Mo
         }
     } else {
         while(horSlidingPieces) {
-            int32_t sq = horSlidingPieces.popFSB();
+            int sq = horSlidingPieces.popFSB();
 
             Bitboard attacks = Bitboard::ONES;
 
             // Wenn die Figur gefesselt ist, kann sie sich nur
             // entlang der Pin-Richtung bewegen
             if(precomputedInfo.pinnedPieces.getBit(sq)) {
-                int32_t pinDir = precomputedInfo.pinDirections[sq];
+                int pinDir = precomputedInfo.pinDirections[sq];
                 if(pinDir == NORTH || pinDir == SOUTH)
                     attacks = (Magics::rookAttackTopMask(sq) |
                                Magics::rookAttackBottomMask(sq));
@@ -481,7 +481,7 @@ inline void Movegen::generateHorizontalSlidingMoves(const Board& board, Array<Mo
                         & ~(ownPieces | ownKing);
 
             while(attacks) {
-                int32_t captureSq = attacks.popFSB();
+                int captureSq = attacks.popFSB();
 
                 if(board.pieces[captureSq] == EMPTY)
                     moves.push_back(Move(sq, captureSq, MOVE_QUIET));
@@ -492,22 +492,22 @@ inline void Movegen::generateHorizontalSlidingMoves(const Board& board, Array<Mo
     }
 }
 
-template <int32_t color>
+template <int color>
 inline void Movegen::generateKingMoves(const Board& board, Array<Move, 256>& moves) noexcept {
     Bitboard ownPieces = color == WHITE ?
         board.pieceBitboard[WHITE] : board.pieceBitboard[BLACK];
 
-    int32_t kingSq = color == WHITE ?
+    int kingSq = color == WHITE ?
         board.pieceBitboard[WHITE_KING].getFSB() :
         board.pieceBitboard[BLACK_KING].getFSB();
 
     Bitboard enemyAttacks = color == WHITE ?
         board.attackBitboard[BLACK] : board.attackBitboard[WHITE];
 
-    constexpr int32_t kingsideCastlingFlag = color == WHITE ?
+    constexpr int kingsideCastlingFlag = color == WHITE ?
         WHITE_KINGSIDE_CASTLE : BLACK_KINGSIDE_CASTLE;
 
-    constexpr int32_t queensideCastlingFlag = color == WHITE ?
+    constexpr int queensideCastlingFlag = color == WHITE ?
         WHITE_QUEENSIDE_CASTLE : BLACK_QUEENSIDE_CASTLE;
 
     constexpr Bitboard sqB1 = Bitboard(1ULL << B1);
@@ -530,7 +530,7 @@ inline void Movegen::generateKingMoves(const Board& board, Array<Move, 256>& mov
                            ~ownPieces & ~enemyAttacks;
 
     while(kingAttacks) {
-        int32_t captureSq = kingAttacks.popFSB();
+        int captureSq = kingAttacks.popFSB();
 
         if(board.pieces[captureSq] == EMPTY)
             moves.push_back(Move(kingSq, captureSq, MOVE_QUIET));
@@ -540,8 +540,8 @@ inline void Movegen::generateKingMoves(const Board& board, Array<Move, 256>& mov
 
     // Rochade
     if(board.castlingPermission & kingsideCastlingFlag) {
-        constexpr int32_t castingOrigin = color == WHITE ? E1 : E8;
-        constexpr int32_t castingDestination = color == WHITE ? G1 : G8;
+        constexpr int castingOrigin = color == WHITE ? E1 : E8;
+        constexpr int castingDestination = color == WHITE ? G1 : G8;
 
         constexpr Bitboard reqEmptySqs = color == WHITE ?
             (sqF1 | sqG1) : (sqF8 | sqG8);
@@ -557,8 +557,8 @@ inline void Movegen::generateKingMoves(const Board& board, Array<Move, 256>& mov
     }
 
     if(board.castlingPermission & queensideCastlingFlag) {
-        constexpr int32_t castingOrigin = color == WHITE ? E1 : E8;
-        constexpr int32_t castingDestination = color == WHITE ? C1 : C8;
+        constexpr int castingOrigin = color == WHITE ? E1 : E8;
+        constexpr int castingDestination = color == WHITE ? C1 : C8;
 
         constexpr Bitboard reqEmptySqs = color == WHITE ?
             (sqB1 | sqC1 | sqD1) : (sqB8 | sqC8 | sqD8);
@@ -574,13 +574,13 @@ inline void Movegen::generateKingMoves(const Board& board, Array<Move, 256>& mov
     }
 }
 
-template <int32_t color, bool checkEnPassant>
+template <int color, bool checkEnPassant>
 inline void Movegen::generatePawnCaptures(const Board& board, Array<Move, 256>& moves, const PrecomputedInfo& precomputedInfo) noexcept {
-    constexpr int32_t pawnPiece = color == WHITE ? WHITE_PAWN : BLACK_PAWN;
-    constexpr int32_t forw = color == WHITE ? NORTH : SOUTH;
-    constexpr int32_t promotionRank = color == WHITE ? RANK_7 : RANK_2;
-    constexpr int32_t ownColor = color == WHITE ? WHITE : BLACK;
-    constexpr int32_t enPasRankReq = color == WHITE ? RANK_5 : RANK_4;
+    constexpr int pawnPiece = color == WHITE ? WHITE_PAWN : BLACK_PAWN;
+    constexpr int forw = color == WHITE ? NORTH : SOUTH;
+    constexpr int promotionRank = color == WHITE ? RANK_7 : RANK_2;
+    constexpr int ownColor = color == WHITE ? WHITE : BLACK;
+    constexpr int enPasRankReq = color == WHITE ? RANK_5 : RANK_4;
 
     Bitboard enemyPieces = color == WHITE ? board.pieceBitboard[BLACK] : board.pieceBitboard[WHITE];
     
@@ -589,8 +589,8 @@ inline void Movegen::generatePawnCaptures(const Board& board, Array<Move, 256>& 
     // Wenn der eigene König von genau einer Figur angegriffen wird, kann der Bauer den Angreifer schlagen oder sich dazwischen stellen
     if(precomputedInfo.numAttackers == 1) {
         while(pawns) {
-            int32_t sq = pawns.popFSB();
-            int32_t rank = SQ2R(sq);
+            int sq = pawns.popFSB();
+            int rank = SQ2R(sq);
 
             // Wenn der Bauer gefesselt ist, kann er sich nicht bewegen
             if(precomputedInfo.pinnedPieces.getBit(sq))
@@ -599,8 +599,8 @@ inline void Movegen::generatePawnCaptures(const Board& board, Array<Move, 256>& 
             if constexpr(checkEnPassant) {
                 // En-Passant könnte den Angreifer blockieren oder schlagen
                 if(rank == enPasRankReq) {
-                    int32_t captureSq = board.getEnPassantSquare();
-                    int32_t enPasSq = captureSq - forw;
+                    int captureSq = board.getEnPassantSquare();
+                    int enPasSq = captureSq - forw;
                     Bitboard captureSqBB = Bitboard(1ULL << captureSq);
                     Bitboard enPasSqBB = Bitboard(1ULL << enPasSq);
 
@@ -617,7 +617,7 @@ inline void Movegen::generatePawnCaptures(const Board& board, Array<Move, 256>& 
 
             // Es kann maximal einen Angreifer geben, also ist das hier sicher
             if(pawnAttacks) {
-                int32_t captureSq = pawnAttacks.getFSB();
+                int captureSq = pawnAttacks.getFSB();
                 if(rank == promotionRank) {
                     moves.push_back(Move(sq, captureSq, MOVE_CAPTURE | MOVE_PROMOTION_QUEEN));
                     moves.push_back(Move(sq, captureSq, MOVE_CAPTURE | MOVE_PROMOTION_ROOK));
@@ -629,22 +629,22 @@ inline void Movegen::generatePawnCaptures(const Board& board, Array<Move, 256>& 
         }
     } else {
         while(pawns) {
-            int32_t sq = pawns.popFSB();
-            int32_t rank = SQ2R(sq);
+            int sq = pawns.popFSB();
+            int rank = SQ2R(sq);
 
             bool isPinned = precomputedInfo.pinnedPieces.getBit(sq);
 
             // En-Passant
             if constexpr(checkEnPassant) {
                 if(rank == enPasRankReq) {
-                    int32_t captureSq = board.getEnPassantSquare();
+                    int captureSq = board.getEnPassantSquare();
                     Bitboard enPassantCaptures = pawnAttackBitboard(sq, ownColor) &
                                                 Bitboard(1ULL << captureSq);
 
                     // Es kann maximal ein En-Passant pro Zug geben, also ist das hier sicher
                     if(enPassantCaptures) {
-                        int32_t enPasSq = enPassantCaptures.getFSB();
-                        int32_t captureDir = std::abs(enPasSq - sq);
+                        int enPasSq = enPassantCaptures.getFSB();
+                        int captureDir = std::abs(enPasSq - sq);
                         
                         if(isPinned) {
                             // Überprüfe, ob der Zug entlang der Pin-Richtung verläuft
@@ -656,12 +656,12 @@ inline void Movegen::generatePawnCaptures(const Board& board, Array<Move, 256>& 
                             // Rang, also muss manuell überprüft werden, ob der
                             // König danach im Schach steht
 
-                            int32_t ownKingSq = color == WHITE ?
+                            int ownKingSq = color == WHITE ?
                                 board.pieceBitboard[WHITE_KING].getFSB() :
                                 board.pieceBitboard[BLACK_KING].getFSB();
 
-                            int32_t ownKingRank = SQ2R(ownKingSq);
-                            constexpr int32_t dangerousKingRank = color == WHITE ?
+                            int ownKingRank = SQ2R(ownKingSq);
+                            constexpr int dangerousKingRank = color == WHITE ?
                                 RANK_5 : RANK_4;
 
                             Bitboard enemyKing = color == WHITE ?
@@ -693,8 +693,8 @@ inline void Movegen::generatePawnCaptures(const Board& board, Array<Move, 256>& 
 
                 // Es kann maximal einen Angreifer geben, also ist das hier sicher
                 while(pawnAttacks) {
-                    int32_t captureSq = pawnAttacks.popFSB();
-                    int32_t captureDir = std::abs(captureSq - sq);
+                    int captureSq = pawnAttacks.popFSB();
+                    int captureDir = std::abs(captureSq - sq);
 
                     // Überprüfe, ob der Zug nicht entlang der Pin-Richtung verläuft
                     if(captureDir != precomputedInfo.pinDirections[sq] &&
@@ -715,7 +715,7 @@ inline void Movegen::generatePawnCaptures(const Board& board, Array<Move, 256>& 
                                        enemyPieces;
 
                 while(pawnAttacks) {
-                    int32_t captureSq = pawnAttacks.popFSB();
+                    int captureSq = pawnAttacks.popFSB();
 
                     if(rank == promotionRank) {
                         moves.push_back(Move(sq, captureSq, MOVE_CAPTURE | MOVE_PROMOTION_QUEEN));
@@ -730,16 +730,16 @@ inline void Movegen::generatePawnCaptures(const Board& board, Array<Move, 256>& 
     }
 }
 
-template <int32_t color>
+template <int color>
 inline void Movegen::generateKnightCaptures(const Board& board, Array<Move, 256>& moves, const PrecomputedInfo& precomputedInfo) noexcept {
-    constexpr int32_t knightPiece = color == WHITE ? WHITE_KNIGHT : BLACK_KNIGHT;
+    constexpr int knightPiece = color == WHITE ? WHITE_KNIGHT : BLACK_KNIGHT;
     Bitboard enemyPieces = color == WHITE ?
         board.pieceBitboard[BLACK] : board.pieceBitboard[WHITE];
     
     Bitboard knights = board.getPieceBitboard(knightPiece);
 
     while(knights) {
-        int32_t sq = knights.popFSB();
+        int sq = knights.popFSB();
 
         // Wenn der Springer gefesselt ist, kann er sich nicht bewegen
         if(precomputedInfo.pinnedPieces.getBit(sq))
@@ -752,16 +752,16 @@ inline void Movegen::generateKnightCaptures(const Board& board, Array<Move, 256>
             knightAttacks &= precomputedInfo.attackingRays;
         
         while(knightAttacks) {
-            int32_t captureSq = knightAttacks.popFSB();
+            int captureSq = knightAttacks.popFSB();
             moves.push_back(Move(sq, captureSq, MOVE_CAPTURE));
         }
     }
 }
 
-template <int32_t color>
+template <int color>
 inline void Movegen::generateDiagonalSlidingCaptures(const Board& board, Array<Move, 256>& moves, const PrecomputedInfo& precomputedInfo) noexcept {
-    constexpr int32_t bishopPiece = color == WHITE ? WHITE_BISHOP : BLACK_BISHOP;
-    constexpr int32_t queenPiece = color == WHITE ? WHITE_QUEEN : BLACK_QUEEN;
+    constexpr int bishopPiece = color == WHITE ? WHITE_BISHOP : BLACK_BISHOP;
+    constexpr int queenPiece = color == WHITE ? WHITE_QUEEN : BLACK_QUEEN;
     Bitboard ownKing = color == WHITE ?
         board.pieceBitboard[WHITE_KING] : board.pieceBitboard[BLACK_KING];
     Bitboard enemyPieces = color == WHITE ?
@@ -772,7 +772,7 @@ inline void Movegen::generateDiagonalSlidingCaptures(const Board& board, Array<M
 
     if(precomputedInfo.numAttackers == 1) {
         while(diagSlidingPieces) {
-            int32_t sq = diagSlidingPieces.popFSB();
+            int sq = diagSlidingPieces.popFSB();
 
             // Wenn die Figur gefesselt ist, kann sie sich nicht bewegen
             if(precomputedInfo.pinnedPieces.getBit(sq))
@@ -784,20 +784,20 @@ inline void Movegen::generateDiagonalSlidingCaptures(const Board& board, Array<M
                                 & precomputedInfo.attackingRays;
 
             while(attacks) {
-                int32_t captureSq = attacks.popFSB();
+                int captureSq = attacks.popFSB();
                 moves.push_back(Move(sq, captureSq, MOVE_CAPTURE));
             }
         }
     } else {
         while(diagSlidingPieces) {
-            int32_t sq = diagSlidingPieces.popFSB();
+            int sq = diagSlidingPieces.popFSB();
 
             Bitboard attacks = Bitboard::ONES;
 
             // Wenn die Figur gefesselt ist, kann sie sich nur
             // entlang der Pin-Richtung bewegen
             if(precomputedInfo.pinnedPieces.getBit(sq)) {
-                int32_t pinDir = precomputedInfo.pinDirections[sq];
+                int pinDir = precomputedInfo.pinDirections[sq];
                 if(pinDir == NORTH_WEST || pinDir == SOUTH_EAST)
                     attacks = (Magics::bishopAttackTopLeftMask(sq) |
                                Magics::bishopAttackBottomRightMask(sq));
@@ -813,17 +813,17 @@ inline void Movegen::generateDiagonalSlidingCaptures(const Board& board, Array<M
                         & enemyPieces;
 
             while(attacks) {
-                int32_t captureSq = attacks.popFSB();
+                int captureSq = attacks.popFSB();
                 moves.push_back(Move(sq, captureSq, MOVE_CAPTURE));
             }
         }
     }
 }
 
-template <int32_t color>
+template <int color>
 inline void Movegen::generateHorizontalSlidingCaptures(const Board& board, Array<Move, 256>& moves, const PrecomputedInfo& precomputedInfo) noexcept {
-    constexpr int32_t rookPiece = color == WHITE ? WHITE_ROOK : BLACK_ROOK;
-    constexpr int32_t queenPiece = color == WHITE ? WHITE_QUEEN : BLACK_QUEEN;
+    constexpr int rookPiece = color == WHITE ? WHITE_ROOK : BLACK_ROOK;
+    constexpr int queenPiece = color == WHITE ? WHITE_QUEEN : BLACK_QUEEN;
     Bitboard ownKing = color == WHITE ?
         board.pieceBitboard[WHITE_KING] : board.pieceBitboard[BLACK_KING];
     Bitboard enemyPieces = color == WHITE ?
@@ -834,7 +834,7 @@ inline void Movegen::generateHorizontalSlidingCaptures(const Board& board, Array
 
     if(precomputedInfo.numAttackers == 1) {
         while(horSlidingPieces) {
-            int32_t sq = horSlidingPieces.popFSB();
+            int sq = horSlidingPieces.popFSB();
 
             // Wenn die Figur gefesselt ist, kann sie sich nicht bewegen
             if(precomputedInfo.pinnedPieces.getBit(sq))
@@ -846,20 +846,20 @@ inline void Movegen::generateHorizontalSlidingCaptures(const Board& board, Array
                                 & precomputedInfo.attackingRays;
 
             while(attacks) {
-                int32_t captureSq = attacks.popFSB();
+                int captureSq = attacks.popFSB();
                 moves.push_back(Move(sq, captureSq, MOVE_CAPTURE));
             }
         }
     } else {
         while(horSlidingPieces) {
-            int32_t sq = horSlidingPieces.popFSB();
+            int sq = horSlidingPieces.popFSB();
 
             Bitboard attacks = Bitboard::ONES;
 
             // Wenn die Figur gefesselt ist, kann sie sich nur
             // entlang der Pin-Richtung bewegen
             if(precomputedInfo.pinnedPieces.getBit(sq)) {
-                int32_t pinDir = precomputedInfo.pinDirections[sq];
+                int pinDir = precomputedInfo.pinDirections[sq];
                 if(pinDir == NORTH || pinDir == SOUTH)
                     attacks = (Magics::rookAttackTopMask(sq) |
                                Magics::rookAttackBottomMask(sq));
@@ -875,19 +875,19 @@ inline void Movegen::generateHorizontalSlidingCaptures(const Board& board, Array
                         & enemyPieces;
 
             while(attacks) {
-                int32_t captureSq = attacks.popFSB();
+                int captureSq = attacks.popFSB();
                 moves.push_back(Move(sq, captureSq, MOVE_CAPTURE));
             }
         }
     }
 }
 
-template <int32_t color>
+template <int color>
 inline void Movegen::generateKingCaptures(const Board& board, Array<Move, 256>& moves) noexcept {
     Bitboard enemyPieces = color == WHITE ?
         board.pieceBitboard[BLACK] : board.pieceBitboard[WHITE];
 
-    int32_t kingSq = color == WHITE ?
+    int kingSq = color == WHITE ?
         board.pieceBitboard[WHITE_KING].getFSB() :
         board.pieceBitboard[BLACK_KING].getFSB();
 
@@ -899,7 +899,7 @@ inline void Movegen::generateKingCaptures(const Board& board, Array<Move, 256>& 
                            enemyPieces & ~enemyAttacks;
 
     while(kingAttacks) {
-        int32_t captureSq = kingAttacks.popFSB();
+        int captureSq = kingAttacks.popFSB();
         moves.push_back(Move(kingSq, captureSq, MOVE_CAPTURE));
     }
 }

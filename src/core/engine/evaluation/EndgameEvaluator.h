@@ -135,7 +135,7 @@ class EndgameEvaluator : public Evaluator {
          * Je kleiner der Wert, desto besser ist die Spielposition für den Gegner des Spielers der am Zug ist.
          * Eine Bewertung von 0 bedeutet ein ausgeglichenes Spiel.
          */
-        int32_t evaluate() override;
+        int evaluate() override;
 
     private:
         /**

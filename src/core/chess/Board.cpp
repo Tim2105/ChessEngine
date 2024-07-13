@@ -18,14 +18,14 @@ Board::Board(std::string fen) {
     fen.erase(fen.find_last_not_of(' ') + 1);
 
     // Initialisiere die Bitboards
-    for(int32_t i = 0; i < 15; i++)
+    for(int i = 0; i < 15; i++)
         pieceBitboard[i] = Bitboard(0ULL);
     
-    for(int32_t i = 0; i < 64; i++)
+    for(int i = 0; i < 64; i++)
         pieces[i] = EMPTY;
 
-    int32_t file = FILE_A;
-    int32_t rank = RANK_8;
+    int file = FILE_A;
+    int rank = RANK_8;
     size_t indexNextSection = fen.find(' ');
 
     if(indexNextSection == std::string::npos)
@@ -42,7 +42,7 @@ Board::Board(std::string fen) {
             file += c - '0';
         }
         else {
-            int32_t piece = EMPTY;
+            int piece = EMPTY;
             switch(c) {
                 case 'p': piece = BLACK_PAWN; break;
                 case 'n': piece = BLACK_KNIGHT; break;
@@ -58,7 +58,7 @@ Board::Board(std::string fen) {
                 case 'K': piece = WHITE_KING; break;
                 default: throw std::invalid_argument("Invalid FEN string: " + std::to_string(c) + " is not a valid piece character");
             }
-            int32_t square = Square::fromFileRank(file, rank);
+            int square = Square::fromFileRank(file, rank);
             pieces[square] = piece;
 
             pieceBitboard[piece].setBit(square);
@@ -73,14 +73,14 @@ Board::Board(std::string fen) {
 
     Bitboard whitePawns = pieceBitboard[WHITE_PAWN];
     while(whitePawns) {
-        int32_t square = whitePawns.popFSB();
+        int square = whitePawns.popFSB();
         if(SQ2R(square) == RANK_1 || SQ2R(square) == RANK_8)
             throw std::invalid_argument("Invalid FEN string: There must not be any white pawns on the first or eighth rank");
     }
     
     Bitboard blackPawns = pieceBitboard[BLACK_PAWN];
     while(blackPawns) {
-        int32_t square = blackPawns.popFSB();
+        int square = blackPawns.popFSB();
         if(SQ2R(square) == RANK_1 || SQ2R(square) == RANK_8)
             throw std::invalid_argument("Invalid FEN string: There must not be any black pawns on the first or eighth rank");
     }
@@ -127,8 +127,8 @@ Board::Board(std::string fen) {
     // En Passant Feld auslesen
     std::string fenEnPassant = fen.substr(0, indexNextSection);
     if(fenEnPassant.length() == 2) {
-        int32_t file = fenEnPassant[0] - 'a';
-        int32_t rank = fenEnPassant[1] - '1';
+        int file = fenEnPassant[0] - 'a';
+        int rank = fenEnPassant[1] - '1';
         enPassantSquare = FR2SQ(file, rank);
 
         if(enPassantSquare < A1 || enPassantSquare > H8)
@@ -164,8 +164,8 @@ Board::Board(std::string fen) {
         age = side == WHITE ? 0 : 1;
     else {
         // Anzahl der bereits gespielten Züge auslesen
-        int32_t plyAdd = side == WHITE ? 0 : 1;
-        int32_t plyFen = std::stoi(fen);
+        int plyAdd = side == WHITE ? 0 : 1;
+        int plyFen = std::stoi(fen);
         if(plyFen < 1)
             throw std::invalid_argument("Invalid FEN string: Number of played moves is zero or negative");
 
@@ -414,8 +414,8 @@ uint64_t Board::generateHashValue() {
     uint64_t hash = 0ULL;
 
     // Figuren
-    for(int32_t i = 0; i < 64; i++) {
-        int32_t piece = pieces[i];
+    for(int i = 0; i < 64; i++) {
+        int piece = pieces[i];
         if(piece != EMPTY)
             hash ^= Zobrist::zobristPieceKeys[piece][i];
     }
@@ -429,7 +429,7 @@ uint64_t Board::generateHashValue() {
 
     // En Passant
     if(enPassantSquare != NO_SQ) {
-        int32_t file = Square::fileOf(enPassantSquare);
+        int file = Square::fileOf(enPassantSquare);
         hash ^= Zobrist::zobristEnPassantKeys[file];
     }
 
@@ -465,11 +465,11 @@ bool Board::isMoveLegal(Move move) {
     if(move.isNullMove())
         return false;
 
-    int32_t side = this->side;
-    int32_t otherSide = side ^ COLOR_MASK;
+    int side = this->side;
+    int otherSide = side ^ COLOR_MASK;
 
-    int32_t origin = move.getOrigin();
-    int32_t destination = move.getDestination();
+    int origin = move.getOrigin();
+    int destination = move.getDestination();
 
     // Überprüfe, ob der Zug eine eigene Figur ist
     if(pieces[origin] == EMPTY || (pieces[origin] & COLOR_MASK) != side)
@@ -566,9 +566,9 @@ bool Board::isMoveLegal(Move move) {
     switch(pieces[origin]) {
         case WHITE_PAWN:
         case BLACK_PAWN: {
-            int32_t destForw = side == WHITE ? NORTH : SOUTH;
-            int32_t destLeft = destForw + WEST;
-            int32_t destRight = destForw + EAST;
+            int destForw = side == WHITE ? NORTH : SOUTH;
+            int destLeft = destForw + WEST;
+            int destRight = destForw + EAST;
 
             if(destination == origin + destForw) {
                 if(pieces[destination] != EMPTY)
@@ -590,10 +590,10 @@ bool Board::isMoveLegal(Move move) {
         }
         case WHITE_KNIGHT:
         case BLACK_KNIGHT: {
-            int32_t sqDiff = destination - origin;
+            int sqDiff = destination - origin;
             bool valid = false;
 
-            for(int32_t i = 0; i < 8; i++) {
+            for(int i = 0; i < 8; i++) {
                 if(sqDiff == KNIGHT_ATTACKS[i]) {
                     valid = true;
                     break;
@@ -647,11 +647,11 @@ bool Board::isCheck() const {
 }
 
 void Board::makeMove(Move m) {
-    int32_t origin = m.getOrigin();
-    int32_t destination = m.getDestination();
-    int32_t pieceType = pieces[origin];
-    int32_t capturedPieceType = pieces[destination];
-    int32_t enPassantCaptureSq = enPassantSquare + (side == WHITE ? SOUTH : NORTH);
+    int origin = m.getOrigin();
+    int destination = m.getDestination();
+    int pieceType = pieces[origin];
+    int capturedPieceType = pieces[destination];
+    int enPassantCaptureSq = enPassantSquare + (side == WHITE ? SOUTH : NORTH);
 
     if(m.isEnPassant())
         capturedPieceType = pieces[enPassantCaptureSq];
@@ -693,7 +693,7 @@ void Board::makeMove(Move m) {
         return;
     }
 
-    int32_t otherSide = side ^ COLOR_MASK;
+    int otherSide = side ^ COLOR_MASK;
 
     // Spezialfall: En Passant
     if(m.isEnPassant()) {
@@ -767,7 +767,7 @@ void Board::makeMove(Move m) {
 
     // Spezialfall: Bauernumwandlung
     if(m.isPromotion()) {
-        int32_t promotedPieceType = EMPTY;
+        int promotedPieceType = EMPTY;
         if(m.isPromotionQueen())
             promotedPieceType = QUEEN;
         else if(m.isPromotionRook())
@@ -874,10 +874,10 @@ void Board::undoMove() {
     MoveHistoryEntry& moveEntry = moveHistory.back();
     Move move = moveEntry.move;
 
-    int32_t origin = move.getOrigin();
-    int32_t destination = move.getDestination();
-    int32_t pieceType = pieces[destination];
-    int32_t capturedPieceType = moveEntry.capturedPiece;
+    int origin = move.getOrigin();
+    int destination = move.getDestination();
+    int pieceType = pieces[destination];
+    int capturedPieceType = moveEntry.capturedPiece;
 
     // Mache den Spielzustand rückgängig
     age--;
@@ -896,7 +896,7 @@ void Board::undoMove() {
         return;
     }
 
-    int32_t enPassantCaptureSq = enPassantSquare + (side == WHITE ? SOUTH : NORTH);
+    int enPassantCaptureSq = enPassantSquare + (side == WHITE ? SOUTH : NORTH);
 
     // Spezialfall: Bauernumwandlung
     if(move.isPromotion())
@@ -930,12 +930,12 @@ void Board::undoMove() {
     moveHistory.pop_back();
 }
 
-bool Board::squareAttacked(int32_t sq, int32_t ownSide) const {
+bool Board::squareAttacked(int sq, int ownSide) const {
     return attackBitboard[ownSide].getBit(sq);
 }
 
-bool Board::squareAttacked(int32_t sq, int32_t ownSide, Bitboard occupied) const {
-    int32_t otherSide = ownSide ^ COLOR_MASK;
+bool Board::squareAttacked(int sq, int ownSide, Bitboard occupied) const {
+    int otherSide = ownSide ^ COLOR_MASK;
 
     // Diagonale Angriffe
     if(diagonalAttackBitboard(sq, occupied) & (pieceBitboard[ownSide | BISHOP] | pieceBitboard[ownSide | QUEEN]))
@@ -960,13 +960,13 @@ bool Board::squareAttacked(int32_t sq, int32_t ownSide, Bitboard occupied) const
     return false;
 }
 
-bool Board::squareAttacked(int32_t sq, int32_t ownSide, Bitboard occupied, Bitboard& attackerRays) const {
+bool Board::squareAttacked(int sq, int ownSide, Bitboard occupied, Bitboard& attackerRays) const {
     return numSquareAttackers(sq, ownSide, occupied, attackerRays) > 0;
 }
 
-int32_t Board::numSquareAttackers(int32_t sq, int32_t ownSide, Bitboard occupied) const {
-    int32_t otherSide = ownSide ^ COLOR_MASK;
-    int32_t numAttackers = 0;
+int Board::numSquareAttackers(int sq, int ownSide, Bitboard occupied) const {
+    int otherSide = ownSide ^ COLOR_MASK;
+    int numAttackers = 0;
 
     // Diagonale Angriffe
     Bitboard diagonalAttackers = diagonalAttackBitboard(sq, occupied) & (pieceBitboard[ownSide | BISHOP] | pieceBitboard[ownSide | QUEEN]);
@@ -991,9 +991,9 @@ int32_t Board::numSquareAttackers(int32_t sq, int32_t ownSide, Bitboard occupied
     return numAttackers;
 }
 
-int32_t Board::numSquareAttackers(int32_t sq, int32_t ownSide, Bitboard occupied, Bitboard& attackerRays) const {
-    int32_t otherSide = ownSide ^ COLOR_MASK;
-    int32_t numAttackers = 0;
+int Board::numSquareAttackers(int sq, int ownSide, Bitboard occupied, Bitboard& attackerRays) const {
+    int otherSide = ownSide ^ COLOR_MASK;
+    int numAttackers = 0;
 
     // Diagonale Angriffe
     Bitboard diagonalAttackers = diagonalAttackBitboard(sq, occupied) & (pieceBitboard[ownSide | BISHOP] | pieceBitboard[ownSide | QUEEN]);
@@ -1023,23 +1023,23 @@ int32_t Board::numSquareAttackers(int32_t sq, int32_t ownSide, Bitboard occupied
     return numAttackers;
 }
 
-void Board::updateAttackBitboards(int32_t side) {
+void Board::updateAttackBitboards(int side) {
     Bitboard piecesPlusOwnKing = pieceBitboard[ALL_PIECES] | pieceBitboard[side | KING];
 
-    for(int32_t i = side; i <= (side | KING); i++)
+    for(int i = side; i <= (side | KING); i++)
         attackBitboard[i] = 0;
     
     // Diagonale Angriffe
     Bitboard bishopBitboard = pieceBitboard[side | BISHOP];
     while(bishopBitboard) {
-        int32_t sq = bishopBitboard.popFSB();
+        int sq = bishopBitboard.popFSB();
         attackBitboard[side | BISHOP] |= diagonalAttackBitboard(sq, piecesPlusOwnKing);
         attackBitboard[side] |= attackBitboard[side | BISHOP];
     }
 
     Bitboard queenBitboard = pieceBitboard[side | QUEEN];
     while(queenBitboard) {
-        int32_t sq = queenBitboard.popFSB();
+        int sq = queenBitboard.popFSB();
         attackBitboard[side | QUEEN] |= diagonalAttackBitboard(sq, piecesPlusOwnKing);
         attackBitboard[side] |= attackBitboard[side | QUEEN];
     }
@@ -1047,14 +1047,14 @@ void Board::updateAttackBitboards(int32_t side) {
     // Waagerechte Angriffe
     Bitboard rookBitboard = pieceBitboard[side | ROOK];
     while(rookBitboard) {
-        int32_t sq = rookBitboard.popFSB();
+        int sq = rookBitboard.popFSB();
         attackBitboard[side | ROOK] |= horizontalAttackBitboard(sq, piecesPlusOwnKing);
         attackBitboard[side] |= attackBitboard[side | ROOK];
     }
 
     queenBitboard = pieceBitboard[side | QUEEN];
     while(queenBitboard) {
-        int32_t sq = queenBitboard.popFSB();
+        int sq = queenBitboard.popFSB();
         attackBitboard[side | QUEEN] |= horizontalAttackBitboard(sq, piecesPlusOwnKing);
         attackBitboard[side] |= attackBitboard[side | QUEEN];
     }
@@ -1062,7 +1062,7 @@ void Board::updateAttackBitboards(int32_t side) {
     // Springer Angriffe
     Bitboard knightBitboard = pieceBitboard[side | KNIGHT];
     while(knightBitboard) {
-        int32_t sq = knightBitboard.popFSB();
+        int sq = knightBitboard.popFSB();
         attackBitboard[side | KNIGHT] |= knightAttackBitboard(sq);
         attackBitboard[side] |= attackBitboard[side | KNIGHT];
     }
@@ -1070,7 +1070,7 @@ void Board::updateAttackBitboards(int32_t side) {
     // Bauer Angriffe
     Bitboard pawnBitboard = pieceBitboard[side | PAWN];
     while(pawnBitboard) {
-        int32_t sq = pawnBitboard.popFSB();
+        int sq = pawnBitboard.popFSB();
         attackBitboard[side | PAWN] |= pawnAttackBitboard(sq, side);
         attackBitboard[side] |= attackBitboard[side | PAWN];
     }
@@ -1078,7 +1078,7 @@ void Board::updateAttackBitboards(int32_t side) {
     // König Angriffe
     Bitboard kingBitboard = pieceBitboard[side | KING];
     while(kingBitboard) {
-        int32_t sq = kingBitboard.popFSB();
+        int sq = kingBitboard.popFSB();
         attackBitboard[side | KING] |= kingAttackBitboard(sq);
         attackBitboard[side] |= attackBitboard[side | KING];
     }
@@ -1086,7 +1086,7 @@ void Board::updateAttackBitboards(int32_t side) {
     attackBitboard[ALL_PIECES] = attackBitboard[WHITE] | attackBitboard[BLACK];
 }
 
-void Board::updateAttackBitboards(int32_t side, Bitboard updatedSquares, int32_t capturedPiece, bool wasPromotion) {
+void Board::updateAttackBitboards(int side, Bitboard updatedSquares, int capturedPiece, bool wasPromotion) {
     Bitboard piecesPlusOwnKing = pieceBitboard[ALL_PIECES] | pieceBitboard[side | KING];
     
     // Diagonale Angriffe
@@ -1096,7 +1096,7 @@ void Board::updateAttackBitboards(int32_t side, Bitboard updatedSquares, int32_t
         Bitboard bishopBitboard = pieceBitboard[side | BISHOP];
 
         while(bishopBitboard) {
-            int32_t sq = bishopBitboard.popFSB();
+            int sq = bishopBitboard.popFSB();
             bishopAttackBitboard |= diagonalAttackBitboard(sq, piecesPlusOwnKing);
         }
 
@@ -1110,7 +1110,7 @@ void Board::updateAttackBitboards(int32_t side, Bitboard updatedSquares, int32_t
         Bitboard rookBitboard = pieceBitboard[side | ROOK];
 
         while(rookBitboard) {
-            int32_t sq = rookBitboard.popFSB();
+            int sq = rookBitboard.popFSB();
             rookAttackBitboard |= horizontalAttackBitboard(sq, piecesPlusOwnKing);
         }
 
@@ -1124,7 +1124,7 @@ void Board::updateAttackBitboards(int32_t side, Bitboard updatedSquares, int32_t
         Bitboard queenBitboard = pieceBitboard[side | QUEEN];
 
         while(queenBitboard) {
-            int32_t sq = queenBitboard.popFSB();
+            int sq = queenBitboard.popFSB();
             queenAttackBitboard |= diagonalAttackBitboard(sq, piecesPlusOwnKing);
             queenAttackBitboard |= horizontalAttackBitboard(sq, piecesPlusOwnKing);
         }
@@ -1139,7 +1139,7 @@ void Board::updateAttackBitboards(int32_t side, Bitboard updatedSquares, int32_t
         Bitboard knightBitboard = pieceBitboard[side | KNIGHT];
 
         while(knightBitboard) {
-            int32_t sq = knightBitboard.popFSB();
+            int sq = knightBitboard.popFSB();
             knightAttacks |= knightAttackBitboard(sq);
         }
 
@@ -1153,7 +1153,7 @@ void Board::updateAttackBitboards(int32_t side, Bitboard updatedSquares, int32_t
         Bitboard pawnBitboard = pieceBitboard[side | PAWN];
 
         while(pawnBitboard) {
-            int32_t sq = pawnBitboard.popFSB();
+            int sq = pawnBitboard.popFSB();
             pawnAttacks |= pawnAttackBitboard(sq, side);
         }
 
@@ -1166,7 +1166,7 @@ void Board::updateAttackBitboards(int32_t side, Bitboard updatedSquares, int32_t
         Bitboard kingBitboard = pieceBitboard[side | KING];
 
         while(kingBitboard) {
-            int32_t sq = kingBitboard.popFSB();
+            int sq = kingBitboard.popFSB();
             kingAttacks |= kingAttackBitboard(sq);
         }
 
@@ -1175,26 +1175,26 @@ void Board::updateAttackBitboards(int32_t side, Bitboard updatedSquares, int32_t
 
     // Erstelle ein zentrales Angriffsbitboard
     attackBitboard[side] = 0;
-    for(int32_t i = (side | PAWN); i <= (side | KING); i++)
+    for(int i = (side | PAWN); i <= (side | KING); i++)
         attackBitboard[side] |= attackBitboard[i];
 
     attackBitboard[ALL_PIECES] = attackBitboard[WHITE] | attackBitboard[BLACK];
 }
 
-void Board::generatePinnedPiecesBitboards(int32_t side, Bitboard& pinnedPiecesBitboard,
-                                          int32_t* pinnedPiecesDirection) const {
+void Board::generatePinnedPiecesBitboards(int side, Bitboard& pinnedPiecesBitboard,
+                                          int* pinnedPiecesDirection) const {
 
-    int32_t kingSquare = pieceBitboard[side | KING].getFSB();
-    int32_t otherSide = side ^ COLOR_MASK;
+    int kingSquare = pieceBitboard[side | KING].getFSB();
+    int otherSide = side ^ COLOR_MASK;
     Bitboard enemyPiecesPlusKing = pieceBitboard[otherSide] | pieceBitboard[otherSide | KING];
 
     Bitboard ownPieces = pieceBitboard[side];
 
     // Diagonale Angriffe
-    int32_t diagonalPins[4];
-    int32_t diagonalPinDirections[4];
+    int diagonalPins[4];
+    int diagonalPinDirections[4];
 
-    int32_t numDiagonalPins = getDiagonallyPinnedToSquare(kingSquare,
+    int numDiagonalPins = getDiagonallyPinnedToSquare(kingSquare,
                               ownPieces,
                               pieceBitboard[otherSide | QUEEN] | pieceBitboard[otherSide | BISHOP],
                               enemyPiecesPlusKing,
@@ -1202,10 +1202,10 @@ void Board::generatePinnedPiecesBitboards(int32_t side, Bitboard& pinnedPiecesBi
                               diagonalPinDirections);
     
     // Waaagerechte Angriffe
-    int32_t straightPins[4];
-    int32_t straightPinDirections[4];
+    int straightPins[4];
+    int straightPinDirections[4];
 
-    int32_t numStraightPins = getHorizontallyPinnedToSquare(kingSquare,
+    int numStraightPins = getHorizontallyPinnedToSquare(kingSquare,
                               ownPieces,
                               pieceBitboard[otherSide | QUEEN] | pieceBitboard[otherSide | ROOK],
                               enemyPiecesPlusKing,
@@ -1213,12 +1213,12 @@ void Board::generatePinnedPiecesBitboards(int32_t side, Bitboard& pinnedPiecesBi
                               straightPinDirections);
     
     // Pins zusammenfassen
-    for(int32_t i = 0; i < numDiagonalPins; i++) {
+    for(int i = 0; i < numDiagonalPins; i++) {
         pinnedPiecesBitboard.setBit(diagonalPins[i]);
         pinnedPiecesDirection[diagonalPins[i]] = diagonalPinDirections[i];
     }
 
-    for(int32_t i = 0; i < numStraightPins; i++) {
+    for(int i = 0; i < numStraightPins; i++) {
         pinnedPiecesBitboard.setBit(straightPins[i]);
         pinnedPiecesDirection[straightPins[i]] = straightPinDirections[i];
     }
@@ -1232,8 +1232,8 @@ Array<Move, 256> Board::generateLegalMoves() const noexcept {
 
 void Board::generateLegalMoves(Array<Move, 256>& legalMoves) const noexcept {
     Bitboard attackingRays, pinnedPieces;
-    int32_t numAttackers = 0;
-    Array<int32_t, 64> pinDirections;
+    int numAttackers = 0;
+    Array<int, 64> pinDirections;
     pinDirections.resize(64);
 
     if(side == WHITE) {
@@ -1261,8 +1261,8 @@ Array<Move, 256> Board::generateLegalCaptures() const noexcept {
 
 void Board::generateLegalCaptures(Array<Move, 256>& legalCaptures) const noexcept {
     Bitboard attackingRays, pinnedPieces;
-    int32_t numAttackers = 0;
-    Array<int32_t, 64> pinDirections;
+    int numAttackers = 0;
+    Array<int, 64> pinDirections;
     pinDirections.resize(64);
 
     if(side == WHITE) {
@@ -1285,11 +1285,11 @@ void Board::generateLegalCaptures(Array<Move, 256>& legalCaptures) const noexcep
 std::string Board::toFEN() const {
     std::string fen = "";
 
-    int32_t emptySquares = 0;
+    int emptySquares = 0;
 
-    for(int32_t r = RANK_8; r >= RANK_1; r--) {
-        for(int32_t f = FILE_A; f <= FILE_H; f++) {
-            int32_t square = FR2SQ(f, r);
+    for(int r = RANK_8; r >= RANK_1; r--) {
+        for(int f = FILE_A; f <= FILE_H; f++) {
+            int square = FR2SQ(f, r);
 
             if(pieces[square] == EMPTY) {
                 emptySquares++;
@@ -1393,7 +1393,7 @@ std::string Board::toFEN() const {
 
     fen += " ";
 
-    int32_t fullMoves = (age / 2) + 1;
+    int fullMoves = (age / 2) + 1;
 
     fen += std::to_string(fullMoves);
 
@@ -1431,7 +1431,7 @@ std::string Board::toPGN(const PGNData& data) const {
         return std::get<1>(a) < std::get<1>(b);
     });
 
-    uint16_t halfMoves = temp.age;
+    unsigned int halfMoves = temp.age;
     bool white = halfMoves % 2 == 0;
     size_t commentIndex = 0, moveIndex = 1;
 
@@ -1488,10 +1488,10 @@ std::string Board::toPGN(const PGNData& data) const {
     return pgn.str();
 }
 
-uint16_t Board::repetitionCount() const {
-    uint16_t count = 1;
+unsigned int Board::repetitionCount() const {
+    unsigned int count = 1;
 
-    for(int32_t i = moveHistory.size() - 2; i >= std::max((int32_t)moveHistory.size() - fiftyMoveRule, 0); i -= 2) {
+    for(int i = moveHistory.size() - 2; i >= std::max((int)moveHistory.size() - fiftyMoveRule, 0); i -= 2) {
         if(moveHistory[i].hashValue == hashValue) {
             if(++count == 3)
                 return count;

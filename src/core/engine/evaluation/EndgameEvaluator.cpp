@@ -12,7 +12,7 @@ EndgameEvaluator& EndgameEvaluator::operator=(EndgameEvaluator&& other) {
     return *this;
 }
 
-int32_t EndgameEvaluator::evaluate() {
+int EndgameEvaluator::evaluate() {
     int32_t side = board.getSideToMove();
     int32_t otherSide = side ^ COLOR_MASK;
     int32_t score = endgameEvaluation();

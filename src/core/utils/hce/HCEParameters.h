@@ -424,93 +424,93 @@ class HCEParameters {
          */
         bool isOptimizable(size_t index) const;
 
-        inline int16_t getLinearPieceValue(int32_t piece) const { return pieceValues[piece - 1]; }
-        inline int16_t getQuadraticPieceValue(int32_t piece) const { return pieceValues[piece + 4]; }
+        inline int getLinearPieceValue(int piece) const { return pieceValues[piece - 1]; }
+        inline int getQuadraticPieceValue(int piece) const { return pieceValues[piece + 4]; }
 
-        inline int16_t getCrossedPieceValue(int32_t piece1, int32_t piece2) const {
-            int32_t minPiece = std::min(piece1, piece2) - 1;
-            int32_t maxPiece = std::max(piece1, piece2) - 2;
+        inline int getCrossedPieceValue(int piece1, int piece2) const {
+            int minPiece = std::min(piece1, piece2) - 1;
+            int maxPiece = std::max(piece1, piece2) - 2;
 
             return pieceValues[10 + maxPiece * (maxPiece + 1) / 2 + minPiece];
         }
 
-        inline int16_t getPieceImbalanceValue(int32_t piece1, int32_t piece2) const {
-            int32_t minPiece = std::min(piece1, piece2) - 1;
-            int32_t maxPiece = std::max(piece1, piece2) - 2;
+        inline int getPieceImbalanceValue(int piece1, int piece2) const {
+            int minPiece = std::min(piece1, piece2) - 1;
+            int maxPiece = std::max(piece1, piece2) - 2;
 
             return pieceImbalanceValues[maxPiece * (maxPiece + 1) / 2 + minPiece];
         }
 
-        inline int16_t getEGWinningMaterialAdvantage() const { return (pieceValues[3] - pieceValues[2]) / 2 + pieceValues[2]; }
+        inline int getEGWinningMaterialAdvantage() const { return (pieceValues[3] - pieceValues[2]) / 2 + pieceValues[2]; }
 
-        inline int16_t getMGPSQT(int32_t piece, int32_t square) const { return mgPSQT[piece - 1][square]; }
-        inline int16_t getEGPSQT(int32_t piece, int32_t square) const { return egPSQT[piece - 1][square]; }
+        inline int getMGPSQT(int piece, int square) const { return mgPSQT[piece - 1][square]; }
+        inline int getEGPSQT(int piece, int square) const { return egPSQT[piece - 1][square]; }
 
-        inline int16_t getMGTempoBonus() const { return mgTempoBonus; }
-        inline int16_t getEGTempoBonus() const { return egTempoBonus; }
+        inline int getMGTempoBonus() const { return mgTempoBonus; }
+        inline int getEGTempoBonus() const { return egTempoBonus; }
 
-        inline int16_t getMGAttackByMinorPieceBonus(int32_t piece) const { return mgAttackByMinorPieceBonus[piece - 1]; }
-        inline int16_t getMGAttackByRookBonus(int32_t piece) const { return mgAttackByRookBonus[piece - 1]; }
-        inline int16_t getEGAttackByMinorPieceBonus(int32_t piece) const { return egAttackByMinorPieceBonus[piece - 1]; }
-        inline int16_t getEGAttackByRookBonus(int32_t piece) const { return egAttackByRookBonus[piece - 1]; }
+        inline int getMGAttackByMinorPieceBonus(int piece) const { return mgAttackByMinorPieceBonus[piece - 1]; }
+        inline int getMGAttackByRookBonus(int piece) const { return mgAttackByRookBonus[piece - 1]; }
+        inline int getEGAttackByMinorPieceBonus(int piece) const { return egAttackByMinorPieceBonus[piece - 1]; }
+        inline int getEGAttackByRookBonus(int piece) const { return egAttackByRookBonus[piece - 1]; }
 
-        inline int16_t getMGConnectedPawnBonus(int32_t rank) const { return mgConnectedPawnBonus[rank - 1]; }
-        inline int16_t getEGConnectedPawnBonus(int32_t rank) const { return egConnectedPawnBonus[rank - 1]; }
+        inline int getMGConnectedPawnBonus(int rank) const { return mgConnectedPawnBonus[rank - 1]; }
+        inline int getEGConnectedPawnBonus(int rank) const { return egConnectedPawnBonus[rank - 1]; }
 
-        inline int16_t getMGDoubledPawnPenalty() const { return mgDoubledPawnPenalty; }
-        inline int16_t getEGDoubledPawnPenalty() const { return egDoubledPawnPenalty; }
+        inline int getMGDoubledPawnPenalty() const { return mgDoubledPawnPenalty; }
+        inline int getEGDoubledPawnPenalty() const { return egDoubledPawnPenalty; }
 
-        inline int16_t getMGIsolatedPawnPenalty() const { return mgIsolatedPawnPenalty; }
-        inline int16_t getEGIsolatedPawnPenalty() const { return egIsolatedPawnPenalty; }
+        inline int getMGIsolatedPawnPenalty() const { return mgIsolatedPawnPenalty; }
+        inline int getEGIsolatedPawnPenalty() const { return egIsolatedPawnPenalty; }
 
-        inline int16_t getMGBackwardPawnPenalty() const { return mgBackwardPawnPenalty; }
-        inline int16_t getEGBackwardPawnPenalty() const { return egBackwardPawnPenalty; }
+        inline int getMGBackwardPawnPenalty() const { return mgBackwardPawnPenalty; }
+        inline int getEGBackwardPawnPenalty() const { return egBackwardPawnPenalty; }
 
-        inline int16_t getMGPassedPawnBonus(int32_t rank) const { return mgPassedPawnBonus[rank - 1]; }
-        inline int16_t getEGPassedPawnBonus(int32_t rank) const { return egPassedPawnBonus[rank - 1]; }
+        inline int getMGPassedPawnBonus(int rank) const { return mgPassedPawnBonus[rank - 1]; }
+        inline int getEGPassedPawnBonus(int rank) const { return egPassedPawnBonus[rank - 1]; }
 
-        inline int16_t getMGCandidatePassedPawnBonus(int32_t rank) const { return mgCandidatePassedPawnBonus[rank - 1]; }
-        inline int16_t getEGCandidatePassedPawnBonus(int32_t rank) const { return egCandidatePassedPawnBonus[rank - 1]; }
+        inline int getMGCandidatePassedPawnBonus(int rank) const { return mgCandidatePassedPawnBonus[rank - 1]; }
+        inline int getEGCandidatePassedPawnBonus(int rank) const { return egCandidatePassedPawnBonus[rank - 1]; }
 
-        inline int16_t getMGStrongSquareBonus() const { return mgStrongSquareBonus; }
+        inline int getMGStrongSquareBonus() const { return mgStrongSquareBonus; }
 
-        inline int16_t getMGSpaceBonus() const { return mgSpaceBonus; }
+        inline int getMGSpaceBonus() const { return mgSpaceBonus; }
 
-        inline int16_t getNumAttackerWeight(int32_t numAttackers) const { return numAttackers == 0 ? 0 : numAttackerWeight[numAttackers - 1]; }
+        inline int getNumAttackerWeight(int numAttackers) const { return numAttackers == 0 ? 0 : numAttackerWeight[numAttackers - 1]; }
 
-        inline int16_t getKnightAttackBonus() const { return knightAttackBonus; }
-        inline int16_t getBishopAttackBonus() const { return bishopAttackBonus; }
-        inline int16_t getRookAttackBonus() const { return rookAttackBonus; }
-        inline int16_t getQueenAttackBonus() const { return queenAttackBonus; }
+        inline int getKnightAttackBonus() const { return knightAttackBonus; }
+        inline int getBishopAttackBonus() const { return bishopAttackBonus; }
+        inline int getRookAttackBonus() const { return rookAttackBonus; }
+        inline int getQueenAttackBonus() const { return queenAttackBonus; }
 
-        inline int16_t getMGPawnShieldSizeBonus(int32_t size) const { return mgPawnShieldSizeBonus[size]; }
-        inline int16_t getMGKingOpenFilePenalty(int32_t numFiles) const { return mgKingOpenFilePenalty[numFiles]; }
-        inline int16_t getMGPawnStormPenalty(int32_t rank) const { return mgPawnStormPenalty[rank - 1]; }
+        inline int getMGPawnShieldSizeBonus(int size) const { return mgPawnShieldSizeBonus[size]; }
+        inline int getMGKingOpenFilePenalty(int numFiles) const { return mgKingOpenFilePenalty[numFiles]; }
+        inline int getMGPawnStormPenalty(int rank) const { return mgPawnStormPenalty[rank - 1]; }
 
-        inline int16_t getMGPieceMobilityBonus(int32_t piece) const { return mgPieceMobilityBonus[piece - 2]; }
-        inline int16_t getEGPieceMobilityBonus(int32_t piece) const { return egPieceMobilityBonus[piece - 2]; }
+        inline int getMGPieceMobilityBonus(int piece) const { return mgPieceMobilityBonus[piece - 2]; }
+        inline int getEGPieceMobilityBonus(int piece) const { return egPieceMobilityBonus[piece - 2]; }
 
-        inline int16_t getMGPieceNoMobilityPenalty(int32_t piece) const { return mgPieceNoMobilityPenalty[piece - 2]; }
-        inline int16_t getEGPieceNoMobilityPenalty(int32_t piece) const { return egPieceNoMobilityPenalty[piece - 2]; }
+        inline int getMGPieceNoMobilityPenalty(int piece) const { return mgPieceNoMobilityPenalty[piece - 2]; }
+        inline int getEGPieceNoMobilityPenalty(int piece) const { return egPieceNoMobilityPenalty[piece - 2]; }
 
-        inline int16_t getMGKnightOnStrongSquareBonus() const { return mgKnightOnStrongSquareBonus; }
-        inline int16_t getMGBishopOnStrongSquareBonus() const { return mgBishopOnStrongSquareBonus; }
+        inline int getMGKnightOnStrongSquareBonus() const { return mgKnightOnStrongSquareBonus; }
+        inline int getMGBishopOnStrongSquareBonus() const { return mgBishopOnStrongSquareBonus; }
 
-        inline int16_t getMGBadBishopPenalty() const { return mgBadBishopPenalty; }
-        inline int16_t getEGBadBishopPenalty() const { return egBadBishopPenalty; }
+        inline int getMGBadBishopPenalty() const { return mgBadBishopPenalty; }
+        inline int getEGBadBishopPenalty() const { return egBadBishopPenalty; }
 
-        inline int16_t getMGRookOnOpenFileBonus() const { return mgRookOnOpenFileBonus; }
-        inline int16_t getMGRookOnSemiOpenFileBonus() const { return mgRookOnSemiOpenFileBonus; }
+        inline int getMGRookOnOpenFileBonus() const { return mgRookOnOpenFileBonus; }
+        inline int getMGRookOnSemiOpenFileBonus() const { return mgRookOnSemiOpenFileBonus; }
 
-        inline int16_t getEGRookBehindPassedPawnBonus() const { return egRookBehindPassedPawnBonus; }
-        inline int16_t getEGBlockedEnemyPassedPawnBonus() const { return egBlockedEnemyPassedPawnBonus; }
-        inline int16_t getEGBlockedOwnPassedPawnPenalty() const { return egBlockedOwnPassedPawnPenalty; }
+        inline int getEGRookBehindPassedPawnBonus() const { return egRookBehindPassedPawnBonus; }
+        inline int getEGBlockedEnemyPassedPawnBonus() const { return egBlockedEnemyPassedPawnBonus; }
+        inline int getEGBlockedOwnPassedPawnPenalty() const { return egBlockedOwnPassedPawnPenalty; }
 
-        inline int16_t getEGKingProximityPawnWeight() const { return egKingProximityPawnWeight; }
-        inline int16_t getEGKingProximityBackwardPawnWeight() const { return egKingProximityBackwardPawnWeight; }
-        inline int16_t getEGKingProximityPassedPawnWeight() const { return egKingProximityPassedPawnWeight; }
+        inline int getEGKingProximityPawnWeight() const { return egKingProximityPawnWeight; }
+        inline int getEGKingProximityBackwardPawnWeight() const { return egKingProximityBackwardPawnWeight; }
+        inline int getEGKingProximityPassedPawnWeight() const { return egKingProximityPassedPawnWeight; }
 
-        inline int16_t getRuleOfTheSquareBonus() const { return ruleOfTheSquareBonus; }
+        inline int getRuleOfTheSquareBonus() const { return ruleOfTheSquareBonus; }
 };
 
 extern HCEParameters HCE_PARAMS;

@@ -23,19 +23,18 @@ namespace UCI {
     void listen();
 
     struct SearchParams {
-        uint32_t depth = std::numeric_limits<uint32_t>::max();
+        int depth = std::numeric_limits<int>::max();
         uint64_t nodes = std::numeric_limits<uint64_t>::max();
         Array<Move, 256> searchmoves = {};
-        bool useSearchmoves = false;
-        uint32_t movetime = 0;
+        uint32_t movetime = std::numeric_limits<uint32_t>::max();
         bool useMovetime = false;
-        uint32_t wtime = 0;
-        uint32_t btime = 0;
+        uint32_t wtime = std::numeric_limits<uint32_t>::max();
+        uint32_t btime = std::numeric_limits<uint32_t>::max();
         uint32_t winc = 0;
         uint32_t binc = 0;
-        uint32_t movestogo = std::numeric_limits<uint32_t>::max();
+        unsigned int movestogo = std::numeric_limits<unsigned int>::max();
         bool useWBTime = false;
-        uint32_t mate = 0;
+        int mate = 0;
         bool infinite = false;
         bool ponder = false;
     };

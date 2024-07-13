@@ -39,15 +39,15 @@ enum {
     BLACK_KING
 };
 
-constexpr int32_t KNIGHT_ATTACKS[8] = {
+constexpr int KNIGHT_ATTACKS[8] = {
     -17, -15, -10, -6, 6, 10, 15, 17
 };
 
-constexpr int32_t DIAGONAL_ATTACKS[4] = {
+constexpr int DIAGONAL_ATTACKS[4] = {
     -9, -7, 7, 9
 };
 
-constexpr int32_t STRAIGHT_ATTACKS[4] = {
+constexpr int STRAIGHT_ATTACKS[4] = {
     -8, -1, 1, 8
 };
 
@@ -91,27 +91,27 @@ enum {
 };
 
 namespace Square {
-    constexpr int32_t rankOf(int32_t sq) {
+    constexpr int rankOf(int sq) {
         return sq >> 3;
     }
 
-    constexpr int32_t fileOf(int32_t sq) {
+    constexpr int fileOf(int sq) {
         return sq & 7;
     }
 
-    constexpr int32_t fromFileRank(int32_t file, int32_t rank) {
+    constexpr int fromFileRank(int file, int rank) {
         return rank * 8 + file;
     }
 
-    constexpr int32_t flipX(int32_t sq) {
+    constexpr int flipX(int sq) {
         return sq ^ 7;
     }
 
-    constexpr int32_t flipY(int32_t sq) {
+    constexpr int flipY(int sq) {
         return sq ^ 56;
     }
 
-    constexpr int32_t rotateY(int32_t sq) {
+    constexpr int rotateY(int sq) {
         return sq ^ 63;
     }
 }

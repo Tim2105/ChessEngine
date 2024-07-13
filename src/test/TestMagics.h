@@ -3,8 +3,8 @@
 
 #include <stdint.h>
 
-bool testRookMagic(int32_t sq);
-bool testBishopMagic(int32_t sq);
+bool testRookMagic(int sq);
+bool testBishopMagic(int sq);
 
 void testAllRookMagics();
 void testAllBishopMagics();

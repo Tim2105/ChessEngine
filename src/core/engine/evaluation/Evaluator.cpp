@@ -18,8 +18,8 @@ bool Evaluator::isDraw() {
     return isDrawnKPKEndgame() || Referee::isDrawByMaterial(board);
 }
 
-int32_t Evaluator::getSmallestAttacker(int32_t to, int32_t side) {
-    int32_t otherSide = side ^ COLOR_MASK;
+int Evaluator::getSmallestAttacker(int to, int side) {
+    int otherSide = side ^ COLOR_MASK;
 
     if(!board.getAttackBitboard(side).getBit(to))
         return NO_SQ;
@@ -60,16 +60,16 @@ int32_t Evaluator::getSmallestAttacker(int32_t to, int32_t side) {
     return NO_SQ;
 }
 
-int32_t Evaluator::see(Move m) {
-    int32_t score = 0;
-    int32_t side = board.getSideToMove() ^ COLOR_MASK;
+int Evaluator::see(Move m) {
+    int score = 0;
+    int side = board.getSideToMove() ^ COLOR_MASK;
 
     board.makeMove(m);
 
-    int32_t attackerSq = getSmallestAttacker(m.getDestination(), side);
+    int attackerSq = getSmallestAttacker(m.getDestination(), side);
     if(attackerSq != NO_SQ) {
         Move newMove(attackerSq, m.getDestination(), MOVE_CAPTURE);
-        int32_t capturedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(board.pieceAt(m.getDestination()))];
+        int capturedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(board.pieceAt(m.getDestination()))];
         score = std::max(score, capturedPieceValue - see(newMove));
     }
 
@@ -78,16 +78,16 @@ int32_t Evaluator::see(Move m) {
     return score;
 }
 
-bool Evaluator::seeGreaterEqual(Move m, int32_t threshold) {
-    int32_t movedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(board.pieceAt(m.getOrigin()))];
-    int32_t capturedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(board.pieceAt(m.getDestination()))];
+bool Evaluator::seeGreaterEqual(Move m, int threshold) {
+    int movedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(board.pieceAt(m.getOrigin()))];
+    int capturedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(board.pieceAt(m.getDestination()))];
 
     if(capturedPieceValue - movedPieceValue >= threshold)
         return true;
 
     board.makeMove(m);
 
-    int32_t attackerSq = getSmallestAttacker(m.getDestination(), board.getSideToMove());
+    int attackerSq = getSmallestAttacker(m.getDestination(), board.getSideToMove());
     if(attackerSq != NO_SQ) {
         Move newMove(attackerSq, m.getDestination(), MOVE_CAPTURE);
         bool result = !seeGreaterEqual(newMove, capturedPieceValue - threshold + 1);
@@ -110,7 +110,7 @@ bool Evaluator::isDrawnKPKEndgame() {
 
     Bitboard whiteKing = board.getPieceBitboard(WHITE_KING);
     Bitboard blackKing = board.getPieceBitboard(BLACK_KING);
-    int32_t sideToMove = board.getSideToMove();
+    int sideToMove = board.getSideToMove();
 
     if(whitePawns) {
         if(whitePawns.shiftNorth() & blackKing &&
@@ -149,8 +149,8 @@ bool Evaluator::isDrawnKPKEndgame() {
     return false;
 }
 
-int16_t Evaluator::evaluateMoveSEE(Move m) {
-    int32_t moveScore = 0;
+int Evaluator::evaluateMoveSEE(Move m) {
+    int moveScore = 0;
 
     if(m.isPromotion()) {
         if(m.isPromotionQueen())
@@ -164,7 +164,7 @@ int16_t Evaluator::evaluateMoveSEE(Move m) {
     }
 
     // SEE-Heuristik
-    int32_t capturedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(board.pieceAt(m.getDestination()))];
+    int capturedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(board.pieceAt(m.getDestination()))];
     if(m.isEnPassant())
         capturedPieceValue = SIMPLE_PIECE_VALUE[PAWN];
 
@@ -173,8 +173,8 @@ int16_t Evaluator::evaluateMoveSEE(Move m) {
     return moveScore;
 }
 
-bool Evaluator::isSEEGreaterEqual(Move m, int32_t threshold) {
-    int32_t movedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(board.pieceAt(m.getOrigin()))];
+bool Evaluator::isSEEGreaterEqual(Move m, int threshold) {
+    int movedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(board.pieceAt(m.getOrigin()))];
 
     if(m.isPromotion()) {
         if(m.isPromotionQueen())
@@ -188,7 +188,7 @@ bool Evaluator::isSEEGreaterEqual(Move m, int32_t threshold) {
     }
 
     // SEE-Heuristik
-    int32_t capturedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(board.pieceAt(m.getDestination()))];
+    int capturedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(board.pieceAt(m.getDestination()))];
     if(m.isEnPassant())
         capturedPieceValue = SIMPLE_PIECE_VALUE[PAWN];
 
@@ -197,7 +197,7 @@ bool Evaluator::isSEEGreaterEqual(Move m, int32_t threshold) {
 
     board.makeMove(m);
 
-    int32_t attackerSq = getSmallestAttacker(m.getDestination(), board.getSideToMove());
+    int attackerSq = getSmallestAttacker(m.getDestination(), board.getSideToMove());
     if(attackerSq != NO_SQ) {
         Move newMove(attackerSq, m.getDestination(), MOVE_CAPTURE);
         bool result = !seeGreaterEqual(newMove, capturedPieceValue - threshold + 1);
@@ -210,8 +210,8 @@ bool Evaluator::isSEEGreaterEqual(Move m, int32_t threshold) {
     return capturedPieceValue >= threshold;
 }
 
-int16_t Evaluator::evaluateMoveMVVLVA(Move m) {
-    int32_t moveScore = 0;
+int Evaluator::evaluateMoveMVVLVA(Move m) {
+    int moveScore = 0;
 
     if(m.isPromotion()) {
         if(m.isPromotionQueen())
@@ -226,8 +226,8 @@ int16_t Evaluator::evaluateMoveMVVLVA(Move m) {
 
     if(m.isCapture()) {
         // MVVLVA-Heuristik
-        int32_t movedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(board.pieceAt(m.getOrigin()))];
-        int32_t capturedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(board.pieceAt(m.getDestination()))];
+        int movedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(board.pieceAt(m.getOrigin()))];
+        int capturedPieceValue = SIMPLE_PIECE_VALUE[TYPEOF(board.pieceAt(m.getDestination()))];
 
         moveScore += capturedPieceValue - movedPieceValue;
     }

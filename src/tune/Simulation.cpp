@@ -78,7 +78,7 @@ GameResult Simulation::simulateSingleGame(Board& board) {
             if(Referee::isCheckmate(board))
                 return WHITE_WIN;
 
-            int32_t score = white.getBestMoveScore();
+            int score = white.getBestMoveScore();
             if(score >= DECISIVE_SCORE)
                 return WHITE_WIN;
             else if(score <= -DECISIVE_SCORE)
@@ -98,7 +98,7 @@ GameResult Simulation::simulateSingleGame(Board& board) {
             if(Referee::isCheckmate(board))
                 return BLACK_WIN;
 
-            int32_t score = black.getBestMoveScore();
+            int score = black.getBestMoveScore();
             if(score >= DECISIVE_SCORE)
                 return BLACK_WIN;
             else if(score <= -DECISIVE_SCORE)

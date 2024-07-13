@@ -22,7 +22,7 @@ class HandcraftedEvaluator: public Evaluator {
             Bitboard whiteStrongSquares; // Starke Felder für weiße Figuren
             Bitboard blackStrongSquares; // Starke Felder für schwarze Figuren
             double phase; // Aktuelle Spielphase (0 = Mittelspiel, 1 = Endspiel)
-            int32_t phaseWeight; // Materialgewichtung für die Spielphase
+            int phaseWeight; // Materialgewichtung für die Spielphase
         };
 
         const HCEParameters& hceParams;
@@ -37,9 +37,9 @@ class HandcraftedEvaluator: public Evaluator {
         Score calculateKingSafetyScore();
         Score calculatePieceScore();
 
-        int32_t evaluateKingAttackZone();
-        int32_t evaluateOpenFiles();
-        int32_t evaluatePawnSafety();
+        int evaluateKingAttackZone();
+        int evaluateOpenFiles();
+        int evaluatePawnSafety();
 
         Score evaluateAttackedPieces();
         Score evaluatePieceMobility();
@@ -53,14 +53,14 @@ class HandcraftedEvaluator: public Evaluator {
 
         Score evaluateRuleOfTheSquare();
 
-        bool isWinnable(int32_t side);
+        bool isWinnable(int side);
         bool isOppositeColorBishopEndgame();
 
-        int32_t evaluateKNBKEndgame(int32_t ownBishopSq, int32_t oppKingSq);
-        int32_t evaluateWinningNoPawnsEndgame(int32_t oppKingSq);
+        int evaluateKNBKEndgame(int ownBishopSq, int oppKingSq);
+        int evaluateWinningNoPawnsEndgame(int oppKingSq);
 
-        static constexpr int16_t EG_WINNING_BONUS = 800;
-        static constexpr int16_t EG_SPECIAL_MATE_PROGRESS_BONUS = 150;
+        static constexpr int EG_WINNING_BONUS = 800;
+        static constexpr int EG_SPECIAL_MATE_PROGRESS_BONUS = 150;
 
     public:
         HandcraftedEvaluator(Board& b, const HCEParameters& hceParams) : Evaluator(b), hceParams(hceParams) {
@@ -73,15 +73,15 @@ class HandcraftedEvaluator: public Evaluator {
 
         HandcraftedEvaluator(Board& b) : HandcraftedEvaluator(b, HCE_PARAMS) {};
 
-        inline int32_t evaluate() override {
-            int32_t numWhitePawns = board.getPieceBitboard(WHITE_PAWN).popcount();
-            int32_t numBlackPawns = board.getPieceBitboard(BLACK_PAWN).popcount();
-            int32_t numPawns = numWhitePawns + numBlackPawns;
+        inline int evaluate() override {
+            int numWhitePawns = board.getPieceBitboard(WHITE_PAWN).popcount();
+            int numBlackPawns = board.getPieceBitboard(BLACK_PAWN).popcount();
+            int numPawns = numWhitePawns + numBlackPawns;
 
         	// Spezialfall: Keine Bauern mehr auf dem Spielfeld
             if(numPawns == 0) {
-                int32_t whiteKingSq = board.getKingSquare(WHITE);
-                int32_t blackKingSq = board.getKingSquare(BLACK);
+                int whiteKingSq = board.getKingSquare(WHITE);
+                int blackKingSq = board.getKingSquare(BLACK);
 
                 // Wenn der Materialvorteil kleiner als das Gewicht eines Turms ist, dann ist es Unentschieden
                 if(std::abs(evaluationVars.materialScore.eg) < hceParams.getEGWinningMaterialAdvantage()) {
@@ -140,32 +140,32 @@ class HandcraftedEvaluator: public Evaluator {
             Score score = (evaluationVars.materialScore + evaluationVars.pawnScore + pieceScore + kingSafetyScore +
                            Score{hceParams.getMGTempoBonus(), hceParams.getEGTempoBonus()} * (board.getSideToMove() == WHITE ? 1 : -1));
 
-            int32_t evaluation = ((1.0 - evaluationVars.phase) * score.mg + evaluationVars.phase * score.eg) *
-                                 (board.getSideToMove() == WHITE ? 1 : -1);
+            int evaluation = ((1.0 - evaluationVars.phase) * score.mg + evaluationVars.phase * score.eg) *
+                              (board.getSideToMove() == WHITE ? 1 : -1);
 
             // Endspiele mit Bauern und Läufern auf unterschiedlichen
             // Feldern sind schwierig zu gewinnen
             if(isOppositeColorBishopEndgame()) {
-                int32_t evaluationSign = evaluation >= 0 ? 1 : -1;
+                int evaluationSign = evaluation >= 0 ? 1 : -1;
                 evaluation -= hceParams.getLinearPieceValue(PAWN) * evaluationSign;
 
                 if(evaluationSign == 1)
-                    evaluation = std::max(evaluation, (int32_t)DRAW_SCORE);
+                    evaluation = std::max(evaluation, DRAW_SCORE);
                 else
-                    evaluation = std::min(evaluation, (int32_t)-DRAW_SCORE);
+                    evaluation = std::min(evaluation, -DRAW_SCORE);
             }
 
             // Skaliere die Bewertung in Richtung 0, wenn wir uns der 50-Züge-Regel annähern.
             // (Starte erst nach 10 Zügen, damit die Bewertung nicht zu früh verzerrt wird.)
-            int32_t fiftyMoveCounter = board.getFiftyMoveCounter();
+            int fiftyMoveCounter = board.getFiftyMoveCounter();
             if(fiftyMoveCounter > 20)
                 evaluation = evaluation * (100 - fiftyMoveCounter) / 80;
 
             if(!isWinnable(board.getSideToMove()))
-                evaluation = std::min(evaluation, (int32_t)DRAW_SCORE);
+                evaluation = std::min(evaluation, DRAW_SCORE);
 
             if(!isWinnable(board.getSideToMove() ^ COLOR_MASK))
-                evaluation = std::max(evaluation, (int32_t)-DRAW_SCORE);
+                evaluation = std::max(evaluation, -DRAW_SCORE);
 
             return evaluation;
         }
@@ -196,13 +196,13 @@ class HandcraftedEvaluator: public Evaluator {
          */
 
         // Figurengewichte
-        static constexpr int32_t PAWN_WEIGHT = 0;
-        static constexpr int32_t KNIGHT_WEIGHT = 1;
-        static constexpr int32_t BISHOP_WEIGHT = 1;
-        static constexpr int32_t ROOK_WEIGHT = 2;
-        static constexpr int32_t QUEEN_WEIGHT = 4;
+        static constexpr int PAWN_WEIGHT = 0;
+        static constexpr int KNIGHT_WEIGHT = 1;
+        static constexpr int BISHOP_WEIGHT = 1;
+        static constexpr int ROOK_WEIGHT = 2;
+        static constexpr int QUEEN_WEIGHT = 4;
 
-        static constexpr int32_t PIECE_WEIGHT[7] = {
+        static constexpr int PIECE_WEIGHT[7] = {
             0, // Empty
             PAWN_WEIGHT,
             KNIGHT_WEIGHT,
@@ -212,7 +212,7 @@ class HandcraftedEvaluator: public Evaluator {
             0 // King
         };
 
-        static constexpr int32_t TOTAL_WEIGHT = PAWN_WEIGHT * 16 + KNIGHT_WEIGHT * 4 + BISHOP_WEIGHT * 4 + ROOK_WEIGHT * 4 + QUEEN_WEIGHT * 2;
+        static constexpr int TOTAL_WEIGHT = PAWN_WEIGHT * 16 + KNIGHT_WEIGHT * 4 + BISHOP_WEIGHT * 4 + ROOK_WEIGHT * 4 + QUEEN_WEIGHT * 2;
 
         // Phasengrenzen, können unter 0 oder über 1 sein,
         // die berechnete Phase wird aber zwischen 0 und 1 eingeschränkt
@@ -295,7 +295,7 @@ class HandcraftedEvaluator: public Evaluator {
             0x8080808080808080ULL
         };
 
-        static constexpr Array<int32_t, 3> nearbyFiles[8] = {
+        static constexpr Array<int, 3> nearbyFiles[8] = {
             {0, 1, 2},
             {0, 1, 2},
             {0, 1, 2},

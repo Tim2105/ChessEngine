@@ -8,7 +8,7 @@
 /**
  * @brief Eine Basisklasse für alle statische Evaluatoren von Schachpositionen.
  * 
- * Diese Klasse deklariert die Methode int32_t evaluate(), die eine statische Bewertung der Spielposition ausführt.
+ * Diese Klasse deklariert die Methode int evaluate(), die eine statische Bewertung der Spielposition ausführt.
  * Diese Methode muss von allen abgeleiteten Klassen implementiert werden.
  * 
  * Diese Klasse deklariert und implementiert auch die Methode bool isDraw(), die überprüft, ob das Spiel ein Unentschieden ist.
@@ -21,7 +21,7 @@ class Evaluator {
          * @brief Die Werte der Figuren in Centipawns.
          * Wird nur für die Bewertung der Figuren in SEE und MVV-LVA verwendet.
          */
-        static constexpr int32_t SIMPLE_PIECE_VALUE[7] = {0, 100, 300, 300, 500, 900, 0};
+        static constexpr int SIMPLE_PIECE_VALUE[7] = {0, 100, 300, 300, 500, 900, 0};
 
         /**
          * @brief Versucht, den Angreifer mit dem geringsten Wert zu finden, der das Feld to angreift.
@@ -29,19 +29,19 @@ class Evaluator {
          * @return Das Feld des Angreifers mit dem geringsten Wert.
          * Wenn kein Angreifer gefunden wurde, wird NO_SQ zurückgegeben.
          */
-        int32_t getSmallestAttacker(int32_t to, int32_t side);
+        int getSmallestAttacker(int to, int side);
 
         /**
          * @brief Static Exchange Evaluation.
          * https://www.chessprogramming.org/Static_Exchange_Evaluation
          */
-        int32_t see(Move m);
+        int see(Move m);
 
         /**
          * @brief Eine Kopie von isSEEGreaterEqual, die die Spezialfälle
          * Bauernaufwertung und En-Passant nicht berücksichtigt.
          */
-        bool seeGreaterEqual(Move m, int32_t threshold);
+        bool seeGreaterEqual(Move m, int threshold);
 
         /**
          * @brief Überprüft, ob eine gegebene Stellung eine KPK-Remisstellung ist.
@@ -89,23 +89,23 @@ class Evaluator {
          * Je kleiner der Wert, desto besser ist die Spielposition für den Gegner des Spielers der am Zug ist.
          * Eine Bewertung von 0 bedeutet ein ausgeglichenes Spiel.
          */
-        virtual int32_t evaluate() = 0;
+        virtual int evaluate() = 0;
 
         /**
          * @brief Führt eine statische Bewertung eines Zugs mit SEE durch.
          */
-        int16_t evaluateMoveSEE(Move m);
+        int evaluateMoveSEE(Move m);
 
         /**
          * @brief Überprüft, ob die statische Bewertung eines Zugs mit SEE
          * größer oder gleich einem Schwellwert ist.
          */
-        bool isSEEGreaterEqual(Move m, int32_t threshold);
+        bool isSEEGreaterEqual(Move m, int threshold);
 
         /**
          * @brief Führt eine statische Bewertung eines Zugs mit MVVLVA durch.
          */
-        int16_t evaluateMoveMVVLVA(Move m);
+        int evaluateMoveMVVLVA(Move m);
 
         /**
          * @brief Gibt eine Referenz auf das aktuelle Spielfeld zurück.

@@ -23,7 +23,7 @@ class MagicsFinder {
          * 
          * Diese Funktion ist nur für die Generierung der Magic-Numbers gedacht.
         */
-        static uint64_t rookAttackMask(int32_t sq, uint64_t occupied);
+        static uint64_t rookAttackMask(int sq, uint64_t occupied);
 
         /**
          * @brief Generiert alle möglichen Züge für einen Läufer auf einem bestimmten Feld
@@ -31,31 +31,31 @@ class MagicsFinder {
          * 
          * Diese Funktion ist nur für die Generierung der Magic-Numbers gedacht.
         */
-        static uint64_t bishopAttackMask(int32_t sq, uint64_t occupied);
+        static uint64_t bishopAttackMask(int sq, uint64_t occupied);
 
         /**
          * Generiert alle möglichen Züge in eine bestimmte Richtung für einen Turm auf einem bestimmten Feld.
          */
 
-        static uint64_t rookAttackTopMask(int32_t sq);
+        static uint64_t rookAttackTopMask(int sq);
 
-        static uint64_t rookAttackRightMask(int32_t sq);
+        static uint64_t rookAttackRightMask(int sq);
 
-        static uint64_t rookAttackBottomMask(int32_t sq);
+        static uint64_t rookAttackBottomMask(int sq);
 
-        static uint64_t rookAttackLeftMask(int32_t sq);
+        static uint64_t rookAttackLeftMask(int sq);
 
         /**
          * Generiert alle möglichen Züge in eine bestimmte Richtung für einen Läufer auf einem bestimmten Feld.
          */
 
-        static uint64_t bishopAttackTopLeftMask(int32_t sq);
+        static uint64_t bishopAttackTopLeftMask(int sq);
 
-        static uint64_t bishopAttackTopRightMask(int32_t sq);
+        static uint64_t bishopAttackTopRightMask(int sq);
 
-        static uint64_t bishopAttackBottomLeftMask(int32_t sq);
+        static uint64_t bishopAttackBottomLeftMask(int sq);
 
-        static uint64_t bishopAttackBottomRightMask(int32_t sq);
+        static uint64_t bishopAttackBottomRightMask(int sq);
 
         /**
          * @brief Generiert alle möglichen Rook-Masks und speichert die in der Datei.
@@ -81,7 +81,7 @@ class MagicsFinder {
          * @param sq Das Feld, auf dem der Turm steht.
          * @param shift Die Anzahl an Shifts, die die Magic-Number benötigen soll.
         */
-        static uint64_t findRookMagic(int32_t sq, int32_t shift);
+        static uint64_t findRookMagic(int sq, int shift);
 
         /**
          * @brief Sucht nach Magic-Numbers für Türme auf jedem Feld
@@ -94,7 +94,7 @@ class MagicsFinder {
          * @param sq Das Feld, auf dem der Läufer steht.
          * @param shift Die Anzahl an Shifts, die die Magic-Number benötigen soll.
         */
-        static uint64_t findBishopMagic(int32_t sq, int32_t shift);
+        static uint64_t findBishopMagic(int sq, int shift);
 
         /**
          * @brief Sucht nach Magic-Numbers für Läufer auf jedem Feld

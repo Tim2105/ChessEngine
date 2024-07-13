@@ -23,7 +23,7 @@ class NNUEEvaluator: public Evaluator {
 
         ~NNUEEvaluator() {}
 
-        inline int32_t evaluate() override {
+        inline int evaluate() override {
             int32_t numPawns = board.getPieceBitboard(WHITE | PAWN).popcount() +
                                board.getPieceBitboard(BLACK | PAWN).popcount();
 

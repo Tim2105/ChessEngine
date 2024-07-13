@@ -87,7 +87,7 @@ class PVSEngine {
         /**
          * @brief Die maximale Suchtiefe, die bisher erreicht wurde.
          */
-        int16_t maxDepthReached = 0;
+        int maxDepthReached = 0;
 
         /**
          * @brief Enthält den besten Zug und seine Bewertung
@@ -140,9 +140,9 @@ class PVSEngine {
          * Suchparameter für die zusätzlichen Suchinstanzen.
          */
 
-        int16_t currentDepth;
-        int16_t currentAlpha;
-        int16_t currentBeta;
+        int currentDepth;
+        int currentAlpha;
+        int currentBeta;
 
         #endif
 
@@ -180,7 +180,7 @@ class PVSEngine {
          * @param beta Der obere Wert des Suchfensters.
          * @param searchMoves Die, zu durchsuchenden, Züge.
          */
-        void startHelperThreads(int16_t depth, int16_t alpha, int16_t beta, const Array<Move, 256>& searchMoves);
+        void startHelperThreads(int depth, int alpha, int beta, const Array<Move, 256>& searchMoves);
 
         /**
          * @brief Pausiert alle Helper-Threads,
@@ -241,7 +241,7 @@ class PVSEngine {
          * werden soll. Wenn keine Funktion aufgerufen werden soll, kann dieser
          * Parameter weggelassen werden.
          */
-        PVSEngine(Board& board, uint32_t checkupInterval = 2, std::function<void()> checkupCallback = nullptr)
+        PVSEngine(Board& board, uint64_t checkupInterval = 2, std::function<void()> checkupCallback = nullptr)
                 : board(board), checkupInterval(checkupInterval), checkupCallback(checkupCallback) {}
 
         #if defined(USE_HCE) && defined(TUNE)
@@ -256,7 +256,7 @@ class PVSEngine {
          * werden soll. Wenn keine Funktion aufgerufen werden soll, kann dieser
          * Parameter weggelassen werden.
          */
-        PVSEngine(Board& board, HCEParameters& hceParams, uint32_t checkupInterval = 2, std::function<void()> checkupCallback = nullptr)
+        PVSEngine(Board& board, HCEParameters& hceParams, uint64_t checkupInterval = 2, std::function<void()> checkupCallback = nullptr)
                 : board(board), hceParams(hceParams), checkupInterval(checkupInterval), checkupCallback(checkupCallback) {}
         #endif
 
@@ -333,7 +333,7 @@ class PVSEngine {
             return variations.empty() ? Move() : variations[0].moves[0];
         }
 
-        inline int16_t getBestMoveScore() {
+        inline int getBestMoveScore() {
             return variations.empty() ? 0 : variations[0].score;
         }
 
@@ -349,7 +349,7 @@ class PVSEngine {
             return nodesSearched.load();
         }
 
-        constexpr int16_t getMaxDepthReached() const {
+        constexpr int getMaxDepthReached() const {
             return maxDepthReached;
         }
 
@@ -364,14 +364,14 @@ class PVSEngine {
         /**
          * @brief Die (halbe) größe des Aspirationsfensters.
          */
-        static constexpr int16_t ASPIRATION_WINDOW = 15;
+        static constexpr int ASPIRATION_WINDOW = 15;
 
         /**
          * @brief Die (halbe) größe des erweiterten Aspirationsfensters.
          * Im Falle eines fail-high oder fail-low wird die Größe des
          * Aspirationsfensters auf diesen Wert erweitert.
          */
-        static constexpr int16_t WIDENED_ASPIRATION_WINDOW = 150;
+        static constexpr int WIDENED_ASPIRATION_WINDOW = 150;
 
         /**
          * @brief Ein sehr schmales Aspirationsfenster schlägt in einseitigen
@@ -394,8 +394,8 @@ class PVSEngine {
         /**
          * @brief Bestimmt die tiefste Suchtiefe aller Instanzen.
          */
-        inline uint16_t getSelectiveDepth() {
-            uint16_t selDepth = mainInstance->getSelectiveDepth();
+        inline int getSelectiveDepth() {
+            int selDepth = mainInstance->getSelectiveDepth();
 
             #if not defined(DISABLE_THREADS)
             for(PVSSearchInstance* instance : instances)

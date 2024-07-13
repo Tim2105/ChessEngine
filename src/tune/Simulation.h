@@ -34,7 +34,7 @@ class Simulation {
 
         GameResult simulateSingleGame(Board& board);
 
-        static constexpr int32_t DECISIVE_SCORE = 20000; // Matt
+        static constexpr int DECISIVE_SCORE = 20000; // Matt
 
     public:
         Simulation(std::vector<Board>& startingPositions, uint32_t timeControl, uint32_t increment);

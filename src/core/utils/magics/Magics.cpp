@@ -24,19 +24,19 @@ uint64_t Magics::bishopAttacksBottomRightMask[64];
 void Magics::initializeMagics() {
     // Fülle die Turm-Tabellen
     uint64_t rookAttackPtr = 0;
-    for(int32_t sq = 0; sq < 64; sq++) {
+    for(int sq = 0; sq < 64; sq++) {
         // Zeigertabelle
         rookAttackPtrs[sq] = rookAttackPtr;
 
         // Fülle die Zugtabellen
         uint64_t occupied = MagicNumbers::rookMasks[sq];
-        int32_t shift = MagicNumbers::rookShifts[sq];
+        int shift = MagicNumbers::rookShifts[sq];
         uint64_t magic = MagicNumbers::rookMagics[sq];
-        int32_t numOccupancies = 1 << std::popcount(occupied);
+        int numOccupancies = 1 << std::popcount(occupied);
         uint64_t* occupancies = new uint64_t[numOccupancies];
         MagicsFinder::generateAllOccupancyCombinations(occupied, occupancies);
 
-        for(int32_t i = 0; i < numOccupancies; i++) {
+        for(int i = 0; i < numOccupancies; i++) {
             uint64_t index = (occupancies[i] * magic) >> shift;
             rookAttacks[rookAttackPtr + index] = MagicsFinder::rookAttackMask(sq, occupancies[i]);
         }
@@ -55,19 +55,19 @@ void Magics::initializeMagics() {
 
     // Fülle die Läufer-Tabellen
     uint64_t bishopAttackPtr = 0;
-    for(int32_t sq = 0; sq < 64; sq++) {
+    for(int sq = 0; sq < 64; sq++) {
         // Zeigertabelle
         bishopAttackPtrs[sq] = bishopAttackPtr;
 
         // Fülle die Zugtabellen
         uint64_t occupied = MagicNumbers::bishopMasks[sq];
-        int32_t shift = MagicNumbers::bishopShifts[sq];
+        int shift = MagicNumbers::bishopShifts[sq];
         uint64_t magic = MagicNumbers::bishopMagics[sq];
-        int32_t numOccupancies = 1 << std::popcount(occupied);
+        int numOccupancies = 1 << std::popcount(occupied);
         uint64_t* occupancies = new uint64_t[numOccupancies];
         MagicsFinder::generateAllOccupancyCombinations(occupied, occupancies);
 
-        for(int32_t i = 0; i < numOccupancies; i++) {
+        for(int i = 0; i < numOccupancies; i++) {
             uint64_t index = (occupancies[i] * magic) >> shift;
             bishopAttacks[bishopAttackPtr + index] = MagicsFinder::bishopAttackMask(sq, occupancies[i]);
         }

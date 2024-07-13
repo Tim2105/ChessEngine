@@ -1,9 +1,9 @@
 #include "core/engine/search/PVSSearchInstance.h"
 
-int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta, uint8_t nodeType, int8_t nullMoveCooldown) {
+int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int nodeType, int nullMoveCooldown, int singularExtCooldown, bool skipHashMove) {
     // Setze die momentane Suchtiefe, wenn wir uns im Wurzelknoten befinden.
     if(ply == 0) {
-        currentSearchDepth = std::max(depth / ONE_PLY, 1);
+        currentSearchDepth = std::max(depth, 1);
         rootAge = board.getAge();
     }
 
@@ -25,7 +25,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     // Wir betrachten diesen Knoten.
     nodesSearched.fetch_add(1);
     localNodeCounter++;
-    selectiveDepth = std::max(selectiveDepth, ply);
+    selectiveDepth = std::max(selectiveDepth, (int)ply);
 
     // Überprüfe, ob wir uns in einer Remisstellung befinden.
     if(ply > 0 && evaluator.isDraw()) {
@@ -50,10 +50,10 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     // die aktuelle Position.
     TranspositionTableEntry entry;
     bool entryExists = transpositionTable.probe(board.getHashValue(), entry);
-    if(entryExists && nodeType != PV_NODE) {
+    if(entryExists && nodeType != PV_NODE && !skipHashMove) {
         // Ein Eintrag kann nur verwendet werden, wenn die eingetragene
         // Suchtiefe mindestens so groß ist wie unsere Suchtiefe.
-        if(entry.depth * ONE_PLY >= depth) {
+        if(entry.depth >= depth) {
             if(entry.type == TranspositionTableEntry::EXACT) {
                 // Der Eintrag speichert eine exakte Bewertung,
                 // d.h. er stammt aus einem PV-Knoten.
@@ -113,22 +113,22 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
      * nur noch einen König und Bauern haben.
      */
     if(nullMoveCooldown <= 0 && !board.isCheck() && nodeType != PV_NODE &&
-       depth > ONE_PLY && !deactivateNullMove()) {
+       depth > 1 && !deactivateNullMove()) {
 
-        int16_t depthReduction = calculateNullMoveReduction(depth, searchStack[ply].preliminaryScore, beta);
-        if(depthReduction > ONE_PLY) {
+        int depthReduction = calculateNullMoveReduction(depth, searchStack[ply].preliminaryScore, beta);
+        if(depthReduction > 1) {
             Move nullMove = Move::nullMove();
             board.makeMove(nullMove);
 
-            int16_t score = -pvs(depth - depthReduction, ply + 1, -beta, -beta + 1, CUT_NODE, NULL_MOVE_COOLDOWN);
+            int score = -pvs(depth - depthReduction, ply + 1, -beta, -beta + 1, CUT_NODE, NULL_MOVE_COOLDOWN, std::max(singularExtCooldown - 1, 1));
 
             board.undoMove();
 
             if(score >= beta) {
-                if(!verifyNullMove() || depthReduction >= depth + ONE_PLY)
+                if(!verifyNullMove() || depthReduction >= depth + 1)
                     return score;
 
-                score = pvs(depth - depthReduction + ONE_PLY, ply, beta - 1, beta, CUT_NODE, std::numeric_limits<int8_t>::max());
+                score = pvs(depth - depthReduction + 1, ply, beta - 1, beta, CUT_NODE, std::numeric_limits<int>::max(), singularExtCooldown);
                 if(score >= beta)
                     return score;
             }
@@ -140,9 +140,9 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     // Lade den Eintrag aus der Transpositionstabelle neu, da
     // bei der Suche mit mehreren Threads ein neuer Eintrag
     // vorliegen könnte.
-    entryExists = transpositionTable.probe(board.getHashValue(), entry);
-    if(entryExists && nodeType != PV_NODE) {
-        if(entry.depth * ONE_PLY >= depth) {
+    transpositionTable.probe(board.getHashValue(), entry);
+    if(entryExists && nodeType != PV_NODE && !skipHashMove) {
+        if(entry.depth >= depth) {
             if(entry.type == TranspositionTableEntry::EXACT) {
                 return entry.score;
             } else if(entry.type == TranspositionTableEntry::LOWER_BOUND) {
@@ -160,7 +160,71 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     }
 
     /**
-     * Internal Iterative Deepening (wenn ein Hashzug existiert):
+     * Singular Reply Extension (nur in Cut-Knoten):
+     * 
+     * Wir haben diese Position bereits einmal betrachtet und
+     * mit einer Bewertung > alpha bewertet. Wir wollen jetzt
+     * herausfinden, ob das der einzig gute Zug ist.
+     * Dazu werden alle übrigen Züge mit reduzierter Suchtiefe betrachtet.
+     * Wenn alle anderen Züge weit unter alpha bewertet werden,
+     * gehen wir davon aus, dass der beste Zug in dieser
+     * Position der einzige gute Zug ist und erhöhen seine Suchtiefe.
+     * Rekursive Erweiterungen werden beschränkt, um Suchexplosionen zu vermeiden.
+     */
+    int singularExtension = 0;
+    int singularDepth = std::min(depth / 2, depth - 4);
+
+    if(ply > 0 && singularExtCooldown <= 0 && singularDepth > 0 && !isMateScore(alpha) &&
+       entryExists && entry.depth >= singularDepth && entry.score > alpha &&
+       entry.type != TranspositionTableEntry::UPPER_BOUND) {
+
+        int singleDepthThreshold = std::abs(alpha) / 4 + 160;
+        int depthThresholdStep = singleDepthThreshold / 16;
+        int reducedBeta = alpha - singleDepthThreshold + std::max(singularDepth, 10) * depthThresholdStep;
+
+        int score = pvs(singularDepth, ply, reducedBeta - 1, reducedBeta, CUT_NODE, std::max(nullMoveCooldown, 1), SINGULAR_EXT_COOLDOWN, true);
+
+        // Überprüfe, ob wir unter unserem reduzierten Beta-Wert liegen.
+        if(score < reducedBeta)
+            singularExtension = 1;
+        else if(score >= beta && entry.score >= beta) {
+            /**
+             * Multi-Cut (so ungefähr):
+             * 
+             * Die reduzierte Suche und der Transpositionstabelleneintrag
+             * legen nah, dass zwei Züge >= beta sind. Wir gehen davon aus,
+             * dass einer der beiden auch bei vollständiger Suche >= beta
+             * und führen lediglich eine reduzierte Suche durch.
+             */
+            if(singularDepth >= 4)
+                depth -= 1;
+        }
+    }
+
+    // Lade den Eintrag aus der Transpositionstabelle neu, da
+    // bei der Suche mit mehreren Threads ein neuer Eintrag
+    // vorliegen könnte.
+    transpositionTable.probe(board.getHashValue(), entry);
+    if(entryExists && nodeType != PV_NODE && !skipHashMove) {
+        if(entry.depth >= depth) {
+            if(entry.type == TranspositionTableEntry::EXACT) {
+                return entry.score;
+            } else if(entry.type == TranspositionTableEntry::LOWER_BOUND) {
+                if(entry.score >= beta)
+                    return entry.score;
+                else if(entry.score > alpha)
+                    alpha = entry.score;
+            } else if(entry.type == TranspositionTableEntry::UPPER_BOUND) {
+                if(entry.score <= alpha)
+                    return entry.score;
+                else if(entry.score < beta)
+                    beta = entry.score;
+            }
+        }
+    }
+
+    /**
+     * Internal Iterative Deepening (1/2):
      * 
      * Wenn der Hashzug aus einer viel geringeren Suchtiefe stammt,
      * führe eine reduzierte Suche durch, um Suchexplosionen zu vermeiden.
@@ -168,24 +232,26 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
      * PV-Knoten oder einem Cut-Knoten befinden und der Hashzug aus einem
      * All-Knoten mit gleicher oder geringerer Suchtiefe stammt.
      */
+    int depthReduction = 0;
     if(entryExists) {
-        if((entry.depth + 4) * ONE_PLY <= depth)
-            depth -= ONE_PLY * (depth >= 4 * ONE_PLY);
+        int depthDiff = depth - entry.depth;
+        depthReduction = (depthDiff >= 4);
     } else
-        depth -= ONE_PLY * (depth >= 4 * ONE_PLY);
+        depthReduction = (depth >= 4);
+
+    depth -= depthReduction;
 
     /**
-     * Internal Iterative Deepening (wenn kein Hashzug existiert
-     * oder der Eintrag unzureichend ist):
+     * Internal Iterative Deepening (2/2):
      * 
      * Führe eine reduzierte Suche durch, um einen besseren
      * Hashzug für die aktuelle Position zu bestimmen.
-     * IID wird nur in PV-Knoten und Cut-Knoten mit einer
-     * Suchtiefe >= 6 durchgeführt.
+     * IID wird nur in PV-Knoten und Knoten mit einer
+     * Suchtiefe >= 8 durchgeführt.
      */
     bool useIID = false;
-    if(nodeType == PV_NODE || (nodeType == CUT_NODE && depth >= 6 * ONE_PLY))
-        useIID = !entryExists || entry.depth * ONE_PLY <= depth - 6 * ONE_PLY;
+    if(nodeType == PV_NODE || depth >= 8)
+        useIID = !entryExists || depthReduction > 0;
 
     addMovesToSearchStack(ply, useIID, depth);
 
@@ -193,67 +259,14 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     if(stopFlag.load() && currentSearchDepth > 1)
         return 0;
 
-    Move move;
-    int16_t moveCount = 0, moveScore;
-    bool isCheckEvasion = board.isCheck();
-
-    /**
-     * Singular Reply Extension (nur in Cut-Knoten):
-     * 
-     * Wir haben diese Position bereits einmal betrachtet und
-     * mit einer Bewertung > alpha bewertet. Wir wollen jetzt
-     * herausfinden, ob das der einzig gute Zug ist. Dazu werden
-     * alle übrigen Züge mit reduzierter Suchtiefe betrachtet.
-     * Wenn alle anderen Züge weit unter alpha bewertet werden,
-     * gehen wir davon aus, dass der beste Zug in dieser Position
-     * der einzige gute Zug ist und erhöhen seine Suchtiefe.
-     */
-    int16_t singularExtension = 0;
-    int16_t singularDepth = std::min(depth / (2 * ONE_PLY) * ONE_PLY, depth - 4 * ONE_PLY);
-
-    if(nodeType == CUT_NODE && singularDepth > 0 && !isMateScore(alpha) &&
-       entryExists && entry.depth * ONE_PLY >= singularDepth && entry.score > alpha &&
-       entry.type != TranspositionTableEntry::UPPER_BOUND) {
-
-        int16_t reducedAlpha = alpha - 100;
-        singularExtension = ONE_PLY;
-
-        for(MoveScorePair& pair : searchStack[ply].moveScorePairs) {
-            move = pair.move;
-            moveScore = pair.score;
-
-            if(move == entry.hashMove) // Der Hashzug wurde bereits betrachtet.
-                continue;
-
-            // Führe den Zug aus und informiere den Evaluator.
-            evaluator.updateBeforeMove(move);
-            board.makeMove(move);
-            evaluator.updateAfterMove();
-
-            // Durchsuche den Kindknoten mit reduzierter Suchtiefe.
-            int16_t score = -pvs(singularDepth, ply + 1, -reducedAlpha - 1, -reducedAlpha, ALL_NODE, nullMoveCooldown);
-
-            // Mache den Zug rückgängig und informiere den Evaluator.
-            evaluator.updateBeforeUndo();
-            board.undoMove();
-            evaluator.updateAfterUndo(move);
-
-            // Überprüfe, ob wir über unserem reduzierten Alpha-Wert liegen.
-            if(score > reducedAlpha) {
-                if(score >= beta && entry.score >= beta)
-                    return beta; // fail-hard
-
-                singularExtension = 0;
-                break;
-            }
-        }
-    }
-
     // Ermittele, ob wir Heuristiken anwenden dürfen, um die Suchtiefe zu erweitern.
-    bool allowHeuristicExtensions = extensionsOnPath < currentSearchDepth / (3 - isPlausibleLine) * ONE_PLY;
+    bool allowHeuristicExtensions = extensionsOnPath < currentSearchDepth / (3 - isPlausibleLine);
 
+    Move move;
+    int moveCount = 0, moveScore;
+    bool isCheckEvasion = board.isCheck();
     uint8_t ttEntryType = TranspositionTableEntry::UPPER_BOUND;
-    int16_t bestScore = MIN_SCORE, lmpCount = determineLMPCount(depth, isCheckEvasion, isPlausibleLine);
+    int bestScore = MIN_SCORE, lmpCount = determineLMPCount(depth, isCheckEvasion, isPlausibleLine);
     Move bestMove;
 
     // Schleife über alle legalen Züge.
@@ -262,6 +275,11 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     for(MoveScorePair& pair : searchStack[ply].moveScorePairs) {
         move = pair.move;
         moveScore = pair.score;
+
+        if(skipHashMove && move == searchStack[ply].hashMove) {
+            moveCount++;
+            continue;
+        }
 
         /**
          * Futility Pruning:
@@ -274,10 +292,10 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
          * oder wenn der Zug den Gegner in Schach setzt. Außerdem wird Futility Pruning
          * abgeschaltet, wenn alpha oder beta eine Mattbewertung ist.
          */
-        if(depth <= 2 * ONE_PLY && moveScore < KILLER_MOVE_SCORE && !isCheckEvasion &&
+        if(depth <= 2 && moveScore < KILLER_MOVE_SCORE && !isCheckEvasion &&
            nodeType != PV_NODE && !(isMateScore(alpha) || isMateScore(beta)) && !move.isCapture()) {
             
-            int16_t preliminaryEval = searchStack[ply].preliminaryScore;
+            int preliminaryEval = searchStack[ply].preliminaryScore;
 
             // Führe den Zug aus und informiere den Evaluator.
             evaluator.updateBeforeMove(move);
@@ -286,7 +304,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
 
             bool isCheck = board.isCheck();
 
-            int16_t futilityMargin = calculateFutilityMargin(depth);
+            int futilityMargin = calculateFutilityMargin(depth);
             if(!isCheck && preliminaryEval + futilityMargin < alpha) {
                 // Mache den Zug rückgängig und informiere den Evaluator.
                 evaluator.updateBeforeUndo();
@@ -308,7 +326,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
             evaluator.updateAfterMove();
         }
 
-        int16_t score;
+        int score;
 
         /**
          * Late Move Pruning:
@@ -338,8 +356,8 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
         else if(nodeType == CUT_NODE)
             childType = ALL_NODE;
         
-        int16_t extension = singularExtension * (moveCount == 0);
-        bool isCheck = false, isPassedPawnPush = false;
+        int extension = singularExtension * (moveCount == 0);
+        bool isCheck = false;
 
         /**
          * Erweiterungen:
@@ -354,49 +372,44 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
         if(board.isCheck()) {
             // Erweitere die Suchtiefe, wenn der Zug den Gegner in Schach setzt.
             if(extension == 0 && allowHeuristicExtensions)
-                extension += ONE_PLY;
+                extension += 1;
             
             isCheck = true;
-        } else {
-            /**
-             * Freibauer-Erweiterung:
-             * Wenn der Zug einen Freibauern erzeugt oder bewegt, erweitern wir die Suchtiefe.
-             */
-            int32_t movedPieceType = TYPEOF(board.pieceAt(move.getDestination()));
-            if(movedPieceType == PAWN) {
-                int32_t side = board.getSideToMove() ^ COLOR_MASK;
-                int32_t otherSide = side ^ COLOR_MASK;
-                if(!(sentryMasks[side / COLOR_MASK][move.getDestination()]
-                    & board.getPieceBitboard(otherSide | PAWN))) {
-                    
-                    if(extension == 0 && allowHeuristicExtensions)
-                        extension += ONE_PLY;
-
-                    isPassedPawnPush = true;
-                }
-            }
         }
 
         extensionsOnPath += extension;
 
         if(moveCount == 0) {
             // Führe eine vollständige Suche durch.
-            score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, childType, nullMoveCooldown - 1);
+            score = -pvs(depth - 1 + extension, ply + 1, -beta, -alpha, childType, nullMoveCooldown - 1, singularExtCooldown - 1);
         } else {
             // Durchsuche die restlichen Kinder mit einem Nullfenster (nur in PV-Knoten) und bei,
             // auf ersten Blick, uninteressanten Zügen mit einer reduzierten Suchtiefe
             // (=> Late Move Reductions).
-            int16_t reduction = 0;
+            int reduction = 0;
             if(extension == 0 && !isCheckEvasion) {
                 reduction = determineLMR(moveCount + 1, moveScore, depth);
 
-                if(isCheck || isPassedPawnPush)
-                    reduction -= ONE_PLY;
+                if(isCheck)
+                    reduction -= 1;
+                else {
+                    // Reduziere die Reduktion, wenn der Zug einen Freibauern bewegt.
+                    int movedPieceType = TYPEOF(board.pieceAt(move.getDestination()));
+                    if(movedPieceType == PAWN) {
+                        int side = board.getSideToMove() ^ COLOR_MASK;
+                        int otherSide = side ^ COLOR_MASK;
+                        if(!(sentryMasks[side / COLOR_MASK][move.getDestination()]
+                            & board.getPieceBitboard(otherSide | PAWN))) {
+                            
+                            reduction -= 1;
+                        }
+                    }
+                }
 
-                reduction = std::max(reduction, (int16_t)0);
+                reduction = std::max(reduction, 0);
             }
 
-            score = -pvs(depth - ONE_PLY + extension - reduction, ply + 1, -alpha - 1, -alpha, childType, nullMoveCooldown - 1);
+            score = -pvs(depth - 1 + extension - reduction, ply + 1, -alpha - 1, -alpha, childType, nullMoveCooldown - 1, singularExtCooldown - 1);
 
             // Wenn die Bewertung über dem Nullfenster liegt,
             // führe eine vollständige Suche durch, wenn:
@@ -409,7 +422,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
                 else
                     childType = ALL_NODE;
 
-                score = -pvs(depth - ONE_PLY + extension, ply + 1, -beta, -alpha, childType, std::max(nullMoveCooldown - 1, 1));
+                score = -pvs(depth - 1 + extension, ply + 1, -beta, -alpha, childType, std::max(nullMoveCooldown - 1, 1), singularExtCooldown - 1);
             }
         }
 
@@ -436,9 +449,9 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
             // (wir könnten ja noch einen besseren Zug finden).
             TranspositionTableEntry entry(
                 move,
-                score,
-                rootAge,
-                (uint8_t)(depth / ONE_PLY),
+                (int16_t)score,
+                (uint16_t)rootAge,
+                (uint8_t)depth,
                 TranspositionTableEntry::LOWER_BOUND
             );
 
@@ -452,8 +465,8 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
                 // Setze einen Eintrag in der Konterzug-Tabelle.
                 Move previousMove = board.getLastMove();
                 if(previousMove.exists()) {
-                    int32_t previousMoveDestination = previousMove.getDestination();
-                    int32_t prevoiuslyMovedPieceType = TYPEOF(board.pieceAt(previousMoveDestination));
+                    int previousMoveDestination = previousMove.getDestination();
+                    int prevoiuslyMovedPieceType = TYPEOF(board.pieceAt(previousMoveDestination));
 
                     setCounterMove(move, board.getSideToMove(), prevoiuslyMovedPieceType, previousMoveDestination);
                 }
@@ -511,9 +524,9 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     // zustande und war nur eine obere Schranke im Kindknoten).
     entry = {
         bestMove,
-        bestScore,
-        rootAge,
-        (uint8_t)(depth / ONE_PLY),
+        (int16_t)bestScore,
+        (uint16_t)rootAge,
+        (uint8_t)depth,
         ttEntryType
     };
 
@@ -528,8 +541,8 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
             // Setze einen Eintrag in der Konterzug-Tabelle.
             Move previousMove = board.getLastMove();
             if(previousMove.exists()) {
-                int32_t previousMoveDestination = previousMove.getDestination();
-                int32_t prevoiuslyMovedPieceType = TYPEOF(board.pieceAt(previousMoveDestination));
+                int previousMoveDestination = previousMove.getDestination();
+                int prevoiuslyMovedPieceType = TYPEOF(board.pieceAt(previousMoveDestination));
 
                 setCounterMove(bestMove, board.getSideToMove(), prevoiuslyMovedPieceType, previousMoveDestination);
             }
@@ -539,7 +552,7 @@ int16_t PVSSearchInstance::pvs(int16_t depth, uint16_t ply, int16_t alpha, int16
     return bestScore;
 }
 
-int16_t PVSSearchInstance::quiescence(uint16_t ply, int16_t alpha, int16_t beta) {
+int PVSSearchInstance::quiescence(int ply, int alpha, int beta) {
     // Führe die Checkup-Funktion regelmäßig aus.
     if(localNodeCounter >= NODES_PER_CHECKUP && checkupFunction) {
         localNodeCounter = 0;
@@ -549,7 +562,7 @@ int16_t PVSSearchInstance::quiescence(uint16_t ply, int16_t alpha, int16_t beta)
     // Wir betrachten diesen Knoten.
     nodesSearched.fetch_add(1);
     localNodeCounter++;
-    selectiveDepth = std::max(selectiveDepth, ply);
+    selectiveDepth = std::max(selectiveDepth, (int)ply);
 
     // Überprüfe, ob wir uns in einer Remisstellung befinden.
     if(evaluator.isDraw())
@@ -586,7 +599,7 @@ int16_t PVSSearchInstance::quiescence(uint16_t ply, int16_t alpha, int16_t beta)
     // nur verschlechtern können, geben wir die vorläufige Bewertung unter der
     // Annahme zurück, dass einer der nicht betrachteten Züge zu einer
     // besseren Bewertung führen würde.
-    int16_t standPat = searchStack[ply].preliminaryScore;
+    int standPat = searchStack[ply].preliminaryScore;
 
     // Delta Pruning:
     // Ein sehr großer Materialgewinn in einem Zug reicht nicht aus,
@@ -595,7 +608,7 @@ int16_t PVSSearchInstance::quiescence(uint16_t ply, int16_t alpha, int16_t beta)
         return standPat;
 
     // Die beste Bewertung, die wir bisher gefunden haben.
-    int16_t bestScore = MIN_SCORE;
+    int bestScore = MIN_SCORE;
 
     if(!board.isCheck()) {
         // Wenn die statische Bewertung schon über dem Suchfenster
@@ -614,7 +627,7 @@ int16_t PVSSearchInstance::quiescence(uint16_t ply, int16_t alpha, int16_t beta)
     // Generiere alle Züge, die wir betrachten wollen.
     addMovesToSearchStackInQuiescence(ply, false);
 
-    int16_t moveCount = 0;
+    int moveCount = 0;
     Move move;
 
     // Schleife über diese Züge.
@@ -627,7 +640,7 @@ int16_t PVSSearchInstance::quiescence(uint16_t ply, int16_t alpha, int16_t beta)
         evaluator.updateAfterMove();
 
         // Betrachte den Kindknoten.
-        int16_t score = -quiescence(ply + 1, -beta, -alpha);
+        int score = -quiescence(ply + 1, -beta, -alpha);
 
         // Mache den Zug rückgängig und informiere den Evaluator.
         evaluator.updateBeforeUndo();
@@ -657,7 +670,7 @@ int16_t PVSSearchInstance::quiescence(uint16_t ply, int16_t alpha, int16_t beta)
     return bestScore;
 }
 
-int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore, int16_t depth) {
+int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int depth) {
     // LMR reduziert nie den ersten Zug
     if(moveCount <= 1)
         return 0;
@@ -669,7 +682,7 @@ int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore, in
         return 0;
 
     // Reduziere standardmäßig anhand einer logarithmischen Funktion, die von der Suchtiefe abhängt.
-    double reduction = ONE_PLY * (std::log(depth / ONE_PLY) / std::log(6) + 1.0);
+    double reduction = std::sqrt(depth) / 2.0 + 0.3;
 
     // Passe die Reduktion an die relative Vergangenheitsbewertung des Zuges an.
     // -> Bisher bessere Züge werden weniger reduziert und schlechtere Züge stärker.
@@ -682,26 +695,26 @@ int16_t PVSSearchInstance::determineLMR(int16_t moveCount, int16_t moveScore, in
     if(historyScore < 0)
         historyScore /= numPVs;
 
-    double historyReduction = -historyScore * ONE_PLY / 12000.0;
+    double historyReduction = -historyScore / 16384.0;
     historyReduction *= std::log(numThreads) / std::log(16) + 1.0;
 
     reduction += historyReduction;
 
-    // Runde die Reduktion auf ein Vielfaches von ONE_PLY ab.
-    return (int32_t)reduction / ONE_PLY * ONE_PLY;
+    // Runde die Reduktion ab.
+    return (int)reduction;
 }
 
-int16_t PVSSearchInstance::determineLMPCount(int16_t depth, bool isCheckEvasion, bool isPlausibleLine) {
+int PVSSearchInstance::determineLMPCount(int depth, bool isCheckEvasion, bool isPlausibleLine) {
     // LMP wird nur in geringen Tiefen,
     // nicht in Schachabwehrzügen angewandt.
-    if(depth >= 12 * ONE_PLY || isCheckEvasion)
-        return std::numeric_limits<int16_t>::max();
+    if(depth >= 12 || isCheckEvasion)
+        return std::numeric_limits<int>::max();
 
     // Standardmäßig müssen mindestens 5 Züge betrachtet werden.
-    int16_t result = 5 + 3 * isPlausibleLine;
+    int result = 5 + 3 * isPlausibleLine;
 
     // Erhöhe die Anzahl der zu betrachtenden Züge mit der verbleibenden Suchtiefe.
-    result += (depth / ONE_PLY - 1) * (3 + 2 * isPlausibleLine);
+    result += (depth - 1) * (3 + 2 * isPlausibleLine);
 
     return result;
 }
@@ -709,14 +722,14 @@ int16_t PVSSearchInstance::determineLMPCount(int16_t depth, bool isCheckEvasion,
 bool PVSSearchInstance::deactivateNullMove() {
     // Deaktiviere den Null-Zug, wenn der Spieler nur noch
     // einen König und Bauern hat.
-    int32_t side = board.getSideToMove();
+    int side = board.getSideToMove();
     return board.getPieceBitboard(side) == board.getPieceBitboard(side | PAWN);
 }
 
 bool PVSSearchInstance::verifyNullMove() {
     // Ein Nullzug muss verifiziert werden, wenn der Spieler
     // 2 Leicht-/Schwerfiguren oder weniger hat.
-    int32_t side = board.getSideToMove();
+    int side = board.getSideToMove();
     Bitboard ownMajorOrMinorPieces = board.getPieceBitboard(side | KNIGHT) |
                                      board.getPieceBitboard(side | BISHOP) |
                                      board.getPieceBitboard(side | ROOK) |
@@ -725,7 +738,7 @@ bool PVSSearchInstance::verifyNullMove() {
     return ownMajorOrMinorPieces.popcount() <= 2;
 }
 
-void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t depth) {
+void PVSSearchInstance::addMovesToSearchStack(int ply, bool useIID, int depth) {
     // Setze den aktuellen Eintrag zurück.
     clearMovesInSearchStack(ply);
 
@@ -744,19 +757,19 @@ void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t
         // ein vorläufig bester Zug bestimmt wird.
 
         // Bestimme die reduzierte Suchtiefe.
-        int16_t reducedDepth = depth - 3 * ONE_PLY;
+        int reducedDepth = std::min(depth / 2, depth - 4);
 
         if(reducedDepth > 0) {
             // Führe die interne iterative Tiefensuche durch.
-            int16_t iidScore = searchStack[ply].preliminaryScore;
+            int iidScore = searchStack[ply].preliminaryScore;
 
             // Speichere aktuelle Wurzelinformationen.
-            uint16_t rootAgeBackup = rootAge;
-            int16_t currentSearchDepthBackup = currentSearchDepth;
+            unsigned int rootAgeBackup = rootAge;
+            int currentSearchDepthBackup = currentSearchDepth;
 
             // Probiere eine Suche mit Aspirationsfenster.
-            int16_t alpha = iidScore - IID_ASPIRATION_WINDOW_SIZE;
-            int16_t beta = iidScore + IID_ASPIRATION_WINDOW_SIZE;
+            int alpha = iidScore - IID_ASPIRATION_WINDOW_SIZE;
+            int beta = iidScore + IID_ASPIRATION_WINDOW_SIZE;
             bool alphaAlreadyWidened = false, betaAlreadyWidened = false;
 
             iidScore = pvs(reducedDepth, ply, alpha, beta, PV_NODE);
@@ -788,9 +801,14 @@ void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t
             // Stelle die Wurzelinformationen wieder her.
             rootAge = rootAgeBackup;
             currentSearchDepth = currentSearchDepthBackup;
-        }
 
-        clearMovesInSearchStack(ply);
+            clearMovesInSearchStack(ply);
+        } else {
+            // Suche in der Transpositionstabelle, wenn die Suchtiefe zu gering ist.
+            TranspositionTableEntry entry;
+            if(transpositionTable.probe(board.getHashValue(), entry))
+                hashMove = entry.hashMove;
+        }
     } else {
         // Ansonsten suche in der Transpositionstabelle nach einem Hashzug.
         TranspositionTableEntry entry;
@@ -830,11 +848,11 @@ void PVSSearchInstance::addMovesToSearchStack(uint16_t ply, bool useIID, int16_t
     }
 }
 
-void PVSSearchInstance::addMovesToSearchStackInQuiescence(uint16_t ply, bool includeHashMove) {
+void PVSSearchInstance::addMovesToSearchStackInQuiescence(int ply, bool includeHashMove) {
     // Setze den aktuellen Eintrag zurück.
     clearMovesInSearchStack(ply);
 
-    int16_t minSEEScore = MIN_SCORE;
+    int minSEEScore = MIN_SCORE;
     bool isCheck = board.isCheck();
     if(!isCheck)
         minSEEScore = NEUTRAL_SCORE;
@@ -879,7 +897,7 @@ void PVSSearchInstance::addMovesToSearchStackInQuiescence(uint16_t ply, bool inc
     }
 }
 
-void PVSSearchInstance::scoreMoves(const Array<Move, 256>& moves, uint16_t ply) {
+void PVSSearchInstance::scoreMoves(const Array<Move, 256>& moves, int ply) {
     // Die Zugvorsortierung unterteilt die Züge in drei Kategorien:
     // - gute Schlagzüge (mit SEE >= 0), enthält auch Bauernumwandlungen
     // - Killerzüge (leise Züge, die einen Beta-Schnitt verursacht haben)
@@ -892,20 +910,20 @@ void PVSSearchInstance::scoreMoves(const Array<Move, 256>& moves, uint16_t ply) 
     // Bestimme den eingetragenen Konterzug für den
     // letzten gespielten Zug des Gegners.
     Move previousMove = board.getLastMove();
-    int32_t previousMoveDestination = previousMove.getDestination();
-    int32_t prevoiuslyMovedPieceType = TYPEOF(board.pieceAt(previousMoveDestination));
+    int previousMoveDestination = previousMove.getDestination();
+    int prevoiuslyMovedPieceType = TYPEOF(board.pieceAt(previousMoveDestination));
     Move counterMove = Move::nullMove();
     if(previousMove.exists())
         counterMove = getCounterMove(board.getSideToMove(), prevoiuslyMovedPieceType, previousMoveDestination);
 
     // Betrachte alle, zu bewertenden Züge.
     for(Move move : moves) {
-        int16_t score;
+        int score;
 
         if(move.isCapture() || move.isPromotion()) {
             // Schlagzüge und Bauernumwandlungen werden mit
             // der Static Exchange Evaluation (SEE) bewertet.
-            int16_t seeEvaluation = evaluator.evaluateMoveSEE(move);
+            int seeEvaluation = evaluator.evaluateMoveSEE(move);
 
             if(seeEvaluation >= 0) {
                 // Gute Schlagzüge
@@ -949,14 +967,14 @@ void PVSSearchInstance::scoreMoves(const Array<Move, 256>& moves, uint16_t ply) 
     searchStack[ply].moveScorePairs.push_back(remainingMoves);
 }
 
-void PVSSearchInstance::scoreMovesForQuiescence(const Array<Move, 256>& moves, uint16_t ply, int16_t minSEEScore) {
+void PVSSearchInstance::scoreMovesForQuiescence(const Array<Move, 256>& moves, int ply, int minSEEScore) {
     for(Move move : moves) {
-        int16_t score;
+        int score;
 
         if(move.isCapture() || move.isPromotion()) {
             // Schlagzüge und Bauernumwandlungen werden mit
             // der Static Exchange Evaluation (SEE) bewertet.
-            int32_t seeEvaluation = evaluator.evaluateMoveSEE(move);
+            int seeEvaluation = evaluator.evaluateMoveSEE(move);
 
             if(seeEvaluation >= NEUTRAL_SCORE) {
                 // Gute Schlagzüge

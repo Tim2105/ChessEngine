@@ -19,7 +19,7 @@ void simulateGames(size_t n, std::istream& pgnFile, std::ostream& outFile);
 
 void generateData() {
     std::ifstream pgnFile(pgnFilePath);
-    std::ofstream resultFile(samplesFilePath);
+    std::ofstream resultFile(samplesFilePath, std::ios::app);
 
     simulateGames(numGames, pgnFile, resultFile);
 }
@@ -181,15 +181,15 @@ void simulateGames(size_t n, std::istream& pgnFile, std::ostream& outFile) {
 
     for(size_t i = 0; i < startingPositions.size(); i++) {
         std::vector<std::string> output;
-        int32_t outputSize = std::max(0, startingPositions[i].getAge() - startOutputAtMove);
+        int outputSize = std::max(0, startingPositions[i].getAge() - startOutputAtMove);
         output.resize(outputSize);
 
-        int32_t numPlayedMoves = startingPositions[i].getAge();
+        int numPlayedMoves = startingPositions[i].getAge();
 
-        for(int32_t j = startingPositions[i].getAge(); j > startOutputAtMove; j--) {
+        for(int j = startingPositions[i].getAge(); j > startOutputAtMove; j--) {
             std::stringstream ss;
             ss << startingPositions[i].toFEN() << ";";
-            int32_t gameEndsIn = numPlayedMoves - j + 1;
+            int gameEndsIn = numPlayedMoves - j + 1;
             switch(results[i]) {
                 case WHITE_WIN:
                     if(startingPositions[i].getSideToMove() == WHITE)
@@ -212,7 +212,7 @@ void simulateGames(size_t n, std::istream& pgnFile, std::ostream& outFile) {
             startingPositions[i].undoMove();
         }
 
-        for(int32_t j = 0; j < outputSize; j++)
+        for(int j = 0; j < outputSize; j++)
             outFile << output[j] << "\n";
 
         if(i % 10 == 0)
@@ -242,7 +242,7 @@ std::vector<DataPoint> loadData(std::istream& resultFile, size_t n) {
         std::string result;
         std::getline(resultFile, result);
 
-        int32_t res = std::stoi(result);
+        int res = std::stoi(result);
 
         data.push_back({board, res});
 
@@ -263,7 +263,7 @@ void findOptimalK() {
     samplesFile.close();
 
     double prevLoss = std::numeric_limits<double>::max(), loss = 1.0;
-    int32_t i = 1;
+    int i = 1;
 
     while(loss < prevLoss) {
         prevLoss = loss;

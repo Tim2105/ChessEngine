@@ -8,7 +8,7 @@
 
 void PVSEngine::helperThreadLoop(PVSSearchInstance* instance) {
     #if not defined(DISABLE_THREADS)
-        int16_t score;
+        int score;
 
         do {
             // Warte auf die Bedingungsvariable
@@ -16,18 +16,18 @@ void PVSEngine::helperThreadLoop(PVSSearchInstance* instance) {
             cv.wait(lock, [&]() { return !threadSleepFlag.load(); });
 
             // Der Thread ist jetzt beschäftigt
-            numThreadsBusy += 1;
+            numThreadsBusy.fetch_add(1);
             lock.unlock();
 
             // Kopiere die aktuellen Suchparameter in lokale Variablen
-            int16_t depth = currentDepth;
-            int16_t alpha = currentAlpha;
-            int16_t beta = currentBeta;
+            int depth = currentDepth;
+            int alpha = currentAlpha;
+            int beta = currentBeta;
 
             // Schleife, die die Aspirationsfenster erweitert,
             // wenn die Bewertung außerhalb des Fensters liegt
             while(!(instance->shouldStop() || exitSearch.load())) {
-                score = instance->pvs(depth * ONE_PLY, 0, alpha, beta, PV_NODE);
+                score = instance->pvs(depth, 0, alpha, beta, PV_NODE);
 
                 bool alphaAlreadyWidened = false, betaAlreadyWidened = false;
 
@@ -48,7 +48,7 @@ void PVSEngine::helperThreadLoop(PVSSearchInstance* instance) {
                         }
                     }
 
-                    score = instance->pvs(depth * ONE_PLY, 0, alpha, beta, PV_NODE);
+                    score = instance->pvs(depth, 0, alpha, beta, PV_NODE);
                 }
 
                 alpha = score - PVSEngine::ASPIRATION_WINDOW;
@@ -57,7 +57,7 @@ void PVSEngine::helperThreadLoop(PVSSearchInstance* instance) {
 
             // Der Thread ist fertig und wartet auf die nächste Suche
             cvMutex.lock();
-            numThreadsBusy -= 1;
+            numThreadsBusy.fetch_sub(1);
             cvMutex.unlock();
             cvMain.notify_one();
 
@@ -115,7 +115,7 @@ void PVSEngine::destroyHelperInstances() {
     #endif
 }
 
-void PVSEngine::startHelperThreads(int16_t depth, int16_t alpha, int16_t beta, const Array<Move, 256>& searchMoves) {
+void PVSEngine::startHelperThreads(int depth, int alpha, int beta, const Array<Move, 256>& searchMoves) {
     #if not defined(DISABLE_THREADS)
         currentDepth = depth;
         currentAlpha = alpha;
@@ -159,7 +159,7 @@ void PVSEngine::outputSearchInfo() {
     // Bestimme die textuelle Repräsentation der Bewertung.
     // Mattbewertungen werden in der Form "mate x" ausgegeben,
     // wobei x die Anzahl der Züge bis zum Matt ist.
-    int16_t score = getBestMoveScore();
+    int score = getBestMoveScore();
     std::string scoreStr;
     if(isMateScore(score)) {
         scoreStr = "mate ";
@@ -171,7 +171,7 @@ void PVSEngine::outputSearchInfo() {
     }
 
     // Bestimme die selektive Tiefe.
-    uint16_t selectiveDepth = variations.size() > 0 ? variations[0].selectiveDepth : 0;
+    int selectiveDepth = variations.size() > 0 ? variations[0].selectiveDepth : 0;
     for(size_t i = 1; i < variations.size(); i++)
         selectiveDepth = std::max(selectiveDepth, variations[i].selectiveDepth);
 
@@ -180,7 +180,7 @@ void PVSEngine::outputSearchInfo() {
     // Gebe die Informationen zur Suche aus.
     std::cout << "info depth " << maxDepthReached << " seldepth " << selectiveDepth << " score " << scoreStr << " nodes " << nodesSearched.load() <<
                  " time " << timeElapsed.count() << " nps " << (uint64_t)(nodesSearched.load() / (timeElapsed.count() / 1000.0)) <<
-                 " hashfull " << (uint32_t)((double)transpositionTable.getEntriesWritten() / (double)transpositionTable.getCapacity() * 1000.0) <<
+                 " hashfull " << (unsigned int)((double)transpositionTable.getEntriesWritten() / (double)transpositionTable.getCapacity() * 1000.0) <<
                  " pv ";
 
     // Gebe die Hauptvariante aus.
@@ -199,14 +199,14 @@ void PVSEngine::outputNodesInfo() {
     // und wie voll die Transpositionstabelle ist, aus.
     std::cout << "info nodes " << nodesSearched.load() << " time " << timeElapsed.count() << " nps " <<
                  (uint64_t)(nodesSearched.load() / (timeElapsed.count() / 1000.0)) <<
-                 " hashfull " << (uint32_t)((double)transpositionTable.getEntriesWritten() / (double)transpositionTable.getCapacity() * 1000.0) << std::endl;
+                 " hashfull " << (unsigned int)((double)transpositionTable.getEntriesWritten() / (double)transpositionTable.getCapacity() * 1000.0) << std::endl;
 
     lastOutputTime = std::chrono::system_clock::now();
 }
 
 void PVSEngine::outputMultiPVInfo(size_t pvIndex) {
     // Bestimme die textuelle Repräsentation der Bewertung.
-    int16_t score = variations[pvIndex].score;
+    int score = variations[pvIndex].score;
     std::string scoreStr;
     if(isMateScore(score)) {
         scoreStr = "mate ";
@@ -311,7 +311,7 @@ void PVSEngine::search(const UCI::SearchParams& params) {
      * abgebrochen wird. Wenn die maximale Tiefe erreicht wurde, wird
      * die Suche ebenfalls beeendet.
      */
-    for(int16_t depth = 1; depth < MAX_PLY; depth++) {
+    for(int depth = 1; depth < MAX_PLY; depth++) {
 
         // Eine Liste von Zügen, die bestimmt welche Züge in
         // einem Durchlauf betrachtet werden dürfen.
@@ -324,12 +324,12 @@ void PVSEngine::search(const UCI::SearchParams& params) {
         // Wenn die Multi-PV-Einstellung aktiviert ist, wird für
         // jede PV eine eigene Suche durchgeführt.
         for(size_t pv = 0; pv < multiPV; pv++) {
-            int16_t alpha = MIN_SCORE, beta = MAX_SCORE;
+            int alpha = MIN_SCORE, beta = MAX_SCORE;
 
             // In allen Durchläufen mit Tiefe > 1 wird die Suche mit
             // einem Aspirationsfenster gestartet.
             if(depth > 1) {
-                int32_t prevScore = variations[pv].score;
+                int prevScore = variations[pv].score;
                 alpha = prevScore - prevScore * ASPIRATION_WINDOW_SCORE_FACTOR - ASPIRATION_WINDOW;
                 beta = prevScore + prevScore * ASPIRATION_WINDOW_SCORE_FACTOR + ASPIRATION_WINDOW;
             }
@@ -342,7 +342,7 @@ void PVSEngine::search(const UCI::SearchParams& params) {
             mainInstance.setSearchMoves(searchMoves);
 
             // Führe die Suche in der Hauptinstanz durch.
-            int16_t score = mainInstance.pvs(depth * ONE_PLY, 0, alpha, beta, PV_NODE);
+            int score = mainInstance.pvs(depth, 0, alpha, beta, PV_NODE);
 
             // Aspirationsfenster erweitern, wenn die Bewertung außerhalb des Fensters liegt.
             bool alphaAlreadyWidened = false, betaAlreadyWidened = false;
@@ -363,7 +363,7 @@ void PVSEngine::search(const UCI::SearchParams& params) {
                     }
                 }
 
-                score = mainInstance.pvs(depth * ONE_PLY, 0, alpha, beta, PV_NODE);
+                score = mainInstance.pvs(depth, 0, alpha, beta, PV_NODE);
             }
 
             // Stoppe die Hilfsthreads.
@@ -385,14 +385,14 @@ void PVSEngine::search(const UCI::SearchParams& params) {
                         variations.push_back({
                             pvMoves,
                             mainInstance.getPVScore(),
-                            (uint16_t)depth,
+                            depth,
                             getSelectiveDepth()
                         });
                     } else {
                         variations[i - 1] = {
                             pvMoves,
                             mainInstance.getPVScore(),
-                            (uint16_t)depth,
+                            depth,
                             getSelectiveDepth()
                         };
                     }
@@ -400,7 +400,7 @@ void PVSEngine::search(const UCI::SearchParams& params) {
                     variations[i] = {
                         pvMoves,
                         mainInstance.getPVScore(),
-                        (uint16_t)depth,
+                        depth,
                         getSelectiveDepth()
                     };
                     break;
@@ -439,7 +439,7 @@ void PVSEngine::search(const UCI::SearchParams& params) {
 
         pvHistory.push_back({
             getBestMove(),
-            getBestMoveScore()
+            (int16_t)getBestMoveScore()
         });
 
         #if not defined(TUNE)
@@ -459,8 +459,8 @@ void PVSEngine::search(const UCI::SearchParams& params) {
             break;
 
         // Soll die Suche aufgrund anderer Kriterien abgebrochen werden?
-        if((uint32_t)maxDepthReached >= params.depth || // Die Zieltiefe wurde erreicht
-           (uint32_t)isMateIn(getBestMoveScore()) <= params.mate) // Das Zielmatt wurde gefunden
+        if(maxDepthReached >= params.depth || // Die Zieltiefe wurde erreicht
+           isMateIn(getBestMoveScore()) <= params.mate) // Das Zielmatt wurde gefunden
             break;
     }
 
@@ -530,14 +530,14 @@ bool PVSEngine::extendSearch(bool isTimeControlled) {
 
     // Bestimme die Varianz der Bewertungen der letzten 5 Tiefen
     // und wie häufig sich der beste Zug geändert hat.
-    int32_t meanScore = 0;
+    int meanScore = 0;
     for(MoveScorePair& pair : pvHistory)
         meanScore += pair.score;
 
     if(pvHistory.size() > 0)
         meanScore /= pvHistory.size();
 
-    int32_t scoreVariance = 0;
+    int scoreVariance = 0;
     for(MoveScorePair& pair : pvHistory)
         scoreVariance += (pair.score - meanScore) *
                          (pair.score - meanScore);
@@ -545,15 +545,15 @@ bool PVSEngine::extendSearch(bool isTimeControlled) {
     if(pvHistory.size() > 1)
         scoreVariance /= pvHistory.size() - 1;
 
-    int32_t bestMoveChanges = 0;
+    int bestMoveChanges = 0;
 
     for(size_t i = 0; i < pvHistory.size() - 1; i++)
         if(pvHistory[i].move != pvHistory[i + 1].move)
             bestMoveChanges++;
 
     // Bestimme, wie weit wir zwischen timeMin und timeMax liegen.
-    double timeFactor = ((double)timeElapsed.count() - (double)timeMin.count()) /
-                        ((double)timeMax.count() - (double)timeMin.count());
+    double timeFactor = (double)(timeElapsed.count() - timeMin.count()) /
+                        (double)(timeMax.count() - timeMin.count());
 
     timeFactor = std::clamp(timeFactor, 0.0, 1.0);
 

@@ -6,11 +6,11 @@
 #include <iostream>
 #include <random>
 
-uint64_t MagicsFinder::rookAttackMask(int32_t sq, uint64_t occupied) {
+uint64_t MagicsFinder::rookAttackMask(int sq, uint64_t occupied) {
     uint64_t attackBitboard = 0ULL;
 
     // Vertikal nach oben
-    for(int32_t i = sq + 8; i < 64; i += 8) {
+    for(int i = sq + 8; i < 64; i += 8) {
         attackBitboard |= (1ULL << i);
 
         if(occupied & (1ULL << i))
@@ -18,7 +18,7 @@ uint64_t MagicsFinder::rookAttackMask(int32_t sq, uint64_t occupied) {
     }
 
     // Vertikal nach unten
-    for(int32_t i = sq - 8; i >= 0; i -= 8) {
+    for(int i = sq - 8; i >= 0; i -= 8) {
         attackBitboard |= (1ULL << i);
 
         if(occupied & (1ULL << i))
@@ -26,7 +26,7 @@ uint64_t MagicsFinder::rookAttackMask(int32_t sq, uint64_t occupied) {
     }
 
     // Horizontal nach rechts
-    for(int32_t i = sq + 1; i < 64 && i % 8 != 0; i += 1) {
+    for(int i = sq + 1; i < 64 && i % 8 != 0; i += 1) {
         attackBitboard |= (1ULL << i);
 
         if(occupied & (1ULL << i))
@@ -34,7 +34,7 @@ uint64_t MagicsFinder::rookAttackMask(int32_t sq, uint64_t occupied) {
     }
 
     // Horizontal nach links
-    for(int32_t i = sq - 1; i >= 0 && i % 8 != 7; i -= 1) {
+    for(int i = sq - 1; i >= 0 && i % 8 != 7; i -= 1) {
         attackBitboard |= (1ULL << i);
 
         if(occupied & (1ULL << i))
@@ -44,11 +44,11 @@ uint64_t MagicsFinder::rookAttackMask(int32_t sq, uint64_t occupied) {
     return attackBitboard;
 }
 
-uint64_t MagicsFinder::bishopAttackMask(int32_t sq, uint64_t occupied) {
+uint64_t MagicsFinder::bishopAttackMask(int sq, uint64_t occupied) {
     uint64_t attackBitboard = 0ULL;
 
     // Diagonal nach oben rechts
-    for(int32_t i = sq + 9; i < 64 && i % 8 != 0; i += 9) {
+    for(int i = sq + 9; i < 64 && i % 8 != 0; i += 9) {
         attackBitboard |= (1ULL << i);
 
         if(occupied & (1ULL << i))
@@ -56,7 +56,7 @@ uint64_t MagicsFinder::bishopAttackMask(int32_t sq, uint64_t occupied) {
     }
 
     // Diagonal nach unten links
-    for(int32_t i = sq - 9; i >= 0 && i % 8 != 7; i -= 9) {
+    for(int i = sq - 9; i >= 0 && i % 8 != 7; i -= 9) {
         attackBitboard |= (1ULL << i);
 
         if(occupied & (1ULL << i))
@@ -64,7 +64,7 @@ uint64_t MagicsFinder::bishopAttackMask(int32_t sq, uint64_t occupied) {
     }
 
     // Diagonal nach oben links
-    for(int32_t i = sq + 7; i < 64 && i % 8 != 7; i += 7) {
+    for(int i = sq + 7; i < 64 && i % 8 != 7; i += 7) {
         attackBitboard |= (1ULL << i);
 
         if(occupied & (1ULL << i))
@@ -72,7 +72,7 @@ uint64_t MagicsFinder::bishopAttackMask(int32_t sq, uint64_t occupied) {
     }
 
     // Diagonal nach unten rechts
-    for(int32_t i = sq - 7; i >= 0 && i % 8 != 0; i -= 7) {
+    for(int i = sq - 7; i >= 0 && i % 8 != 0; i -= 7) {
         attackBitboard |= (1ULL << i);
 
         if(occupied & (1ULL << i))
@@ -82,82 +82,82 @@ uint64_t MagicsFinder::bishopAttackMask(int32_t sq, uint64_t occupied) {
     return attackBitboard;
 }
 
-uint64_t MagicsFinder::rookAttackTopMask(int32_t sq) {
+uint64_t MagicsFinder::rookAttackTopMask(int sq) {
     uint64_t attackBitboard = 0ULL;
 
     // Vertikal nach oben
-    for(int32_t i = sq + 8; i < 64; i += 8)
+    for(int i = sq + 8; i < 64; i += 8)
         attackBitboard |= (1ULL << i);
 
     return attackBitboard;
 }
 
-uint64_t MagicsFinder::rookAttackRightMask(int32_t sq) {
+uint64_t MagicsFinder::rookAttackRightMask(int sq) {
     uint64_t attackBitboard = 0ULL;
 
     // Horizontal nach rechts
-    for(int32_t i = sq + 1; i < 64 && i % 8 != 0; i += 1)
+    for(int i = sq + 1; i < 64 && i % 8 != 0; i += 1)
         attackBitboard |= (1ULL << i);
 
     return attackBitboard;
 }
 
-uint64_t MagicsFinder::rookAttackBottomMask(int32_t sq) {
+uint64_t MagicsFinder::rookAttackBottomMask(int sq) {
     uint64_t attackBitboard = 0ULL;
 
     // Vertikal nach unten
-    for(int32_t i = sq - 8; i >= 0; i -= 8)
+    for(int i = sq - 8; i >= 0; i -= 8)
         attackBitboard |= (1ULL << i);
 
     return attackBitboard;
 }
 
-uint64_t MagicsFinder::rookAttackLeftMask(int32_t sq) {
+uint64_t MagicsFinder::rookAttackLeftMask(int sq) {
     uint64_t attackBitboard = 0ULL;
 
     // Horizontal nach links
-    for(int32_t i = sq - 1; i >= 0 && i % 8 != 7; i -= 1)
+    for(int i = sq - 1; i >= 0 && i % 8 != 7; i -= 1)
         attackBitboard |= (1ULL << i);
 
     return attackBitboard;
 }
 
-uint64_t MagicsFinder::bishopAttackTopLeftMask(int32_t sq) {
+uint64_t MagicsFinder::bishopAttackTopLeftMask(int sq) {
     uint64_t attackBitboard = 0ULL;
 
     // Diagonal nach oben links
-    for(int32_t i = sq + 7; i < 64 && i % 8 != 7; i += 7)
+    for(int i = sq + 7; i < 64 && i % 8 != 7; i += 7)
         attackBitboard |= (1ULL << i);
 
     return attackBitboard;
 }
 
 
-uint64_t MagicsFinder::bishopAttackTopRightMask(int32_t sq) {
+uint64_t MagicsFinder::bishopAttackTopRightMask(int sq) {
     uint64_t attackBitboard = 0ULL;
 
     // Diagonal nach oben rechts
-    for(int32_t i = sq + 9; i < 64 && i % 8 != 0; i += 9)
+    for(int i = sq + 9; i < 64 && i % 8 != 0; i += 9)
         attackBitboard |= (1ULL << i);
 
     return attackBitboard;
 }
 
-uint64_t MagicsFinder::bishopAttackBottomLeftMask(int32_t sq) {
+uint64_t MagicsFinder::bishopAttackBottomLeftMask(int sq) {
     uint64_t attackBitboard = 0ULL;
 
     // Diagonal nach unten links
-    for(int32_t i = sq - 9; i >= 0 && i % 8 != 7; i -= 9)
+    for(int i = sq - 9; i >= 0 && i % 8 != 7; i -= 9)
         attackBitboard |= (1ULL << i);
 
     return attackBitboard;
 }
 
-uint64_t MagicsFinder::bishopAttackBottomRightMask(int32_t sq) {
+uint64_t MagicsFinder::bishopAttackBottomRightMask(int sq) {
     uint64_t attackBitboard = 0ULL;
 
     // Diagonal nach unten rechts
-    for(int32_t i = sq - 7; i >= 0 && i % 8 != 0; i -= 7)
+    for(int i = sq - 7; i >= 0 && i % 8 != 0; i -= 7)
         attackBitboard |= (1ULL << i);
 
     return attackBitboard;
@@ -165,29 +165,29 @@ uint64_t MagicsFinder::bishopAttackBottomRightMask(int32_t sq) {
 
 void MagicsFinder::findRookMasks(std::ofstream& resultFile) {
     resultFile << "static constexpr uint64_t rookMasks[64] = {\n";
-    for(int32_t sq = 0; sq < 64; sq++) {
+    for(int sq = 0; sq < 64; sq++) {
         uint64_t mask = 0ULL;
 
-        int32_t rank = sq / 8;
-        int32_t file = sq % 8;
+        int rank = sq / 8;
+        int file = sq % 8;
 
         // Vertikal nach oben
-        for(int32_t r = rank + 1; r < 7; r++) {
+        for(int r = rank + 1; r < 7; r++) {
             mask |= (1ULL << (r * 8 + file));
         }
 
         // Vertikal nach unten
-        for(int32_t r = rank - 1; r > 0; r--) {
+        for(int r = rank - 1; r > 0; r--) {
             mask |= (1ULL << (r * 8 + file));
         }
 
         // Horizontal nach rechts
-        for(int32_t f = file + 1; f < 7; f++) {
+        for(int f = file + 1; f < 7; f++) {
             mask |= (1ULL << (rank * 8 + f));
         }
 
         // Horizontal nach links
-        for(int32_t f = file - 1; f > 0; f--) {
+        for(int f = file - 1; f > 0; f--) {
             mask |= (1ULL << (rank * 8 + f));
         }
 
@@ -199,29 +199,29 @@ void MagicsFinder::findRookMasks(std::ofstream& resultFile) {
 
 void MagicsFinder::findBishopMasks(std::ofstream& resultFile) {
     resultFile << "static constexpr uint64_t bishopMasks[64] = {\n";
-    for(int32_t sq = 0; sq < 64; sq++) {
+    for(int sq = 0; sq < 64; sq++) {
         uint64_t mask = 0ULL;
 
-        int32_t rank = sq / 8;
-        int32_t file = sq % 8;
+        int rank = sq / 8;
+        int file = sq % 8;
 
         // Diagonal nach oben rechts
-        for(int32_t r = rank + 1, f = file + 1; r < 7 && f < 7; r++, f++) {
+        for(int r = rank + 1, f = file + 1; r < 7 && f < 7; r++, f++) {
             mask |= (1ULL << (r * 8 + f));
         }
 
         // Diagonal nach unten links
-        for(int32_t r = rank - 1, f = file - 1; r > 0 && f > 0; r--, f--) {
+        for(int r = rank - 1, f = file - 1; r > 0 && f > 0; r--, f--) {
             mask |= (1ULL << (r * 8 + f));
         }
 
         // Diagonal nach oben links
-        for(int32_t r = rank + 1, f = file - 1; r < 7 && f > 0; r++, f--) {
+        for(int r = rank + 1, f = file - 1; r < 7 && f > 0; r++, f--) {
             mask |= (1ULL << (r * 8 + f));
         }
 
         // Diagonal nach unten rechts
-        for(int32_t r = rank - 1, f = file + 1; r > 0 && f < 7; r--, f++) {
+        for(int r = rank - 1, f = file + 1; r > 0 && f < 7; r--, f++) {
             mask |= (1ULL << (r * 8 + f));
         }
 
@@ -232,19 +232,19 @@ void MagicsFinder::findBishopMasks(std::ofstream& resultFile) {
 }
 
 void MagicsFinder::generateAllOccupancyCombinations(uint64_t mask, uint64_t* occupancies) {
-    int32_t numMaskBits = std::popcount(mask);
+    int numMaskBits = std::popcount(mask);
 
     // Generiere alle möglichen Belegungen
-    for(int32_t i = 0; i < (1 << numMaskBits); i++) {
+    for(int i = 0; i < (1 << numMaskBits); i++) {
         uint64_t occupancy = 0ULL;
         
-        for(int32_t j = 0; j < numMaskBits; j++) {
+        for(int j = 0; j < numMaskBits; j++) {
             uint64_t bit = (1ULL << j);
 
             if(i & bit) {
                 uint64_t nthBit = mask;
 
-                for(int32_t k = 0; k < j; k++)
+                for(int k = 0; k < j; k++)
                     // Entferne das LSB
                     nthBit &= (nthBit - 1);
 
@@ -259,15 +259,15 @@ void MagicsFinder::generateAllOccupancyCombinations(uint64_t mask, uint64_t* occ
     }
 }
 
-bool validateRookMagicNumber(uint64_t magic, int32_t sq, int32_t shift, uint64_t* occupancies, int32_t numMaskBits) {
-    int32_t numIndices = 1 << shift;
+bool validateRookMagicNumber(uint64_t magic, int sq, int shift, uint64_t* occupancies, int numMaskBits) {
+    int numIndices = 1 << shift;
 
     uint64_t* attacks = new uint64_t[numIndices];
 
-    for(int32_t j = 0; j < numIndices; j++)
+    for(int j = 0; j < numIndices; j++)
         attacks[j] = 0;
 
-    for(int32_t j = 0; j < (1 << numMaskBits); j++) {
+    for(int j = 0; j < (1 << numMaskBits); j++) {
         uint64_t occupancy = occupancies[j];
         uint64_t magicIndex = (occupancy * magic) >> (64 - shift);
 
@@ -283,15 +283,15 @@ bool validateRookMagicNumber(uint64_t magic, int32_t sq, int32_t shift, uint64_t
     return true;
 }
 
-bool validateBishopMagicNumber(uint64_t magic, int32_t sq, int32_t shift, uint64_t* occupancies, int32_t numMaskBits) {
-    int32_t numIndices = 1 << shift;
+bool validateBishopMagicNumber(uint64_t magic, int sq, int shift, uint64_t* occupancies, int numMaskBits) {
+    int numIndices = 1 << shift;
 
     uint64_t* attacks = new uint64_t[numIndices];
 
-    for(int32_t j = 0; j < numIndices; j++)
+    for(int j = 0; j < numIndices; j++)
         attacks[j] = 0;
 
-    for(int32_t j = 0; j < (1 << numMaskBits); j++) {
+    for(int j = 0; j < (1 << numMaskBits); j++) {
         uint64_t occupancy = occupancies[j];
         uint64_t magicIndex = (occupancy * magic) >> (64 - shift);
 
@@ -307,10 +307,10 @@ bool validateBishopMagicNumber(uint64_t magic, int32_t sq, int32_t shift, uint64
     return true;
 }
 
-uint64_t MagicsFinder::findRookMagic(int32_t sq, int32_t shift) {
+uint64_t MagicsFinder::findRookMagic(int sq, int shift) {
     uint64_t magic = 0ULL;
     uint64_t mask = MagicNumbers::rookMasks[sq];
-    int32_t numMaskBits = std::popcount(mask);
+    int numMaskBits = std::popcount(mask);
     uint64_t occupancies[4096];
 
     generateAllOccupancyCombinations(mask, occupancies);
@@ -339,24 +339,24 @@ uint64_t MagicsFinder::findRookMagic(int32_t sq, int32_t shift) {
 }
 
 void MagicsFinder::searchForRookMagics(std::ofstream& resultFile, std::chrono::seconds time) {
-    int32_t shifts[64];
+    int shifts[64];
     uint64_t magics[64];
 
-    for(int32_t i = 0; i < 64; i++) {
+    for(int i = 0; i < 64; i++) {
         shifts[i] = 13;
         magics[i] = 0ULL;
     }
 
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     std::chrono::steady_clock::time_point end = begin + time;
-    int32_t sq = 0;
+    int sq = 0;
 
     while(std::chrono::steady_clock::now() < end) {
-        int32_t currentBestShift = shifts[sq];
+        int currentBestShift = shifts[sq];
 
         // Suche nach einer Magic-Number für das Feld
         // mit einer besseren Shift-Anzahl
-        int32_t shift = currentBestShift - 1;
+        int shift = currentBestShift - 1;
         try {
             uint64_t magic = findRookMagic(sq, shift);
             shifts[sq] = shift;
@@ -369,7 +369,7 @@ void MagicsFinder::searchForRookMagics(std::ofstream& resultFile, std::chrono::s
         sq %= 64;
     }
 
-    for(int32_t sq = 0; sq < 64; sq++) {
+    for(int sq = 0; sq < 64; sq++) {
         if(shifts[sq] >= 13) {
             resultFile << "Magic Numbers are missing" << std::endl;
             resultFile.close();
@@ -377,14 +377,14 @@ void MagicsFinder::searchForRookMagics(std::ofstream& resultFile, std::chrono::s
         }
     }
 
-    resultFile << "int32_t rookShifts[64] = {\n";
-    for(int32_t sq = 0; sq < 64; sq++)
+    resultFile << "int rookShifts[64] = {\n";
+    for(int sq = 0; sq < 64; sq++)
         resultFile << 64 - shifts[sq] << ",";
 
     resultFile << "\n}\n";
 
     resultFile << "uint64_t rookMagics[64] = {\n";
-    for(int32_t sq = 0; sq < 64; sq++)
+    for(int sq = 0; sq < 64; sq++)
         resultFile << "0x" << std::hex << magics[sq] << "ULL,";
 
     resultFile << "\n}\n";
@@ -392,10 +392,10 @@ void MagicsFinder::searchForRookMagics(std::ofstream& resultFile, std::chrono::s
     resultFile.close();
 }
 
-uint64_t MagicsFinder::findBishopMagic(int32_t sq, int32_t shift) {
+uint64_t MagicsFinder::findBishopMagic(int sq, int shift) {
     uint64_t magic = 0ULL;
     uint64_t mask = MagicNumbers::bishopMasks[sq];
-    int32_t numMaskBits = std::popcount(mask);
+    int numMaskBits = std::popcount(mask);
     uint64_t occupancies[4096];
 
     generateAllOccupancyCombinations(mask, occupancies);
@@ -424,24 +424,24 @@ uint64_t MagicsFinder::findBishopMagic(int32_t sq, int32_t shift) {
 }
 
 void MagicsFinder::searchForBishopMagics(std::ofstream& resultFile, std::chrono::seconds time) {
-    int32_t shifts[64];
+    int shifts[64];
     uint64_t magics[64];
 
-    for(int32_t i = 0; i < 64; i++) {
+    for(int i = 0; i < 64; i++) {
         shifts[i] = 10;
         magics[i] = 0ULL;
     }
 
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     std::chrono::steady_clock::time_point end = begin + time;
-    int32_t sq = 0;
+    int sq = 0;
 
     while(std::chrono::steady_clock::now() < end) {
-        int32_t currentBestShift = shifts[sq];
+        int currentBestShift = shifts[sq];
 
         // Suche nach einer Magic-Number für das Feld
         // mit einer besseren Shift-Anzahl
-        int32_t shift = currentBestShift - 1;
+        int shift = currentBestShift - 1;
         try {
             uint64_t magic = findBishopMagic(sq, shift);
             shifts[sq] = shift;
@@ -454,7 +454,7 @@ void MagicsFinder::searchForBishopMagics(std::ofstream& resultFile, std::chrono:
         sq %= 64;
     }
 
-    for(int32_t sq = 0; sq < 64; sq++) {
+    for(int sq = 0; sq < 64; sq++) {
         if(shifts[sq] >= 13) {
             resultFile << "Magic Numbers are missing" << std::endl;
             resultFile.close();
@@ -462,14 +462,14 @@ void MagicsFinder::searchForBishopMagics(std::ofstream& resultFile, std::chrono:
         }
     }
 
-    resultFile << "int32_t bishopShifts[64] = {\n";
-    for(int32_t sq = 0; sq < 64; sq++)
+    resultFile << "int bishopShifts[64] = {\n";
+    for(int sq = 0; sq < 64; sq++)
         resultFile << 64 - shifts[sq] << ",";
 
     resultFile << "\n}\n";
 
     resultFile << "uint64_t bishopMagics[64] = {\n";
-    for(int32_t sq = 0; sq < 64; sq++)
+    for(int sq = 0; sq < 64; sq++)
         resultFile << "0x" << std::hex << magics[sq] << "ULL,";
 
     resultFile << "\n}\n";

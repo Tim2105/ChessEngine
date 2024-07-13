@@ -87,24 +87,24 @@ class PVSSearchInstance {
         /**
          * @brief Die Bewertung der Hauptvariante.
          */
-        int16_t pvScore;
+        int pvScore;
 
         /**
          * @brief Das Alter des Spielfeldes an der Wurzel.
          */
-        uint16_t rootAge = 0;
+        unsigned int rootAge = 0;
 
         /**
          * @brief Die maximale Anzahl an Zügen, die diese Instanz
          * von der Wurzel aus in die Zukunft geguckt hat.
          */
-        uint16_t selectiveDepth = 0;
+        int selectiveDepth = 0;
 
         /**
          * @brief Speichert die Erweiterungen, die bereits
          * auf dem Pfad durchgeführt wurden. 
          */
-        int16_t extensionsOnPath = 0;
+        int extensionsOnPath = 0;
 
         /**
          * @brief Eine Referenz auf die Stop-Flag, der von der
@@ -134,7 +134,7 @@ class PVSSearchInstance {
 
         AtomicU64& nodesSearched;
         uint64_t localNodeCounter = 0;
-        int16_t currentSearchDepth = 0;
+        int currentSearchDepth = 0;
 
         /**
          * @brief Der Suchstapel, der von der Suchinstanz verwendet wird.
@@ -180,7 +180,7 @@ class PVSSearchInstance {
          * @param beta Die obere Schranke des Suchfensters.
          * @return Die Bewertung der Position.
          */
-        int16_t quiescence(uint16_t ply, int16_t alpha, int16_t beta);
+        int quiescence(int ply, int alpha, int beta);
 
         /**
          * @brief Bestimmt, wie stark die Tiefe eines Knotens für die
@@ -191,7 +191,7 @@ class PVSSearchInstance {
          * @param depth Die verbleibende Suchtiefe.
          * @return Die Tiefe, um die der Knoten zusätzlich reduziert werden soll.
          */
-        int16_t determineLMR(int16_t moveCount, int16_t moveScore, int16_t depth);
+        int determineLMR(int moveCount, int moveScore, int depth);
 
         /**
          * @brief Bestimmt, ab welchem Zug das Null Move Pruning
@@ -205,7 +205,7 @@ class PVSSearchInstance {
          * @return Die Anzahl der Züge, die mindestens durchsucht werden
          * müssen, bevor das Null Move Pruning angewendet werden darf.
          */
-        int16_t determineLMPCount(int16_t depth, bool isCheckEvasion, bool isPlausibleLine);
+        int determineLMPCount(int depth, bool isCheckEvasion, bool isPlausibleLine);
 
         /**
          * @brief Überprüft anhand der momentanen Position, ob das
@@ -231,7 +231,7 @@ class PVSSearchInstance {
          * und sollte nur in wichtigen Knoten verwendet werden.
          * @param depth Die verbleibende Suchtiefe.
          */
-        void addMovesToSearchStack(uint16_t ply, bool useIID, int16_t depth);
+        void addMovesToSearchStack(int ply, bool useIID, int depth);
 
         /**
          * @brief Generiert alle Züge, die in der momentanen Position
@@ -242,7 +242,7 @@ class PVSSearchInstance {
          * @param includeHashMove Gibt an, ob der Hashzug in die Zugliste
          * aufgenommen werden soll (falls vorhanden und nicht bereits in der Liste).
          */
-        void addMovesToSearchStackInQuiescence(uint16_t ply, bool includeHashMove);
+        void addMovesToSearchStackInQuiescence(int ply, bool includeHashMove);
 
         /**
          * @brief Bewertet alle Züge in der Zugliste, sortiert sie
@@ -251,7 +251,7 @@ class PVSSearchInstance {
          * @param moves Die Liste der Züge, die bewertet werden sollen.
          * @param ply Der Abstand zum Wurzelknoten (Index des Suchstapels).
          */
-        void scoreMoves(const Array<Move, 256>& moves, uint16_t ply);
+        void scoreMoves(const Array<Move, 256>& moves, int ply);
 
         /**
          * @brief Bewertet alle Züge in der Zugliste für die Quiessenzsuche,
@@ -262,7 +262,7 @@ class PVSSearchInstance {
          * @param minMoveScore Die minimale SEE-Bewertung, die ein Schlagzug
          * haben muss, um aufgenommen zu werden.
          */
-        void scoreMovesForQuiescence(const Array<Move, 256>& moves, uint16_t ply, int16_t minSEEScore);
+        void scoreMovesForQuiescence(const Array<Move, 256>& moves, int ply, int minSEEScore);
 
     public:
 
@@ -278,23 +278,23 @@ class PVSSearchInstance {
 
             // Leere die Killerzüge und die Vergangenheitsbewertung.
 
-            for(int16_t i = 0; i < MAX_PLY; i++) {
+            for(int i = 0; i < MAX_PLY; i++) {
                 killerMoves[i][0] = Move::nullMove();
                 killerMoves[i][1] = Move::nullMove();
             }
 
-            for(int16_t i = 0; i < 2; i++)
-                for(int16_t j = 0; j < 64; j++)
-                    for(int16_t k = 0; k < 64; k++)
+            for(int i = 0; i < 2; i++)
+                for(int j = 0; j < 64; j++)
+                    for(int k = 0; k < 64; k++)
                         historyTable[i][j][k] = 0;
 
-            for (int16_t i = 0; i < 2; i++)
-                for (int16_t j = 0; j < 6; j++)
-                    for (int16_t k = 0; k < 64; k++)
+            for(int i = 0; i < 2; i++)
+                for(int j = 0; j < 6; j++)
+                    for(int k = 0; k < 64; k++)
                         counterMoveTable[i][j][k] = Move::nullMove();
 
             // Leere die PV-Tabelle.
-            for(int16_t i = 0; i < MAX_PLY; i++)
+            for(int i = 0; i < MAX_PLY; i++)
                 pvTable[i].clear();
 
             // Setze die Anzahl der Threads.
@@ -317,23 +317,23 @@ class PVSSearchInstance {
 
             // Leere die Killerzüge und die Vergangenheitsbewertung.
 
-            for(int16_t i = 0; i < MAX_PLY; i++) {
+            for(int i = 0; i < MAX_PLY; i++) {
                 killerMoves[i][0] = Move::nullMove();
                 killerMoves[i][1] = Move::nullMove();
             }
 
-            for(int16_t i = 0; i < 2; i++)
-                for(int16_t j = 0; j < 64; j++)
-                    for(int16_t k = 0; k < 64; k++)
+            for(int i = 0; i < 2; i++)
+                for(int j = 0; j < 64; j++)
+                    for(int k = 0; k < 64; k++)
                         historyTable[i][j][k] = 0;
 
-            for (int16_t i = 0; i < 2; i++)
-                for (int16_t j = 0; j < 6; j++)
-                    for (int16_t k = 0; k < 64; k++)
+            for(int i = 0; i < 2; i++)
+                for(int j = 0; j < 6; j++)
+                    for(int k = 0; k < 64; k++)
                         counterMoveTable[i][j][k] = Move::nullMove();
 
             // Leere die PV-Tabelle.
-            for(int16_t i = 0; i < MAX_PLY; i++)
+            for(int i = 0; i < MAX_PLY; i++)
                 pvTable[i].clear();
 
             // Setze die Anzahl der Threads.
@@ -358,10 +358,13 @@ class PVSSearchInstance {
          * Suchinstanz sollte PV_NODE übergeben werden.
          * @param nullMoveCooldown Gibt an, in wie vielen Zügen das Null Move Pruning
          * wieder angewendet werden darf.
+         * @param singularExtCooldown Gibt an, in wie vielen Zügen die Singular Extension
+         * wieder angewendet werden darf.
+         * @param skipHashMove Gibt an, ob der Hashzug übersprungen werden soll.
          * @return Die Bewertung der Position (oder 0, wenn die Suche vorzeitig über die Stop-Flag abgebrochen wurde).
          * Die Hauptvariante kann über die Methode getPV() ausgelesen werden.
          */
-        int16_t pvs(int16_t depth, uint16_t ply, int16_t alpha, int16_t beta, uint8_t nodeType, int8_t nullMoveCooldown = 0);
+        int pvs(int depth, int ply, int alpha, int beta, unsigned int nodeType, int nullMoveCooldown = 0, int singularExtCooldown = 0, bool skipHashMove = false);
 
         /**
          * @brief Sagt der Suchinstanz, ob sie die Hauptinstanz
@@ -390,7 +393,7 @@ class PVSSearchInstance {
         /**
          * @brief Gibt die Bewertung der Hauptvariante zurück.
          */
-        inline int16_t getPVScore() {
+        inline int getPVScore() {
             return pvScore;
         }
 
@@ -398,7 +401,7 @@ class PVSSearchInstance {
          * @brief Gibt die maximale Anzahl an Zügen, die diese Instanz
          * von der Wurzel aus in die Zukunft geguckt hat, zurück.
          */
-        inline uint16_t getSelectiveDepth() {
+        inline int getSelectiveDepth() {
             return selectiveDepth;
         }
 
@@ -419,7 +422,7 @@ class PVSSearchInstance {
         }
 
     private:
-        inline void addPVMove(uint16_t ply, Move move) {
+        inline void addPVMove(int ply, Move move) {
             pvTable[ply].clear();
             pvTable[ply].push_back(move);
 
@@ -427,43 +430,43 @@ class PVSSearchInstance {
                 pvTable[ply].push_back(pvTable[ply + 1]);
         }
 
-        constexpr void clearPVTable(uint16_t ply) {
+        constexpr void clearPVTable(int ply) {
             if(ply < MAX_PLY)
                 pvTable[ply].clear();
         }
 
-        constexpr void clearMovesInSearchStack(uint16_t ply) {
+        constexpr void clearMovesInSearchStack(int ply) {
             searchStack[ply].moveScorePairs.clear();
             searchStack[ply].hashMove = Move::nullMove();
         }
 
-        constexpr void clearSearchStack(uint16_t ply) {
+        constexpr void clearSearchStack(int ply) {
             clearMovesInSearchStack(ply);
             searchStack[ply].preliminaryScore = 0;
             searchStack[ply].isPlausibleLine = false;
         }
 
-        constexpr void addKillerMove(uint16_t ply, Move move) {
+        constexpr void addKillerMove(int ply, Move move) {
             if(move != killerMoves[ply][1]) {
                 killerMoves[ply][0] = killerMoves[ply][1];
                 killerMoves[ply][1] = move;
             }
         }
 
-        constexpr bool isKillerMove(uint16_t ply, Move move) {
+        constexpr bool isKillerMove(int ply, Move move) {
             return move == killerMoves[ply][0] || move == killerMoves[ply][1];
         }
 
-        constexpr void incrementHistoryScore(Move move, int16_t depth) {
+        constexpr void incrementHistoryScore(Move move, int depth) {
             historyTable[board.getSideToMove() / COLOR_MASK]
                         [move.getOrigin()]
-                        [move.getDestination()] += (depth / ONE_PLY) * (depth / ONE_PLY);
+                        [move.getDestination()] += depth * depth;
         }
 
-        constexpr void decrementHistoryScore(Move move, int16_t depth) {
+        constexpr void decrementHistoryScore(Move move, int depth) {
             historyTable[board.getSideToMove() / COLOR_MASK]
                         [move.getOrigin()]
-                        [move.getDestination()] -= depth / ONE_PLY;
+                        [move.getDestination()] -= depth;
         }
 
         constexpr int32_t getHistoryScore(Move move) {
@@ -472,17 +475,17 @@ class PVSSearchInstance {
                                [move.getDestination()];
         }
 
-        constexpr int32_t getHistoryScore(Move move, int32_t side) {
+        constexpr int32_t getHistoryScore(Move move, int side) {
             return historyTable[side / COLOR_MASK]
                                [move.getOrigin()]
                                [move.getDestination()];
         }
 
-        constexpr void setCounterMove(Move move, int32_t side, int32_t piece, int32_t destination) {
+        constexpr void setCounterMove(Move move, int side, int piece, int destination) {
             counterMoveTable[side / COLOR_MASK][piece - 1][destination] = move;
         }
 
-        constexpr Move getCounterMove(int32_t side, int32_t piece, int32_t destination) {
+        constexpr Move getCounterMove(int side, int piece, int destination) {
             return counterMoveTable[side / COLOR_MASK][piece - 1][destination];
         }
 
@@ -490,13 +493,13 @@ class PVSSearchInstance {
          * @brief Gibt die (halbe) Breite des Aspirationsfenster für
          * die interne Iterative Tiefensuche an.
          */
-        static constexpr int16_t IID_ASPIRATION_WINDOW_SIZE = 15;
+        static constexpr int IID_ASPIRATION_WINDOW_SIZE = 15;
 
         /**
          * @brief Gibt die (halbe) Breite des erweiterten Aspirationsfenster für
          * die interne Iterative Tiefensuche an.
          */
-        static constexpr int16_t IID_WIDENED_ASPIRATION_WINDOW_SIZE = 150;
+        static constexpr int IID_WIDENED_ASPIRATION_WINDOW_SIZE = 150;
 
         /**
          * @brief Masken um Sentry-Bauern zu erkennen.

@@ -8,7 +8,7 @@
 
 struct DataPoint {
     Board board;
-    int32_t result;
+    int result;
 };
 
 /**
@@ -27,7 +27,7 @@ extern size_t startingMovesMean;
 extern size_t startingMovesStdDev;
 extern uint32_t timeControl;
 extern uint32_t increment;
-extern int32_t startOutputAtMove;
+extern int startOutputAtMove;
 extern bool useNoisyParameters;
 extern double noiseDefaultStdDev;
 extern double noiseLinearStdDev;

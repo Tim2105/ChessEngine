@@ -16,7 +16,7 @@ struct TranspositionTableEntry {
     uint8_t depth; // 1 Byte
     uint8_t type; // 1 Byte
 
-    constexpr TranspositionTableEntry() {}
+    constexpr TranspositionTableEntry() : hashMove(0), score(0), age(0), depth(0), type(0) {}
 
     /**
      * @brief Komponentenweise Initialisierung.

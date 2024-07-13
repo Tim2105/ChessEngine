@@ -61,16 +61,16 @@ std::string toAlgebraicNotation(const Move& move, Board& board, const std::strin
 
     std::string result = "";
 
-    int32_t dest = move.getDestination();
+    int dest = move.getDestination();
 
-    int32_t originRank = SQ2R(move.getOrigin());
-    int32_t originFile = SQ2F(move.getOrigin());
-    int32_t destRank = SQ2R(move.getDestination());
-    int32_t destFile = SQ2F(move.getDestination());
+    int originRank = SQ2R(move.getOrigin());
+    int originFile = SQ2F(move.getOrigin());
+    int destRank = SQ2R(move.getDestination());
+    int destFile = SQ2F(move.getDestination());
 
-    int32_t side = board.getSideToMove();
+    int side = board.getSideToMove();
 
-    int32_t movedPiece = board.pieceAt(move.getOrigin());
+    int movedPiece = board.pieceAt(move.getOrigin());
 
     // Bauernzüge werden anders dargestellt als andere Züge
     if(TYPEOF(movedPiece) == PAWN) {
@@ -128,11 +128,11 @@ std::string toAlgebraicNotation(const Move& move, Board& board, const std::strin
         case KNIGHT: {
             Bitboard knightsAttackingDest = knightAttackBitboard(dest) & board.getPieceBitboard(side | KNIGHT);
             if(knightsAttackingDest.popcount() > 1) {
-                int32_t numOriginFile = 0;
-                int32_t numOriginRank = 0;
+                int numOriginFile = 0;
+                int numOriginRank = 0;
 
                 while(knightsAttackingDest) {
-                    int32_t knightSq = knightsAttackingDest.getFSB();
+                    int knightSq = knightsAttackingDest.getFSB();
                     knightsAttackingDest.clearBit(knightSq);
 
                     if(knightSq % 8 == originFile)
@@ -162,11 +162,11 @@ std::string toAlgebraicNotation(const Move& move, Board& board, const std::strin
                         board.getPieceBitboard(side | BISHOP);
 
             if(bishopsAttackingDest.popcount() > 1) {
-                int32_t numOriginFile = 0;
-                int32_t numOriginRank = 0;
+                int numOriginFile = 0;
+                int numOriginRank = 0;
 
                 while(bishopsAttackingDest) {
-                    int32_t bishopSq = bishopsAttackingDest.getFSB();
+                    int bishopSq = bishopsAttackingDest.getFSB();
                     bishopsAttackingDest.clearBit(bishopSq);
 
                     if(bishopSq % 8 == originFile)
@@ -196,11 +196,11 @@ std::string toAlgebraicNotation(const Move& move, Board& board, const std::strin
                         board.getPieceBitboard(side | ROOK);
 
             if(rooksAttackingDest.popcount() > 1) {
-                int32_t numOriginFile = 0;
-                int32_t numOriginRank = 0;
+                int numOriginFile = 0;
+                int numOriginRank = 0;
 
                 while(rooksAttackingDest) {
-                    int32_t rookSq = rooksAttackingDest.getFSB();
+                    int rookSq = rooksAttackingDest.getFSB();
                     rooksAttackingDest.clearBit(rookSq);
 
                     if(rookSq % 8 == originFile)
@@ -233,11 +233,11 @@ std::string toAlgebraicNotation(const Move& move, Board& board, const std::strin
                             board.getPieceBitboard(side | QUEEN);
 
             if(queensAttackingDest.popcount() > 1) {
-                int32_t numOriginFile = 0;
-                int32_t numOriginRank = 0;
+                int numOriginFile = 0;
+                int numOriginRank = 0;
 
                 while(queensAttackingDest) {
-                    int32_t queenSq = queensAttackingDest.getFSB();
+                    int queenSq = queensAttackingDest.getFSB();
                     queensAttackingDest.clearBit(queenSq);
 
                     if(queenSq % 8 == originFile)
@@ -329,7 +329,7 @@ std::vector<std::string> variationToStandardAlgebraicNotation(const std::vector<
     return result;
 }
 
-std::vector<std::string> variationToFigurineAlgebraicNotation(const std::vector<Move>& moves, Board& board, int32_t customPly) {
+std::vector<std::string> variationToFigurineAlgebraicNotation(const std::vector<Move>& moves, Board& board, int customPly) {
     std::vector<std::string> result;
 
     std::string moveString;

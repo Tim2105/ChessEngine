@@ -44,8 +44,8 @@ bool Referee::isDrawByMaterial(Board& b) {
           ((whiteKnights.popcount() == 1 && !blackKnights) || (!whiteKnights && blackKnights.popcount() == 1)))
             return true;
 
-        int32_t numWhiteBishops = whiteBishops.popcount();
-        int32_t numBlackBishops = blackBishops.popcount();
+        int numWhiteBishops = whiteBishops.popcount();
+        int numBlackBishops = blackBishops.popcount();
         
         // König und Läufer gegen König
         if(!(whiteKnights || blackKnights) &&
@@ -56,8 +56,8 @@ bool Referee::isDrawByMaterial(Board& b) {
         if(!(whiteKnights || blackKnights) &&
              numWhiteBishops == 1 && numBlackBishops == 1) {
             
-            int32_t whiteBishopSq = whiteBishops.getFSB();
-            int32_t blackBishopSq = blackBishops.getFSB();
+            int whiteBishopSq = whiteBishops.getFSB();
+            int blackBishopSq = blackBishops.getFSB();
 
             if(lightSquares.getBit(whiteBishopSq) == lightSquares.getBit(blackBishopSq))
                 return true;

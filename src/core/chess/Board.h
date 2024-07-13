@@ -23,22 +23,22 @@ class MoveHistoryEntry {
         /**
          * @brief Speichert den Typ der geschlagenen Figur.
          */
-        int32_t capturedPiece;
+        int capturedPiece;
 
         /**
          * @brief Speichert alle möglichen Rochaden vor diesem Zug.
          */
-        int32_t castlingPermission;
+        int castlingPermission;
 
         /**
          * @brief Speichert die Position eines möglichen En Passant Zuges vor diesem Zug(wenn möglich).
          */
-        int32_t enPassantSquare;
+        int enPassantSquare;
 
         /**
          * @brief Der 50-Zug Counter vor diesem Zug.
          */
-        int32_t fiftyMoveRule;
+        int fiftyMoveRule;
 
         /**
          * @brief Speichert den Hashwert vor diesem Zug.
@@ -75,8 +75,8 @@ class MoveHistoryEntry {
          * @param blackAttackBitboard Speichert das schwarze Angriffsbitboard vor diesem Zug.
          * @param pieceAttackBitboards Speichert die Angriffsbitboards der Figuren vor diesem Zug.
          */
-        constexpr MoveHistoryEntry(Move move, int32_t capturedPiece, int32_t castlePermission,
-                        int32_t enPassantSquare, int32_t fiftyMoveRule, uint64_t hashValue,
+        constexpr MoveHistoryEntry(Move move, int capturedPiece, int castlePermission,
+                        int enPassantSquare, int fiftyMoveRule, uint64_t hashValue,
                         Bitboard pieceBitboards[15], Bitboard attackBitboards[15]) {
             this->move = move;
             this->capturedPiece = capturedPiece;
@@ -181,7 +181,7 @@ class alignas(64) Board {
          /**
           * @brief Stellt das Schachbrett in 8x8 Notation dar.
           */
-        int32_t pieces[64] = {
+        int pieces[64] = {
             WHITE_ROOK, WHITE_KNIGHT, WHITE_BISHOP, WHITE_QUEEN, WHITE_KING, WHITE_BISHOP, WHITE_KNIGHT, WHITE_ROOK,
             WHITE_PAWN,   WHITE_PAWN,   WHITE_PAWN,  WHITE_PAWN, WHITE_PAWN,   WHITE_PAWN,   WHITE_PAWN, WHITE_PAWN,
                  EMPTY,        EMPTY,        EMPTY,       EMPTY,      EMPTY,        EMPTY,        EMPTY,      EMPTY,
@@ -237,25 +237,25 @@ class alignas(64) Board {
         /**
          * @brief Speichert die Farbe, die am Zug ist.
          */
-        int32_t side = WHITE;
+        int side = WHITE;
 
         /**
          * @brief Speichert den Index des Feldes, auf dem ein Bauer En Passant geschlagen werden kann(wenn vorhanden).
          */
-        int32_t enPassantSquare = NO_SQ;
+        int enPassantSquare = NO_SQ;
 
         /**
          * @brief Speichert die Anzahl der Halbzüge, die seit dem letzten Bauer- oder Schlagzug vergangen sind.
          */
-        int32_t fiftyMoveRule = 0;
+        int fiftyMoveRule = 0;
 
         /**
          * @brief Speichert alle noch offenen Rochaden.
          */
-        int32_t castlingPermission = WHITE_KINGSIDE_CASTLE  |
-                                     WHITE_QUEENSIDE_CASTLE |
-                                     BLACK_KINGSIDE_CASTLE  |
-                                     BLACK_QUEENSIDE_CASTLE;
+        int castlingPermission = WHITE_KINGSIDE_CASTLE  |
+                                 WHITE_QUEENSIDE_CASTLE |
+                                 BLACK_KINGSIDE_CASTLE  |
+                                 BLACK_QUEENSIDE_CASTLE;
 
         /**
          * @brief Ein Zobristhash des Schachbretts.
@@ -271,7 +271,7 @@ class alignas(64) Board {
         /**
          * @brief Speichert die Anzahl der Halbzüge, die seit dem Anfang des Spiels vergangen sind.
          */
-        uint16_t age = 0;
+        unsigned int age = 0;
 
         /**
          * @brief Generiert einen Zobrist-Hash für das aktuelle Schachbrett.
@@ -290,7 +290,7 @@ class alignas(64) Board {
          * 
          * @param side Die Seite.
          */
-        void updateAttackBitboards(int32_t side);
+        void updateAttackBitboards(int side);
 
         /**
          * @brief Aktualisiert die Angriffsbitboards der Figuren und
@@ -302,7 +302,7 @@ class alignas(64) Board {
          * @param capturedPiece Der Typ der geschlagenen Figur, oder EMPTY, wenn keine Figur geschlagen wurde.
          * @param wasPromotion Gibt an, ob der letzte Zug eine Bauernaufwertung war.
          */
-        void updateAttackBitboards(int32_t side, Bitboard updatedSquares, int32_t capturedPiece, bool wasPromotion);
+        void updateAttackBitboards(int side, Bitboard updatedSquares, int capturedPiece, bool wasPromotion);
 
         /**
          * @brief Generiert ein Bitboard, das alle Felder enthält, auf denen sich gefesselte Figuren befinden.
@@ -312,8 +312,8 @@ class alignas(64) Board {
          * @param pinnedPiecesBitboard Das Bitboard, das alle gefesselten Figuren enthält.
          * @param pinnedPiecesDirection Das Array, in dem die Richtung, aus der die Figuren gefesselt sind, gespeichert wird(muss mind. 8 groß sein).
          */
-        void generatePinnedPiecesBitboards(int32_t side, Bitboard& pinnedPiecesBitboard,
-                                           int32_t* pinnedPiecesDirection) const;
+        void generatePinnedPiecesBitboards(int side, Bitboard& pinnedPiecesBitboard,
+                                           int* pinnedPiecesDirection) const;
 
     public:
         /**
@@ -441,7 +441,7 @@ class alignas(64) Board {
          * @param square Das Feld, das überprüft werden soll.
          * @param side Die Seite, die das Feld angreifen soll.
          */
-        bool squareAttacked(int32_t square, int32_t side) const;
+        bool squareAttacked(int square, int side) const;
 
         /**
          * @brief Überprüft bei einem anzugebenden Belegbitboard, ob ein Feld von einer bestimmten Seite angegriffen wird.
@@ -450,7 +450,7 @@ class alignas(64) Board {
          * @param ownSide Die Seite, die das Feld angreifen soll.
          * @param occupied Das Bitboard mit den besetzten Feldern.
          */
-        bool squareAttacked(int32_t sq, int32_t ownSide, Bitboard occupied) const;
+        bool squareAttacked(int sq, int ownSide, Bitboard occupied) const;
 
         /**
          * @brief Überprüft bei einem anzugebenden Belegbitboard, ob ein Feld von einer bestimmten Seite angegriffen wird.
@@ -460,7 +460,7 @@ class alignas(64) Board {
          * @param occupied Das Bitboard mit den besetzten Feldern.
          * @param attackingRays Gibt dein Bitboard mit allen Angreifern zurück. Bei laufenden Figuren sind außerdem sind außerdem die Verbindungsfelder mit enthalten.
          */
-        bool squareAttacked(int32_t square, int32_t side, Bitboard occupied, Bitboard& attackingRays) const;
+        bool squareAttacked(int square, int side, Bitboard occupied, Bitboard& attackingRays) const;
 
         /**
          * @brief Gibt die Anzahl der angreifenden Figuren eines Feldes zurück.
@@ -469,7 +469,7 @@ class alignas(64) Board {
          * @param side Die Seite, die das Feld angreifen soll.
          * @param occupied Das Bitboard mit den besetzten Feldern.
          */
-        int32_t numSquareAttackers(int32_t square, int32_t side, Bitboard occupied) const;
+        int numSquareAttackers(int square, int side, Bitboard occupied) const;
 
         /**
          * @brief Gibt die Anzahl der angreifenden Figuren eines Feldes zurück.
@@ -479,22 +479,22 @@ class alignas(64) Board {
          * @param occupied Das Bitboard mit den besetzten Feldern.
          * @param attackingRays Gibt dein Bitboard mit allen Angreifern zurück. Bei laufenden Figuren sind außerdem sind außerdem die Verbindungsfelder mit enthalten.
          */
-        int32_t numSquareAttackers(int32_t square, int32_t side, Bitboard occupied, Bitboard& attackingRays) const;
+        int numSquareAttackers(int square, int side, Bitboard occupied, Bitboard& attackingRays) const;
 
         /**
          * @brief Gibt die Figur auf einem Feld zurück.
          */
-        constexpr int32_t pieceAt(int32_t square) const { return pieces[square]; };
+        constexpr int pieceAt(int square) const { return pieces[square]; };
 
         /**
          * @brief Gibt die Seite zurück, die am Zug ist.
          */
-        constexpr int32_t getSideToMove() const { return side; };
+        constexpr int getSideToMove() const { return side; };
 
         /**
          * @brief Gibt die Rochadenberechtigung zurück.
          */
-        constexpr int32_t getCastlingPermission() const { return castlingPermission; };
+        constexpr int getCastlingPermission() const { return castlingPermission; };
 
         /**
          * @brief Gibt en letzten gespielten Zug zurück.
@@ -518,7 +518,7 @@ class alignas(64) Board {
         /**
          * @brief Gibt alle Positionen eines bestimmten Figurentyps oder einer Farbe zurück.
          */
-        constexpr Bitboard getPieceBitboard(int32_t piece) const { return pieceBitboard[piece]; };
+        constexpr Bitboard getPieceBitboard(int piece) const { return pieceBitboard[piece]; };
 
         /**
          * @brief Gibt alle Felder zurück, auf denen eine Figur steht(Könige ausgenommen).
@@ -528,7 +528,7 @@ class alignas(64) Board {
         /**
          * @brief Gibt alle Felder zurück, die von einer bestimmten Figur oder Farbe angegriffen werden.
          */
-        constexpr Bitboard getAttackBitboard(int32_t piece) const { return attackBitboard[piece]; };
+        constexpr Bitboard getAttackBitboard(int piece) const { return attackBitboard[piece]; };
 
         /**
          * @brief Gibt alle Felder zurück, die von irgendeiner Figur angegriffen werden.
@@ -538,42 +538,42 @@ class alignas(64) Board {
         /**
          * @brief Überprüft, wie häufig die momentane Position schon aufgetreten ist. 
          */
-        uint16_t repetitionCount() const;
+        unsigned int repetitionCount() const;
 
         /**
          * @brief Gibt die Anzahl der Halbzüge zurück, die gespielt wurden.
          */
-        constexpr uint16_t getAge() const { return age; };
+        constexpr unsigned int getAge() const { return age; };
 
         /**
          * @brief Setzt die Anzahl der Halbzüge, die gespielt wurden.
          */
-        constexpr void setAge(uint16_t age) { this->age = age; };
+        constexpr void setAge(unsigned int age) { this->age = age; };
 
         /**
          * @brief Gibt die Anzahl der Halbzüge zurück, die seit dem letzten Bauernzug oder Schlagzug gespielt wurden.
          */
-        constexpr int32_t getFiftyMoveCounter() const { return fiftyMoveRule; };
+        constexpr int getFiftyMoveCounter() const { return fiftyMoveRule; };
 
         /**
          * @brief Gibt das Feld zurück, auf dem En-Passant geschlagen werden kann.
          */
-        constexpr int32_t getEnPassantSquare() const { return enPassantSquare; };
+        constexpr int getEnPassantSquare() const { return enPassantSquare; };
 
         /**
          * @brief Gibt das Feld zurück, auf dem der weiße König steht.
          */
-        constexpr int32_t getWhiteKingSquare() const { return pieceBitboard[WHITE_KING].getFSB(); };
+        constexpr int getWhiteKingSquare() const { return pieceBitboard[WHITE_KING].getFSB(); };
 
         /**
          * @brief Gibt das Feld zurück, auf dem der schwarze König steht.
          */
-        constexpr int32_t getBlackKingSquare() const { return pieceBitboard[BLACK_KING].getFSB(); };
+        constexpr int getBlackKingSquare() const { return pieceBitboard[BLACK_KING].getFSB(); };
 
         /**
          * @brief Gibt das Feld zurück, auf dem der König einer bestimmten Seite steht.
          */
-        constexpr int32_t getKingSquare(int32_t side) const { return pieceBitboard[side | KING].getFSB(); };
+        constexpr int getKingSquare(int side) const { return pieceBitboard[side | KING].getFSB(); };
 };
 
 #endif

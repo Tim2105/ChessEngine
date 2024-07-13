@@ -67,7 +67,7 @@ class Array {
 
         constexpr ~Array() = default;
 
-        inline Array& operator=(const Array& other) requires(!std::is_constant_evaluated()) {
+        inline Array& operator=(const Array& other) requires(!std::is_constant_evaluated() && std::is_trivially_copyable_v<T>) {
             if(this == &other)
                 return *this;
 
@@ -77,7 +77,7 @@ class Array {
             return *this;
         }
 
-        constexpr Array& operator=(const Array& other) requires(std::is_constant_evaluated()) {
+        constexpr Array& operator=(const Array& other) requires(std::is_constant_evaluated() || !std::is_trivially_copyable_v<T>) {
             if(this == &other)
                 return *this;
 
@@ -91,8 +91,8 @@ class Array {
         constexpr T& operator[](size_t index) { return array[index]; };
         constexpr const T& operator[](size_t index) const { return array[index]; };
 
-        constexpr T& operator[](int32_t index) { return array[index]; };
-        constexpr const T& operator[](int32_t index) const { return array[index]; };
+        constexpr T& operator[](int index) { return array[index]; };
+        constexpr const T& operator[](int index) const { return array[index]; };
 
         constexpr operator T*() { return array; };
         constexpr operator const T*() const { return array; };

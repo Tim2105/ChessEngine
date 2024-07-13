@@ -9,13 +9,13 @@
 
 struct SearchDetails {
     std::vector<Variation> variations;
-    uint32_t nodesSearched;
+    uint64_t nodesSearched;
     std::chrono::milliseconds timeTaken;
-    int16_t depth;
+    int depth;
 
     SearchDetails() : nodesSearched(0), timeTaken(0), depth(0) {}
 
-    inline int32_t getNumVariations() const {
+    inline size_t getNumVariations() const {
         return variations.size();
     }
 
@@ -27,7 +27,7 @@ struct SearchDetails {
         return variations.empty() ? Move() : variations[0].moves.empty() ? Move() : variations[0].moves[0];
     }
 
-    inline int16_t getBestMoveScore() const {
+    inline int getBestMoveScore() const {
         return variations.empty() ? 0 : variations[0].score;
     }
 

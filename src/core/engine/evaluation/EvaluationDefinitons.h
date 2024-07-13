@@ -7,8 +7,8 @@
 #include <stdint.h>
 
 struct Score {
-    int32_t mg;
-    int32_t eg;
+    int mg;
+    int eg;
 
     constexpr Score operator+(const Score& other) const {
         return Score{mg + other.mg, eg + other.eg};
@@ -30,21 +30,21 @@ struct Score {
         return *this;
     }
 
-    constexpr Score operator*(int32_t scalar) const {
+    constexpr Score operator*(int scalar) const {
         return Score{mg * scalar, eg * scalar};
     }
 
-    constexpr Score& operator*=(int32_t scalar) {
+    constexpr Score& operator*=(int scalar) {
         mg *= scalar;
         eg *= scalar;
         return *this;
     }
 
-    constexpr Score operator/(int32_t scalar) const {
+    constexpr Score operator/(int scalar) const {
         return Score{mg / scalar, eg / scalar};
     }
 
-    constexpr Score& operator/=(int32_t scalar) {
+    constexpr Score& operator/=(int scalar) {
         mg /= scalar;
         eg /= scalar;
         return *this;
@@ -63,7 +63,7 @@ struct Score {
     }
 };
 
-constexpr Score operator*(int32_t scalar, const Score& score) {
+constexpr Score operator*(int scalar, const Score& score) {
     return score * scalar;
 }
 

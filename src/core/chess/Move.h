@@ -33,7 +33,7 @@ class Move {
     public:
         constexpr Move() : move(0) {};
         constexpr Move(uint16_t from) : move(from) {};
-        constexpr Move(int32_t origin, int32_t destination, int32_t flags) : move(origin << 10 | destination << 4 | flags) {};
+        constexpr Move(int origin, int destination, int flags) : move(origin << 10 | destination << 4 | flags) {};
         ~Move() = default;
 
         friend std::ostream& operator<< (std::ostream& os, const Move& m);
@@ -62,12 +62,12 @@ class Move {
         /**
          * @brief Gibt den Ausgangspunkt des Zuges zurück.
          */
-        constexpr int32_t getOrigin() const { return (move >> 10) & 0x3F; }
+        constexpr int getOrigin() const { return (move >> 10) & 0x3F; }
 
         /**
          * @brief Gibt das Zielfeld des Zuges zurück.
          */
-        constexpr int32_t getDestination() const { return (move >> 4) & 0x3F; }
+        constexpr int getDestination() const { return (move >> 4) & 0x3F; }
 
         /**
          * @brief Überprüft ob ein Zug 'leise' ist, also keine Figur geschlagen wird und es kein Spezialzug ist.

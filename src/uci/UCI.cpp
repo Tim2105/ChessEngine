@@ -341,8 +341,6 @@ void handleGoCommand(std::string args) {
             }
 
             ss.seekg(ssPos);
-            
-            params.useSearchmoves = true;
         } else if(token == "movetime") {
             params.movetime = std::stoul(getNextToken(ss));
             params.useMovetime = true;

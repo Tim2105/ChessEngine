@@ -35,43 +35,43 @@ class Bitboard {
         /**
          * @brief Setze das Bit an der Stelle index.
          */
-        constexpr void setBit(int32_t index) {
+        constexpr void setBit(int index) {
             bits |= (1ULL << index);
         }
 
         /**
          * @brief Lösche das Bit an der Stelle index.
          */
-        constexpr void clearBit(int32_t index) {
+        constexpr void clearBit(int index) {
             bits &= ~(1ULL << index);
         }
 
         /**
          * @brief Liefere den Wert des Bits an der Stelle index zurück.
          */
-        constexpr bool getBit(int32_t index) const {
+        constexpr bool getBit(int index) const {
             return (bits & (1ULL << index));
         }
 
         /**
          * @brief Gibt den Index des ersten gesetzten Bits zurück.
          */
-        constexpr int32_t getFSB() const {
+        constexpr int getFSB() const {
             return std::countr_zero(bits);
         }
 
         /**
          * @brief Gibt den Index des letzten gesetzten Bits zurück.
          */
-        constexpr int32_t getLSB() const {
+        constexpr int getLSB() const {
             return 63 - std::countl_zero(bits);
         }
 
         /**
          * @brief Löscht das erste gesetzte Bit und gibt dessen Index zurück.
          */
-        constexpr int32_t popFSB() {
-            int32_t index = getFSB();
+        constexpr int popFSB() {
+            int index = getFSB();
             bits &= bits - 1;
             return index;
         }
@@ -79,8 +79,8 @@ class Bitboard {
         /**
          * @brief Löscht das letzte gesetzte Bit und gibt dessen Index zurück.
          */
-        constexpr int32_t popLSB() {
-            int32_t index = getLSB();
+        constexpr int popLSB() {
+            int index = getLSB();
             clearBit(index);
             return index;
         }
@@ -89,7 +89,7 @@ class Bitboard {
          * @brief Führt ein Population Count auf dem Bitboard durch,
          * d.h. gibt die Anzahl der gesetzten Bits zurück.
          */
-        constexpr int32_t popcount() const {
+        constexpr int popcount() const {
             return std::popcount(bits);
         }
 
@@ -119,14 +119,14 @@ class Bitboard {
         /**
          * @brief Verschiebt alle gesetzten Bits in Richtung Norden.
          */
-        constexpr Bitboard shiftNorth(int32_t shift) const {
+        constexpr Bitboard shiftNorth(int shift) const {
             return Bitboard(bits << (8 * shift));
         }
 
         /**
          * @brief Verschiebt alle gesetzten Bits in Richtung Süden.
          */
-        constexpr Bitboard shiftSouth(int32_t shift) const {
+        constexpr Bitboard shiftSouth(int shift) const {
             return Bitboard(bits >> (8 * shift));
         }
 
@@ -344,14 +344,14 @@ class Bitboard {
         /**
          * @brief Bitweises Verschieben nach links.
          */
-        constexpr Bitboard operator<<(int32_t shift) const {
+        constexpr Bitboard operator<<(int shift) const {
             return Bitboard(bits << shift);
         }
 
         /**
          * @brief Bitweises Verschieben nach rechts.
          */
-        constexpr Bitboard operator>>(int32_t shift) const {
+        constexpr Bitboard operator>>(int shift) const {
             return Bitboard(bits >> shift);
         }
 
@@ -446,7 +446,7 @@ constexpr Bitboard kingAttacks[64] = {
  * @param sq Das Feld.
  * @param occupied Das Bitboard mit den besetzten Feldern.
  */
-inline Bitboard diagonalAttackBitboard(int32_t sq, const Bitboard occupied) {
+inline Bitboard diagonalAttackBitboard(int sq, const Bitboard occupied) {
     return Magics::lookupBishopAttacks(sq, occupied);
 }
 
@@ -456,7 +456,7 @@ inline Bitboard diagonalAttackBitboard(int32_t sq, const Bitboard occupied) {
  * @param sq Das Feld.
  * @param occupied Das Bitboard mit den besetzten Feldern.
  */
-inline Bitboard horizontalAttackBitboard(int32_t sq, const Bitboard occupied) {
+inline Bitboard horizontalAttackBitboard(int sq, const Bitboard occupied) {
     return Magics::lookupRookAttacks(sq, occupied);
 }
 
@@ -465,7 +465,7 @@ inline Bitboard horizontalAttackBitboard(int32_t sq, const Bitboard occupied) {
  * 
  * @param sq Das Feld.
  */
-inline Bitboard knightAttackBitboard(int32_t sq) {
+inline Bitboard knightAttackBitboard(int sq) {
     return knightAttacks[sq];
 }
 
@@ -475,7 +475,7 @@ inline Bitboard knightAttackBitboard(int32_t sq) {
  * @param sq Das Feld.
  * @param side Die Farbe des Bauern.
  */
-inline Bitboard pawnAttackBitboard(int32_t sq, int32_t side) {
+inline Bitboard pawnAttackBitboard(int sq, int side) {
     return pawnAttacks[side / COLOR_MASK][sq];
 }
 
@@ -484,7 +484,7 @@ inline Bitboard pawnAttackBitboard(int32_t sq, int32_t side) {
  * 
  * @param sq Das Feld.
  */
-inline Bitboard kingAttackBitboard(int32_t sq) {
+inline Bitboard kingAttackBitboard(int sq) {
     return kingAttacks[sq];
 }
 
@@ -494,7 +494,7 @@ inline Bitboard kingAttackBitboard(int32_t sq) {
  * 
  * @param sq Das Feld.
  */
-Bitboard diagonalAttackUntilBlocked(int32_t sq, Bitboard target, Bitboard occupied);
+Bitboard diagonalAttackUntilBlocked(int sq, Bitboard target, Bitboard occupied);
 
 /**
  * @brief Gibt ein Bitboard aller Geraden zurück, die von einem Feld aus eine Liste von Zielen angreifen.
@@ -502,7 +502,7 @@ Bitboard diagonalAttackUntilBlocked(int32_t sq, Bitboard target, Bitboard occupi
  * 
  * @param sq Das Feld.
  */
-Bitboard horizontalAttackUntilBlocked(int32_t sq, Bitboard target, Bitboard occupied);
+Bitboard horizontalAttackUntilBlocked(int sq, Bitboard target, Bitboard occupied);
 
 /**
  * @brief Überprüft, ob auf einem Spielfeld eine/mehrere Figuren an ein Feld diagonal gefesselt ist.
@@ -516,7 +516,7 @@ Bitboard horizontalAttackUntilBlocked(int32_t sq, Bitboard target, Bitboard occu
  * 
  * @return Die Anzahl der gefesselten Figuren.
  */
-int32_t getDiagonallyPinnedToSquare(int32_t sq, Bitboard ownPieces, Bitboard enemyPieces, Bitboard occupied, int32_t* pinnedSquare, int32_t* pinnedDirection);
+int getDiagonallyPinnedToSquare(int sq, Bitboard ownPieces, Bitboard enemyPieces, Bitboard occupied, int* pinnedSquare, int* pinnedDirection);
 
 /**
  * @brief Überprüft, ob auf einem Spielfeld eine/mehrere Figuren an ein Feld gradlinig gefesselt ist.
@@ -530,6 +530,6 @@ int32_t getDiagonallyPinnedToSquare(int32_t sq, Bitboard ownPieces, Bitboard ene
  * 
  * @return Die Anzahl der gefesselten Figuren.
  */
-int32_t getHorizontallyPinnedToSquare(int32_t sq, Bitboard ownPieces, Bitboard enemyPieces, Bitboard occupied, int32_t* pinnedSquare, int32_t* pinnedDirection);
+int getHorizontallyPinnedToSquare(int sq, Bitboard ownPieces, Bitboard enemyPieces, Bitboard occupied, int* pinnedSquare, int* pinnedDirection);
 
 #endif

@@ -7,13 +7,13 @@
 
 #include <iostream>
 
-bool testRookMagic(int32_t sq) {
+bool testRookMagic(int sq) {
     uint64_t occupied = MagicNumbers::rookMasks[sq];
-    int32_t numOccupancies = 1 << __builtin_popcountll(occupied);
+    int numOccupancies = 1 << __builtin_popcountll(occupied);
     uint64_t occupancies[numOccupancies];
     MagicsFinder::generateAllOccupancyCombinations(occupied, occupancies);
 
-    for(int32_t i = 0; i < numOccupancies; i++) {
+    for(int i = 0; i < numOccupancies; i++) {
         Bitboard expected = MagicsFinder::rookAttackMask(sq, occupancies[i]);
         Bitboard actual = Magics::lookupRookAttacks(sq, occupancies[i]);
 
@@ -32,13 +32,13 @@ bool testRookMagic(int32_t sq) {
     return true;
 }
 
-bool testBishopMagic(int32_t sq) {
+bool testBishopMagic(int sq) {
     uint64_t occupied = MagicNumbers::bishopMasks[sq];
-    int32_t numOccupancies = 1 << __builtin_popcountll(occupied);
+    int numOccupancies = 1 << __builtin_popcountll(occupied);
     uint64_t occupancies[numOccupancies];
     MagicsFinder::generateAllOccupancyCombinations(occupied, occupancies);
 
-    for(int32_t i = 0; i < numOccupancies; i++) {
+    for(int i = 0; i < numOccupancies; i++) {
         Bitboard expected = MagicsFinder::bishopAttackMask(sq, occupancies[i]);
         Bitboard actual = Magics::lookupBishopAttacks(sq, occupancies[i]);
 
@@ -60,7 +60,7 @@ bool testBishopMagic(int32_t sq) {
 void testAllRookMagics() {
     std::cout << "Testing rook magics..." << std::endl;
 
-    for(int32_t sq = 0; sq < 64; sq++) {
+    for(int sq = 0; sq < 64; sq++) {
         if(!testRookMagic(sq)) {
             std::cout << "Rook magic test failed for square " << sq << std::endl;
             return;
@@ -73,7 +73,7 @@ void testAllRookMagics() {
 void testAllBishopMagics() {
     std::cout << "Testing bishop magics..." << std::endl;
 
-    for(int32_t sq = 0; sq < 64; sq++) {
+    for(int sq = 0; sq < 64; sq++) {
         if(!testBishopMagic(sq)) {
             std::cout << "Bishop magic test failed for square " << sq << std::endl;
             return;
