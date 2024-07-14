@@ -3,12 +3,12 @@
 std::string pgnFilePath = "pgn/o-deville.pgn";
 std::string samplesFilePath = "data/samples.txt";
 
-size_t numGames = 500;
-size_t startingMovesMean = 18;
+size_t numGames = 1000;
+size_t startingMovesMean = 14;
 size_t startingMovesStdDev = 1;
-uint32_t timeControl = 20000;
-uint32_t increment = 500;
-int startOutputAtMove = 20;
+uint32_t timeControl = 1000;
+uint32_t increment = 80;
+int startOutputAtMove = 16;
 bool useNoisyParameters = false;
 double noiseDefaultStdDev = 1.5;
 double noiseLinearStdDev = 0.1;

@@ -175,14 +175,10 @@ void simulateGames(size_t n, std::istream& pgnFile, std::ostream& outFile) {
     std::shuffle(startingPositions.begin(), startingPositions.end(), generator);
     startingPositions.resize(n);
 
-    Simulation sim(startingPositions, timeControl, increment, 8);
+    Simulation sim(startingPositions, timeControl, increment);
     if(useNoisyParameters) {
         sim.setParameterNoise(noiseDefaultStdDev);
         sim.setLinearParameterNoise(noiseLinearStdDev);
-    } else {
-        std::ifstream file("resources/controlParams.hce");
-        HCEParameters params(file);
-        sim.setBlackParams(params);
     }
     sim.run();
 
@@ -283,9 +279,11 @@ void findOptimalK() {
 
         loss = Tune::loss(data, HCE_PARAMS, newK, discount);
 
-        std::stringstream ss;
-        ss << "\r(" << i << ") Loss: " << loss << " with k = " << newK << " at discount = " << discount;
-        std::cout << std::left << std::setw(50) << ss.str() << std::right << std::flush;
+        if(loss < prevLoss) {
+            std::stringstream ss;
+            ss << "\r(" << i << ") Loss: " << loss << " with k = " << newK << " at discount = " << discount;
+            std::cout << std::left << std::setw(50) << ss.str() << std::right << std::flush;
+        }
 
         i++;
     }
