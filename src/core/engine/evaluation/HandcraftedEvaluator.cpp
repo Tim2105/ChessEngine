@@ -477,8 +477,9 @@ int HandcraftedEvaluator::evaluateKingAttackZone() {
     numWhiteAttackers = std::min(numWhiteAttackers, 9);
 
     // Berechne die Bewertung
-    score = whiteAttackersWeight * hceParams.getNumAttackerWeight(numWhiteAttackers) / 100 -
-            blackAttackersWeight * hceParams.getNumAttackerWeight(numBlackAttackers) / 100;
+    // Typecast zu int32_t um auf 16-Bit-Systemen Überläufe zu vermeiden
+    score = whiteAttackersWeight * (int32_t)hceParams.getNumAttackerWeight(numWhiteAttackers) / 100 -
+            blackAttackersWeight * (int32_t)hceParams.getNumAttackerWeight(numBlackAttackers) / 100;
 
     return score;
 }
@@ -890,6 +891,9 @@ Score HandcraftedEvaluator::evaluateBlockedPassedPawns() {
     Bitboard whitePieces = board.getPieceBitboard(WHITE) | board.getPieceBitboard(WHITE_KING);
     Bitboard blackPieces = board.getPieceBitboard(BLACK) | board.getPieceBitboard(BLACK_KING);
 
+    Bitboard whiteRooks = board.getPieceBitboard(WHITE_ROOK);
+    Bitboard blackRooks = board.getPieceBitboard(BLACK_ROOK);
+
     Score score = {0, 0};
 
     while(whitePassedPawns) {
@@ -898,8 +902,8 @@ Score HandcraftedEvaluator::evaluateBlockedPassedPawns() {
 
         if(blackPieces & pathToPromotion)
             score.eg -= hceParams.getEGBlockedEnemyPassedPawnBonus();
-        else if(whitePieces & pathToPromotion)
-            score.eg += hceParams.getEGBlockedOwnPassedPawnPenalty();
+        else if(whiteRooks & pathToPromotion)
+            score.eg += hceParams.getEGRooksBlocksOwnPassedPawnPenalty();
     }
 
     while(blackPassedPawns) {
@@ -908,8 +912,8 @@ Score HandcraftedEvaluator::evaluateBlockedPassedPawns() {
 
         if(whitePieces & pathToPromotion)
             score.eg += hceParams.getEGBlockedEnemyPassedPawnBonus();
-        else if(blackPieces & pathToPromotion)
-            score.eg -= hceParams.getEGBlockedOwnPassedPawnPenalty();
+        else if(blackRooks & pathToPromotion)
+            score.eg -= hceParams.getEGRooksBlocksOwnPassedPawnPenalty();
     }
 
     return score;

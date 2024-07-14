@@ -147,8 +147,6 @@ int main() {
 }
 
 void simulateGames(size_t n, std::istream& pgnFile, std::ostream& outFile) {
-    std::cout << "Loading " << n << " games..." << std::endl;
-
     std::vector<Board> startingPositions;
     startingPositions.reserve(n);
 
@@ -157,20 +155,34 @@ void simulateGames(size_t n, std::istream& pgnFile, std::ostream& outFile) {
 
     std::cout << "Loaded 0 games" << std::flush;
 
-    for(size_t i = 0; i < n; i++) {
+    // Lade alle Positionen aus der PGN-Datei
+    size_t i = 0;
+    while(pgnFile.good()) {
         size_t startingMoves = (size_t)distribution(generator);
         startingPositions.push_back(std::get<0>(Board::fromPGN(pgnFile, startingMoves)));
+        i++;
 
         if(i % 10 == 0)
             std::cout << "\rLoaded " << i << " games" << std::flush;
     }
 
+    // Entferne die letzte Position, da sie nicht vollständig geladen wurde
+    startingPositions.pop_back();
+
     std::cout << "\rLoaded " << startingPositions.size() << " games" << std::endl;
 
-    Simulation sim(startingPositions, timeControl, increment);
+    // Wähle n zufällige Positionen aus
+    std::shuffle(startingPositions.begin(), startingPositions.end(), generator);
+    startingPositions.resize(n);
+
+    Simulation sim(startingPositions, timeControl, increment, 8);
     if(useNoisyParameters) {
         sim.setParameterNoise(noiseDefaultStdDev);
         sim.setLinearParameterNoise(noiseLinearStdDev);
+    } else {
+        std::ifstream file("resources/controlParams.hce");
+        HCEParameters params(file);
+        sim.setBlackParams(params);
     }
     sim.run();
 
@@ -181,7 +193,7 @@ void simulateGames(size_t n, std::istream& pgnFile, std::ostream& outFile) {
 
     for(size_t i = 0; i < startingPositions.size(); i++) {
         std::vector<std::string> output;
-        int outputSize = std::max(0, startingPositions[i].getAge() - startOutputAtMove);
+        int outputSize = std::max(0u, startingPositions[i].getAge() - startOutputAtMove);
         output.resize(outputSize);
 
         int numPlayedMoves = startingPositions[i].getAge();
