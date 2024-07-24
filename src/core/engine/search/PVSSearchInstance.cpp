@@ -88,17 +88,9 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
     searchStack[ply].preliminaryScore = entryExists ? entry.score : evaluator.evaluate();
 
     /**
-     * Überprüfe, ob der aktuelle Pfad zu einer plausiblen
-     * Position führt, d.h. die vorläufige Bewertung liegt
-     * innerhalb oder in der Nähe des Suchfensters.
+     * Überprüfe, ob wir uns gegenüber dem letzten Zug verbessert haben.
      */
-    bool isPlausibleLine = ply == 0 ||
-                           (searchStack[ply - 1].isPlausibleLine &&
-                           !board.getLastMove().isNullMove() &&
-                           searchStack[ply].preliminaryScore > alpha - 100 &&
-                           searchStack[ply].preliminaryScore < beta + 100);
-
-    searchStack[ply].isPlausibleLine = isPlausibleLine;
+    bool isImproving = ply < 2 || searchStack[ply].preliminaryScore > searchStack[ply - 2].preliminaryScore + IMPROVING_THRESHOLD;
 
     /**
      * Null-Move-Pruning:
@@ -115,7 +107,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
     if(nullMoveCooldown <= 0 && !board.isCheck() && nodeType != PV_NODE &&
        depth > 1 && !deactivateNullMove()) {
 
-        int depthReduction = calculateNullMoveReduction(depth, searchStack[ply].preliminaryScore, beta);
+        int depthReduction = calculateNullMoveReduction(depth, searchStack[ply].preliminaryScore, beta, isImproving);
         if(depthReduction > 1) {
             Move nullMove = Move::nullMove();
             board.makeMove(nullMove);
@@ -260,13 +252,13 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
         return 0;
 
     // Ermittele, ob wir Heuristiken anwenden dürfen, um die Suchtiefe zu erweitern.
-    bool allowHeuristicExtensions = extensionsOnPath < currentSearchDepth / (3 - isPlausibleLine);
+    bool allowHeuristicExtensions = extensionsOnPath < currentSearchDepth / (3 - isImproving);
 
     Move move;
     int moveCount = 0, moveScore;
     bool isCheckEvasion = board.isCheck();
     uint8_t ttEntryType = TranspositionTableEntry::UPPER_BOUND;
-    int bestScore = MIN_SCORE, lmpCount = determineLMPCount(depth, isCheckEvasion, isPlausibleLine);
+    int bestScore = MIN_SCORE, lmpCount = determineLMPCount(depth, isCheckEvasion, isImproving);
     Move bestMove;
 
     // Schleife über alle legalen Züge.
@@ -292,7 +284,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
          * oder wenn der Zug den Gegner in Schach setzt. Außerdem wird Futility Pruning
          * abgeschaltet, wenn alpha oder beta eine Mattbewertung ist.
          */
-        if(depth <= 2 && moveScore < KILLER_MOVE_SCORE && !isCheckEvasion &&
+        if(depth <= 4 && moveScore < KILLER_MOVE_SCORE && !isCheckEvasion &&
            nodeType != PV_NODE && !(isMateScore(alpha) || isMateScore(beta)) && !move.isCapture()) {
             
             int preliminaryEval = searchStack[ply].preliminaryScore;
@@ -304,7 +296,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
 
             bool isCheck = board.isCheck();
 
-            int futilityMargin = calculateFutilityMargin(depth);
+            int futilityMargin = calculateFutilityMargin(depth, isImproving);
             if(!isCheck && preliminaryEval + futilityMargin < alpha) {
                 // Mache den Zug rückgängig und informiere den Evaluator.
                 evaluator.updateBeforeUndo();
@@ -336,10 +328,10 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
          * 
          * Als Failsafe wenden wir LMP nicht an, wenn wir im Schach stehen oder alpha eine Mattbewertung ist.
          * Dadurch vermeiden wir, versehentlich eine Mattverteidigung zu übersehen.
-         * Außerdem wird LMP nur auf Züge mit einer neutralen oder negativen Vergangenheitsbewertung angewandt.
          */
-        if(nodeType != PV_NODE && moveCount >= lmpCount && !(move.isCapture() || move.isPromotion()) &&
-           moveScore <= NEUTRAL_SCORE && !isMateScore(alpha) && !board.isCheck()) {
+        if(nodeType != PV_NODE && moveCount >= lmpCount &&
+           !(move.isCapture() || move.isPromotion()) &&
+           !isMateScore(alpha) && !board.isCheck()) {
 
             evaluator.updateBeforeUndo();
             board.undoMove();
@@ -388,7 +380,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
             // (=> Late Move Reductions).
             int reduction = 0;
             if(extension == 0 && !isCheckEvasion) {
-                reduction = determineLMR(moveCount + 1, moveScore, depth);
+                reduction = determineLMR(moveCount + 1, moveScore, depth, isImproving);
 
                 if(isCheck)
                     reduction -= 1;
@@ -670,7 +662,7 @@ int PVSSearchInstance::quiescence(int ply, int alpha, int beta) {
     return bestScore;
 }
 
-int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int depth) {
+int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int depth, bool isImproving) {
     // LMR reduziert nie den ersten Zug
     if(moveCount <= 1)
         return 0;
@@ -681,7 +673,7 @@ int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int depth) {
     if(moveScore >= GOOD_CAPTURE_MOVES_MIN || lastMove.isPromotion())
         return 0;
 
-    // Reduziere standardmäßig anhand einer logarithmischen Funktion, die von der Suchtiefe abhängt.
+    // Reduziere standardmäßig anhand einer Funktion, die von der Suchtiefe abhängt.
     double reduction = std::sqrt(depth) / 2.0 + 0.3;
 
     // Passe die Reduktion an die relative Vergangenheitsbewertung des Zuges an.
@@ -695,7 +687,7 @@ int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int depth) {
     if(historyScore < 0)
         historyScore /= numPVs;
 
-    double historyReduction = -historyScore / 16384.0;
+    double historyReduction = -historyScore / (14336.0 + 2048.0 * isImproving);
     historyReduction *= std::log(numThreads) / std::log(16) + 1.0;
 
     reduction += historyReduction;
@@ -704,17 +696,17 @@ int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int depth) {
     return (int)reduction;
 }
 
-int PVSSearchInstance::determineLMPCount(int depth, bool isCheckEvasion, bool isPlausibleLine) {
+int PVSSearchInstance::determineLMPCount(int depth, bool isCheckEvasion, bool isImproving) {
     // LMP wird nur in geringen Tiefen,
     // nicht in Schachabwehrzügen angewandt.
     if(depth >= 12 || isCheckEvasion)
         return std::numeric_limits<int>::max();
 
     // Standardmäßig müssen mindestens 5 Züge betrachtet werden.
-    int result = 5 + 3 * isPlausibleLine;
+    int result = 5 + 2 * isImproving;
 
     // Erhöhe die Anzahl der zu betrachtenden Züge mit der verbleibenden Suchtiefe.
-    result += (depth - 1) * (3 + 2 * isPlausibleLine);
+    result += (depth - 1) * (3 + 2 * isImproving);
 
     return result;
 }
@@ -759,7 +751,10 @@ void PVSSearchInstance::addMovesToSearchStack(int ply, bool useIID, int depth) {
         // Bestimme die reduzierte Suchtiefe.
         int reducedDepth = std::min(depth / 2, depth - 4);
 
-        if(reducedDepth > 0) {
+        TranspositionTableEntry entry;
+        bool entryExists = transpositionTable.probe(board.getHashValue(), entry);
+
+        if(reducedDepth > 0 && (!entryExists || entry.depth < reducedDepth)) {
             // Führe die interne iterative Tiefensuche durch.
             int iidScore = searchStack[ply].preliminaryScore;
 
@@ -804,9 +799,8 @@ void PVSSearchInstance::addMovesToSearchStack(int ply, bool useIID, int depth) {
 
             clearMovesInSearchStack(ply);
         } else {
-            // Suche in der Transpositionstabelle, wenn die Suchtiefe zu gering ist.
-            TranspositionTableEntry entry;
-            if(transpositionTable.probe(board.getHashValue(), entry))
+            // Verwende den Eintrag der Transpositionstabelle, wenn die Suchtiefe zu gering ist.
+            if(entryExists)
                 hashMove = entry.hashMove;
         }
     } else {

@@ -97,7 +97,9 @@ static constexpr uint8_t CUT_NODE = 1;
 static constexpr uint8_t ALL_NODE = 2;
 
 static constexpr int NULL_MOVE_COOLDOWN = 1;
-static constexpr int SINGULAR_EXT_COOLDOWN = 5;
+static constexpr int SINGULAR_EXT_COOLDOWN = 3;
+
+static constexpr int IMPROVING_THRESHOLD = 0;
 
 /**
  * @brief Berechnet, wie stark eine Nullzugsuche reduziert werden soll.
@@ -105,10 +107,11 @@ static constexpr int SINGULAR_EXT_COOLDOWN = 5;
  * @param depth Die aktuelle Suchtiefe.
  * @param staticEval Die statische Bewertung der Position.
  * @param beta Unser aktueller Beta-Wert.
+ * @param isImproving Gibt an, ob die Position sich verbessert hat.
  * @return Die Reduktion in Plies.
  */
-static constexpr int calculateNullMoveReduction(int depth, int staticEval, int beta) {
-    return 1 + (std::min((staticEval - beta) / 256, 2) + depth / 4);
+static constexpr int calculateNullMoveReduction(int depth, int staticEval, int beta, bool isImproving) {
+    return 1 + (std::min((staticEval - beta) / 256, 2) + depth / 4) + !isImproving;
 }
 
 /**
@@ -116,11 +119,12 @@ static constexpr int calculateNullMoveReduction(int depth, int staticEval, int b
  * um Futility-Pruning anzuwenden.
  * 
  * @param depth Die aktuelle Suchtiefe.
+ * @param isImproving Gibt an, ob die Position sich verbessert hat.
  * 
  * @return Die Margin für Futility-Pruning.
  */
-static constexpr int calculateFutilityMargin(int depth) {
-    return 200 + 150 * (depth - 1);
+static constexpr int calculateFutilityMargin(int depth, bool isImproving) {
+    return 200 + 150 * (depth - 1) + 100 * !isImproving;
 }
 
 /**

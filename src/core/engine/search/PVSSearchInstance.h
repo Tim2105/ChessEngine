@@ -31,7 +31,6 @@ class PVSSearchInstance {
             Array<MoveScorePair, 256> moveScorePairs;
             Move hashMove = Move::nullMove();
             int16_t preliminaryScore = 0;
-            bool isPlausibleLine = false;
         };
 
         Board board;
@@ -189,9 +188,11 @@ class PVSSearchInstance {
          * @param moveCount Die Platzierung des Knotens in der Zugvorsortierung.
          * @param moveScore Die Bewertung des letzten Zuges durch die Zugvorsortierung.
          * @param depth Die verbleibende Suchtiefe.
+         * @param isImproving Gibt an, ob die Farbe, die am Zug ist,
+         * ihre Position verbessert hat.
          * @return Die Tiefe, um die der Knoten zusätzlich reduziert werden soll.
          */
-        int determineLMR(int moveCount, int moveScore, int depth);
+        int determineLMR(int moveCount, int moveScore, int depth, bool isImproving);
 
         /**
          * @brief Bestimmt, ab welchem Zug das Null Move Pruning
@@ -200,12 +201,12 @@ class PVSSearchInstance {
          * @param depth Die verbleibende Suchtiefe.
          * @param isCheckEvasion Gibt an, ob die Position eine
          * Schachabwehr ist.
-         * @param isPlausibleLine Gibt an, ob der Knoten durch eine plausible
-         * Variante erreicht wurde.
+         * @param isImproving Gibt an, ob die Farbe, die am Zug ist,
+         * ihre Position verbessert hat.
          * @return Die Anzahl der Züge, die mindestens durchsucht werden
          * müssen, bevor das Null Move Pruning angewendet werden darf.
          */
-        int determineLMPCount(int depth, bool isCheckEvasion, bool isPlausibleLine);
+        int determineLMPCount(int depth, bool isCheckEvasion, bool isImproving);
 
         /**
          * @brief Überprüft anhand der momentanen Position, ob das
@@ -443,7 +444,6 @@ class PVSSearchInstance {
         constexpr void clearSearchStack(int ply) {
             clearMovesInSearchStack(ply);
             searchStack[ply].preliminaryScore = 0;
-            searchStack[ply].isPlausibleLine = false;
         }
 
         constexpr void addKillerMove(int ply, Move move) {
