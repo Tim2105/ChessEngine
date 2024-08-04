@@ -9,9 +9,9 @@ size_t startingMovesStdDev = 1;
 uint32_t timeControl = 1000;
 uint32_t increment = 80;
 int startOutputAtMove = 16;
-bool useNoisyParameters = false;
-double noiseDefaultStdDev = 1.5;
-double noiseLinearStdDev = 0.1;
+bool useNoisyParameters = true;
+double noiseDefaultStdDev = 0.3;
+double noiseLinearStdDev = 0.05;
 
 double validationSplit = 0.2;
 double k = 0.001225;

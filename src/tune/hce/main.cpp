@@ -282,7 +282,7 @@ void findOptimalK() {
         if(loss < prevLoss) {
             std::stringstream ss;
             ss << "\r(" << i << ") Loss: " << loss << " with k = " << newK << " at discount = " << discount;
-            std::cout << std::left << std::setw(50) << ss.str() << std::right << std::flush;
+            std::cout << std::left << std::setw(70) << ss.str() << std::right << std::flush;
         }
 
         i++;

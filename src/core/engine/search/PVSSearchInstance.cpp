@@ -674,7 +674,7 @@ int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int depth, boo
         return 0;
 
     // Reduziere standardmäßig anhand einer Funktion, die von der Suchtiefe abhängt.
-    double reduction = std::sqrt(depth) / 2.0 + 0.3;
+    double reduction = std::log(depth) / std::log(6) + 0.75 + 0.25 * !isImproving;
 
     // Passe die Reduktion an die relative Vergangenheitsbewertung des Zuges an.
     // -> Bisher bessere Züge werden weniger reduziert und schlechtere Züge stärker.
@@ -687,8 +687,7 @@ int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int depth, boo
     if(historyScore < 0)
         historyScore /= numPVs;
 
-    double historyReduction = -historyScore / (14336.0 + 2048.0 * isImproving);
-    historyReduction *= std::log(numThreads) / std::log(16) + 1.0;
+    double historyReduction = -historyScore / 16384.0;
 
     reduction += historyReduction;
 

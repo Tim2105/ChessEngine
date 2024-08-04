@@ -17,6 +17,8 @@ class HandcraftedEvaluator: public Evaluator {
             Bitboard blackBackwardPawns; // Rückständige schwarze Bauern
             Bitboard whitePassedPawns; // Weiße Freibauern
             Bitboard blackPassedPawns; // Schwarze Freibauern
+            Bitboard whiteCandidatePassedPawns; // Weiße Freibauerkandidaten
+            Bitboard blackCandidatePassedPawns; // Schwarze Freibauerkandidaten
             Bitboard whiteImmobilePawns; // Weiße unbewegbare Bauern
             Bitboard blackImmobilePawns; // Schwarze unbewegbare Bauern
             Bitboard whiteStrongSquares; // Starke Felder für weiße Figuren

@@ -260,6 +260,18 @@ void HCEParameters::displayParameters(std::ostream& os) const {
 
     os << "  0,   0]\n";
 
+    os << "Connected Passed Pawn Bonus MG: [  0, ";
+    for(size_t i = 0; i < 6; i++)
+        os << std::setw(3) << mgConnectedPassedPawnBonus[i] << ", ";
+
+    os << "  0]\n";
+
+    os << "Connected Passed Pawn Bonus EG: [  0, ";
+    for(size_t i = 0; i < 6; i++)
+        os << std::setw(3) << egConnectedPassedPawnBonus[i] << ", ";
+
+    os << "  0]\n";
+
     os << "Strong Square Bonus MG: " << mgStrongSquareBonus << "\n";
 
     os << "Space Bonus MG: " << mgSpaceBonus << "\n";
@@ -314,10 +326,10 @@ void HCEParameters::displayParameters(std::ostream& os) const {
     os << "Rook behind Passed Pawn Bonus EG: " << egRookBehindPassedPawnBonus << "\n";
 
     os << "Enemy Passed Pawn Blocked Bonus EG: " << egBlockedEnemyPassedPawnBonus << "\n";
-    os << "Rook Blocks Own Passed Pawn Penalty EG: " << egRookBlocksOwnPassedPawnPenalty << "\n";
 
     os << "King Pawn Proximity Weight: " << egKingProximityPawnWeight << "\n";
     os << "King Backward Pawn Proximity Weight: " << egKingProximityBackwardPawnWeight << "\n";
+    os << "King Candidate Passed Pawn Proximity Weight: " << egKingProximityCandidatePassedPawnWeight << "\n";
     os << "King Passed Pawn Proximity Weight: " << egKingProximityPassedPawnWeight << "\n";
 
     os << "Rule Of The Square Bonus: " << ruleOfTheSquareBonus << std::endl;

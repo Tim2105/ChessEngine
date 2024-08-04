@@ -256,15 +256,17 @@ void HandcraftedEvaluator::calculatePawnScore() {
 
     // Verbundene Bauern
     Bitboard connectedWhitePawns = (whitePawnsWestEast | whitePawnsWestEast.shiftNorth() | whitePawnsWestEast.shiftSouth()) & whitePawns;
-    while(connectedWhitePawns) {
-        int rank = Square::rankOf(connectedWhitePawns.popFSB());
+    Bitboard temp = connectedWhitePawns;
+    while(temp) {
+        int rank = Square::rankOf(temp.popFSB());
         score.mg += hceParams.getMGConnectedPawnBonus(rank);
         score.eg += hceParams.getEGConnectedPawnBonus(rank);
     }
 
     Bitboard connectedBlackPawns = (blackPawnsWestEast | blackPawnsWestEast.shiftSouth() | blackPawnsWestEast.shiftNorth()) & blackPawns;
-    while(connectedBlackPawns) {
-        int rank = Square::rankOf(Square::flipY(connectedBlackPawns.popFSB()));
+    temp = connectedBlackPawns;
+    while(temp) {
+        int rank = Square::rankOf(Square::flipY(temp.popFSB()));
         score.mg -= hceParams.getMGConnectedPawnBonus(rank);
         score.eg -= hceParams.getEGConnectedPawnBonus(rank);
     }
@@ -286,7 +288,24 @@ void HandcraftedEvaluator::calculatePawnScore() {
         score.eg -= hceParams.getEGPassedPawnBonus(rank);
     }
 
+    // Verbundene Freibauern
+    Bitboard connectedWhitePassedPawns = evaluationVars.whitePassedPawns & connectedWhitePawns;
+    while(connectedWhitePassedPawns) {
+        int rank = Square::rankOf(connectedWhitePassedPawns.popFSB());
+        score.mg -= hceParams.getMGConnectedPassedPawnBonus(rank);
+        score.eg -= hceParams.getEGConnectedPassedPawnBonus(rank);
+    }
+
+    Bitboard connectedBlackPassedPawns = evaluationVars.blackPassedPawns & connectedBlackPawns;
+    while(connectedBlackPassedPawns) {
+        int rank = Square::rankOf(connectedBlackPassedPawns.popFSB());
+        score.mg += hceParams.getMGConnectedPassedPawnBonus(rank);
+        score.eg += hceParams.getEGConnectedPassedPawnBonus(rank);
+    }
+
     // Freibauerkandidaten
+    evaluationVars.whiteCandidatePassedPawns = 0ULL;
+
     Bitboard whiteCandidatePassedPawns = whitePawns & ~(evaluationVars.whitePassedPawns | blackPawns.extrudeSouth());
     Bitboard blackCandidatePassedPawns = blackPawns & ~(evaluationVars.blackPassedPawns | whitePawns.extrudeNorth());
 
@@ -300,10 +319,13 @@ void HandcraftedEvaluator::calculatePawnScore() {
         Bitboard whiteSupport = blackOpposition.shiftSouth(2).extrudeSouth() & whiteSupportCandidates & ~((sq.shiftWest() | sq.shiftEast()).extrudeSouth() & blackPawns).extrudeSouth();
         
         if(whiteSupport.popcount() >= blackOpposition.popcount()) {
+            evaluationVars.whiteCandidatePassedPawns |= sq;
             int rank = Square::rankOf(sq.getFSB());
             score += Score{hceParams.getMGCandidatePassedPawnBonus(rank), hceParams.getEGCandidatePassedPawnBonus(rank)};
         }
     }
+
+    evaluationVars.blackCandidatePassedPawns = 0ULL;
 
     while(blackCandidatePassedPawns) {
         Bitboard sq = 1ULL << blackCandidatePassedPawns.popFSB();
@@ -312,6 +334,7 @@ void HandcraftedEvaluator::calculatePawnScore() {
         Bitboard blackSupport = whiteOpposition.shiftNorth(2).extrudeNorth() & blackSupportCandidates & ~((sq.shiftWest() | sq.shiftEast()).extrudeNorth() & whitePawns).extrudeNorth();
 
         if(blackSupport.popcount() >= whiteOpposition.popcount()) {
+            evaluationVars.blackCandidatePassedPawns |= sq;
             int rank = Square::rankOf(Square::flipY(sq.getFSB()));
             score -= Score{hceParams.getMGCandidatePassedPawnBonus(rank), hceParams.getEGCandidatePassedPawnBonus(rank)};
         }
@@ -902,8 +925,6 @@ Score HandcraftedEvaluator::evaluateBlockedPassedPawns() {
 
         if(blackPieces & pathToPromotion)
             score.eg -= hceParams.getEGBlockedEnemyPassedPawnBonus();
-        else if(whiteRooks & pathToPromotion)
-            score.eg += hceParams.getEGRooksBlocksOwnPassedPawnPenalty();
     }
 
     while(blackPassedPawns) {
@@ -912,8 +933,6 @@ Score HandcraftedEvaluator::evaluateBlockedPassedPawns() {
 
         if(whitePieces & pathToPromotion)
             score.eg += hceParams.getEGBlockedEnemyPassedPawnBonus();
-        else if(blackRooks & pathToPromotion)
-            score.eg -= hceParams.getEGRooksBlocksOwnPassedPawnPenalty();
     }
 
     return score;
@@ -937,6 +956,7 @@ Score HandcraftedEvaluator::evaluateKingPawnProximity() {
     Bitboard pawns = board.getPieceBitboard(WHITE_PAWN) | board.getPieceBitboard(BLACK_PAWN);
     Bitboard backwardPawns = evaluationVars.whiteBackwardPawns | evaluationVars.blackBackwardPawns;
     Bitboard passedPawns = evaluationVars.whitePassedPawns | evaluationVars.blackPassedPawns;
+    Bitboard candidatePassedPawns = evaluationVars.whiteCandidatePassedPawns | evaluationVars.blackCandidatePassedPawns;
 
     while(pawns) {
         int sq = pawns.popFSB();
@@ -946,6 +966,9 @@ Score HandcraftedEvaluator::evaluateKingPawnProximity() {
         if(passedPawns.getBit(sq)) {
             score.eg += (7 - whiteKingDist) * hceParams.getEGKingProximityPassedPawnWeight();
             score.eg -= (7 - blackKingDist) * hceParams.getEGKingProximityPassedPawnWeight();
+        } else if(candidatePassedPawns.getBit(sq)) {
+            score.eg += (7 - whiteKingDist) * hceParams.getEGKingProximityCandidatePassedPawnWeight();
+            score.eg -= (7 - blackKingDist) * hceParams.getEGKingProximityCandidatePassedPawnWeight();
         } else if(backwardPawns.getBit(sq)) {
             score.eg += (7 - whiteKingDist) * hceParams.getEGKingProximityBackwardPawnWeight();
             score.eg -= (7 - blackKingDist) * hceParams.getEGKingProximityBackwardPawnWeight();
