@@ -687,9 +687,14 @@ int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int depth, boo
     if(historyScore < 0)
         historyScore /= numPVs;
 
-    double historyReduction = -historyScore / 16384.0;
+    double historyReduction = -historyScore / 20000.0;
 
     reduction += historyReduction;
+
+    // Erhöhe die Reduktion anhand einer logarithmischen Funktion,
+    // wenn wir auf mehreren Threads suchen.
+    if(reduction < 0.0)
+        reduction *= 1.0 + std::log(numThreads) / std::log(16);
 
     // Runde die Reduktion ab.
     return (int)reduction;

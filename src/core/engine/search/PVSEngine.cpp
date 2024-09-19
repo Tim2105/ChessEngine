@@ -149,7 +149,7 @@ void PVSEngine::pauseHelperThreads() {
         // Warte, bis alle Hilfsthreads zurückgekehrt sind
         std::unique_lock<std::mutex> lock(cvMutex);
         cvMain.wait(lock, [&]() { return numThreadsBusy.load() == 0; });
-        cvMutex.unlock();
+        lock.unlock();
     #else
         threadSleepFlag.store(true);
     #endif
