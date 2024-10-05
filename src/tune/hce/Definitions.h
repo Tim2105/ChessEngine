@@ -23,14 +23,14 @@ extern std::string samplesFilePath;
  */
 
 extern size_t numGames;
-extern size_t startingMovesMean;
-extern size_t startingMovesStdDev;
+extern size_t startingMoves;
 extern uint32_t timeControl;
 extern uint32_t increment;
 extern int startOutputAtMove;
 extern bool useNoisyParameters;
 extern double noiseDefaultStdDev;
 extern double noiseLinearStdDev;
+extern double noiseDecay;
 
 /**
  * Variablen des Trainings.
@@ -39,7 +39,9 @@ extern double noiseLinearStdDev;
 extern double validationSplit;
 extern double k;
 extern double learningRate;
+extern double learningRateDecay;
 extern size_t numEpochs;
+extern size_t numGenerations;
 extern size_t noImprovementPatience;
 extern size_t batchSize;
 extern double epsilon;

@@ -13,9 +13,10 @@
 #include <iomanip>
 #include <iostream>
 #include <limits>
+#include <optional>
 #include <random>
 
-void simulateGames(size_t n, std::istream& pgnFile, std::ostream& outFile);
+void simulateGames(size_t n, std::istream& pgnFile, std::ostream& outFile, std::optional<HCEParameters> params = std::nullopt);
 
 void generateData() {
     std::ifstream pgnFile(pgnFilePath);
@@ -32,6 +33,8 @@ void gradientDescent();
 
 void displayFinalEpoch();
 
+void learn();
+
 void setParameter(std::string parameter, std::string value) {
     try {
         if(parameter == "numGames")
@@ -46,8 +49,12 @@ void setParameter(std::string parameter, std::string value) {
             samplesFilePath = value;
         else if(parameter == "learningRate")
             learningRate = std::stod(value);
+        else if(parameter == "learningRateDecay")
+            learningRateDecay = std::stod(value);
         else if(parameter == "numEpochs")
             numEpochs = std::stoi(value);
+        else if(parameter == "numGenerations")
+            numGenerations = std::stoi(value);
         else if(parameter == "batchSize")
             batchSize = std::stoi(value);
         else if(parameter == "k")
@@ -62,16 +69,16 @@ void setParameter(std::string parameter, std::string value) {
             noImprovementPatience = std::stoi(value);
         else if(parameter == "startOutputAtMove")
             startOutputAtMove = std::stoi(value);
-        else if(parameter == "startingMovesMean")
-            startingMovesMean = std::stod(value);
-        else if(parameter == "startingMovesStdDev")
-            startingMovesStdDev = std::stod(value);
+        else if(parameter == "startingMoves")
+            startingMoves = std::stod(value);
         else if(parameter == "useNoisyParameters")
             useNoisyParameters = value == "true";
         else if(parameter == "noiseDefaultStdDev")
             noiseDefaultStdDev = std::stod(value);
         else if(parameter == "noiseLinearStdDev")
             noiseLinearStdDev = std::stod(value);
+        else if(parameter == "noiseDecay")
+            noiseDecay = std::stod(value);
         else
             std::cerr << "Unknown parameter: " << parameter << std::endl;
     } catch(std::invalid_argument& e) {
@@ -86,7 +93,9 @@ void displayParameters() {
     std::cout << "pgnFilePath: " << pgnFilePath << std::endl;
     std::cout << "samplesFilePath: " << samplesFilePath << std::endl;
     std::cout << "learningRate: " << learningRate << std::endl;
+    std::cout << "learningRateDecay: " << learningRateDecay << std::endl;
     std::cout << "numEpochs: " << numEpochs << std::endl;
+    std::cout << "numGenerations: " << numGenerations << std::endl;
     std::cout << "batchSize: " << batchSize << std::endl;
     std::cout << "k: " << k << std::endl;
     std::cout << "epsilon: " << epsilon << std::endl;
@@ -94,11 +103,11 @@ void displayParameters() {
     std::cout << "validationSplit: " << validationSplit << std::endl;
     std::cout << "noImprovementPatience: " << noImprovementPatience << std::endl;
     std::cout << "startOutputAtMove: " << startOutputAtMove << std::endl;
-    std::cout << "startingMovesMean: " << startingMovesMean << std::endl;
-    std::cout << "startingMovesStdDev: " << startingMovesStdDev << std::endl;
+    std::cout << "startingMoves: " << startingMoves << std::endl;
     std::cout << "useNoisyParameters: " << (useNoisyParameters ? "true" : "false") << std::endl;
     std::cout << "noiseDefaultStdDev: " << noiseDefaultStdDev << std::endl;
     std::cout << "noiseLinearStdDev: " << noiseLinearStdDev << std::endl;
+    std::cout << "noiseDecay: " << noiseDecay << std::endl;
 }
 
 int main() {
@@ -126,6 +135,8 @@ int main() {
             displayFinalEpoch();
         else if(input == "dp")
             displayParameters();
+        else if(input == "learn")
+            learn();
         else {
             size_t pos = input.find("=");
             if(pos != std::string::npos) {
@@ -146,19 +157,17 @@ int main() {
     return 0;
 }
 
-void simulateGames(size_t n, std::istream& pgnFile, std::ostream& outFile) {
+void simulateGames(size_t n, std::istream& pgnFile, std::ostream& outFile, std::optional<HCEParameters> params) {
     std::vector<Board> startingPositions;
     startingPositions.reserve(n);
 
     std::default_random_engine generator;
-    std::normal_distribution<double> distribution(startingMovesMean, startingMovesStdDev);
 
     std::cout << "Loaded 0 games" << std::flush;
 
     // Lade alle Positionen aus der PGN-Datei
     size_t i = 0;
     while(pgnFile.good()) {
-        size_t startingMoves = (size_t)distribution(generator);
         startingPositions.push_back(std::get<0>(Board::fromPGN(pgnFile, startingMoves)));
         i++;
 
@@ -176,6 +185,12 @@ void simulateGames(size_t n, std::istream& pgnFile, std::ostream& outFile) {
     startingPositions.resize(n);
 
     Simulation sim(startingPositions, timeControl, increment);
+
+    if(params.has_value()) {
+        sim.setWhiteParams(params.value());
+        sim.setBlackParams(params.value());
+    }
+
     if(useNoisyParameters) {
         sim.setParameterNoise(noiseDefaultStdDev);
         sim.setLinearParameterNoise(noiseLinearStdDev);
@@ -313,6 +328,50 @@ void displayFinalEpoch() {
 
     std::cout << "Final parameters:" << std::endl;
     finalHCEParams.displayParameters(std::cout);
+}
+
+void learn() {
+    // Erstelle ein neuen Parametersatz
+    HCEParameters currentHCEParams;
+
+    // Durchlaufe alle Generationen
+    for(size_t i = 0; i < numGenerations; i++) {
+        std::cout << "Generation " << i + 1 << "/" << numGenerations << std::endl;
+
+        // Generiere die Datenpunkte
+        std::ifstream pgnFile(pgnFilePath);
+        std::ofstream resultFile(samplesFilePath, std::ios::trunc);
+        double oldNoiseDefaultStdDev = noiseDefaultStdDev;
+        double oldNoiseLinearStdDev = noiseLinearStdDev;
+        noiseDefaultStdDev = noiseDefaultStdDev * std::pow(noiseDecay, i);
+        noiseLinearStdDev = noiseLinearStdDev * std::pow(noiseDecay, i);
+        simulateGames(numGames, pgnFile, resultFile, currentHCEParams);
+        noiseDefaultStdDev = oldNoiseDefaultStdDev;
+        noiseLinearStdDev = oldNoiseLinearStdDev;
+        pgnFile.close();
+        resultFile.close();
+
+        // Lade die Datenpunkte
+        std::ifstream samplesFile(samplesFilePath);
+        std::vector<DataPoint> data = loadData(samplesFile);
+
+        // Führe den Gradientenabstieg durch
+        double oldLearningRate = learningRate;
+        learningRate = learningRate * std::pow(learningRateDecay, i);
+        currentHCEParams = Tune::adaGrad(data, currentHCEParams);
+        learningRate = oldLearningRate;
+
+        // Speichere die Parameter
+        std::ofstream outFile("data/generation" + std::to_string(i) + ".hce");
+
+        currentHCEParams.saveParameters(outFile);
+    }
+
+    std::cout << "Finished training" << std::endl;
+
+    // Speichere die finalen Parameter
+    std::ofstream outFile("data/epochFinal.hce");
+    currentHCEParams.saveParameters(outFile);
 }
 
 #endif

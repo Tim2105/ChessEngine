@@ -242,7 +242,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
      * Suchtiefe >= 8 durchgeführt.
      */
     bool useIID = false;
-    if(nodeType == PV_NODE || depth >= 8)
+    if(nodeType == PV_NODE || (depth >= 8 && nodeType == CUT_NODE))
         useIID = !entryExists || depthReduction > 0;
 
     addMovesToSearchStack(ply, useIID, depth);
@@ -280,12 +280,13 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
          * gut ist (hohe Bewertung in Vorsortierung), dann können wir den Zug überspringen.
          * 
          * Aus taktischen Gründen wird Futility Pruning nicht angewandt, wenn wir
-         * uns im Schach oder einem PV-Knoten befinden, wenn der Zug ein Schlagzug ist
+         * uns im Schach oder einem PV-Knoten befinden, wenn der Zug ein Schlag-/Aufwertungszug ist
          * oder wenn der Zug den Gegner in Schach setzt. Außerdem wird Futility Pruning
-         * abgeschaltet, wenn alpha oder beta eine Mattbewertung ist.
+         * abgeschaltet, wenn alpha eine Mattbewertung gegen uns ist.
          */
         if(depth <= 4 && moveScore < KILLER_MOVE_SCORE && !isCheckEvasion &&
-           nodeType != PV_NODE && !(isMateScore(alpha) || isMateScore(beta)) && !move.isCapture()) {
+           nodeType != PV_NODE && !(isMateScore(alpha) && alpha < NEUTRAL_SCORE) &&
+           !(move.isCapture() || move.isPromotion())) {
             
             int preliminaryEval = searchStack[ply].preliminaryScore;
 
@@ -326,12 +327,13 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
          * aufwerten oder den Gegner in Schach setzen, werden sehr wahrscheinlich nicht zu einem
          * Beta-Schnitt führen. Deshalb überspringen wir diese Züge.
          * 
-         * Als Failsafe wenden wir LMP nicht an, wenn wir im Schach stehen oder alpha eine Mattbewertung ist.
+         * Als Failsafe wenden wir LMP nicht an, wenn wir im Schach stehen oder alpha eine Mattbewertung gegen uns ist.
          * Dadurch vermeiden wir, versehentlich eine Mattverteidigung zu übersehen.
          */
         if(nodeType != PV_NODE && moveCount >= lmpCount &&
            !(move.isCapture() || move.isPromotion()) &&
-           !isMateScore(alpha) && !board.isCheck()) {
+           !(isMateScore(alpha) && alpha < NEUTRAL_SCORE) &&
+           !board.isCheck()) {
 
             evaluator.updateBeforeUndo();
             board.undoMove();
@@ -710,7 +712,7 @@ int PVSSearchInstance::determineLMPCount(int depth, bool isCheckEvasion, bool is
     int result = 5 + 2 * isImproving;
 
     // Erhöhe die Anzahl der zu betrachtenden Züge mit der verbleibenden Suchtiefe.
-    result += (depth - 1) * (3 + 2 * isImproving);
+    result += (depth - 1) * (depth - 1) * (2 + isImproving);
 
     return result;
 }

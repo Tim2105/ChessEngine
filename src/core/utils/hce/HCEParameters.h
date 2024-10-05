@@ -441,8 +441,6 @@ class HCEParameters {
             return pieceImbalanceValues[maxPiece * (maxPiece + 1) / 2 + minPiece];
         }
 
-        inline int getEGWinningMaterialAdvantage() const { return (pieceValues[3] - pieceValues[2]) / 2 + pieceValues[2]; }
-
         inline int getMGPSQT(int piece, int square) const { return mgPSQT[piece - 1][square]; }
         inline int getEGPSQT(int piece, int square) const { return egPSQT[piece - 1][square]; }
 

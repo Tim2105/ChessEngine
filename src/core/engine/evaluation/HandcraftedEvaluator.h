@@ -85,8 +85,13 @@ class HandcraftedEvaluator: public Evaluator {
                 int whiteKingSq = board.getKingSquare(WHITE);
                 int blackKingSq = board.getKingSquare(BLACK);
 
+                int simpleMaterialScore = (board.getPieceBitboard(WHITE_KNIGHT).popcount() - board.getPieceBitboard(BLACK_KNIGHT).popcount()) * SIMPLE_PIECE_VALUE[KNIGHT] +
+                                          (board.getPieceBitboard(WHITE_BISHOP).popcount() - board.getPieceBitboard(BLACK_BISHOP).popcount()) * SIMPLE_PIECE_VALUE[BISHOP] +
+                                          (board.getPieceBitboard(WHITE_ROOK).popcount() - board.getPieceBitboard(BLACK_ROOK).popcount()) * SIMPLE_PIECE_VALUE[ROOK] +
+                                          (board.getPieceBitboard(WHITE_QUEEN).popcount() - board.getPieceBitboard(BLACK_QUEEN).popcount()) * SIMPLE_PIECE_VALUE[QUEEN];
+
                 // Wenn der Materialvorteil kleiner als das Gewicht eines Turms ist, dann ist es Unentschieden
-                if(std::abs(evaluationVars.materialScore.eg) < hceParams.getEGWinningMaterialAdvantage()) {
+                if(std::abs(simpleMaterialScore) < EG_WINNING_ADVANTAGE) {
 
                     // Außer im Fall von 2 Läufer gegen einen Springer (da ist es manchmal möglich zu gewinnen)
                     if(evaluationVars.materialScore.eg > DRAW_SCORE) {
@@ -104,7 +109,7 @@ class HandcraftedEvaluator: public Evaluator {
                     return DRAW_SCORE;
                 }
 
-                if(evaluationVars.materialScore.eg >= hceParams.getEGWinningMaterialAdvantage()) {
+                if(simpleMaterialScore >= EG_WINNING_ADVANTAGE) {
                     bool isKBNK = (board.getPieceBitboard(WHITE_KNIGHT).popcount() == 1 && board.getPieceBitboard(WHITE_BISHOP).popcount() == 1 &&
                                     board.getPieceBitboard(WHITE_ROOK).popcount() == 0 && board.getPieceBitboard(WHITE_QUEEN).popcount() == 0);
 
@@ -117,7 +122,7 @@ class HandcraftedEvaluator: public Evaluator {
                         return DRAW_SCORE;
                     else // Jede andere Kombination -> Matt
                         return evaluateWinningNoPawnsEndgame(blackKingSq) * (board.getSideToMove() == WHITE ? 1 : -1);
-                } else if(evaluationVars.materialScore.eg <= -hceParams.getEGWinningMaterialAdvantage()) {
+                } else if(simpleMaterialScore <= -EG_WINNING_ADVANTAGE) {
                     bool isKBNK = (board.getPieceBitboard(BLACK_KNIGHT).popcount() == 1 && board.getPieceBitboard(BLACK_BISHOP).popcount() == 1 &&
                                     board.getPieceBitboard(BLACK_ROOK).popcount() == 0 && board.getPieceBitboard(BLACK_QUEEN).popcount() == 0);
 
@@ -191,6 +196,13 @@ class HandcraftedEvaluator: public Evaluator {
         }
 
     private:
+        /**
+         * @brief Einfache Materialbewertungen
+         */
+        static constexpr int SIMPLE_PIECE_VALUE[7] = {0, 100, 300, 300, 500, 900, 0};
+
+        static constexpr int EG_WINNING_ADVANTAGE = 400;
+
         /**
          * @brief Konstanten zur Berechnung der Spielphase.
          * Eine Phase von 0 bedeutet, Midgame und eine Phase von 1 bedeutet Endgame.

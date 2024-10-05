@@ -801,18 +801,14 @@ Score HandcraftedEvaluator::evaluatePieceMobility() {
 }
 
 Score HandcraftedEvaluator::evaluateSafeCenterSpace() {
-    Bitboard whiteSafeCenterSquares = ~board.getAttackBitboard(BLACK) & extendedCenter.shiftSouth().extrudeSouth();
-    Bitboard blackSafeCenterSquares = ~board.getAttackBitboard(WHITE) & extendedCenter.shiftNorth().extrudeNorth();
-
-    int numWhiteSafeCenterSquares = whiteSafeCenterSquares.popcount();
-    int numBlackSafeCenterSquares = blackSafeCenterSquares.popcount();
-
     Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
     Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);
 
-    // Zähle Felder hinter eigenen Bauern doppelt
-    numWhiteSafeCenterSquares += (whitePawns.shiftSouth().extrudeSouth() & whiteSafeCenterSquares).popcount();
-    numBlackSafeCenterSquares += (blackPawns.shiftNorth().extrudeNorth() & blackSafeCenterSquares).popcount();
+    Bitboard whiteSafeCenterSquares = (whitePawns.shiftSouth().extrudeSouth() & extendedCenter & ~board.getAttackBitboard(BLACK_PAWN));
+    Bitboard blackSafeCenterSquares = (blackPawns.shiftNorth().extrudeNorth() & extendedCenter & ~board.getAttackBitboard(WHITE_PAWN));
+
+    int numWhiteSafeCenterSquares = whiteSafeCenterSquares.popcount();
+    int numBlackSafeCenterSquares = blackSafeCenterSquares.popcount();
 
     return {(numWhiteSafeCenterSquares - numBlackSafeCenterSquares) * hceParams.getMGSpaceBonus(), 0};
 }
