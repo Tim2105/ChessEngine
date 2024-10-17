@@ -155,7 +155,7 @@ class PVSEngine {
          * @brief Die Funktion, die von den
          * Helper-Threads ausgeführt wird.
          */
-        void helperThreadLoop(PVSSearchInstance* instance);
+        void helperThreadLoop(size_t instanceIdx);
 
         /**
          * @brief Erstellt die zusätzlichen Suchinstanzen.

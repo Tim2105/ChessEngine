@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <math.h>
 
-void PVSEngine::helperThreadLoop(PVSSearchInstance* instance) {
+void PVSEngine::helperThreadLoop(size_t instanceIdx) {
     #if not defined(DISABLE_THREADS)
         int score;
 
@@ -18,6 +18,9 @@ void PVSEngine::helperThreadLoop(PVSSearchInstance* instance) {
             // Der Thread ist jetzt beschäftigt
             numThreadsBusy.fetch_add(1);
             lock.unlock();
+
+            // Hole die Instanz, die der Thread ausführen soll
+            PVSSearchInstance* instance = instances[instanceIdx];
 
             // Kopiere die aktuellen Suchparameter in lokale Variablen
             int depth = currentDepth;
@@ -83,7 +86,7 @@ void PVSEngine::createHelperInstances(size_t numThreads) {
             instances[i]->setMainThread(false);
 
             // Erstelle einen Hilfsthread
-            threads.push_back(std::thread(&PVSEngine::helperThreadLoop, this, instances[i]));
+            threads.push_back(std::thread(&PVSEngine::helperThreadLoop, this, i));
         }
     #else
         UNUSED(numThreads);
@@ -153,6 +156,10 @@ void PVSEngine::pauseHelperThreads() {
     #else
         threadSleepFlag.store(true);
     #endif
+}
+
+int threadValue(PVSSearchInstance* instance, int worstScore) {
+    return (instance->getPVScore() - worstScore + 10) * (instance->getPV().size() > 0);
 }
 
 void PVSEngine::outputSearchInfo() {
@@ -284,15 +291,14 @@ void PVSEngine::search(const UCI::SearchParams& params) {
     // Erstelle die Hauptinstanz, die die Suche durchführt.
     #if defined(USE_HCE) && defined(TUNE)
         // Erstelle die Hauptinstanz mit HCE-Parametern für das Tuning
-        PVSSearchInstance mainInstance(board, hceParams, transpositionTable, threadSleepFlag, startTime,
-                                       stopTime, nodesSearched, checkupFunction);
+        mainInstance = new PVSSearchInstance(board, hceParams, transpositionTable, threadSleepFlag, startTime,
+                                             stopTime, nodesSearched, checkupFunction);
     #else
-        PVSSearchInstance mainInstance(board, transpositionTable, threadSleepFlag, startTime,
-                                       stopTime, nodesSearched, checkupFunction);
+        mainInstance = new PVSSearchInstance(board, transpositionTable, threadSleepFlag, startTime,
+                                             stopTime, nodesSearched, checkupFunction);
     #endif
     
-    this->mainInstance = &mainInstance;
-    mainInstance.setMainThread(true);
+    mainInstance->setMainThread(true);
 
     // Erstelle die Hilfsinstanzen, die die Hauptinstanz unterstützen.
     size_t numAdditionalInstances = UCI::options["Threads"].getValue<size_t>() - 1;
@@ -332,17 +338,27 @@ void PVSEngine::search(const UCI::SearchParams& params) {
                 int prevScore = variations[pv].score;
                 alpha = prevScore - prevScore * ASPIRATION_WINDOW_SCORE_FACTOR - ASPIRATION_WINDOW;
                 beta = prevScore + prevScore * ASPIRATION_WINDOW_SCORE_FACTOR + ASPIRATION_WINDOW;
+
+                // Set the first PV-Table entry as the hash move,
+                // so that it is searched first in the next iteration.
+                if(variations[pv].moves.size() > 0) {
+                    Move hashMove = variations[pv].moves[0];
+                    mainInstance->setBestRootMoveHint(hashMove);
+
+                    for(size_t i = 0; i < numAdditionalInstances; i++)
+                        instances[i]->setBestRootMoveHint(hashMove);
+                }
             }
 
             // Starte die Hilfsthreads.
             startHelperThreads(depth, alpha, beta, searchMoves);
 
             // Initialisiere die Hauptinstanz für diesen Durchlauf.
-            mainInstance.resetSelectiveDepth();
-            mainInstance.setSearchMoves(searchMoves);
+            mainInstance->resetSelectiveDepth();
+            mainInstance->setSearchMoves(searchMoves);
 
             // Führe die Suche in der Hauptinstanz durch.
-            int score = mainInstance.pvs(depth, 0, alpha, beta, PV_NODE);
+            int score = mainInstance->pvs(depth, 0, alpha, beta, PV_NODE);
 
             // Aspirationsfenster erweitern, wenn die Bewertung außerhalb des Fensters liegt.
             bool alphaAlreadyWidened = false, betaAlreadyWidened = false;
@@ -363,15 +379,68 @@ void PVSEngine::search(const UCI::SearchParams& params) {
                     }
                 }
 
-                score = mainInstance.pvs(depth, 0, alpha, beta, PV_NODE);
+                score = mainInstance->pvs(depth, 0, alpha, beta, PV_NODE);
             }
 
             // Stoppe die Hilfsthreads.
             pauseHelperThreads();
 
+            // Bestimme die Hauptvariante durch Voting.
+            int voteMap[64][64] = {0};
+
+            // Bestimme die schlechteste Bewertung.
+            int worstScore = mainInstance->getPVScore();
+            voteMap[mainInstance->getPV()[0].getOrigin()][mainInstance->getPV()[0].getDestination()] = 0;
+            for(size_t i = 0; i < numAdditionalInstances; i++) {
+                worstScore = std::min(worstScore, instances[i]->getPVScore());
+                voteMap[instances[i]->getPV()[0].getOrigin()][instances[i]->getPV()[0].getDestination()] = 0;
+            }
+
+            // Fülle die Voting-Map.
+            voteMap[mainInstance->getPV()[0].getOrigin()][mainInstance->getPV()[0].getDestination()] = threadValue(mainInstance, worstScore);
+            for(size_t i = 0; i < numAdditionalInstances; i++)
+                voteMap[instances[i]->getPV()[0].getOrigin()][instances[i]->getPV()[0].getDestination()] += threadValue(instances[i], worstScore);
+
+            // Bestimme die beste Instanz.
+            int bestInstanceIdx = -1;
+            int voteMapPeak = voteMap[mainInstance->getPV()[0].getOrigin()][mainInstance->getPV()[0].getDestination()];
+            int bestPVScore = mainInstance->getPVScore();
+            for(size_t i = 0; i < numAdditionalInstances; i++) {
+                int pvScore = instances[i]->getPVScore();
+                if(isMateScore(pvScore) || isMateScore(bestPVScore)) {
+                    // Wähle immer das schnellste Matt für uns
+                    // oder das langsamste Matt gegen uns.
+                    if(pvScore > bestPVScore) {
+                        bestInstanceIdx = i;
+                        bestPVScore = pvScore;
+                    }
+                } else {
+                    // Verwende sonst die Voting-Heuristik.
+                    int voteScore = voteMap[instances[i]->getPV()[0].getOrigin()][instances[i]->getPV()[0].getDestination()];
+                    PVSSearchInstance* bestInstance = bestInstanceIdx != -1 ? instances[bestInstanceIdx] : mainInstance;
+                    if(voteScore > voteMapPeak ||
+                      (voteScore == voteMapPeak && threadValue(instances[i], worstScore) > threadValue(bestInstance, worstScore))) {
+                        bestInstanceIdx = i;
+                        voteMapPeak = voteScore;
+                        bestPVScore = pvScore;
+                    }
+                }
+            }
+
+            // Tausche die Hauptinstanz mit der besten Instanz aus.
+            if(bestInstanceIdx != -1) {
+                PVSSearchInstance* bestInstance = instances[bestInstanceIdx];
+                instances[bestInstanceIdx] = mainInstance;
+                instances[bestInstanceIdx]->setMainThread(false);
+                instances[bestInstanceIdx]->setCheckupFunction(nullptr);
+                mainInstance = bestInstance;
+                mainInstance->setMainThread(true);
+                mainInstance->setCheckupFunction(checkupFunction);
+            }
+
             // Speichere die Hauptvariante und die Bewertung.
             std::vector<Move> pvMoves;
-            for(Move move : mainInstance.getPV())
+            for(Move move : mainInstance->getPV())
                 pvMoves.push_back(move);
 
             Move bestMove = pvMoves[0];
@@ -384,14 +453,14 @@ void PVSEngine::search(const UCI::SearchParams& params) {
                     if(variations.size() < multiPV) {
                         variations.push_back({
                             pvMoves,
-                            mainInstance.getPVScore(),
+                            mainInstance->getPVScore(),
                             depth,
                             getSelectiveDepth()
                         });
                     } else {
                         variations[i - 1] = {
                             pvMoves,
-                            mainInstance.getPVScore(),
+                            mainInstance->getPVScore(),
                             depth,
                             getSelectiveDepth()
                         };
@@ -399,7 +468,7 @@ void PVSEngine::search(const UCI::SearchParams& params) {
                 } else if(variations[i].moves.front() == bestMove) {
                     variations[i] = {
                         pvMoves,
-                        mainInstance.getPVScore(),
+                        mainInstance->getPVScore(),
                         depth,
                         getSelectiveDepth()
                     };
@@ -466,6 +535,9 @@ void PVSEngine::search(const UCI::SearchParams& params) {
 
     // Gebe alle Hilfsinstanzen frei.
     destroyHelperInstances();
+
+    // Gebe die Hauptinstanz frei.
+    delete mainInstance;
 
     // Wir suchen nicht mehr.
     searching.store(false);

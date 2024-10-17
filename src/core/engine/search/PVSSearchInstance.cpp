@@ -242,8 +242,8 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
      * Suchtiefe >= 8 durchgeführt.
      */
     bool useIID = false;
-    if(nodeType == PV_NODE || (depth >= 8 && nodeType == CUT_NODE))
-        useIID = !entryExists || depthReduction > 0;
+    if(nodeType != ALL_NODE)
+        useIID = depthReduction > 0;
 
     addMovesToSearchStack(ply, useIID, depth);
 
@@ -682,13 +682,6 @@ int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int depth, boo
     // -> Bisher bessere Züge werden weniger reduziert und schlechtere Züge stärker.
     int32_t historyScore = getHistoryScore(lastMove, board.getSideToMove() ^ COLOR_MASK);
 
-    // Dividiere negative Vergangenheitsbewertungen, die für eine Erhöhung der Reduktion sorgen,
-    // durch die Anzahl der PVs, um die Reduktion zu verringern. Im MultiPV-Modus wird der Spielbaum
-    // für jede PV durchsucht und die Vergangenheitsbewertung wird mehrmals aktualisiert.
-    // Durch die Division soll dieser Effekt annähernd ausgeglichen werden.
-    if(historyScore < 0)
-        historyScore /= numPVs;
-
     double historyReduction = -historyScore / 20000.0;
 
     reduction += historyReduction;
@@ -744,9 +737,16 @@ void PVSSearchInstance::addMovesToSearchStack(int ply, bool useIID, int depth) {
     // für die aktuelle Position.
     Move hashMove = Move::nullMove();
 
-    if(ply == 0 && pvTable[0].size() > 0) {
-        // Probiere im Wurzelknoten den besten Zug aus der letzten Suche.
-        hashMove = pvTable[0].front();
+    if(ply == 0) {
+        if(bestRootMoveHint.exists()) {
+            // Verwende den vorgegebenen Wurzelzug.
+            hashMove = bestRootMoveHint;
+            // Setze den Wurzelzug zurück.
+            bestRootMoveHint = Move::nullMove();
+        } else if(pvTable[0].size() > 0) {
+            // Probiere im Wurzelknoten den besten Zug aus der letzten Suche.
+            hashMove = pvTable[0].front();
+        }
     } else if(useIID) {
         // Wir haben keinen Hashzug für die aktuelle Position gefunden,
         // aber uns ist eine akkurate Zugvorsortierung wichtig.
@@ -755,7 +755,7 @@ void PVSSearchInstance::addMovesToSearchStack(int ply, bool useIID, int depth) {
         // ein vorläufig bester Zug bestimmt wird.
 
         // Bestimme die reduzierte Suchtiefe.
-        int reducedDepth = std::min(depth / 2, depth - 4);
+        int reducedDepth = std::min(depth * 2 / 3, depth - 2);
 
         TranspositionTableEntry entry;
         bool entryExists = transpositionTable.probe(board.getHashValue(), entry);

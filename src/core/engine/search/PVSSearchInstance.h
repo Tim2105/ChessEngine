@@ -170,6 +170,11 @@ class PVSSearchInstance {
         std::function<void()> checkupFunction;
 
         /**
+         * @brief Der Zug, der als Erstes in der Suche betrachtet werden soll.
+         */
+        Move bestRootMoveHint = Move::nullMove();
+
+        /**
          * @brief Führt eine Quieszenzsuche durch. Die Quieszenzsuche
          * ist eine spezielle Form des Alpha-Beta-Algorithmus, die
          * nur "interessante" Züge betrachtet.
@@ -420,6 +425,20 @@ class PVSSearchInstance {
          */
         inline void setSearchMoves(const Array<Move, 256>& searchMoves) {
             this->searchMoves = searchMoves;
+        }
+
+        /**
+         * @brief Setzt die Checkup-Funktion für die Suchinstanz.
+         */
+        inline void setCheckupFunction(std::function<void()> checkupFunction) {
+            this->checkupFunction = checkupFunction;
+        }
+
+        /**
+         * @brief Setzt den Zug, der als Erstes in der Suche betrachtet werden soll.
+         */
+        inline void setBestRootMoveHint(Move move) {
+            bestRootMoveHint = move;
         }
 
     private:
