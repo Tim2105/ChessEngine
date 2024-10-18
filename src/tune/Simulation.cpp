@@ -43,6 +43,9 @@ GameResult Simulation::simulateSingleGame(Board& board) {
         std::normal_distribution<double> linearDist(0.0, noiseLinearStdDev);
 
         for(size_t i = 0; i < whiteParameters.size(); i++) {
+            if(!whiteParameters.isOptimizable(i))
+                continue;
+
             whiteParameters[i] = std::round(whiteParameters[i] + defaultDist(gen) + linearDist(gen) * std::abs(whiteParameters[i]));
             blackParameters[i] = std::round(blackParameters[i] + defaultDist(gen) + linearDist(gen) * std::abs(blackParameters[i]));
         }

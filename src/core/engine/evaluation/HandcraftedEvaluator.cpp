@@ -393,7 +393,6 @@ int HandcraftedEvaluator::evaluateKingAttackZone() {
 
     // Bestimme die Anzahl der Angreifer pro Figurentyp auf die Felder um den weißen König
     Bitboard kingZone = kingAttackZone[whiteKingSquare];
-    Bitboard vulnerableKingZone = kingZone & ~(whitePawns.shiftNorth().extrudeNorth() | board.getAttackBitboard(WHITE_PAWN));
     int numBlackAttackers = 0;
     int blackAttackersWeight = 0;
 
@@ -403,51 +402,53 @@ int HandcraftedEvaluator::evaluateKingAttackZone() {
         Bitboard attacks = knightAttackBitboard(sq) & kingZone;
         if(attacks) {
             numBlackAttackers++;
-            numBlackAttackers += (bool)(attacks & vulnerableKingZone);
             blackAttackersWeight += attacks.popcount() * hceParams.getKnightAttackBonus();
         }
     }
 
     Bitboard blackBishops = board.getPieceBitboard(BLACK_BISHOP);
+    // Ignoriere Damen, damit Diagonalangriffe in denen eine Dame von einem Läufer gedeckt wird, doppelt gezählt werden
+    Bitboard occupied = (board.getPieceBitboard() | board.getPieceBitboard(BLACK_KING)) & ~board.getPieceBitboard(BLACK_QUEEN);
     while(blackBishops) {
         int sq = blackBishops.popFSB();
-        Bitboard attacks = diagonalAttackBitboard(sq, board.getPieceBitboard() | board.getPieceBitboard(BLACK_KING)) & kingZone;
+        Bitboard attacks = diagonalAttackBitboard(sq, occupied) & kingZone;
         if(attacks) {
             numBlackAttackers++;
-            numBlackAttackers += (bool)(attacks & vulnerableKingZone);
             blackAttackersWeight += attacks.popcount() * hceParams.getBishopAttackBonus();
         }
     }
 
     Bitboard blackRooks = board.getPieceBitboard(BLACK_ROOK);
+    // Ignoriere Damen und Türme, damit Horizontalangriffe in denen eine Dame oder ein Turm von einem Turm gedeckt wird, doppelt gezählt werden
+    occupied = (board.getPieceBitboard() | board.getPieceBitboard(BLACK_KING)) & ~(board.getPieceBitboard(BLACK_QUEEN) | board.getPieceBitboard(BLACK_ROOK));
     while(blackRooks) {
         int sq = blackRooks.popFSB();
-        Bitboard attacks = horizontalAttackBitboard(sq, board.getPieceBitboard() | board.getPieceBitboard(BLACK_KING)) & kingZone;
+        Bitboard attacks = horizontalAttackBitboard(sq, occupied) & kingZone;
         if(attacks) {
             numBlackAttackers++;
-            numBlackAttackers += (bool)(attacks & vulnerableKingZone);
             blackAttackersWeight += attacks.popcount() * hceParams.getRookAttackBonus();
         }
     }
 
     Bitboard blackQueens = board.getPieceBitboard(BLACK_QUEEN);
+    // Ignoriere Damen und Türme (nur in der Horizontalrichtung), damit Horizontalangriffe in denen ein Turm von einer Dame gedeckt wird, doppelt gezählt werden
+    occupied = (board.getPieceBitboard() | board.getPieceBitboard(BLACK_KING)) & ~(board.getPieceBitboard(BLACK_QUEEN) | board.getPieceBitboard(BLACK_ROOK));
+    Bitboard occupiedDiagonal = (board.getPieceBitboard() | board.getPieceBitboard(BLACK_KING)) & ~board.getPieceBitboard(BLACK_QUEEN);
     while(blackQueens) {
         int sq = blackQueens.popFSB();
-        Bitboard attacks = (diagonalAttackBitboard(sq, board.getPieceBitboard() | board.getPieceBitboard(BLACK_KING)) |
-                            horizontalAttackBitboard(sq, board.getPieceBitboard() | board.getPieceBitboard(BLACK_KING))) & kingZone;
+        Bitboard attacks = (diagonalAttackBitboard(sq, occupiedDiagonal) |
+                            horizontalAttackBitboard(sq, occupied)) & kingZone;
 
         if(attacks) {
             numBlackAttackers++;
-            numBlackAttackers += (bool)(attacks & vulnerableKingZone);
             blackAttackersWeight += attacks.popcount() * hceParams.getQueenAttackBonus();
         }
     }
 
-    numBlackAttackers = std::min(numBlackAttackers, 9);
+    numBlackAttackers = std::min(numBlackAttackers, 5);
 
     // Bestimme die Anzahl der Angreifer pro Figurentyp auf die Felder um den schwarzen König
     kingZone = kingAttackZone[blackKingSquare];
-    vulnerableKingZone = kingZone & ~(blackPawns.shiftSouth().extrudeSouth() | board.getAttackBitboard(BLACK_PAWN));
     int numWhiteAttackers = 0;
     int whiteAttackersWeight = 0;
 
@@ -457,47 +458,50 @@ int HandcraftedEvaluator::evaluateKingAttackZone() {
         Bitboard attacks = knightAttackBitboard(sq) & kingZone;
         if(attacks) {
             numWhiteAttackers++;
-            numWhiteAttackers += (bool)(attacks & vulnerableKingZone);
             whiteAttackersWeight += attacks.popcount() * hceParams.getKnightAttackBonus();
         }
     }
 
     Bitboard whiteBishops = board.getPieceBitboard(WHITE_BISHOP);
+    // Ignoriere Damen, damit Diagonalangriffe in denen eine Dame von einem Läufer gedeckt wird, doppelt gezählt werden
+    occupied = (board.getPieceBitboard() | board.getPieceBitboard(WHITE_KING)) & ~board.getPieceBitboard(WHITE_QUEEN);
     while(whiteBishops) {
         int sq = whiteBishops.popFSB();
-        Bitboard attacks = diagonalAttackBitboard(sq, board.getPieceBitboard() | board.getPieceBitboard(WHITE_KING)) & kingZone;
+        Bitboard attacks = diagonalAttackBitboard(sq, occupied) & kingZone;
         if(attacks) {
             numWhiteAttackers++;
-            numWhiteAttackers += (bool)(attacks & vulnerableKingZone);
             whiteAttackersWeight += attacks.popcount() * hceParams.getBishopAttackBonus();
         }
     }
 
     Bitboard whiteRooks = board.getPieceBitboard(WHITE_ROOK);
+    // Ignoriere Damen und Türme, damit Horizontalangriffe in denen eine Dame oder ein Turm von einem Turm gedeckt wird, doppelt gezählt werden
+    occupied = (board.getPieceBitboard() | board.getPieceBitboard(WHITE_KING)) & ~(board.getPieceBitboard(WHITE_QUEEN) | board.getPieceBitboard(WHITE_ROOK));
     while(whiteRooks) {
         int sq = whiteRooks.popFSB();
-        Bitboard attacks = horizontalAttackBitboard(sq, board.getPieceBitboard() | board.getPieceBitboard(WHITE_KING)) & kingZone;
+        Bitboard attacks = horizontalAttackBitboard(sq, occupied) & kingZone;
         if(attacks) {
             numWhiteAttackers++;
-            numWhiteAttackers += (bool)(attacks & vulnerableKingZone);
             whiteAttackersWeight += attacks.popcount() * hceParams.getRookAttackBonus();
         }
     }
 
     Bitboard whiteQueens = board.getPieceBitboard(WHITE_QUEEN);
+    // Ignoriere Damen und Türme (nur in der Horizontalrichtung), damit Horizontalangriffe in denen ein Turm von einer Dame gedeckt wird, doppelt gezählt werden
+    occupied = (board.getPieceBitboard() | board.getPieceBitboard(WHITE_KING)) & ~(board.getPieceBitboard(WHITE_QUEEN) | board.getPieceBitboard(WHITE_ROOK));
+    occupiedDiagonal = (board.getPieceBitboard() | board.getPieceBitboard(WHITE_KING)) & ~board.getPieceBitboard(WHITE_QUEEN);
     while(whiteQueens) {
         int sq = whiteQueens.popFSB();
-        Bitboard attacks = (diagonalAttackBitboard(sq, board.getPieceBitboard() | board.getPieceBitboard(WHITE_KING)) |
-                            horizontalAttackBitboard(sq, board.getPieceBitboard() | board.getPieceBitboard(WHITE_KING))) & kingZone;
+        Bitboard attacks = (diagonalAttackBitboard(sq, occupiedDiagonal) |
+                            horizontalAttackBitboard(sq, occupied)) & kingZone;
                         
         if(attacks) {
             numWhiteAttackers++;
-            numWhiteAttackers += (bool)(attacks & vulnerableKingZone);
             whiteAttackersWeight += attacks.popcount() * hceParams.getQueenAttackBonus();
         }
     }
 
-    numWhiteAttackers = std::min(numWhiteAttackers, 9);
+    numWhiteAttackers = std::min(numWhiteAttackers, 5);
 
     // Berechne die Bewertung
     // Typecast zu int32_t um auf 16-Bit-Systemen Überläufe zu vermeiden
@@ -568,9 +572,9 @@ int HandcraftedEvaluator::evaluatePawnSafety() {
 }
 
 Score HandcraftedEvaluator::calculatePieceScore() {
-    return evaluateAttackedPieces() + evaluatePieceMobility() + evaluateSafeCenterSpace() + evaluateMinorPiecesOnStrongSquares() +
-           evaluateBadBishops() + evaluateRooksOnOpenFiles() + evaluateRooksBehindPassedPawns() + evaluateBlockedPassedPawns() +
-           evaluateKingPawnProximity() + evaluateRuleOfTheSquare();
+    return evaluateAttackedPieces() + evaluatePieceMobility() + evaluateMinorPiecesOnStrongSquares() +
+           evaluateBadBishops() + evaluateRooksOnOpenFiles() + evaluateRooksBehindPassedPawns() +
+           evaluateBlockedPassedPawns() + evaluateKingPawnProximity() + evaluateRuleOfTheSquare();
 }
 
 Score HandcraftedEvaluator::evaluateAttackedPieces() {
@@ -798,19 +802,6 @@ Score HandcraftedEvaluator::evaluatePieceMobility() {
     }
 
     return score;
-}
-
-Score HandcraftedEvaluator::evaluateSafeCenterSpace() {
-    Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
-    Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);
-
-    Bitboard whiteSafeCenterSquares = (whitePawns.shiftSouth().extrudeSouth() & extendedCenter & ~board.getAttackBitboard(BLACK_PAWN));
-    Bitboard blackSafeCenterSquares = (blackPawns.shiftNorth().extrudeNorth() & extendedCenter & ~board.getAttackBitboard(WHITE_PAWN));
-
-    int numWhiteSafeCenterSquares = whiteSafeCenterSquares.popcount();
-    int numBlackSafeCenterSquares = blackSafeCenterSquares.popcount();
-
-    return {(numWhiteSafeCenterSquares - numBlackSafeCenterSquares) * hceParams.getMGSpaceBonus(), 0};
 }
 
 Score HandcraftedEvaluator::evaluateMinorPiecesOnStrongSquares() {

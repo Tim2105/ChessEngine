@@ -253,25 +253,18 @@ class HCEParameters {
         int16_t mgStrongSquareBonus = 8;
 
         /**
-         * Ein Bonus für jedes sichere Feld
-         * in der Mitte des Spielfeldes.
-         */
-
-        int16_t mgSpaceBonus = -3;
-
-        /**
          * Ein Bonus für jedes Feld im Königsbereich des Gegners,
          * dass von einer eigenen Figur angegriffen wird.
          */
 
-        int16_t numAttackerWeight[9] = {
-            4, 11, 11, 20, 40, 59, 66, 94, 111
+        int16_t numAttackerWeight[5] = {
+            10, 50, 75, 90, 100
         };
 
-        int16_t knightAttackBonus = 9;
-        int16_t bishopAttackBonus = 5;
-        int16_t rookAttackBonus = 12;
-        int16_t queenAttackBonus = 63;
+        int16_t knightAttackBonus = 15;
+        int16_t bishopAttackBonus = 10;
+        int16_t rookAttackBonus = 30;
+        int16_t queenAttackBonus = 80;
 
         /**
          * Bewertungen für verschiedene Merkmale in
@@ -474,8 +467,6 @@ class HCEParameters {
         inline int getEGConnectedPassedPawnBonus(int rank) const { return egConnectedPassedPawnBonus[rank - 1]; }
 
         inline int getMGStrongSquareBonus() const { return mgStrongSquareBonus; }
-
-        inline int getMGSpaceBonus() const { return mgSpaceBonus; }
 
         inline int getNumAttackerWeight(int numAttackers) const { return numAttackers == 0 ? 0 : numAttackerWeight[numAttackers - 1]; }
 

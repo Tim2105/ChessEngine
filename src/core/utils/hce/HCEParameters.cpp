@@ -88,7 +88,23 @@ bool HCEParameters::isParameterDead(size_t index) const {
 }
 
 bool HCEParameters::isOptimizable(size_t index) const {
-    return !isParameterDead(index);
+    if(isParameterDead(index))
+        return false;
+
+    void* mgPSQTPawnStart = (void*)&mgPSQTPawn[0];
+    void* mgPSQTPawnEnd = (void*)&mgPSQTPawn[64];
+
+    void* numAttackerWeightStart = (void*)&numAttackerWeight[0];
+    void* numAttackerWeightEnd = (void*)&numAttackerWeight[4];
+
+    void* attackBonusStart = (void*)&knightAttackBonus;
+    void* attackBonusEnd = (void*)(&queenAttackBonus + 1);
+
+    void* idxAddress = (void*)&((int16_t*)this)[index];
+
+    return (idxAddress >= mgPSQTPawnStart && idxAddress < mgPSQTPawnEnd) ||
+           (idxAddress >= numAttackerWeightStart && idxAddress < numAttackerWeightEnd) ||
+           (idxAddress >= attackBonusStart && idxAddress < attackBonusEnd);
 }
 
 void HCEParameters::displayParameters(std::ostream& os) const {
@@ -274,11 +290,9 @@ void HCEParameters::displayParameters(std::ostream& os) const {
 
     os << "Strong Square Bonus MG: " << mgStrongSquareBonus << "\n";
 
-    os << "Space Bonus MG: " << mgSpaceBonus << "\n";
-
     os << "Num Attacker Weight: [";
-    for(size_t i = 0; i < 9; i++)
-        os << std::setw(3) << numAttackerWeight[i] << (i == 8 ? "]\n" : ", ");
+    for(size_t i = 0; i < 5; i++)
+        os << std::setw(3) << numAttackerWeight[i] << (i == 4 ? "]\n" : ", ");
 
     os << "Knight Attack Bonus: " << knightAttackBonus << "\n";
     os << "Bishop Attack Bonus: " << bishopAttackBonus << "\n";

@@ -86,7 +86,8 @@
         "condition_variable": "cpp",
         "semaphore": "cpp",
         "stop_token": "cpp",
-        "cstdalign": "cpp"
+        "cstdalign": "cpp",
+        "complex": "cpp"
     },
     "makefile.configureOnOpen": true
 }
