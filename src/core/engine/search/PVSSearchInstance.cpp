@@ -698,7 +698,7 @@ int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int depth, boo
 int PVSSearchInstance::determineLMPCount(int depth, bool isCheckEvasion, bool isImproving) {
     // LMP wird nur in geringen Tiefen,
     // nicht in Schachabwehrzügen angewandt.
-    if(depth >= 12 || isCheckEvasion)
+    if(depth >= 10 || isCheckEvasion)
         return std::numeric_limits<int>::max();
 
     // Standardmäßig müssen mindestens 5 Züge betrachtet werden.

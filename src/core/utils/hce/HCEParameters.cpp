@@ -88,23 +88,7 @@ bool HCEParameters::isParameterDead(size_t index) const {
 }
 
 bool HCEParameters::isOptimizable(size_t index) const {
-    if(isParameterDead(index))
-        return false;
-
-    void* mgPSQTPawnStart = (void*)&mgPSQTPawn[0];
-    void* mgPSQTPawnEnd = (void*)&mgPSQTPawn[64];
-
-    void* numAttackerWeightStart = (void*)&numAttackerWeight[0];
-    void* numAttackerWeightEnd = (void*)&numAttackerWeight[4];
-
-    void* attackBonusStart = (void*)&knightAttackBonus;
-    void* attackBonusEnd = (void*)(&queenAttackBonus + 1);
-
-    void* idxAddress = (void*)&((int16_t*)this)[index];
-
-    return (idxAddress >= mgPSQTPawnStart && idxAddress < mgPSQTPawnEnd) ||
-           (idxAddress >= numAttackerWeightStart && idxAddress < numAttackerWeightEnd) ||
-           (idxAddress >= attackBonusStart && idxAddress < attackBonusEnd);
+    return !isParameterDead(index);
 }
 
 void HCEParameters::displayParameters(std::ostream& os) const {

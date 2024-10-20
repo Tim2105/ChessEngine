@@ -153,7 +153,7 @@ class HandcraftedEvaluator: public Evaluator {
             // Feldern sind schwierig zu gewinnen
             if(isOppositeColorBishopEndgame()) {
                 int evaluationSign = evaluation >= 0 ? 1 : -1;
-                evaluation -= hceParams.getLinearPieceValue(PAWN) * evaluationSign;
+                evaluation -= SIMPLE_PIECE_VALUE[PAWN] * evaluationSign;
 
                 if(evaluationSign == 1)
                     evaluation = std::max(evaluation, DRAW_SCORE);
