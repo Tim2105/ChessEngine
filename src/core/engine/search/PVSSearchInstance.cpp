@@ -705,7 +705,7 @@ int PVSSearchInstance::determineLMPCount(int depth, bool isCheckEvasion, bool is
     int result = 5 + 2 * isImproving;
 
     // Erhöhe die Anzahl der zu betrachtenden Züge mit der verbleibenden Suchtiefe.
-    result += (depth - 1) * (depth - 1) * (2 + isImproving);
+    result += (depth - 1) * (depth - 1) * (2 + 2 * isImproving);
 
     return result;
 }
