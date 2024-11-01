@@ -227,11 +227,12 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
     int depthReduction = 0;
     if(entryExists) {
         int depthDiff = depth - entry.depth;
-        depthReduction = (depthDiff >= 4);
+        depthReduction = (depthDiff / 4);
     } else
-        depthReduction = (depth >= 4);
+        depthReduction = (depth / 4);
 
-    depth -= depthReduction;
+    if(nodeType != PV_NODE && depthReduction > 0)
+        depth -= depthReduction;
 
     /**
      * Internal Iterative Deepening (2/2):
@@ -284,7 +285,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
          * oder wenn der Zug den Gegner in Schach setzt. Außerdem wird Futility Pruning
          * abgeschaltet, wenn alpha eine Mattbewertung gegen uns ist.
          */
-        if(depth <= 4 && moveScore < KILLER_MOVE_SCORE && !isCheckEvasion &&
+        if(depth <= 4 && moveScore <= KILLER_MOVE_SCORE && !isCheckEvasion &&
            nodeType != PV_NODE && !(isMateScore(alpha) && alpha < NEUTRAL_SCORE) &&
            !(move.isCapture() || move.isPromotion())) {
             
@@ -323,17 +324,14 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
 
         /**
          * Late Move Pruning:
-         * Späte Züge in All-/Cut-Knoten mit geringer Tiefe, die weder eine Figur schlagen, einen Bauern
-         * aufwerten oder den Gegner in Schach setzen, werden sehr wahrscheinlich nicht zu einem
-         * Beta-Schnitt führen. Deshalb überspringen wir diese Züge.
+         * Späte Züge in All-/Cut-Knoten mit geringer Tiefe, die den Gegner nicht in Schach setzen,
+         * werden sehr wahrscheinlich nicht zu einem Beta-Schnitt führen. Deshalb überspringen wir diese Züge.
          * 
          * Als Failsafe wenden wir LMP nicht an, wenn wir im Schach stehen oder alpha eine Mattbewertung gegen uns ist.
          * Dadurch vermeiden wir, versehentlich eine Mattverteidigung zu übersehen.
          */
-        if(nodeType != PV_NODE && moveCount >= lmpCount &&
-           !(move.isCapture() || move.isPromotion()) &&
-           !(isMateScore(alpha) && alpha < NEUTRAL_SCORE) &&
-           !board.isCheck()) {
+        if(nodeType != PV_NODE && moveCount >= lmpCount && moveScore <= NEUTRAL_SCORE &&
+           !(isMateScore(alpha) && alpha < NEUTRAL_SCORE) && !isCheckEvasion && !board.isCheck()) {
 
             evaluator.updateBeforeUndo();
             board.undoMove();
@@ -681,10 +679,7 @@ int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int depth, boo
     // Passe die Reduktion an die relative Vergangenheitsbewertung des Zuges an.
     // -> Bisher bessere Züge werden weniger reduziert und schlechtere Züge stärker.
     int32_t historyScore = getHistoryScore(lastMove, board.getSideToMove() ^ COLOR_MASK);
-
-    double historyReduction = -historyScore / 20000.0;
-
-    reduction += historyReduction;
+    reduction -= historyScore / 20000.0;
 
     // Erhöhe die Reduktion anhand einer logarithmischen Funktion,
     // wenn wir auf mehreren Threads suchen.
@@ -705,7 +700,7 @@ int PVSSearchInstance::determineLMPCount(int depth, bool isCheckEvasion, bool is
     int result = 5 + 2 * isImproving;
 
     // Erhöhe die Anzahl der zu betrachtenden Züge mit der verbleibenden Suchtiefe.
-    result += (depth - 1) * (depth - 1) * (2 + 2 * isImproving);
+    result += (depth - 1) * (depth - 1) * (3 + isImproving);
 
     return result;
 }
