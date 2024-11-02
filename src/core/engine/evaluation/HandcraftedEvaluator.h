@@ -56,6 +56,7 @@ class HandcraftedEvaluator: public Evaluator {
 
         bool isWinnable(int side);
         bool isOppositeColorBishopEndgame();
+        bool isDrawnKRPKREndgame();
 
         int evaluateKNBKEndgame(int ownBishopSq, int oppKingSq);
         int evaluateWinningNoPawnsEndgame(int oppKingSq);
@@ -135,6 +136,12 @@ class HandcraftedEvaluator: public Evaluator {
                     else // Jede andere Kombination -> Matt
                         return evaluateWinningNoPawnsEndgame(whiteKingSq) * (board.getSideToMove() == WHITE ? -1 : 1);
                 }
+            } else if(numPawns == 1) {
+                int numWhiteRooks = board.getPieceBitboard(WHITE_ROOK).popcount();
+                int numBlackRooks = board.getPieceBitboard(BLACK_ROOK).popcount();
+
+                if(numWhiteRooks == 1 && numBlackRooks == 1 && isDrawnKRPKREndgame())
+                    return DRAW_SCORE;
             }
 
             // Aktualisiere die Königssicherheitsbewertung
@@ -153,7 +160,7 @@ class HandcraftedEvaluator: public Evaluator {
             // Feldern sind schwierig zu gewinnen
             if(isOppositeColorBishopEndgame()) {
                 int evaluationSign = evaluation >= 0 ? 1 : -1;
-                evaluation -= SIMPLE_PIECE_VALUE[PAWN] * evaluationSign;
+                evaluation -= SIMPLE_PIECE_VALUE[PAWN] * 2 * evaluationSign;
 
                 if(evaluationSign == 1)
                     evaluation = std::max(evaluation, DRAW_SCORE);

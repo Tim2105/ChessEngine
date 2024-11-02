@@ -1020,11 +1020,29 @@ Score HandcraftedEvaluator::evaluateRuleOfTheSquare() {
 }
 
 bool HandcraftedEvaluator::isWinnable(int side) {
-    Bitboard pawns = board.getPieceBitboard(side | PAWN);
+    if(board.getPieceBitboard(side | PAWN))
+        return true;
+
     Bitboard minorPieces = board.getPieceBitboard(side | KNIGHT) | board.getPieceBitboard(side | BISHOP);
     Bitboard heavyPieces = board.getPieceBitboard(side | ROOK) | board.getPieceBitboard(side | QUEEN);
 
-    return pawns || minorPieces.popcount() >= 2 || heavyPieces;
+    if(minorPieces.popcount() >= 2 || heavyPieces) {
+        int ownPieceValue = board.getPieceBitboard(side | KNIGHT).popcount() * SIMPLE_PIECE_VALUE[KNIGHT] +
+                            board.getPieceBitboard(side | BISHOP).popcount() * SIMPLE_PIECE_VALUE[BISHOP] +
+                            board.getPieceBitboard(side | ROOK).popcount() * SIMPLE_PIECE_VALUE[ROOK] +
+                            board.getPieceBitboard(side | QUEEN).popcount() * SIMPLE_PIECE_VALUE[QUEEN];
+
+        int otherSide = side ^ COLOR_MASK;
+
+        int enemyPieceValue = board.getPieceBitboard(otherSide | KNIGHT).popcount() * SIMPLE_PIECE_VALUE[KNIGHT] +
+                              board.getPieceBitboard(otherSide | BISHOP).popcount() * SIMPLE_PIECE_VALUE[BISHOP] +
+                              board.getPieceBitboard(otherSide | ROOK).popcount() * SIMPLE_PIECE_VALUE[ROOK] +
+                              board.getPieceBitboard(otherSide | QUEEN).popcount() * SIMPLE_PIECE_VALUE[QUEEN];
+
+        return ownPieceValue - enemyPieceValue >= SIMPLE_PIECE_VALUE[ROOK];
+    }
+
+    return false;
 }
 
 bool HandcraftedEvaluator::isOppositeColorBishopEndgame() {
@@ -1035,6 +1053,19 @@ bool HandcraftedEvaluator::isOppositeColorBishopEndgame() {
     return (pawns | whiteBishops | blackBishops) == board.getPieceBitboard() &&
             whiteBishops.popcount() == 1 && blackBishops.popcount() == 1 &&
            (bool)(whiteBishops & lightSquares) != (bool)(blackBishops & lightSquares);
+}
+
+bool HandcraftedEvaluator::isDrawnKRPKREndgame() {
+    Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
+    Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);
+    Bitboard whiteKings = board.getPieceBitboard(WHITE_KING);
+    Bitboard blackKings = board.getPieceBitboard(BLACK_KING);
+
+    // Wenn sich der verteidigende König vor dem angreifenden Bauern befindet, ist das Endspiel Remis
+    if(whitePawns)
+        return whitePawns.shiftNorth().extrudeNorth() & blackKings;
+    else
+        return blackPawns.shiftSouth().extrudeSouth() & whiteKings;
 }
 
 int HandcraftedEvaluator::evaluateKNBKEndgame(int b, int k) {

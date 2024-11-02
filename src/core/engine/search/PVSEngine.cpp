@@ -225,7 +225,8 @@ void PVSEngine::outputMultiPVInfo(size_t pvIndex) {
     }
 
     // Gebe eine Variante im Multi-PV-Modus aus.
-    std::cout << "info multipv " << pvIndex + 1 << " score " << scoreStr << " pv ";
+    std::cout << "info multipv " << pvIndex + 1 << " depth " << variations[pvIndex].depth <<
+        " seldepth " << variations[pvIndex].selectiveDepth << " score " << scoreStr << " pv ";
 
     for(Move move : variations[pvIndex].moves)
         std::cout << move.toString() << " ";
