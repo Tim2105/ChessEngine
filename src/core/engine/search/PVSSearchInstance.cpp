@@ -108,7 +108,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
        depth > 1 && !deactivateNullMove()) {
 
         int depthReduction = calculateNullMoveReduction(depth, searchStack[ply].preliminaryScore, beta, isImproving);
-        if(depthReduction > 1) {
+        if(depthReduction > 1 && depth - depthReduction > 0) {
             Move nullMove = Move::nullMove();
             board.makeMove(nullMove);
 
@@ -117,10 +117,10 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
             board.undoMove();
 
             if(score >= beta) {
-                if(!verifyNullMove() || depthReduction >= depth + 1)
+                if(!verifyNullMove() || depth <= 2)
                     return score;
 
-                score = pvs(depth - depthReduction + 1, ply, beta - 1, beta, CUT_NODE, std::numeric_limits<int>::max(), singularExtCooldown);
+                score = pvs(depth - 2, ply, beta - 1, beta, CUT_NODE, NULL_MOVE_COOLDOWN, singularExtCooldown);
                 if(score >= beta)
                     return score;
             }
@@ -178,19 +178,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
 
         // Überprüfe, ob wir unter unserem reduzierten Beta-Wert liegen.
         if(score < reducedBeta)
-            singularExtension = 1;
-        else if(score >= beta && entry.score >= beta) {
-            /**
-             * Multi-Cut (so ungefähr):
-             * 
-             * Die reduzierte Suche und der Transpositionstabelleneintrag
-             * legen nah, dass zwei Züge >= beta sind. Wir gehen davon aus,
-             * dass einer der beiden auch bei vollständiger Suche >= beta
-             * und führen lediglich eine reduzierte Suche durch.
-             */
-            if(singularDepth >= 4)
-                depth -= 1;
-        }
+            singularExtension = 1 + board.isCheck();
     }
 
     // Lade den Eintrag aus der Transpositionstabelle neu, da
@@ -384,17 +372,16 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
 
                 if(isCheck)
                     reduction -= 1;
-                else {
-                    // Reduziere die Reduktion, wenn der Zug einen Freibauern bewegt.
-                    int movedPieceType = TYPEOF(board.pieceAt(move.getDestination()));
-                    if(movedPieceType == PAWN) {
-                        int side = board.getSideToMove() ^ COLOR_MASK;
-                        int otherSide = side ^ COLOR_MASK;
-                        if(!(sentryMasks[side / COLOR_MASK][move.getDestination()]
-                            & board.getPieceBitboard(otherSide | PAWN))) {
-                            
-                            reduction -= 1;
-                        }
+
+                // Reduziere die Reduktion, wenn der Zug einen Freibauern bewegt.
+                int movedPieceType = TYPEOF(board.pieceAt(move.getDestination()));
+                if(movedPieceType == PAWN) {
+                    int side = board.getSideToMove() ^ COLOR_MASK;
+                    int otherSide = side ^ COLOR_MASK;
+                    if(!(sentryMasks[side / COLOR_MASK][move.getDestination()]
+                        & board.getPieceBitboard(otherSide | PAWN))) {
+                        
+                        reduction -= 2;
                     }
                 }
 

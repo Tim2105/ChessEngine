@@ -445,7 +445,7 @@ int HandcraftedEvaluator::evaluateKingAttackZone() {
         }
     }
 
-    numBlackAttackers = std::min(numBlackAttackers, 5);
+    numBlackAttackers = std::min(numBlackAttackers, 4);
 
     // Bestimme die Anzahl der Angreifer pro Figurentyp auf die Felder um den schwarzen König
     kingZone = kingAttackZone[blackKingSquare];
@@ -501,7 +501,7 @@ int HandcraftedEvaluator::evaluateKingAttackZone() {
         }
     }
 
-    numWhiteAttackers = std::min(numWhiteAttackers, 5);
+    numWhiteAttackers = std::min(numWhiteAttackers, 4);
 
     // Berechne die Bewertung
     // Typecast zu int32_t um auf 16-Bit-Systemen Überläufe zu vermeiden

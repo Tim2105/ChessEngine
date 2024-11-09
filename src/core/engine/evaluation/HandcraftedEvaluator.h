@@ -158,15 +158,14 @@ class HandcraftedEvaluator: public Evaluator {
 
             // Endspiele mit Bauern und Läufern auf unterschiedlichen
             // Feldern sind schwierig zu gewinnen
-            if(isOppositeColorBishopEndgame()) {
-                int evaluationSign = evaluation >= 0 ? 1 : -1;
-                evaluation -= SIMPLE_PIECE_VALUE[PAWN] * 2 * evaluationSign;
+            int evaluationSign = evaluation >= 0 ? 1 : -1;
+            if(isOppositeColorBishopEndgame())
+                evaluation += hceParams.getOppositeColorBishopsPenalty() * evaluationSign;
 
-                if(evaluationSign == 1)
-                    evaluation = std::max(evaluation, DRAW_SCORE);
-                else
-                    evaluation = std::min(evaluation, -DRAW_SCORE);
-            }
+            if(evaluationSign == 1)
+                evaluation = std::max(evaluation, DRAW_SCORE);
+            else
+                evaluation = std::min(evaluation, -DRAW_SCORE);
 
             // Skaliere die Bewertung in Richtung 0, wenn wir uns der 50-Züge-Regel annähern.
             // (Starte erst nach 10 Zügen, damit die Bewertung nicht zu früh verzerrt wird.)

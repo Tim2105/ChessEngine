@@ -130,71 +130,71 @@ void HCEParameters::displayParameters(std::ostream& os) const {
 
     os << "Knight PSQT MG: [\n";
     for(size_t i = 0; i < 8; i++) {
-        for(size_t j = 0; j < 8; j++)
-            os << std::setw(3) << mgPSQT[1][i * 8 + j] << (j == 7 ? ",\n" : ", ");
+        for(size_t j = 0; j < 4; j++)
+            os << std::setw(3) << mgPSQT[1][i * 8 + j] << (j == 3 ? ",\n" : ", ");
     }
     os << "]\n";
 
     os << "Knight PSQT EG: [\n";
     for(size_t i = 0; i < 8; i++) {
-        for(size_t j = 0; j < 8; j++)
-            os << std::setw(3) << egPSQT[1][i * 8 + j] << (j == 7 ? ",\n" : ", ");
+        for(size_t j = 0; j < 4; j++)
+            os << std::setw(3) << egPSQT[1][i * 8 + j] << (j == 3 ? ",\n" : ", ");
     }
     os << "]\n";
 
     os << "Bishop PSQT MG: [\n";
     for(size_t i = 0; i < 8; i++) {
-        for(size_t j = 0; j < 8; j++)
-            os << std::setw(3) << mgPSQT[2][i * 8 + j] << (j == 7 ? ",\n" : ", ");
+        for(size_t j = 0; j < 4; j++)
+            os << std::setw(3) << mgPSQT[2][i * 8 + j] << (j == 3 ? ",\n" : ", ");
     }
     os << "]\n";
 
     os << "Bishop PSQT EG: [\n";
     for(size_t i = 0; i < 8; i++) {
-        for(size_t j = 0; j < 8; j++)
-            os << std::setw(3) << egPSQT[2][i * 8 + j] << (j == 7 ? ",\n" : ", ");
+        for(size_t j = 0; j < 4; j++)
+            os << std::setw(3) << egPSQT[2][i * 8 + j] << (j == 3 ? ",\n" : ", ");
     }
     os << "]\n";
 
     os << "Rook PSQT MG: [\n";
     for(size_t i = 0; i < 8; i++) {
-        for(size_t j = 0; j < 8; j++)
-            os << std::setw(3) << mgPSQT[3][i * 8 + j] << (j == 7 ? ",\n" : ", ");
+        for(size_t j = 0; j < 4; j++)
+            os << std::setw(3) << mgPSQT[3][i * 8 + j] << (j == 3 ? ",\n" : ", ");
     }
     os << "]\n";
 
     os << "Rook PSQT EG: [\n";
     for(size_t i = 0; i < 8; i++) {
-        for(size_t j = 0; j < 8; j++)
-            os << std::setw(3) << egPSQT[3][i * 8 + j] << (j == 7 ? ",\n" : ", ");
+        for(size_t j = 0; j < 4; j++)
+            os << std::setw(3) << egPSQT[3][i * 8 + j] << (j == 3 ? ",\n" : ", ");
     }
     os << "]\n";
 
     os << "Queen PSQT MG: [\n";
     for(size_t i = 0; i < 8; i++) {
-        for(size_t j = 0; j < 8; j++)
-            os << std::setw(3) << mgPSQT[4][i * 8 + j] << (j == 7 ? ",\n" : ", ");
+        for(size_t j = 0; j < 4; j++)
+            os << std::setw(3) << mgPSQT[4][i * 8 + j] << (j == 3 ? ",\n" : ", ");
     }
     os << "]\n";
 
     os << "Queen PSQT EG: [\n";
     for(size_t i = 0; i < 8; i++) {
-        for(size_t j = 0; j < 8; j++)
-            os << std::setw(3) << egPSQT[4][i * 8 + j] << (j == 7 ? ",\n" : ", ");
+        for(size_t j = 0; j < 4; j++)
+            os << std::setw(3) << egPSQT[4][i * 8 + j] << (j == 3 ? ",\n" : ", ");
     }
     os << "]\n";
 
     os << "King PSQT MG: [\n";
     for(size_t i = 0; i < 8; i++) {
-        for(size_t j = 0; j < 8; j++)
-            os << std::setw(3) << mgPSQT[5][i * 8 + j] << (j == 7 ? ",\n" : ", ");
+        for(size_t j = 0; j < 4; j++)
+            os << std::setw(3) << mgPSQT[5][i * 8 + j] << (j == 3 ? ",\n" : ", ");
     }
     os << "]\n";
 
     os << "King PSQT EG: [\n";
     for(size_t i = 0; i < 8; i++) {
-        for(size_t j = 0; j < 8; j++)
-            os << std::setw(3) << egPSQT[5][i * 8 + j] << (j == 7 ? ",\n" : ", ");
+        for(size_t j = 0; j < 4; j++)
+            os << std::setw(3) << egPSQT[5][i * 8 + j] << (j == 3 ? ",\n" : ", ");
     }
     os << "]\n";
 
@@ -275,8 +275,8 @@ void HCEParameters::displayParameters(std::ostream& os) const {
     os << "Strong Square Bonus MG: " << mgStrongSquareBonus << "\n";
 
     os << "Num Attacker Weight: [";
-    for(size_t i = 0; i < 5; i++)
-        os << std::setw(3) << numAttackerWeight[i] << (i == 4 ? "]\n" : ", ");
+    for(size_t i = 0; i < 4; i++)
+        os << std::setw(3) << numAttackerWeight[i] << (i == 3 ? "]\n" : ", ");
 
     os << "Knight Attack Bonus: " << knightAttackBonus << "\n";
     os << "Bishop Attack Bonus: " << bishopAttackBonus << "\n";
@@ -330,5 +330,9 @@ void HCEParameters::displayParameters(std::ostream& os) const {
     os << "King Candidate Passed Pawn Proximity Weight: " << egKingProximityCandidatePassedPawnWeight << "\n";
     os << "King Passed Pawn Proximity Weight: " << egKingProximityPassedPawnWeight << "\n";
 
-    os << "Rule Of The Square Bonus: " << ruleOfTheSquareBonus << std::endl;
+    os << "Rule Of The Square Bonus: " << ruleOfTheSquareBonus << "\n";
+
+    os << "Opposite Color Bishops Penalty: " << oppositeColorBishopsPenalty << "\n";
+
+    os << std::endl;
 }
