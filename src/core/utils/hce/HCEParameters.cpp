@@ -88,7 +88,17 @@ bool HCEParameters::isParameterDead(size_t index) const {
 }
 
 bool HCEParameters::isOptimizable(size_t index) const {
-    return !isParameterDead(index);
+    if(isParameterDead(index))
+        return false;
+
+    void* mgBackwardPawnPenaltyStart = (void*)&mgBackwardPawnPenalty[0];
+    void* egBackwardPawnPenaltyEnd = (void*)((char*)mgBackwardPawnPenaltyStart + 5 * sizeof(int16_t));
+    void* oppositeColorBishopsPenaltyAddress = (void*)&oppositeColorBishopsPenalty;
+
+    void* idxAddress = (void*)&((int16_t*)this)[index];
+
+    return (idxAddress >= mgBackwardPawnPenaltyStart && idxAddress < egBackwardPawnPenaltyEnd) ||
+            idxAddress == oppositeColorBishopsPenaltyAddress;
 }
 
 void HCEParameters::displayParameters(std::ostream& os) const {
@@ -233,8 +243,18 @@ void HCEParameters::displayParameters(std::ostream& os) const {
     os << "Doubled Pawn Penalty EG: " << egDoubledPawnPenalty << "\n";
     os << "Isolated Pawn Penalty MG: " << mgIsolatedPawnPenalty << "\n";
     os << "Isolated Pawn Penalty EG: " << egIsolatedPawnPenalty << "\n";
-    os << "Backward Pawn Penalty MG: " << mgBackwardPawnPenalty << "\n";
-    os << "Backward Pawn Penalty EG: " << egBackwardPawnPenalty << "\n";
+
+    os << "Backward Pawn Penalty MG: [  0, ";
+    for(size_t i = 0; i < 5; i++)
+        os << std::setw(3) << mgBackwardPawnPenalty[i] << ", ";
+
+    os << "  0,   0]\n";
+
+    os << "Backward Pawn Penalty EG: [  0, ";
+    for(size_t i = 0; i < 5; i++)
+        os << std::setw(3) << egBackwardPawnPenalty[i] << ", ";
+
+    os << "  0,   0]\n";
 
     os << "Passed Pawn Bonus MG: [  0, ";
     for(size_t i = 0; i < 6; i++)

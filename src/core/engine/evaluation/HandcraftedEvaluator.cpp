@@ -251,12 +251,23 @@ void HandcraftedEvaluator::calculatePawnScore() {
     Bitboard backwardBlackPawns = blackPawns & ~blackPawnsWestEast & blackPawnsWestEast.extrudeNorth() & (whitePawns | whitePawnAttacks).shiftNorth() & ~blackPawnAttacks.extrudeSouth();
     evaluationVars.whiteBackwardPawns = backwardWhitePawns;
     evaluationVars.blackBackwardPawns = backwardBlackPawns;
-    score.mg += hceParams.getMGBackwardPawnPenalty() * (backwardWhitePawns.popcount() - backwardBlackPawns.popcount());
-    score.eg += hceParams.getEGBackwardPawnPenalty() * (backwardWhitePawns.popcount() - backwardBlackPawns.popcount());
+    Bitboard temp = backwardWhitePawns;
+    while(temp) {
+        int rank = Square::rankOf(temp.popFSB());
+        score.mg += hceParams.getMGBackwardPawnPenalty(rank);
+        score.eg += hceParams.getEGBackwardPawnPenalty(rank);
+    }
+
+    temp = backwardBlackPawns;
+    while(temp) {
+        int rank = Square::rankOf(Square::flipY(temp.popFSB()));
+        score.mg -= hceParams.getMGBackwardPawnPenalty(rank);
+        score.eg -= hceParams.getEGBackwardPawnPenalty(rank);
+    }
 
     // Verbundene Bauern
     Bitboard connectedWhitePawns = (whitePawnsWestEast | whitePawnsWestEast.shiftNorth() | whitePawnsWestEast.shiftSouth()) & whitePawns;
-    Bitboard temp = connectedWhitePawns;
+    temp = connectedWhitePawns;
     while(temp) {
         int rank = Square::rankOf(temp.popFSB());
         score.mg += hceParams.getMGConnectedPawnBonus(rank);

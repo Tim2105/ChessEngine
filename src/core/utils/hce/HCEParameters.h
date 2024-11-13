@@ -222,8 +222,12 @@ class HCEParameters {
         int16_t egDoubledPawnPenalty = -23;
         int16_t mgIsolatedPawnPenalty = -17;
         int16_t egIsolatedPawnPenalty = -2;
-        int16_t mgBackwardPawnPenalty = -21;
-        int16_t egBackwardPawnPenalty = -16;
+        int16_t mgBackwardPawnPenalty[5] = {
+            -21, -21, -21, -21, -21
+        }; // pro Rang (2 - 6)
+        int16_t egBackwardPawnPenalty[5] = {
+            -16, -16, -16, -16, -16
+        }; // pro Rang (2 - 6)
         int16_t mgPassedPawnBonus[6] = {
             -17, -21, -15, 32, 92, 149
         }; // pro Rang (2 - 7)
@@ -462,8 +466,8 @@ class HCEParameters {
         inline int getMGIsolatedPawnPenalty() const { return mgIsolatedPawnPenalty; }
         inline int getEGIsolatedPawnPenalty() const { return egIsolatedPawnPenalty; }
 
-        inline int getMGBackwardPawnPenalty() const { return mgBackwardPawnPenalty; }
-        inline int getEGBackwardPawnPenalty() const { return egBackwardPawnPenalty; }
+        inline int getMGBackwardPawnPenalty(int rank) const { return mgBackwardPawnPenalty[rank - 1]; }
+        inline int getEGBackwardPawnPenalty(int rank) const { return egBackwardPawnPenalty[rank - 1]; }
 
         inline int getMGPassedPawnBonus(int rank) const { return mgPassedPawnBonus[rank - 1]; }
         inline int getEGPassedPawnBonus(int rank) const { return egPassedPawnBonus[rank - 1]; }
