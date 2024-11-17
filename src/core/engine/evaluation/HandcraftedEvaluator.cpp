@@ -402,6 +402,9 @@ int HandcraftedEvaluator::evaluateKingAttackZone() {
     Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
     Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);
 
+    Bitboard defendedSquares = board.getAttackBitboard(WHITE_PAWN) | board.getAttackBitboard(WHITE_KNIGHT) |
+                               board.getAttackBitboard(WHITE_BISHOP);
+
     // Bestimme die Anzahl der Angreifer pro Figurentyp auf die Felder um den weißen König
     Bitboard kingZone = kingAttackZone[whiteKingSquare];
     int numBlackAttackers = 0;
@@ -410,7 +413,7 @@ int HandcraftedEvaluator::evaluateKingAttackZone() {
     Bitboard blackKnights = board.getPieceBitboard(BLACK_KNIGHT);
     while(blackKnights) {
         int sq = blackKnights.popFSB();
-        Bitboard attacks = knightAttackBitboard(sq) & kingZone;
+        Bitboard attacks = knightAttackBitboard(sq) & kingZone & ~defendedSquares;
         if(attacks) {
             numBlackAttackers++;
             blackAttackersWeight += attacks.popcount() * hceParams.getKnightAttackBonus();
@@ -422,33 +425,36 @@ int HandcraftedEvaluator::evaluateKingAttackZone() {
     Bitboard occupied = (board.getPieceBitboard() | board.getPieceBitboard(BLACK_KING)) & ~board.getPieceBitboard(BLACK_QUEEN);
     while(blackBishops) {
         int sq = blackBishops.popFSB();
-        Bitboard attacks = diagonalAttackBitboard(sq, occupied) & kingZone;
+        Bitboard attacks = diagonalAttackBitboard(sq, occupied) & kingZone & ~defendedSquares;
         if(attacks) {
             numBlackAttackers++;
             blackAttackersWeight += attacks.popcount() * hceParams.getBishopAttackBonus();
         }
     }
 
+    defendedSquares |= board.getAttackBitboard(WHITE_ROOK);
+
     Bitboard blackRooks = board.getPieceBitboard(BLACK_ROOK);
     // Ignoriere Damen und Türme, damit Horizontalangriffe in denen eine Dame oder ein Turm von einem Turm gedeckt wird, doppelt gezählt werden
     occupied = (board.getPieceBitboard() | board.getPieceBitboard(BLACK_KING)) & ~(board.getPieceBitboard(BLACK_QUEEN) | board.getPieceBitboard(BLACK_ROOK));
     while(blackRooks) {
         int sq = blackRooks.popFSB();
-        Bitboard attacks = horizontalAttackBitboard(sq, occupied) & kingZone;
+        Bitboard attacks = horizontalAttackBitboard(sq, occupied) & kingZone & ~defendedSquares;
         if(attacks) {
             numBlackAttackers++;
             blackAttackersWeight += attacks.popcount() * hceParams.getRookAttackBonus();
         }
     }
 
+    defendedSquares |= board.getAttackBitboard(WHITE_QUEEN);
+
     Bitboard blackQueens = board.getPieceBitboard(BLACK_QUEEN);
     // Ignoriere Damen und Türme (nur in der Horizontalrichtung), damit Horizontalangriffe in denen ein Turm von einer Dame gedeckt wird, doppelt gezählt werden
-    occupied = (board.getPieceBitboard() | board.getPieceBitboard(BLACK_KING)) & ~(board.getPieceBitboard(BLACK_QUEEN) | board.getPieceBitboard(BLACK_ROOK));
     Bitboard occupiedDiagonal = (board.getPieceBitboard() | board.getPieceBitboard(BLACK_KING)) & ~board.getPieceBitboard(BLACK_QUEEN);
     while(blackQueens) {
         int sq = blackQueens.popFSB();
         Bitboard attacks = (diagonalAttackBitboard(sq, occupiedDiagonal) |
-                            horizontalAttackBitboard(sq, occupied)) & kingZone;
+                            horizontalAttackBitboard(sq, occupied)) & kingZone & ~defendedSquares;
 
         if(attacks) {
             numBlackAttackers++;
@@ -458,6 +464,9 @@ int HandcraftedEvaluator::evaluateKingAttackZone() {
 
     numBlackAttackers = std::min(numBlackAttackers, 4);
 
+    defendedSquares = board.getAttackBitboard(BLACK_PAWN) | board.getAttackBitboard(BLACK_KNIGHT) |
+                      board.getAttackBitboard(BLACK_BISHOP);
+
     // Bestimme die Anzahl der Angreifer pro Figurentyp auf die Felder um den schwarzen König
     kingZone = kingAttackZone[blackKingSquare];
     int numWhiteAttackers = 0;
@@ -466,7 +475,7 @@ int HandcraftedEvaluator::evaluateKingAttackZone() {
     Bitboard whiteKnights = board.getPieceBitboard(WHITE_KNIGHT);
     while(whiteKnights) {
         int sq = whiteKnights.popFSB();
-        Bitboard attacks = knightAttackBitboard(sq) & kingZone;
+        Bitboard attacks = knightAttackBitboard(sq) & kingZone & ~defendedSquares;
         if(attacks) {
             numWhiteAttackers++;
             whiteAttackersWeight += attacks.popcount() * hceParams.getKnightAttackBonus();
@@ -478,33 +487,36 @@ int HandcraftedEvaluator::evaluateKingAttackZone() {
     occupied = (board.getPieceBitboard() | board.getPieceBitboard(WHITE_KING)) & ~board.getPieceBitboard(WHITE_QUEEN);
     while(whiteBishops) {
         int sq = whiteBishops.popFSB();
-        Bitboard attacks = diagonalAttackBitboard(sq, occupied) & kingZone;
+        Bitboard attacks = diagonalAttackBitboard(sq, occupied) & kingZone & ~defendedSquares;
         if(attacks) {
             numWhiteAttackers++;
             whiteAttackersWeight += attacks.popcount() * hceParams.getBishopAttackBonus();
         }
     }
 
+    defendedSquares |= board.getAttackBitboard(BLACK_ROOK);
+
     Bitboard whiteRooks = board.getPieceBitboard(WHITE_ROOK);
     // Ignoriere Damen und Türme, damit Horizontalangriffe in denen eine Dame oder ein Turm von einem Turm gedeckt wird, doppelt gezählt werden
     occupied = (board.getPieceBitboard() | board.getPieceBitboard(WHITE_KING)) & ~(board.getPieceBitboard(WHITE_QUEEN) | board.getPieceBitboard(WHITE_ROOK));
     while(whiteRooks) {
         int sq = whiteRooks.popFSB();
-        Bitboard attacks = horizontalAttackBitboard(sq, occupied) & kingZone;
+        Bitboard attacks = horizontalAttackBitboard(sq, occupied) & kingZone & ~defendedSquares;
         if(attacks) {
             numWhiteAttackers++;
             whiteAttackersWeight += attacks.popcount() * hceParams.getRookAttackBonus();
         }
     }
 
+    defendedSquares |= board.getAttackBitboard(BLACK_QUEEN);
+
     Bitboard whiteQueens = board.getPieceBitboard(WHITE_QUEEN);
     // Ignoriere Damen und Türme (nur in der Horizontalrichtung), damit Horizontalangriffe in denen ein Turm von einer Dame gedeckt wird, doppelt gezählt werden
-    occupied = (board.getPieceBitboard() | board.getPieceBitboard(WHITE_KING)) & ~(board.getPieceBitboard(WHITE_QUEEN) | board.getPieceBitboard(WHITE_ROOK));
     occupiedDiagonal = (board.getPieceBitboard() | board.getPieceBitboard(WHITE_KING)) & ~board.getPieceBitboard(WHITE_QUEEN);
     while(whiteQueens) {
         int sq = whiteQueens.popFSB();
         Bitboard attacks = (diagonalAttackBitboard(sq, occupiedDiagonal) |
-                            horizontalAttackBitboard(sq, occupied)) & kingZone;
+                            horizontalAttackBitboard(sq, occupied)) & kingZone & ~defendedSquares;
                         
         if(attacks) {
             numWhiteAttackers++;
@@ -601,7 +613,7 @@ Score HandcraftedEvaluator::evaluateAttackedPieces() {
     Bitboard blackRookAttacks = board.getAttackBitboard(BLACK_ROOK);
 
     int attackDiff = (board.getPieceBitboard(BLACK_PAWN) & ~blackPawnAttacks & whiteMinorPieceAttacks).popcount() -
-                         (board.getPieceBitboard(WHITE_PAWN) & ~whitePawnAttacks & blackMinorPieceAttacks).popcount();
+                     (board.getPieceBitboard(WHITE_PAWN) & ~whitePawnAttacks & blackMinorPieceAttacks).popcount();
 
     score += {
         attackDiff * hceParams.getMGAttackByMinorPieceBonus(PAWN),

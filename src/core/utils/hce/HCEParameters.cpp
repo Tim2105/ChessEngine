@@ -88,17 +88,7 @@ bool HCEParameters::isParameterDead(size_t index) const {
 }
 
 bool HCEParameters::isOptimizable(size_t index) const {
-    if(isParameterDead(index))
-        return false;
-
-    void* mgBackwardPawnPenaltyStart = (void*)&mgBackwardPawnPenalty[0];
-    void* egBackwardPawnPenaltyEnd = (void*)((char*)mgBackwardPawnPenaltyStart + 5 * sizeof(int16_t));
-    void* oppositeColorBishopsPenaltyAddress = (void*)&oppositeColorBishopsPenalty;
-
-    void* idxAddress = (void*)&((int16_t*)this)[index];
-
-    return (idxAddress >= mgBackwardPawnPenaltyStart && idxAddress < egBackwardPawnPenaltyEnd) ||
-            idxAddress == oppositeColorBishopsPenaltyAddress;
+    return !isParameterDead(index);
 }
 
 void HCEParameters::displayParameters(std::ostream& os) const {
