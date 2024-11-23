@@ -166,7 +166,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
     int singularExtension = 0;
     int singularDepth = std::min(depth / 2, depth - 4);
 
-    if(ply > 0 && singularExtCooldown <= 0 && singularDepth > 0 && !isMateScore(alpha) &&
+    if(ply > 0 && nodeType != PV_NODE && singularExtCooldown <= 0 && singularDepth > 0 && !isMateScore(alpha) &&
        entryExists && entry.depth >= singularDepth && entry.score > alpha &&
        entry.type != TranspositionTableEntry::UPPER_BOUND) {
 
@@ -178,7 +178,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
 
         // Überprüfe, ob wir unter unserem reduzierten Beta-Wert liegen.
         if(score < reducedBeta)
-            singularExtension = 1 + board.isCheck();
+            singularExtension = 1;
     }
 
     // Lade den Eintrag aus der Transpositionstabelle neu, da
@@ -241,7 +241,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
         return 0;
 
     // Ermittele, ob wir Heuristiken anwenden dürfen, um die Suchtiefe zu erweitern.
-    bool allowHeuristicExtensions = extensionsOnPath < currentSearchDepth / (3 - isImproving);
+    bool allowHeuristicExtensions = extensionsOnPath < currentSearchDepth / 2;
 
     Move move;
     int moveCount = 0, moveScore;
@@ -337,7 +337,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
             childType = ALL_NODE;
         
         int extension = singularExtension * (moveCount == 0);
-        bool isCheck = false;
+        bool isCheck = board.isCheck();
 
         /**
          * Erweiterungen:
@@ -349,12 +349,10 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
          * Schacherweiterung:
          * Wenn der Zug den Gegner in Schach setzt, erweitern wir die Suchtiefe.
          */
-        if(board.isCheck()) {
+        if(isCheck) {
             // Erweitere die Suchtiefe, wenn der Zug den Gegner in Schach setzt.
             if(extension == 0 && allowHeuristicExtensions)
                 extension += 1;
-            
-            isCheck = true;
         }
 
         extensionsOnPath += extension;
@@ -367,21 +365,22 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
             // auf ersten Blick, uninteressanten Zügen mit einer reduzierten Suchtiefe
             // (=> Late Move Reductions).
             int reduction = 0;
-            if(extension == 0 && !isCheckEvasion) {
+            if(extension == 0) {
                 reduction = determineLMR(moveCount + 1, moveScore, depth, isImproving);
 
-                if(isCheck)
+                if(isCheck || isCheckEvasion)
                     reduction -= 1;
-
-                // Reduziere die Reduktion, wenn der Zug einen Freibauern bewegt.
-                int movedPieceType = TYPEOF(board.pieceAt(move.getDestination()));
-                if(movedPieceType == PAWN) {
-                    int side = board.getSideToMove() ^ COLOR_MASK;
-                    int otherSide = side ^ COLOR_MASK;
-                    if(!(sentryMasks[side / COLOR_MASK][move.getDestination()]
-                        & board.getPieceBitboard(otherSide | PAWN))) {
-                        
-                        reduction -= 2;
+                else {
+                    // Reduziere die Reduktion, wenn der Zug einen Freibauern bewegt.
+                    int movedPieceType = TYPEOF(board.pieceAt(move.getDestination()));
+                    if(movedPieceType == PAWN) {
+                        int side = board.getSideToMove() ^ COLOR_MASK;
+                        int otherSide = side ^ COLOR_MASK;
+                        if(!(sentryMasks[side / COLOR_MASK][move.getDestination()]
+                            & board.getPieceBitboard(otherSide | PAWN))) {
+                            
+                            reduction -= 1;
+                        }
                     }
                 }
 
@@ -666,12 +665,13 @@ int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int depth, boo
     // Passe die Reduktion an die relative Vergangenheitsbewertung des Zuges an.
     // -> Bisher bessere Züge werden weniger reduziert und schlechtere Züge stärker.
     int32_t historyScore = getHistoryScore(lastMove, board.getSideToMove() ^ COLOR_MASK);
-    reduction -= historyScore / 20000.0;
 
     // Erhöhe die Reduktion anhand einer logarithmischen Funktion,
     // wenn wir auf mehreren Threads suchen.
-    if(reduction < 0.0)
-        reduction *= 1.0 + std::log(numThreads) / std::log(16);
+    if(numThreads > 1 && historyScore < 0)
+        historyScore = historyScore * (1.0 + std::log(numThreads) / std::log(64));
+
+    reduction -= historyScore / 16384.0;
 
     // Runde die Reduktion ab.
     return (int)reduction;

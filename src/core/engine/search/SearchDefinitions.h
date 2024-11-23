@@ -124,7 +124,7 @@ static constexpr int calculateNullMoveReduction(int depth, int staticEval, int b
  * @return Die Margin für Futility-Pruning.
  */
 static constexpr int calculateFutilityMargin(int depth, bool isImproving) {
-    return 200 + 200 * (depth - 1) + 200 * !isImproving;
+    return 150 + 150 * (depth - 1) + 150 * !isImproving;
 }
 
 /**

@@ -121,18 +121,17 @@ void Simulation::run() {
     std::cout << "Remaining games: " << startingPositions.size() << std::flush;
 
     std::mutex lock;
-    int32_t currentIdx = startingPositions.size() - 1;
+    std::atomic_int64_t currentIdx = startingPositions.size() - 1;
 
     auto threadFunction = [&]() {
         while(true) {
             lock.lock();
-            if(currentIdx < 0) {
+            if(currentIdx.load() < 0) {
                 lock.unlock();
                 break;
             }
 
-            int32_t index = currentIdx;
-            currentIdx--;
+            size_t index = currentIdx.fetch_sub(1);
             Board& board = startingPositions[index];
             lock.unlock();
 
