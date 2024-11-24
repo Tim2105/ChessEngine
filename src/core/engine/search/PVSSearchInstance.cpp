@@ -370,17 +370,16 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
 
                 if(isCheck || isCheckEvasion)
                     reduction -= 1;
-                else {
-                    // Reduziere die Reduktion, wenn der Zug einen Freibauern bewegt.
-                    int movedPieceType = TYPEOF(board.pieceAt(move.getDestination()));
-                    if(movedPieceType == PAWN) {
-                        int side = board.getSideToMove() ^ COLOR_MASK;
-                        int otherSide = side ^ COLOR_MASK;
-                        if(!(sentryMasks[side / COLOR_MASK][move.getDestination()]
-                            & board.getPieceBitboard(otherSide | PAWN))) {
-                            
-                            reduction -= 1;
-                        }
+
+                // Reduziere die Reduktion, wenn der Zug einen Freibauern bewegt.
+                int movedPieceType = TYPEOF(board.pieceAt(move.getDestination()));
+                if(movedPieceType == PAWN) {
+                    int side = board.getSideToMove() ^ COLOR_MASK;
+                    int otherSide = side ^ COLOR_MASK;
+                    if(!(sentryMasks[side / COLOR_MASK][move.getDestination()]
+                        & board.getPieceBitboard(otherSide | PAWN))) {
+                        
+                        reduction -= 1;
                     }
                 }
 
@@ -671,7 +670,7 @@ int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int depth, boo
     if(numThreads > 1 && historyScore < 0)
         historyScore = historyScore * (1.0 + std::log(numThreads) / std::log(64));
 
-    reduction -= historyScore / 16384.0;
+    reduction -= historyScore / 8192.0;
 
     // Runde die Reduktion ab.
     return (int)reduction;
