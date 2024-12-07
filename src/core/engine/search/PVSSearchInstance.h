@@ -479,7 +479,7 @@ class PVSSearchInstance {
         constexpr void incrementHistoryScore(Move move, int depth) {
             historyTable[board.getSideToMove() / COLOR_MASK]
                         [move.getOrigin()]
-                        [move.getDestination()] += depth * depth;
+                        [move.getDestination()] += depth * (depth - 1) + 1;
         }
 
         constexpr void decrementHistoryScore(Move move, int depth) {

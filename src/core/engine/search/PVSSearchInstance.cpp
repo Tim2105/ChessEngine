@@ -166,7 +166,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
     int singularExtension = 0;
     int singularDepth = std::min(depth / 2, depth - 4);
 
-    if(ply > 0 && nodeType != PV_NODE && singularExtCooldown <= 0 && singularDepth > 0 && !isMateScore(alpha) &&
+    if(ply > 0 && nodeType != PV_NODE && singularExtCooldown <= 0 && singularDepth >= 2 && !isMateScore(alpha) &&
        entryExists && entry.depth >= singularDepth && entry.score > alpha &&
        entry.type != TranspositionTableEntry::UPPER_BOUND) {
 
@@ -670,7 +670,7 @@ int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int depth, boo
     if(numThreads > 1 && historyScore < 0)
         historyScore = historyScore * (1.0 + std::log(numThreads) / std::log(64));
 
-    reduction -= historyScore / 8192.0;
+    reduction -= historyScore / 16384.0;
 
     // Runde die Reduktion ab.
     return (int)reduction;
@@ -686,7 +686,7 @@ int PVSSearchInstance::determineLMPCount(int depth, bool isCheckEvasion, bool is
     int result = 5 + 2 * isImproving;
 
     // Erhöhe die Anzahl der zu betrachtenden Züge mit der verbleibenden Suchtiefe.
-    result += (depth - 1) * (depth - 1) * (3 + isImproving);
+    result += (depth - 1) * (depth - 1) * (4 + 2 * isImproving);
 
     return result;
 }

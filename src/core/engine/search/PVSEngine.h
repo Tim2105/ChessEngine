@@ -371,14 +371,14 @@ class PVSEngine {
          * Im Falle eines fail-high oder fail-low wird die Größe des
          * Aspirationsfensters auf diesen Wert erweitert.
          */
-        static constexpr int WIDENED_ASPIRATION_WINDOW = 150;
+        static constexpr int WIDENED_ASPIRATION_WINDOW = 100;
 
         /**
          * @brief Ein sehr schmales Aspirationsfenster schlägt in einseitigen
          * Positionen oft fehl. Um dies zu verhindern, wird das Aspirationsfenster
          * in solchen Positionen anhand der Bewertung der letzten Iteration erweitert.
          */
-        static constexpr double ASPIRATION_WINDOW_SCORE_FACTOR = 0.15;
+        static constexpr double ASPIRATION_WINDOW_SCORE_FACTOR = 0.1;
 
         /**
          * @brief Die maximale Dauer in Millisekunden, die zwischen zwei
