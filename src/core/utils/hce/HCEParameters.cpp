@@ -31,14 +31,14 @@ void HCEParameters::unpackPSQT() {
 }
 
 HCEParameters::HCEParameters() {
-    #if defined(USE_HCE)
-        membuf buf(_binary_resources_params_hce_start, _binary_resources_params_hce_end);
-        std::istream is(&buf);
+    // #if defined(USE_HCE)
+    //     membuf buf(_binary_resources_params_hce_start, _binary_resources_params_hce_end);
+    //     std::istream is(&buf);
 
-        loadParameters(is);
-    #endif
+    //     loadParameters(is);
+    // #endif
 
-    // unpackPSQT();
+    unpackPSQT();
 }
 
 HCEParameters::HCEParameters(std::istream& is) {
@@ -229,10 +229,21 @@ void HCEParameters::displayParameters(std::ostream& os) const {
 
     os << "  0]\n";
 
-    os << "Doubled Pawn Penalty MG: " << mgDoubledPawnPenalty << "\n";
-    os << "Doubled Pawn Penalty EG: " << egDoubledPawnPenalty << "\n";
-    os << "Isolated Pawn Penalty MG: " << mgIsolatedPawnPenalty << "\n";
-    os << "Isolated Pawn Penalty EG: " << egIsolatedPawnPenalty << "\n";
+    os << "Doubled Pawn Penalty MG: [";
+    for(size_t i = 0; i < 8; i++)
+        os << std::setw(3) << mgDoubledPawnPenalty[i] << (i == 7 ? "]\n" : ", ");
+
+    os << "Doubled Pawn Penalty EG: [";
+    for(size_t i = 0; i < 8; i++)
+        os << std::setw(3) << egDoubledPawnPenalty[i] << (i == 7 ? "]\n" : ", ");
+
+    os << "Isolated Pawn Penalty MG: [";
+    for(size_t i = 0; i < 8; i++)
+        os << std::setw(3) << mgIsolatedPawnPenalty[i] << (i == 7 ? "]\n" : ", ");
+
+    os << "Isolated Pawn Penalty EG: [";
+    for(size_t i = 0; i < 8; i++)
+        os << std::setw(3) << egIsolatedPawnPenalty[i] << (i == 7 ? "]\n" : ", ");
 
     os << "Backward Pawn Penalty MG: [  0, ";
     for(size_t i = 0; i < 5; i++)
@@ -286,7 +297,7 @@ void HCEParameters::displayParameters(std::ostream& os) const {
 
     os << "Num Attacker Weight: [";
     for(size_t i = 0; i < 4; i++)
-        os << std::setw(3) << numAttackerWeight[i] << (i == 3 ? "]\n" : ", ");
+        os << std::setw(3) << numAttackerWeight[i] + 100 << (i == 3 ? "]\n" : ", ");
 
     os << "Knight Attack Bonus: " << knightAttackBonus << "\n";
     os << "Bishop Attack Bonus: " << bishopAttackBonus << "\n";
@@ -302,10 +313,10 @@ void HCEParameters::displayParameters(std::ostream& os) const {
         os << std::setw(3) << mgKingOpenFilePenalty[i] << (i == 2 ? "]\n" : ", ");
 
     os << "Pawn Storm Bonus MG: [  0, ";
-    for(size_t i = 0; i < 6; i++)
-        os << std::setw(3) << mgPawnStormPenalty[i] << ", ";
+    for(size_t i = 0; i < 5; i++)
+        os << std::setw(3) << mgPawnStormBonus[i] << ", ";
 
-    os << "  0]\n";
+    os << "  0,   0]\n";
 
     os << "Piece Mobility Bonus MG: [  0, ";
     for(size_t i = 0; i < 4; i++)
@@ -331,6 +342,9 @@ void HCEParameters::displayParameters(std::ostream& os) const {
 
     os << "Rook On Open File Bonus MG: " << mgRookOnOpenFileBonus << "\n";
     os << "Rook On Semi-Open File Bonus MG: " << mgRookOnSemiOpenFileBonus << "\n";
+    os << "Doubled Rooks On Open File Bonus MG: " << mgDoubledRooksOnOpenFileBonus << "\n";
+    os << "Doubled Rooks On Semi-Open File Bonus MG: " << mgDoubledRooksOnSemiOpenFileBonus << "\n";
+
     os << "Rook behind Passed Pawn Bonus EG: " << egRookBehindPassedPawnBonus << "\n";
 
     os << "Enemy Passed Pawn Blocked Bonus EG: " << egBlockedEnemyPassedPawnBonus << "\n";

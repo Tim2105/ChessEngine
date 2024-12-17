@@ -236,22 +236,42 @@ void HandcraftedEvaluator::calculatePawnScore() {
 
     // Doppelbauern
     Bitboard doubledWhitePawns = whitePawns.shiftSouth().extrudeSouth() & whitePawns;
+    Bitboard temp = doubledWhitePawns;
+    while(temp) {
+        int file = Square::fileOf(temp.popFSB());
+        score.mg += hceParams.getMGDoubledPawnPenalty(file);
+        score.eg += hceParams.getEGDoubledPawnPenalty(file);
+    }
+
     Bitboard doubledBlackPawns = blackPawns.shiftNorth().extrudeNorth() & blackPawns;
-    score.mg += hceParams.getMGDoubledPawnPenalty() * (doubledWhitePawns.popcount() - doubledBlackPawns.popcount());
-    score.eg += hceParams.getEGDoubledPawnPenalty() * (doubledWhitePawns.popcount() - doubledBlackPawns.popcount());
+    temp = doubledBlackPawns;
+    while(temp) {
+        int file = Square::fileOf(temp.popFSB());
+        score.mg -= hceParams.getMGDoubledPawnPenalty(file);
+        score.eg -= hceParams.getEGDoubledPawnPenalty(file);
+    }
 
     // Isolierte Bauern
     Bitboard isolatedWhitePawns = ~whitePawnsWestEast.extrudeVertically() & whitePawns;
+    while(isolatedWhitePawns) {
+        int file = Square::fileOf(isolatedWhitePawns.popFSB());
+        score.mg += hceParams.getMGIsolatedPawnPenalty(file);
+        score.eg += hceParams.getEGIsolatedPawnPenalty(file);
+    }
+
     Bitboard isolatedBlackPawns = ~blackPawnsWestEast.extrudeVertically() & blackPawns;
-    score.mg += hceParams.getMGIsolatedPawnPenalty() * (isolatedWhitePawns.popcount() - isolatedBlackPawns.popcount());
-    score.eg += hceParams.getEGIsolatedPawnPenalty() * (isolatedWhitePawns.popcount() - isolatedBlackPawns.popcount());
+    while(isolatedBlackPawns) {
+        int file = Square::fileOf(isolatedBlackPawns.popFSB());
+        score.mg -= hceParams.getMGIsolatedPawnPenalty(file);
+        score.eg -= hceParams.getEGIsolatedPawnPenalty(file);
+    }
 
     // Rückständige Bauern
     Bitboard backwardWhitePawns = whitePawns & ~whitePawnsWestEast & whitePawnsWestEast.extrudeSouth() & (blackPawns | blackPawnAttacks).shiftSouth() & ~whitePawnAttacks.extrudeNorth();
     Bitboard backwardBlackPawns = blackPawns & ~blackPawnsWestEast & blackPawnsWestEast.extrudeNorth() & (whitePawns | whitePawnAttacks).shiftNorth() & ~blackPawnAttacks.extrudeSouth();
     evaluationVars.whiteBackwardPawns = backwardWhitePawns;
     evaluationVars.blackBackwardPawns = backwardBlackPawns;
-    Bitboard temp = backwardWhitePawns;
+    temp = backwardWhitePawns;
     while(temp) {
         int rank = Square::rankOf(temp.popFSB());
         score.mg += hceParams.getMGBackwardPawnPenalty(rank);
@@ -528,8 +548,8 @@ int HandcraftedEvaluator::evaluateKingAttackZone() {
 
     // Berechne die Bewertung
     // Typecast zu int32_t um auf 16-Bit-Systemen Überläufe zu vermeiden
-    score = whiteAttackersWeight * (int32_t)hceParams.getNumAttackerWeight(numWhiteAttackers) / 100 -
-            blackAttackersWeight * (int32_t)hceParams.getNumAttackerWeight(numBlackAttackers) / 100;
+    score = whiteAttackersWeight * (int32_t)(hceParams.getNumAttackerWeight(numWhiteAttackers) + 100) / 100 -
+            blackAttackersWeight * (int32_t)(hceParams.getNumAttackerWeight(numBlackAttackers) + 100) / 100;
 
     return score;
 }
@@ -567,17 +587,17 @@ int HandcraftedEvaluator::evaluatePawnSafety() {
     Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
     Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);
 
-    Bitboard whitePawnStorm = pawnStormMask[WHITE / COLOR_MASK][whiteKingSquare] & blackPawns & ~evaluationVars.blackImmobilePawns;
-    Bitboard blackPawnStorm = pawnStormMask[BLACK / COLOR_MASK][blackKingSquare] & whitePawns & ~evaluationVars.whiteImmobilePawns;
+    Bitboard whitePawnStorm = pawnStormMask[BLACK / COLOR_MASK][blackKingSquare] & whitePawns & ~evaluationVars.whiteImmobilePawns & blackPawns.shiftSouthWestEast().extrudeSouth();
+    Bitboard blackPawnStorm = pawnStormMask[WHITE / COLOR_MASK][whiteKingSquare] & blackPawns & ~evaluationVars.blackImmobilePawns & whitePawns.shiftNorthWestEast().extrudeNorth();
 
     while(whitePawnStorm) {
         int rank = Square::rankOf(whitePawnStorm.popFSB());
-        score += hceParams.getMGPawnStormPenalty(rank);
+        score += hceParams.getMGPawnStormBonus(rank);
     }
 
     while(blackPawnStorm) {
         int rank = Square::rankOf(Square::flipY(blackPawnStorm.popFSB()));
-        score -= hceParams.getMGPawnStormPenalty(rank);
+        score -= hceParams.getMGPawnStormBonus(rank);
     }
 
     Bitboard whitePawnShield = pawnShieldMask[WHITE / COLOR_MASK][whiteKingSquare] & whitePawns;
@@ -874,6 +894,9 @@ Score HandcraftedEvaluator::evaluateRooksOnOpenFiles() {
     Bitboard whiteRooks = board.getPieceBitboard(WHITE_ROOK);
     Bitboard blackRooks = board.getPieceBitboard(BLACK_ROOK);
 
+    Bitboard doubledWhiteRooks = whiteRooks & whiteRooks.shiftNorth();
+    Bitboard doubledBlackRooks = blackRooks & blackRooks.shiftSouth();
+
     Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
     Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);
 
@@ -885,9 +908,15 @@ Score HandcraftedEvaluator::evaluateRooksOnOpenFiles() {
     int numBlackRooksOnOpenFiles = (blackRooks & openFiles).popcount();
     int numWhiteRooksOnSemiOpenFiles = (whiteRooks & whiteSemiOpenFiles).popcount();
     int numBlackRooksOnSemiOpenFiles = (blackRooks & blackSemiOpenFiles).popcount();
+    int doubledWhiteRooksOnOpenFiles = (doubledWhiteRooks & openFiles).popcount();
+    int doubledBlackRooksOnOpenFiles = (doubledBlackRooks & openFiles).popcount();
+    int doubledWhiteRooksOnSemiOpenFiles = (doubledWhiteRooks & whiteSemiOpenFiles).popcount();
+    int doubledBlackRooksOnSemiOpenFiles = (doubledBlackRooks & blackSemiOpenFiles).popcount();
 
     return {hceParams.getMGRookOnOpenFileBonus() * (numWhiteRooksOnOpenFiles - numBlackRooksOnOpenFiles) +
-            hceParams.getMGRookOnSemiOpenFileBonus() * (numWhiteRooksOnSemiOpenFiles - numBlackRooksOnSemiOpenFiles), 0};
+            hceParams.getMGRookOnSemiOpenFileBonus() * (numWhiteRooksOnSemiOpenFiles - numBlackRooksOnSemiOpenFiles) +
+            hceParams.getMGDoubledRooksOnOpenFileBonus() * (doubledWhiteRooksOnOpenFiles - doubledBlackRooksOnOpenFiles) +
+            hceParams.getMGDoubledRooksOnSemiOpenFileBonus() * (doubledWhiteRooksOnSemiOpenFiles - doubledBlackRooksOnSemiOpenFiles), 0};
 }
 
 Score HandcraftedEvaluator::evaluateRooksBehindPassedPawns() {

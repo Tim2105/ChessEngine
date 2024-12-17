@@ -216,10 +216,10 @@ class HandcraftedEvaluator: public Evaluator {
 
         // Figurengewichte
         static constexpr int PAWN_WEIGHT = 0;
-        static constexpr int KNIGHT_WEIGHT = 1;
-        static constexpr int BISHOP_WEIGHT = 1;
-        static constexpr int ROOK_WEIGHT = 2;
-        static constexpr int QUEEN_WEIGHT = 4;
+        static constexpr int KNIGHT_WEIGHT = 3;
+        static constexpr int BISHOP_WEIGHT = 3;
+        static constexpr int ROOK_WEIGHT = 5;
+        static constexpr int QUEEN_WEIGHT = 9;
 
         static constexpr int PIECE_WEIGHT[7] = {
             0, // Empty
@@ -236,7 +236,7 @@ class HandcraftedEvaluator: public Evaluator {
         // Phasengrenzen, können unter 0 oder über 1 sein,
         // die berechnete Phase wird aber zwischen 0 und 1 eingeschränkt
         static constexpr double MIN_PHASE = -0.5;
-        static constexpr double MAX_PHASE = 1.0;
+        static constexpr double MAX_PHASE = 1.25;
 
         static constexpr Bitboard lightSquares = 0x55aa55aa55aa55aaULL;
 
