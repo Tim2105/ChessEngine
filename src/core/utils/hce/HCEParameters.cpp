@@ -231,19 +231,19 @@ void HCEParameters::displayParameters(std::ostream& os) const {
 
     os << "Doubled Pawn Penalty MG: [";
     for(size_t i = 0; i < 8; i++)
-        os << std::setw(3) << mgDoubledPawnPenalty[i] << (i == 7 ? "]\n" : ", ");
+        os << std::setw(3) << mgDoubledPawnPenalty[i & 4 ? i ^ 7 : i] << (i == 7 ? "]\n" : ", ");
 
     os << "Doubled Pawn Penalty EG: [";
     for(size_t i = 0; i < 8; i++)
-        os << std::setw(3) << egDoubledPawnPenalty[i] << (i == 7 ? "]\n" : ", ");
+        os << std::setw(3) << egDoubledPawnPenalty[i & 4 ? i ^ 7 : i] << (i == 7 ? "]\n" : ", ");
 
     os << "Isolated Pawn Penalty MG: [";
     for(size_t i = 0; i < 8; i++)
-        os << std::setw(3) << mgIsolatedPawnPenalty[i] << (i == 7 ? "]\n" : ", ");
+        os << std::setw(3) << mgIsolatedPawnPenalty[i & 4 ? i ^ 7 : i] << (i == 7 ? "]\n" : ", ");
 
     os << "Isolated Pawn Penalty EG: [";
     for(size_t i = 0; i < 8; i++)
-        os << std::setw(3) << egIsolatedPawnPenalty[i] << (i == 7 ? "]\n" : ", ");
+        os << std::setw(3) << egIsolatedPawnPenalty[i & 4 ? i ^ 7 : i] << (i == 7 ? "]\n" : ", ");
 
     os << "Backward Pawn Penalty MG: [  0, ";
     for(size_t i = 0; i < 5; i++)

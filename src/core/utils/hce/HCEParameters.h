@@ -61,10 +61,10 @@ class HCEParameters {
 
         int16_t mgConnectedPawnBonus[6]; // pro Rang (2 - 7)
         int16_t egConnectedPawnBonus[6]; // pro Rang (2 - 7)
-        int16_t mgDoubledPawnPenalty[8]; // pro Linie (1 - 8)
-        int16_t egDoubledPawnPenalty[8]; // pro Linie (1 - 8)
-        int16_t mgIsolatedPawnPenalty[8]; // pro Linie (1 - 8)
-        int16_t egIsolatedPawnPenalty[8]; // pro Linie (1 - 8)
+        int16_t mgDoubledPawnPenalty[4]; // pro Linie (1 - 4, gespiegelt)
+        int16_t egDoubledPawnPenalty[4]; // pro Linie (1 - 4, gespiegelt)
+        int16_t mgIsolatedPawnPenalty[4]; // pro Linie (1 - 4, gespiegelt)
+        int16_t egIsolatedPawnPenalty[4]; // pro Linie (1 - 4, gespiegelt)
         int16_t mgBackwardPawnPenalty[5]; // pro Rang (2 - 6)
         int16_t egBackwardPawnPenalty[5]; // pro Rang (2 - 6)
         int16_t mgPassedPawnBonus[6]; // pro Rang (2 - 7)
@@ -266,11 +266,11 @@ class HCEParameters {
         inline int getMGConnectedPawnBonus(int rank) const { return mgConnectedPawnBonus[rank - 1]; }
         inline int getEGConnectedPawnBonus(int rank) const { return egConnectedPawnBonus[rank - 1]; }
 
-        inline int getMGDoubledPawnPenalty(int file) const { return mgDoubledPawnPenalty[file]; }
-        inline int getEGDoubledPawnPenalty(int file) const { return egDoubledPawnPenalty[file]; }
+        inline int getMGDoubledPawnPenalty(int file) const { return mgDoubledPawnPenalty[file & 4 ? file ^ 7 : file]; }
+        inline int getEGDoubledPawnPenalty(int file) const { return egDoubledPawnPenalty[file & 4 ? file ^ 7 : file]; }
 
-        inline int getMGIsolatedPawnPenalty(int file) const { return mgIsolatedPawnPenalty[file]; }
-        inline int getEGIsolatedPawnPenalty(int file) const { return egIsolatedPawnPenalty[file]; }
+        inline int getMGIsolatedPawnPenalty(int file) const { return mgIsolatedPawnPenalty[file & 4 ? file ^ 7 : file]; }
+        inline int getEGIsolatedPawnPenalty(int file) const { return egIsolatedPawnPenalty[file & 4 ? file ^ 7 : file]; }
 
         inline int getMGBackwardPawnPenalty(int rank) const { return mgBackwardPawnPenalty[rank - 1]; }
         inline int getEGBackwardPawnPenalty(int rank) const { return egBackwardPawnPenalty[rank - 1]; }
