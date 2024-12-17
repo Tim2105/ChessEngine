@@ -377,10 +377,10 @@ void HandcraftedEvaluator::calculatePawnScore() {
     evaluationVars.blackImmobilePawns = blackPawns & pawns.shiftNorth() & ~whitePawnAttacks;
 
     // Starke Felder
-    constexpr Bitboard RANK_4_TO_6 = 0xFFFFFF000000ULL;
-    constexpr Bitboard RANK_3_TO_5 = 0xFFFFFF0000ULL;
-    evaluationVars.whiteStrongSquares = whitePawnAttacks & ~blackPawnAttacks.extrudeSouth() & RANK_4_TO_6;
-    evaluationVars.blackStrongSquares = blackPawnAttacks & ~whitePawnAttacks.extrudeNorth() & RANK_3_TO_5;
+    constexpr Bitboard RANK_4_TO_7 = 0xFFFFFFFF000000ULL;
+    constexpr Bitboard RANK_2_TO_5 = 0xFFFFFFFF00ULL;
+    evaluationVars.whiteStrongSquares = whitePawnAttacks & ~blackPawnAttacks.extrudeSouth() & RANK_4_TO_7;
+    evaluationVars.blackStrongSquares = blackPawnAttacks & ~whitePawnAttacks.extrudeNorth() & RANK_2_TO_5;
 
     score.mg += hceParams.getMGStrongSquareBonus() * (evaluationVars.whiteStrongSquares.popcount() - evaluationVars.blackStrongSquares.popcount());
 
@@ -894,8 +894,8 @@ Score HandcraftedEvaluator::evaluateRooksOnOpenFiles() {
     Bitboard whiteRooks = board.getPieceBitboard(WHITE_ROOK);
     Bitboard blackRooks = board.getPieceBitboard(BLACK_ROOK);
 
-    Bitboard doubledWhiteRooks = whiteRooks & whiteRooks.shiftNorth();
-    Bitboard doubledBlackRooks = blackRooks & blackRooks.shiftSouth();
+    Bitboard doubledWhiteRooks = whiteRooks & whiteRooks.shiftNorth().extrudeNorth();
+    Bitboard doubledBlackRooks = blackRooks & blackRooks.shiftSouth().extrudeSouth();
 
     Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
     Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);
