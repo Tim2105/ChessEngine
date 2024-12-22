@@ -79,6 +79,9 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
     // Leere den Eintrag im Suchstack für den aktuellen Abstand zum Wurzelknoten.
     clearSearchStack(ply);
 
+    // Leere die Vergangenheitsbewertung für den aktuellen Abstand zum Wurzelknoten.
+    clearHistoryStack(ply + HISTORY_SCORE_LOOKAHEAD + 1);
+
     /**
      * Ermittele die vorläufige Bewertung der Position.
      * Die vorläufige Bewertung ist die eingetragene Bewertung
@@ -364,27 +367,24 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
             // Durchsuche die restlichen Kinder mit einem Nullfenster (nur in PV-Knoten) und bei,
             // auf ersten Blick, uninteressanten Zügen mit einer reduzierten Suchtiefe
             // (=> Late Move Reductions).
-            int reduction = 0;
-            if(extension == 0) {
-                reduction = determineLMR(moveCount + 1, moveScore, depth, isImproving);
+            int reduction = determineLMR(moveCount + 1, moveScore, ply, depth, isImproving);
 
-                if(isCheck || isCheckEvasion)
+            if(isCheck || isCheckEvasion)
+                reduction -= 2;
+
+            // Reduziere die Reduktion, wenn der Zug einen Freibauern bewegt.
+            int movedPieceType = TYPEOF(board.pieceAt(move.getDestination()));
+            if(movedPieceType == PAWN) {
+                int side = board.getSideToMove() ^ COLOR_MASK;
+                int otherSide = side ^ COLOR_MASK;
+                if(!(sentryMasks[side / COLOR_MASK][move.getDestination()]
+                    & board.getPieceBitboard(otherSide | PAWN))) {
+                    
                     reduction -= 1;
-
-                // Reduziere die Reduktion, wenn der Zug einen Freibauern bewegt.
-                int movedPieceType = TYPEOF(board.pieceAt(move.getDestination()));
-                if(movedPieceType == PAWN) {
-                    int side = board.getSideToMove() ^ COLOR_MASK;
-                    int otherSide = side ^ COLOR_MASK;
-                    if(!(sentryMasks[side / COLOR_MASK][move.getDestination()]
-                        & board.getPieceBitboard(otherSide | PAWN))) {
-                        
-                        reduction -= 1;
-                    }
                 }
-
-                reduction = std::max(reduction, 0);
             }
+
+            reduction = std::max(reduction, 0);
 
             score = -pvs(depth - 1 + extension - reduction, ply + 1, -alpha - 1, -alpha, childType, nullMoveCooldown - 1, singularExtCooldown - 1);
 
@@ -450,14 +450,14 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
             }
 
             // Verbessere die relative Bewertung des Zuges
-            incrementHistoryScore(move, depth);
+            incrementHistoryScore(move, ply, depth);
 
             return score;
         }
 
         // Verschlechtere die relative Bewertung des Zuges,
         // er führte nicht zu einem Beta-Schnitt.
-        decrementHistoryScore(move, depth);
+        decrementHistoryScore(move, ply, depth);
 
         if(score > bestScore) {
             // Der Zug ist der Beste, den wir bisher gefunden haben.
@@ -512,7 +512,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
     if(ttEntryType == TranspositionTableEntry::EXACT) {
         // Wenn dieser Zug der beste Zug in einem PV-Knoten ist,
         // erhöhe seine relative Vergangenheitsbewertung.
-        incrementHistoryScore(bestMove, depth);
+        incrementHistoryScore(bestMove, ply, depth);
 
         if(!bestMove.isCapture() && !bestMove.isPromotion()) {
             // Setze einen Eintrag in der Konterzug-Tabelle.
@@ -647,7 +647,9 @@ int PVSSearchInstance::quiescence(int ply, int alpha, int beta) {
     return bestScore;
 }
 
-int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int depth, bool isImproving) {
+int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int ply, int depth, bool isImproving) {
+    UNUSED(ply);
+
     // LMR reduziert nie den ersten Zug
     if(moveCount <= 1)
         return 0;
@@ -655,22 +657,11 @@ int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int depth, boo
     Move lastMove = board.getLastMove();
     // Wir reduzieren keine Schlagzüge, die unser Zugvorsortierer als neutral/gut bewertet hat
     // oder die einen Bauern aufwerten.
-    if(moveScore >= GOOD_CAPTURE_MOVES_MIN || lastMove.isPromotion())
+    if(moveScore >= GOOD_CAPTURE_MOVES_MIN || lastMove.isPromotionQueen())
         return 0;
 
     // Reduziere standardmäßig anhand einer Funktion, die von der Suchtiefe abhängt.
-    double reduction = std::log(depth) / std::log(6) + 0.75 + 0.25 * !isImproving;
-
-    // Passe die Reduktion an die relative Vergangenheitsbewertung des Zuges an.
-    // -> Bisher bessere Züge werden weniger reduziert und schlechtere Züge stärker.
-    int32_t historyScore = getHistoryScore(lastMove, board.getSideToMove() ^ COLOR_MASK);
-
-    // Erhöhe die Reduktion anhand einer logarithmischen Funktion,
-    // wenn wir auf mehreren Threads suchen.
-    if(numThreads > 1 && historyScore < 0)
-        historyScore = historyScore * (1.0 + std::log(numThreads) / std::log(64));
-
-    reduction -= historyScore / 16384.0;
+    double reduction = std::log(depth) * std::log(moveCount) / std::log(5) + 0.75 + 0.25 * !isImproving;
 
     // Runde die Reduktion ab.
     return (int)reduction;
@@ -915,7 +906,7 @@ void PVSSearchInstance::scoreMoves(const Array<Move, 256>& moves, int ply) {
                 goodCaptures.insert_sorted(MoveScorePair(move, score), std::greater<MoveScorePair>());
             } else {
                 // Schlechte Schlagzüge
-                score = std::clamp(QUIET_MOVES_NEUTRAL + getHistoryScore(move) / currentSearchDepth + seeEvaluation,
+                score = std::clamp(QUIET_MOVES_NEUTRAL + getHistoryScore(move, ply) + seeEvaluation,
                                    QUIET_MOVES_MIN,
                                    QUIET_MOVES_MAX);
 
@@ -932,7 +923,7 @@ void PVSSearchInstance::scoreMoves(const Array<Move, 256>& moves, int ply) {
                 killers.push_back(MoveScorePair(move, score));
             } else {
                 // Ruhige Züge. Gebe einen Bonus für den Konterzug.
-                score = std::clamp(QUIET_MOVES_NEUTRAL + (getHistoryScore(move) + (move == counterMove) * 300) / currentSearchDepth,
+                score = std::clamp(QUIET_MOVES_NEUTRAL + (getHistoryScore(move, ply) + (move == counterMove) * 300),
                                    QUIET_MOVES_MIN,
                                    QUIET_MOVES_MAX); // Bewerte anhand der relativen Vergangenheitsbewertung
 
@@ -964,7 +955,7 @@ void PVSSearchInstance::scoreMovesForQuiescence(const Array<Move, 256>& moves, i
                                     GOOD_CAPTURE_MOVES_MAX);
             } else {
                 // Schlechte Schlagzüge
-                score = std::clamp(QUIET_MOVES_NEUTRAL + getHistoryScore(move) / currentSearchDepth + seeEvaluation,
+                score = std::clamp(QUIET_MOVES_NEUTRAL + getHistoryScore(move, ply) + seeEvaluation,
                                    QUIET_MOVES_MIN,
                                    QUIET_MOVES_MAX);
             }
@@ -974,7 +965,7 @@ void PVSSearchInstance::scoreMovesForQuiescence(const Array<Move, 256>& moves, i
         } else {
             // Ruhige Züge werden anhand ihrer relativen Vergangenheitsbewertung
             // bewertet.
-            score = std::clamp(QUIET_MOVES_NEUTRAL + getHistoryScore(move) / currentSearchDepth,
+            score = std::clamp(QUIET_MOVES_NEUTRAL + getHistoryScore(move, ply),
                                QUIET_MOVES_MIN,
                                QUIET_MOVES_MAX);
         }

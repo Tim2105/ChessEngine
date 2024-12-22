@@ -33,6 +33,10 @@ class PVSSearchInstance {
             int16_t preliminaryScore = 0;
         };
 
+        struct HistoryStackEntry {
+            int32_t historyTable[64][64] = {0};
+        };
+
         Board board;
         #if defined(USE_HCE)
             HandcraftedEvaluator evaluator;
@@ -67,7 +71,7 @@ class PVSSearchInstance {
          * Zahl, desto häufiger führte der Zug zu einer Bewertung
          * > alpha.
          */
-        int32_t historyTable[2][64][64];
+        // int32_t historyTable[2][64][64];
 
         /**
          * @brief Speichert für jedes Tupel (Farbe, Figur, Zielfeld)
@@ -143,6 +147,13 @@ class PVSSearchInstance {
         SearchStackEntry searchStack[MAX_PLY];
 
         /**
+         * @brief Der Historiestapel, der von der Suchinstanz verwendet wird.
+         * Der Historiestapel enthält Informationen über die Zughistorie
+         * und wird für die Zugvorsortierung verwendet.
+         */
+        HistoryStackEntry historyStack[MAX_PLY];
+
+        /**
          * @brief Die Liste der Züge, auf die sich die
          * Suchinstanz im Wurzelknoten beschränken soll. Wenn die Liste leer
          * ist, betrachtet die Instanz alle Züge.
@@ -192,12 +203,13 @@ class PVSSearchInstance {
          * 
          * @param moveCount Die Platzierung des Knotens in der Zugvorsortierung.
          * @param moveScore Die Bewertung des letzten Zuges durch die Zugvorsortierung.
+         * @param ply Der Abstand zum Wurzelknoten.
          * @param depth Die verbleibende Suchtiefe.
          * @param isImproving Gibt an, ob die Farbe, die am Zug ist,
          * ihre Position verbessert hat.
          * @return Die Tiefe, um die der Knoten zusätzlich reduziert werden soll.
          */
-        int determineLMR(int moveCount, int moveScore, int depth, bool isImproving);
+        int determineLMR(int moveCount, int moveScore, int ply, int depth, bool isImproving);
 
         /**
          * @brief Bestimmt, ab welchem Zug das Null Move Pruning
@@ -290,11 +302,6 @@ class PVSSearchInstance {
             }
 
             for(int i = 0; i < 2; i++)
-                for(int j = 0; j < 64; j++)
-                    for(int k = 0; k < 64; k++)
-                        historyTable[i][j][k] = 0;
-
-            for(int i = 0; i < 2; i++)
                 for(int j = 0; j < 6; j++)
                     for(int k = 0; k < 64; k++)
                         counterMoveTable[i][j][k] = Move::nullMove();
@@ -327,11 +334,6 @@ class PVSSearchInstance {
                 killerMoves[i][0] = Move::nullMove();
                 killerMoves[i][1] = Move::nullMove();
             }
-
-            for(int i = 0; i < 2; i++)
-                for(int j = 0; j < 64; j++)
-                    for(int k = 0; k < 64; k++)
-                        historyTable[i][j][k] = 0;
 
             for(int i = 0; i < 2; i++)
                 for(int j = 0; j < 6; j++)
@@ -465,6 +467,15 @@ class PVSSearchInstance {
             searchStack[ply].preliminaryScore = 0;
         }
 
+        constexpr void clearHistoryStack(int ply) {
+            if(ply >= MAX_PLY)
+                return;
+
+            for(int i = 0; i < 64; i++)
+                for(int j = 0; j < 64; j++)
+                    historyStack[ply].historyTable[i][j] = 0;
+        }
+
         constexpr void addKillerMove(int ply, Move move) {
             if(move != killerMoves[ply][1]) {
                 killerMoves[ply][0] = killerMoves[ply][1];
@@ -476,28 +487,27 @@ class PVSSearchInstance {
             return move == killerMoves[ply][0] || move == killerMoves[ply][1];
         }
 
-        constexpr void incrementHistoryScore(Move move, int depth) {
-            historyTable[board.getSideToMove() / COLOR_MASK]
-                        [move.getOrigin()]
-                        [move.getDestination()] += depth * (depth - 1) + 1;
+        static constexpr int HISTORY_SCORE_LOOKAHEAD = 6;
+        static constexpr int HISTORY_SCORE_LOOKBEHIND = 4;
+
+        constexpr void incrementHistoryScore(Move move, int ply, int depth) {
+            for(int i = ply; i < std::min(MAX_PLY, ply + HISTORY_SCORE_LOOKAHEAD + 1); i += 2)
+                historyStack[i].historyTable[move.getOrigin()][move.getDestination()] += depth * (depth - 1) + 1;
+
+            for(int i = ply - 2; i >= std::max(0, ply - HISTORY_SCORE_LOOKBEHIND); i -= 2)
+                historyStack[i].historyTable[move.getOrigin()][move.getDestination()] += depth * (depth - 1) + 1;
         }
 
-        constexpr void decrementHistoryScore(Move move, int depth) {
-            historyTable[board.getSideToMove() / COLOR_MASK]
-                        [move.getOrigin()]
-                        [move.getDestination()] -= depth;
+        constexpr void decrementHistoryScore(Move move, int ply, int depth) {
+            for(int i = ply; i < std::min(MAX_PLY, ply + HISTORY_SCORE_LOOKAHEAD + 1); i += 2)
+                historyStack[i].historyTable[move.getOrigin()][move.getDestination()] -= depth;
+
+            for(int i = ply - 2; i >= std::max(0, ply - HISTORY_SCORE_LOOKBEHIND); i -= 2)
+                historyStack[i].historyTable[move.getOrigin()][move.getDestination()] -= depth;
         }
 
-        constexpr int32_t getHistoryScore(Move move) {
-            return historyTable[board.getSideToMove() / COLOR_MASK]
-                               [move.getOrigin()]
-                               [move.getDestination()];
-        }
-
-        constexpr int32_t getHistoryScore(Move move, int side) {
-            return historyTable[side / COLOR_MASK]
-                               [move.getOrigin()]
-                               [move.getDestination()];
+        constexpr int32_t getHistoryScore(Move move, int ply) {
+            return historyStack[ply].historyTable[move.getOrigin()][move.getDestination()];
         }
 
         constexpr void setCounterMove(Move move, int side, int piece, int destination) {
