@@ -42,12 +42,15 @@ namespace Tune {
         std::atomic<std::chrono::system_clock::time_point> endTime = startTime.load() + std::chrono::seconds(1);
         std::atomic_uint64_t nodes = 0;
 
+        // Erstelle eine Suchinstanz
+        PVSSearchInstance searchInstance(Board(), hceParams, tt, stop, startTime, endTime, nodes, nullptr);
+
         for(size_t i : indices) {
             // Extrahiere den Datenpunkt
             DataPoint& dp = data[i % data.size()];
 
-            // Erstelle eine Suchinstanz
-            PVSSearchInstance searchInstance(dp.board, hceParams, tt, stop, startTime, endTime, nodes, nullptr);
+            // Setze das Schachbrett auf die aktuelle Position
+            searchInstance.setBoard(dp.board);
 
             // Berechne die Vorhersage
             double prediction = tanh(searchInstance.pvs(0, 0, MIN_SCORE, MAX_SCORE, PV_NODE), k);
@@ -82,6 +85,9 @@ namespace Tune {
             std::atomic<std::chrono::system_clock::time_point> endTime = startTime.load() + std::chrono::seconds(1);
             std::atomic_uint64_t nodes = 0;
 
+            // Erstelle eine Suchinstanz
+            PVSSearchInstance searchInstance(Board(), hceParams, tt, stop, startTime, endTime, nodes, nullptr);
+
             // Sperre den Mutex um die zu bearbeitenden Datenpunkte zu extrahieren
             mutex.lock();
             while(currIndex < data.size()) {
@@ -96,8 +102,8 @@ namespace Tune {
                     // Extrahiere den Datenpunkt
                     DataPoint& dp = data[i];
 
-                    // Erstelle eine Suchinstanz
-                    PVSSearchInstance searchInstance(dp.board, hceParams, tt, stop, startTime, endTime, nodes, nullptr);
+                    // Setze das Schachbrett auf die aktuelle Position
+                    searchInstance.setBoard(dp.board);
 
                     // Berechne die Vorhersage
                     double prediction = tanh(searchInstance.pvs(0, 0, MIN_SCORE, MAX_SCORE, PV_NODE), k);
@@ -292,9 +298,15 @@ namespace Tune {
             currentParams.unpackPSQT();
         }
 
-        double loss = Tune::loss(validationData, bestParams, k, discount);
+        // Berechne den finalen Fehler
+        double loss = Tune::loss(validationData, currentParams, k, discount);
+        if(loss < bestLoss) {
+            bestParams = currentParams;
+            bestLoss = loss;
+        }
+
         size_t currPrecision = std::cout.precision();
-        std::cout << std::endl << "Final val loss: " << std::fixed << std::setprecision(7) << loss << std::endl;
+        std::cout << std::endl << "Final val loss: " << std::fixed << std::setprecision(7) << bestLoss << std::endl;
         std::cout.precision(currPrecision);
 
         return bestParams;

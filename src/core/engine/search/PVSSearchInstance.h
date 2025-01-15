@@ -151,7 +151,7 @@ class PVSSearchInstance {
          * Der Historiestapel enthält Informationen über die Zughistorie
          * und wird für die Zugvorsortierung verwendet.
          */
-        HistoryStackEntry historyStack[MAX_PLY];
+        std::vector<HistoryStackEntry> historyStack;
 
         /**
          * @brief Die Liste der Züge, auf die sich die
@@ -287,7 +287,7 @@ class PVSSearchInstance {
         /**
          * @brief Konstruktor für eine Suchinstanz.
          */
-        PVSSearchInstance(Board& board, TranspositionTable& transpositionTable,
+        PVSSearchInstance(const Board& board, TranspositionTable& transpositionTable,
                           AtomicBool& stopFlag, Atomic<std::chrono::system_clock::time_point>& startTime,
                           Atomic<std::chrono::system_clock::time_point>& stopTime, AtomicU64& nodesSearched,
                           std::function<void()> checkupFunction) :
@@ -300,6 +300,8 @@ class PVSSearchInstance {
                 killerMoves[i][0] = Move::nullMove();
                 killerMoves[i][1] = Move::nullMove();
             }
+
+            historyStack.resize(MAX_PLY);
 
             for(int i = 0; i < 2; i++)
                 for(int j = 0; j < 6; j++)
@@ -321,7 +323,7 @@ class PVSSearchInstance {
         /**
          * @brief Konstruktor für eine Suchinstanz mit benutzerdefinierten Parametern für die HCE.
          */
-        PVSSearchInstance(Board& board, const HCEParameters& hceParams, TranspositionTable& transpositionTable,
+        PVSSearchInstance(const Board& board, const HCEParameters& hceParams, TranspositionTable& transpositionTable,
                           AtomicBool& stopFlag, Atomic<std::chrono::system_clock::time_point>& startTime,
                           Atomic<std::chrono::system_clock::time_point>& stopTime, AtomicU64& nodesSearched,
                           std::function<void()> checkupFunction) :
@@ -334,6 +336,8 @@ class PVSSearchInstance {
                 killerMoves[i][0] = Move::nullMove();
                 killerMoves[i][1] = Move::nullMove();
             }
+
+            historyStack.resize(MAX_PLY);
 
             for(int i = 0; i < 2; i++)
                 for(int j = 0; j < 6; j++)
@@ -373,6 +377,14 @@ class PVSSearchInstance {
          * Die Hauptvariante kann über die Methode getPV() ausgelesen werden.
          */
         int pvs(int depth, int ply, int alpha, int beta, unsigned int nodeType, int nullMoveCooldown = 0, int singularExtCooldown = 0, bool skipHashMove = false);
+
+        /**
+         * @brief Setzt das Schachbrett auf eine neue Position.
+         */
+        inline void setBoard(const Board& board) {
+            this->board = board;
+            evaluator.setBoard(this->board);
+        }
 
         /**
          * @brief Sagt der Suchinstanz, ob sie die Hauptinstanz
@@ -490,7 +502,7 @@ class PVSSearchInstance {
         static constexpr int HISTORY_SCORE_LOOKAHEAD = 6;
         static constexpr int HISTORY_SCORE_LOOKBEHIND = 4;
 
-        constexpr void incrementHistoryScore(Move move, int ply, int depth) {
+        inline void incrementHistoryScore(Move move, int ply, int depth) {
             for(int i = ply; i < std::min(MAX_PLY, ply + HISTORY_SCORE_LOOKAHEAD + 1); i += 2)
                 historyStack[i].historyTable[move.getOrigin()][move.getDestination()] += depth * (depth - 1) + 1;
 
@@ -498,7 +510,7 @@ class PVSSearchInstance {
                 historyStack[i].historyTable[move.getOrigin()][move.getDestination()] += depth * (depth - 1) + 1;
         }
 
-        constexpr void decrementHistoryScore(Move move, int ply, int depth) {
+        inline void decrementHistoryScore(Move move, int ply, int depth) {
             for(int i = ply; i < std::min(MAX_PLY, ply + HISTORY_SCORE_LOOKAHEAD + 1); i += 2)
                 historyStack[i].historyTable[move.getOrigin()][move.getDestination()] -= depth;
 
@@ -506,7 +518,7 @@ class PVSSearchInstance {
                 historyStack[i].historyTable[move.getOrigin()][move.getDestination()] -= depth;
         }
 
-        constexpr int32_t getHistoryScore(Move move, int ply) {
+        inline int32_t getHistoryScore(Move move, int ply) {
             return historyStack[ply].historyTable[move.getOrigin()][move.getDestination()];
         }
 

@@ -161,6 +161,16 @@ class HandcraftedEvaluator: public Evaluator {
             int evaluationSign = evaluation >= 0 ? 1 : -1;
             if(isOppositeColorBishopEndgame())
                 evaluation += hceParams.getOppositeColorBishopsPenalty() * evaluationSign;
+            else {
+                int numWhiteRooks = board.getPieceBitboard(WHITE_ROOK).popcount();
+                int numBlackRooks = board.getPieceBitboard(BLACK_ROOK).popcount();
+
+                int rookMaterialWeight = PIECE_WEIGHT[ROOK] * (numWhiteRooks + numBlackRooks);
+                int totalMaterialWeight = TOTAL_WEIGHT - evaluationVars.phaseWeight;
+
+                if(numWhiteRooks == numBlackRooks && numWhiteRooks > 0 && rookMaterialWeight == totalMaterialWeight)
+                    evaluation += hceParams.getRookEndgamePenalty() * evaluationSign;
+            }
 
             if(evaluationSign == 1)
                 evaluation = std::max(evaluation, DRAW_SCORE);
@@ -206,7 +216,7 @@ class HandcraftedEvaluator: public Evaluator {
          */
         static constexpr int SIMPLE_PIECE_VALUE[7] = {0, 100, 300, 300, 500, 900, 0};
 
-        static constexpr int EG_WINNING_ADVANTAGE = 400;
+        static constexpr int EG_WINNING_ADVANTAGE = (SIMPLE_PIECE_VALUE[ROOK] - std::max(SIMPLE_PIECE_VALUE[KNIGHT], SIMPLE_PIECE_VALUE[BISHOP])) / 2 + std::max(SIMPLE_PIECE_VALUE[KNIGHT], SIMPLE_PIECE_VALUE[BISHOP]);
 
         /**
          * @brief Konstanten zur Berechnung der Spielphase.

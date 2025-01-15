@@ -184,7 +184,7 @@ void simulateGames(size_t n, std::istream& pgnFile, std::ostream& outFile, std::
     std::shuffle(startingPositions.begin(), startingPositions.end(), generator);
     startingPositions.resize(n);
 
-    Simulation sim(startingPositions, timeControl, increment);
+    Simulation sim(startingPositions, timeControl, increment, 10);
 
     if(params.has_value()) {
         sim.setWhiteParams(params.value());
@@ -331,6 +331,11 @@ void displayFinalEpoch() {
 }
 
 void learn() {
+    size_t oldNumGames = numGames;
+    size_t oldTimeControl = timeControl;
+    size_t oldIncrement = increment;
+    size_t oldNumEpochs = numEpochs;
+
     // Erstelle ein neuen Parametersatz
     HCEParameters currentHCEParams;
 
@@ -365,6 +370,11 @@ void learn() {
         std::ofstream outFile("data/generation" + std::to_string(i) + ".hce");
 
         currentHCEParams.saveParameters(outFile);
+
+        numGames += numGamesIncrement;
+        timeControl += timeControlIncrement;
+        increment += incrementIncrement;
+        numEpochs += numEpochsIncrement;
     }
 
     std::cout << "Finished training" << std::endl;
@@ -372,6 +382,11 @@ void learn() {
     // Speichere die finalen Parameter
     std::ofstream outFile("data/epochFinal.hce");
     currentHCEParams.saveParameters(outFile);
+
+    numGames = oldNumGames;
+    timeControl = oldTimeControl;
+    increment = oldIncrement;
+    numEpochs = oldNumEpochs;
 }
 
 #endif

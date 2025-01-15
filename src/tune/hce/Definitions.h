@@ -23,9 +23,12 @@ extern std::string samplesFilePath;
  */
 
 extern size_t numGames;
+extern size_t numGamesIncrement;
 extern size_t startingMoves;
 extern uint32_t timeControl;
+extern uint32_t timeControlIncrement;
 extern uint32_t increment;
+extern uint32_t incrementIncrement;
 extern int startOutputAtMove;
 extern bool useNoisyParameters;
 extern double noiseDefaultStdDev;
@@ -41,6 +44,7 @@ extern double k;
 extern double learningRate;
 extern double learningRateDecay;
 extern size_t numEpochs;
+extern size_t numEpochsIncrement;
 extern size_t numGenerations;
 extern size_t noImprovementPatience;
 extern size_t batchSize;

@@ -191,6 +191,14 @@ class HCEParameters {
         int16_t oppositeColorBishopsPenalty;
 
         /**
+         * @brief Bestrafung für ein Endspiel mit Türmen
+         * und Bauern (und maximal einer weiteren Leichtfigur).
+         * Die Bestrafung wird der ansonsten führenden Seite
+         * angerechnet und kann das Vorzeichen der Bewertung nicht ändern.
+         */
+        int16_t rookEndgamePenalty;
+
+        /**
          * Hier werden die entpackten Positionstabellen
          * für die Mittel- und Endspielbewertung gespeichert.
          */
@@ -326,6 +334,8 @@ class HCEParameters {
         inline int getRuleOfTheSquareBonus() const { return ruleOfTheSquareBonus; }
 
         inline int getOppositeColorBishopsPenalty() const { return oppositeColorBishopsPenalty; }
+
+        inline int getRookEndgamePenalty() const { return rookEndgamePenalty; }
 };
 
 extern HCEParameters HCE_PARAMS;

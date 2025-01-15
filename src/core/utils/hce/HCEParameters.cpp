@@ -31,14 +31,14 @@ void HCEParameters::unpackPSQT() {
 }
 
 HCEParameters::HCEParameters() {
-    // #if defined(USE_HCE)
-    //     membuf buf(_binary_resources_params_hce_start, _binary_resources_params_hce_end);
-    //     std::istream is(&buf);
+    #if defined(USE_HCE)
+        membuf buf(_binary_resources_params_hce_start, _binary_resources_params_hce_end);
+        std::istream is(&buf);
 
-    //     loadParameters(is);
-    // #endif
+        loadParameters(is);
+    #endif
 
-    unpackPSQT();
+    // unpackPSQT();
 }
 
 HCEParameters::HCEParameters(std::istream& is) {
@@ -357,6 +357,8 @@ void HCEParameters::displayParameters(std::ostream& os) const {
     os << "Rule Of The Square Bonus: " << ruleOfTheSquareBonus << "\n";
 
     os << "Opposite Color Bishops Penalty: " << oppositeColorBishopsPenalty << "\n";
+
+    os << "Rook Endgame Penalty: " << rookEndgamePenalty << "\n";
 
     os << std::endl;
 }
