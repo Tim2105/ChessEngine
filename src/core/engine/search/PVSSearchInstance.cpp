@@ -895,7 +895,7 @@ void PVSSearchInstance::scoreMoves(const Array<Move, 256>& moves, int ply) {
         if(move.isCapture() || move.isPromotion()) {
             // Schlagzüge und Bauernumwandlungen werden mit
             // der Static Exchange Evaluation (SEE) bewertet.
-            int seeEvaluation = evaluator.evaluateMoveSEE(move);
+            int seeEvaluation = evaluator.evaluateMoveSEE(move, nodesSearched);
 
             if(seeEvaluation >= 0) {
                 // Gute Schlagzüge
@@ -946,7 +946,7 @@ void PVSSearchInstance::scoreMovesForQuiescence(const Array<Move, 256>& moves, i
         if(move.isCapture() || move.isPromotion()) {
             // Schlagzüge und Bauernumwandlungen werden mit
             // der Static Exchange Evaluation (SEE) bewertet.
-            int seeEvaluation = evaluator.evaluateMoveSEE(move);
+            int seeEvaluation = evaluator.evaluateMoveSEE(move, nodesSearched);
 
             if(seeEvaluation >= NEUTRAL_SCORE) {
                 // Gute Schlagzüge

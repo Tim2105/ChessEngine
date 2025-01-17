@@ -2,6 +2,7 @@
 #define EVALUATOR_H
 
 #include "core/chess/Board.h"
+#include "core/utils/Atomic.h"
 
 #define UNUSED(x) (void)(x)
 
@@ -35,18 +36,24 @@ class Evaluator {
          * @brief Static Exchange Evaluation.
          * https://www.chessprogramming.org/Static_Exchange_Evaluation
          */
-        int see(Move m);
+        int see(Move m, AtomicU64& nodes);
 
         /**
          * @brief Eine Kopie von isSEEGreaterEqual, die die Spezialfälle
          * Bauernaufwertung und En-Passant nicht berücksichtigt.
          */
-        bool seeGreaterEqual(Move m, int threshold);
+        bool seeGreaterEqual(Move m, int threshold, AtomicU64& nodes);
 
         /**
          * @brief Überprüft, ob eine gegebene Stellung eine KPK-Remisstellung ist.
          */
         bool isDrawnKPKEndgame();
+
+        /**
+         * @brief Überprüft, ob eine gegebene Stellung eine Remisstellung mit
+         * einem Läufer der falschen Farbe und einem Bauern auf der A- oder H-Linie ist.
+         */
+        bool isWrongBishopAndRookPawnEndgame();
 
     protected:
         Board& board;
@@ -94,13 +101,13 @@ class Evaluator {
         /**
          * @brief Führt eine statische Bewertung eines Zugs mit SEE durch.
          */
-        int evaluateMoveSEE(Move m);
+        int evaluateMoveSEE(Move m, AtomicU64& nodes);
 
         /**
          * @brief Überprüft, ob die statische Bewertung eines Zugs mit SEE
          * größer oder gleich einem Schwellwert ist.
          */
-        bool isSEEGreaterEqual(Move m, int threshold);
+        bool isSEEGreaterEqual(Move m, int threshold, AtomicU64& nodes);
 
         /**
          * @brief Führt eine statische Bewertung eines Zugs mit MVVLVA durch.
@@ -111,6 +118,8 @@ class Evaluator {
          * @brief Gibt eine Referenz auf das aktuelle Spielfeld zurück.
          */
         constexpr Board& getBoard() { return board; }
+
+        static constexpr Bitboard lightSquares = 0x55aa55aa55aa55aaULL;
 };
 
 #endif
