@@ -207,7 +207,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
     }
 
     /**
-     * Internal Iterative Deepening (1/2):
+     * Internal Iterative Deepening:
      * 
      * Wenn der Hashzug aus einer viel geringeren Suchtiefe stammt,
      * führe eine reduzierte Suche durch, um Suchexplosionen zu vermeiden.
@@ -218,26 +218,14 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
     int depthReduction = 0;
     if(entryExists) {
         int depthDiff = depth - entry.depth;
-        depthReduction = (depthDiff / 4);
+        depthReduction = (depthDiff > 1) + (depthDiff / 6);
     } else
-        depthReduction = (depth / 4);
+        depthReduction = (depth > 1) + (depth / 6);
 
-    if(nodeType != PV_NODE && depthReduction > 0)
+    if(depthReduction > 0)
         depth -= depthReduction;
 
-    /**
-     * Internal Iterative Deepening (2/2):
-     * 
-     * Führe eine reduzierte Suche durch, um einen besseren
-     * Hashzug für die aktuelle Position zu bestimmen.
-     * IID wird nur in PV-Knoten und Knoten mit einer
-     * Suchtiefe >= 8 durchgeführt.
-     */
-    bool useIID = false;
-    if(nodeType != ALL_NODE)
-        useIID = depthReduction > 0;
-
-    addMovesToSearchStack(ply, useIID, depth);
+    addMovesToSearchStack(ply, false, depth);
 
     // Prüfe, ob die Suche abgebrochen werden soll.
     if(stopFlag.load() && currentSearchDepth > 1)
@@ -370,17 +358,18 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
             int reduction = determineLMR(moveCount + 1, moveScore, ply, depth, isImproving);
 
             if(isCheck || isCheckEvasion)
-                reduction -= 2;
-
-            // Reduziere die Reduktion, wenn der Zug einen Freibauern bewegt.
-            int movedPieceType = TYPEOF(board.pieceAt(move.getDestination()));
-            if(movedPieceType == PAWN) {
-                int side = board.getSideToMove() ^ COLOR_MASK;
-                int otherSide = side ^ COLOR_MASK;
-                if(!(sentryMasks[side / COLOR_MASK][move.getDestination()]
-                    & board.getPieceBitboard(otherSide | PAWN))) {
-                    
-                    reduction -= 1;
+                reduction -= 1;
+            else {
+                // Reduziere die Reduktion, wenn der Zug einen Freibauern bewegt.
+                int movedPieceType = TYPEOF(board.pieceAt(move.getDestination()));
+                if(movedPieceType == PAWN) {
+                    int side = board.getSideToMove() ^ COLOR_MASK;
+                    int otherSide = side ^ COLOR_MASK;
+                    if(!(sentryMasks[side / COLOR_MASK][move.getDestination()]
+                        & board.getPieceBitboard(otherSide | PAWN))) {
+                        
+                        reduction -= 1;
+                    }
                 }
             }
 
@@ -648,7 +637,7 @@ int PVSSearchInstance::quiescence(int ply, int alpha, int beta) {
 }
 
 int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int ply, int depth, bool isImproving) {
-    UNUSED(ply);
+    UNUSED(isImproving);
 
     // LMR reduziert nie den ersten Zug
     if(moveCount <= 1)
@@ -661,7 +650,10 @@ int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int ply, int d
         return 0;
 
     // Reduziere standardmäßig anhand einer Funktion, die von der Suchtiefe abhängt.
-    double reduction = std::log(depth) * std::log(moveCount) / std::log(5) + 0.75 + 0.25 * !isImproving;
+    double reduction = std::log(depth) * std::log(moveCount) / std::log(10) + 1.0;
+
+    int historyScore = getHistoryScore(lastMove, ply);
+    reduction -= historyScore / 25000.0;
 
     // Runde die Reduktion ab.
     return (int)reduction;

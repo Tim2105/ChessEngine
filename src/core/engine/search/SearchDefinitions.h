@@ -111,7 +111,7 @@ static constexpr int IMPROVING_THRESHOLD = 0;
  * @return Die Reduktion in Plies.
  */
 static constexpr int calculateNullMoveReduction(int depth, int staticEval, int beta, bool isImproving) {
-    return 1 + (std::min((staticEval - beta) / 256, 2) + depth / 6) + !isImproving;
+    return 1 + ((staticEval - beta >= 256) + depth / 8) + !isImproving;
 }
 
 /**
