@@ -110,8 +110,8 @@ static constexpr int IMPROVING_THRESHOLD = 0;
  * @param isImproving Gibt an, ob die Position sich verbessert hat.
  * @return Die Reduktion in Plies.
  */
-static constexpr int calculateNullMoveReduction(int depth, int staticEval, int beta, bool isImproving) {
-    return 1 + ((staticEval - beta >= 256) + depth / 8) + !isImproving;
+static constexpr int calculateNullMoveReduction(int depth, int staticEval, int beta) {
+    return 1 + ((staticEval - beta >= 256) + depth / 8);
 }
 
 /**
