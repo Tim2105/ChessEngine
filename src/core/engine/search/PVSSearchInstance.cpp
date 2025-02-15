@@ -110,7 +110,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
     if(nullMoveCooldown <= 0 && !board.isCheck() && nodeType != PV_NODE &&
        depth > 1 && !deactivateNullMove()) {
 
-        int depthReduction = calculateNullMoveReduction(depth, searchStack[ply].preliminaryScore, beta, isImproving);
+        int depthReduction = calculateNullMoveReduction(depth, searchStack[ply].preliminaryScore, beta);
         if(depthReduction > 1 && depth - depthReduction > 0) {
             Move nullMove = Move::nullMove();
             board.makeMove(nullMove);
@@ -120,10 +120,10 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
             board.undoMove();
 
             if(score >= beta) {
-                if(!verifyNullMove() || depth <= 2)
+                if(!verifyNullMove() || depth + 1 <= depthReduction)
                     return score;
 
-                score = pvs(depth - 2, ply, beta - 1, beta, CUT_NODE, NULL_MOVE_COOLDOWN, singularExtCooldown);
+                score = pvs(depth - depthReduction + 1, ply, beta - 1, beta, CUT_NODE, NULL_MOVE_COOLDOWN, singularExtCooldown);
                 if(score >= beta)
                     return score;
             }
@@ -218,21 +218,21 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
     int depthReduction = 0;
     if(entryExists) {
         int depthDiff = depth - entry.depth;
-        depthReduction = (depthDiff > 1) + (depthDiff / 6);
+        depthReduction = (depthDiff > 1 + (nodeType == PV_NODE));
     } else
-        depthReduction = (depth > 1) + (depth / 6);
+        depthReduction = (depth > 1 + (nodeType == PV_NODE));
 
     if(depthReduction > 0)
         depth -= depthReduction;
 
-    addMovesToSearchStack(ply, false, depth);
+    addMovesToSearchStack(ply, depthReduction > 0 && nodeType != ALL_NODE, depth);
 
     // Prüfe, ob die Suche abgebrochen werden soll.
     if(stopFlag.load() && currentSearchDepth > 1)
         return 0;
 
     // Ermittele, ob wir Heuristiken anwenden dürfen, um die Suchtiefe zu erweitern.
-    bool allowHeuristicExtensions = extensionsOnPath < currentSearchDepth / 2;
+    bool allowHeuristicExtensions = extensionsOnPath < currentSearchDepth;
 
     Move move;
     int moveCount = 0, moveScore;
@@ -650,10 +650,10 @@ int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int ply, int d
         return 0;
 
     // Reduziere standardmäßig anhand einer Funktion, die von der Suchtiefe abhängt.
-    double reduction = std::log(depth) * std::log(moveCount) / std::log(10) + 1.0;
+    double reduction = std::log(depth) * std::log(2 * moveCount) / std::log(20) + 1.0;
 
     int historyScore = getHistoryScore(lastMove, ply);
-    reduction -= historyScore / 25000.0;
+    reduction -= std::max(historyScore / 40000.0, -1.0);
 
     // Runde die Reduktion ab.
     return (int)reduction;
@@ -665,11 +665,11 @@ int PVSSearchInstance::determineLMPCount(int depth, bool isCheckEvasion, bool is
     if(depth >= 10 || isCheckEvasion)
         return std::numeric_limits<int>::max();
 
-    // Standardmäßig müssen mindestens 5 Züge betrachtet werden.
-    int result = 5 + 2 * isImproving;
+    // Standardmäßig müssen mindestens 6 Züge betrachtet werden.
+    int result = 6 + 2 * isImproving;
 
     // Erhöhe die Anzahl der zu betrachtenden Züge mit der verbleibenden Suchtiefe.
-    result += (depth - 1) * (depth - 1) * (4 + 2 * isImproving);
+    result += (depth - 1) * (depth - 1) * (6 + 2 * isImproving);
 
     return result;
 }
