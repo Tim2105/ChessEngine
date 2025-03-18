@@ -50,5 +50,8 @@ extern size_t noImprovementPatience;
 extern size_t batchSize;
 extern double epsilon;
 extern double discount;
+extern double beta1;
+extern double beta2;
+extern double weightDecay;
 
 #endif

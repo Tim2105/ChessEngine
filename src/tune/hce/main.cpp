@@ -63,6 +63,12 @@ void setParameter(std::string parameter, std::string value) {
             epsilon = std::stod(value);
         else if(parameter == "discount")
             discount = std::stod(value);
+        else if(parameter == "beta1")
+            beta1 = std::stod(value);
+        else if(parameter == "beta2")
+            beta2 = std::stod(value);
+        else if(parameter == "weightDecay")
+            weightDecay = std::stod(value);
         else if(parameter == "validationSplit")
             validationSplit = std::stod(value);
         else if(parameter == "noImprovementPatience")
@@ -100,6 +106,9 @@ void displayParameters() {
     std::cout << "k: " << k << std::endl;
     std::cout << "epsilon: " << epsilon << std::endl;
     std::cout << "discount: " << discount << std::endl;
+    std::cout << "beta1: " << beta1 << std::endl;
+    std::cout << "beta2: " << beta2 << std::endl;
+    std::cout << "weightDecay: " << weightDecay << std::endl;
     std::cout << "validationSplit: " << validationSplit << std::endl;
     std::cout << "noImprovementPatience: " << noImprovementPatience << std::endl;
     std::cout << "startOutputAtMove: " << startOutputAtMove << std::endl;
@@ -339,9 +348,26 @@ void learn() {
     // Erstelle ein neuen Parametersatz
     HCEParameters currentHCEParams;
 
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::normal_distribution<double> noiseDist(0.0, noiseDefaultStdDev);
+    
+    for(size_t i = 0; i < currentHCEParams.size(); i++)
+        if(currentHCEParams.isOptimizable(i))
+            currentHCEParams[i] = noiseDist(gen);
+        else if(currentHCEParams.isParameterDead(i))
+            currentHCEParams[i] = 0;
+
+    currentHCEParams.unpackPSQT();
+
     // Durchlaufe alle Generationen
     for(size_t i = 0; i < numGenerations; i++) {
         std::cout << "Generation " << i + 1 << "/" << numGenerations << std::endl;
+
+        numGames = oldNumGames + numGamesIncrement * i;
+        timeControl = oldTimeControl + timeControlIncrement * i;
+        increment = oldIncrement + incrementIncrement * i;
+        numEpochs = oldNumEpochs + numEpochsIncrement * i;
 
         // Generiere die Datenpunkte
         std::ifstream pgnFile(pgnFilePath);
@@ -363,18 +389,13 @@ void learn() {
         // Führe den Gradientenabstieg durch
         double oldLearningRate = learningRate;
         learningRate = learningRate * std::pow(learningRateDecay, i);
-        currentHCEParams = Tune::adaGrad(data, currentHCEParams);
+        currentHCEParams = Tune::adamW(data, currentHCEParams);
         learningRate = oldLearningRate;
 
         // Speichere die Parameter
         std::ofstream outFile("data/generation" + std::to_string(i) + ".hce");
 
         currentHCEParams.saveParameters(outFile);
-
-        numGames += numGamesIncrement;
-        timeControl += timeControlIncrement;
-        increment += incrementIncrement;
-        numEpochs += numEpochsIncrement;
     }
 
     std::cout << "Finished training" << std::endl;

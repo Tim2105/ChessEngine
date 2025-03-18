@@ -18,9 +18,10 @@ namespace Tune {
      * @param hceParams Der Parametersatz.
      * @param k Ein Faktor, der mit dem Argument der Sigmoid-Funktion multipliziert wird.
      * @param discount Der Discount-Faktor.
+     * @param weightDecay Der Gewichtungsabfall.
      * @return double Der mittlere quadratische Fehler.
      */
-    double loss(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k, double discount);
+    double loss(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k, double discount, double weightDecay = 0.0);
 
     /**
      * @brief Bestimmt den MSE eines Parametersatzes auf einem Datensatz.
@@ -31,9 +32,10 @@ namespace Tune {
      * @param hceParams Der Parametersatz.
      * @param k Ein Faktor, der mit dem Argument der Sigmoid-Funktion multipliziert wird.
      * @param discount Der Discount-Faktor.
+     * @param weightDecay Der Gewichtungsabfall.
      * @return double Der mittlere quadratische Fehler.
      */
-    double loss(std::vector<DataPoint>& data, const HCEParameters& hceParams, double k, double discount);
+    double loss(std::vector<DataPoint>& data, const HCEParameters& hceParams, double k, double discount, double weightDecay = 0.0);
 
     /**
      * @brief Berechnet den Gradienten des MSE eines Parametersatzes auf einem Datensatz.
@@ -57,6 +59,15 @@ namespace Tune {
      * @return HCEParameters Die verbesserten Parameter.
      */
     HCEParameters adaGrad(std::vector<DataPoint>& data, const HCEParameters& hceParams);
+
+    /**
+     * @brief Verbessert die Parameter eines HCE-Modells über den AdamW-Algorithmus.
+     * 
+     * @param data Der Datensatz.
+     * @param hceParams Die Parameter des HCE-Modells.
+     * @return HCEParameters Die verbesserten Parameter.
+     */
+    HCEParameters adamW(std::vector<DataPoint>& data, const HCEParameters& hceParams);
 };
 
 #endif
