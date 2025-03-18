@@ -296,8 +296,8 @@ void HCEParameters::displayParameters(std::ostream& os) const {
     os << "Strong Square Bonus MG: " << mgStrongSquareBonus << "\n";
 
     os << "Num Attacker Weight: [";
-    for(size_t i = 0; i < 4; i++)
-        os << std::setw(3) << numAttackerWeight[i] + 100 << (i == 3 ? "]\n" : ", ");
+    for(size_t i = 0; i < 3; i++)
+        os << std::setw(3) << numAttackerWeight[i] + 128 << (i == 2 ? "]\n" : ", ");
 
     os << "Knight Attack Bonus: " << knightAttackBonus << "\n";
     os << "Bishop Attack Bonus: " << bishopAttackBonus << "\n";

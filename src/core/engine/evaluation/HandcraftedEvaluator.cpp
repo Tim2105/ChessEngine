@@ -426,7 +426,7 @@ int HandcraftedEvaluator::evaluateKingAttackZone() {
                                board.getAttackBitboard(WHITE_BISHOP);
 
     // Bestimme die Anzahl der Angreifer pro Figurentyp auf die Felder um den weißen König
-    Bitboard kingZone = kingAttackZone[whiteKingSquare];
+    Bitboard kingZone = kingAttackZone[WHITE / COLOR_MASK][whiteKingSquare];
     int numBlackAttackers = 0;
     int blackAttackersWeight = 0;
 
@@ -482,13 +482,13 @@ int HandcraftedEvaluator::evaluateKingAttackZone() {
         }
     }
 
-    numBlackAttackers = std::min(numBlackAttackers, 4);
+    numBlackAttackers = std::min(numBlackAttackers, 3);
 
     defendedSquares = board.getAttackBitboard(BLACK_PAWN) | board.getAttackBitboard(BLACK_KNIGHT) |
                       board.getAttackBitboard(BLACK_BISHOP);
 
     // Bestimme die Anzahl der Angreifer pro Figurentyp auf die Felder um den schwarzen König
-    kingZone = kingAttackZone[blackKingSquare];
+    kingZone = kingAttackZone[BLACK / COLOR_MASK][blackKingSquare];
     int numWhiteAttackers = 0;
     int whiteAttackersWeight = 0;
 
@@ -544,12 +544,12 @@ int HandcraftedEvaluator::evaluateKingAttackZone() {
         }
     }
 
-    numWhiteAttackers = std::min(numWhiteAttackers, 4);
+    numWhiteAttackers = std::min(numWhiteAttackers, 3);
 
     // Berechne die Bewertung
     // Typecast zu int32_t um auf 16-Bit-Systemen Überläufe zu vermeiden
-    score = whiteAttackersWeight * (int32_t)(hceParams.getNumAttackerWeight(numWhiteAttackers) + 100) / 100 -
-            blackAttackersWeight * (int32_t)(hceParams.getNumAttackerWeight(numBlackAttackers) + 100) / 100;
+    score = whiteAttackersWeight * (int32_t)(hceParams.getNumAttackerWeight(numWhiteAttackers) + 128) / 128 -
+            blackAttackersWeight * (int32_t)(hceParams.getNumAttackerWeight(numBlackAttackers) + 128) / 128;
 
     return score;
 }

@@ -4,6 +4,8 @@
 #include <fstream>
 #include <stdint.h>
 
+#include "core/chess/BoardDefinitions.h"
+
 class HCEParameters {
 
     public:
@@ -37,8 +39,8 @@ class HCEParameters {
          * Bonus für das Zugrecht im Mittel- und Endspiel.
          */
 
-        int16_t mgTempoBonus;
-        int16_t egTempoBonus;
+        int16_t mgTempoBonus = 20;
+        int16_t egTempoBonus = 8;
 
         /**
          * Bonus für angegriffene Figuren im Mittel- und Endspiel.
@@ -81,30 +83,30 @@ class HCEParameters {
          * angegriffen werden können.
          */
 
-        int16_t mgStrongSquareBonus;
+        int16_t mgStrongSquareBonus = 12;
 
         /**
          * Ein Bonus für jedes Feld im Königsbereich des Gegners,
          * dass von einer eigenen Figur angegriffen wird.
          */
 
-        int16_t numAttackerWeight[4];
+         int16_t numAttackerWeight[3];
 
-        int16_t knightAttackBonus;
-        int16_t bishopAttackBonus;
-        int16_t rookAttackBonus;
-        int16_t queenAttackBonus;
+         int16_t knightAttackBonus;
+         int16_t bishopAttackBonus;
+         int16_t rookAttackBonus;
+         int16_t queenAttackBonus;
 
         /**
          * Bewertungen für verschiedene Merkmale in
          * Zusammenhang mit der Königssicherheit.
          */
 
-        int16_t mgPawnShieldSizeBonus[3];
+        int16_t mgPawnShieldSizeBonus[3] = {4, 23, 30};
 
-        int16_t mgKingOpenFilePenalty[3];
+        int16_t mgKingOpenFilePenalty[3] = {-8, -28, -45};
 
-        int16_t mgPawnStormBonus[5]; // pro Rang (2 - 6)
+        int16_t mgPawnStormBonus[5] = {2, 2, 20, 21, 25}; // pro Rang (2 - 6)
 
         /**
          * Bewertungen für die Mobilität der Figuren
@@ -124,8 +126,8 @@ class HCEParameters {
          * im nächsten Zug erreichen kann.
          */
 
-        int16_t mgKnightOnStrongSquareBonus;
-        int16_t mgBishopOnStrongSquareBonus;
+        int16_t mgKnightOnStrongSquareBonus = 38;
+        int16_t mgBishopOnStrongSquareBonus = 17;
 
         /**
          * Eine Bestrafung für Läufer, die durch eigene
@@ -133,54 +135,54 @@ class HCEParameters {
          * Bauern gedeckte, Bauern blockiert werden.
          */
 
-        int16_t mgBadBishopPenalty;
-        int16_t egBadBishopPenalty;
+        int16_t mgBadBishopPenalty = -12;
+        int16_t egBadBishopPenalty = -3;
 
         /**
          * Ein Bonus für jede offene oder halboffene
          * Linie, auf der sich ein Turm befindet.
          */
 
-        int16_t mgRookOnOpenFileBonus;
-        int16_t mgRookOnSemiOpenFileBonus;
+        int16_t mgRookOnOpenFileBonus = 31;
+        int16_t mgRookOnSemiOpenFileBonus = 12;
 
         /**
          * Ein Bonus für gedoppelte Türme auf
          * halboffenen oder offenen Linien.
          */
-        int16_t mgDoubledRooksOnOpenFileBonus;
-        int16_t mgDoubledRooksOnSemiOpenFileBonus;
+        int16_t mgDoubledRooksOnOpenFileBonus = 35;
+        int16_t mgDoubledRooksOnSemiOpenFileBonus = 8;
 
         /**
          * Ein Bonus für jeden Freibauern, der von
          * einem Turm auf derselben Linie verteidigt wird.
          */
 
-        int16_t egRookBehindPassedPawnBonus;
+        int16_t egRookBehindPassedPawnBonus = 65;
 
         /**
          * @brief Bonus für jede Figur, die einen
          * gegnerischen Freibauern blockiert.
          */
 
-        int16_t egBlockedEnemyPassedPawnBonus;
+        int16_t egBlockedEnemyPassedPawnBonus = 58;
 
         /**
          * Gewichtungsparameter für die Bewertung der Distanz
          * des Königs zu Bauern im Endspiel.
          */
 
-        int16_t egKingProximityPawnWeight;
-        int16_t egKingProximityBackwardPawnWeight;
-        int16_t egKingProximityCandidatePassedPawnWeight;
-        int16_t egKingProximityPassedPawnWeight;
+        int16_t egKingProximityPawnWeight = 2;
+        int16_t egKingProximityBackwardPawnWeight = 3;
+        int16_t egKingProximityCandidatePassedPawnWeight = 3;
+        int16_t egKingProximityPassedPawnWeight = 18;
 
         /**
          * @brief Bonus für Freibauern in einem Bauernendspiel,
          * die nicht mehr vom gegnerischen König erreicht werden können.
          */
 
-        int16_t ruleOfTheSquareBonus;
+        int16_t ruleOfTheSquareBonus = 500;
 
         /**
          * @brief Bestrafung für ein Endspiel mit Läufern
@@ -188,7 +190,7 @@ class HCEParameters {
          * der ansonsten führenden Seite angerechnet und
          * kann das Vorzeichen der Bewertung nicht ändern.
          */
-        int16_t oppositeColorBishopsPenalty;
+        int16_t oppositeColorBishopsPenalty = -250;
 
         /**
          * @brief Bestrafung für ein Endspiel mit Türmen
@@ -196,7 +198,7 @@ class HCEParameters {
          * Die Bestrafung wird der ansonsten führenden Seite
          * angerechnet und kann das Vorzeichen der Bewertung nicht ändern.
          */
-        int16_t rookEndgamePenalty;
+        int16_t rookEndgamePenalty = -50;
 
         /**
          * Hier werden die entpackten Positionstabellen
