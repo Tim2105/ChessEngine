@@ -86,6 +86,7 @@ void printPerftResults(Board& board, int depth) {
         } else {
             std::vector<std::thread> threads;
             std::vector<std::tuple<Move, std::vector<Board>>> work(moves.size());
+            std::vector<std::atomic_size_t> workProgress(moves.size());
             std::vector<std::atomic_uint64_t> nodes(moves.size());
 
             size_t moveIndex = 0;
@@ -141,7 +142,6 @@ void printPerftResults(Board& board, int depth) {
             for(size_t i = 0; i < numThreads; i++) {
                 threads.push_back(std::thread([&]() {
                     do {
-                        bool output = false;
                         workMutex.lock();
                         size_t localMoveIndex = moveIndex;
                         if(localMoveIndex >= work.size()) {
@@ -153,7 +153,6 @@ void printPerftResults(Board& board, int depth) {
                         if(boardIndex >= std::get<1>(work[localMoveIndex]).size()) {
                             moveIndex += 1;
                             boardIndex = 0;
-                            output = true;
                         }
                         workMutex.unlock();
 
@@ -161,9 +160,10 @@ void printPerftResults(Board& board, int depth) {
 
                         uint64_t count = perft(board, depth - unpackingDepth - 1);
                         nodes[localMoveIndex].fetch_add(count);
+                        size_t progress = workProgress[localMoveIndex].fetch_add(1);
 
                         // Live output of finished nodes at 1 ply
-                        if(output) {
+                        if(progress + 1 >= std::get<1>(work[localMoveIndex]).size()) {
                             coutMutex.lock();
                             std::cout << std::setw(5) << std::get<0>(work[localMoveIndex]).toString() << ": " << nodes[localMoveIndex].load() << std::endl;
                             coutMutex.unlock();
