@@ -5,6 +5,12 @@
 
 #include "test/Perft.h"
 
+#include <atomic>
+#include <cmath>
+#include <mutex>
+#include <tuple>
+#include <vector>
+
 #include "core/utils/Array.h"
 #include "core/utils/MoveNotations.h"
 
@@ -67,44 +73,113 @@ void printPerftResults(Board& board, int depth) {
 
         size_t numThreads = UCI::options["Threads"].getValue<size_t>();
 
-        std::vector<std::thread> threads;
-        std::vector<Board> boards;
-        std::vector<uint64_t> nodes;
+        if(numThreads == 1) {
+            // sequenzielle Ausführung
+            for(Move m : moves) {
+                board.makeMove(m);
+                uint64_t nodes = perft(board, depth - 1);
+                board.undoMove();
 
-        for(size_t i = 0; i < numThreads; i++) {
-            boards.push_back(board);
-            nodes.push_back(0);
-        }
+                accumulatedNodes += nodes;
+                std::cout << std::setw(5) << m.toString() << ": " << nodes << std::endl;
+            }
+        } else {
+            std::vector<std::thread> threads;
+            std::vector<std::tuple<Move, std::vector<Board>>> work(moves.size());
+            std::vector<std::atomic_uint64_t> nodes(moves.size());
 
-        std::mutex coutMutex, moveArrayMutex;
+            size_t moveIndex = 0;
+            size_t boardIndex = 0;
+            std::mutex workMutex, coutMutex;
 
-        for(size_t i = 0; i < numThreads; i++) {
-            threads.push_back(std::thread([&](size_t threadIndex) {
-                moveArrayMutex.lock();
-                while(moves.size() > 0) {
-                    Move m = moves.pop_back();
-                    moveArrayMutex.unlock();
+            // Annahme: Verzweigungsfaktor = moves.size()
+            // Erhöhe die Entpacktiefe solange bis die Anzahl der Bretter
+            // mindestens doppelt so groß wie die Anzahl der Threads ist
+            size_t unpackingDepth = 1;
+            size_t numBoardsPerMove = std::max(moves.size(), size_t(10)); // Mindestens 10
+            if(board.isCheck()) // Im Schach ist der Verzweigungsfaktor wahrscheinlich höher
+                numBoardsPerMove = 8 + board.getPieceBitboard().popcount() * 3;
+            
+            while(numBoardsPerMove < numThreads * 2) {
+                unpackingDepth++;
+                numBoardsPerMove *= numBoardsPerMove;
+            }
 
-                    boards[threadIndex].makeMove(m);
-                    uint64_t count = perft(boards[threadIndex], depth - 1);
-                    boards[threadIndex].undoMove();
+            // Die Entpacktiefe darf nicht größer als die Suchtiefe sein
+            unpackingDepth = std::min(unpackingDepth, (size_t)depth - 1);
 
-                    nodes[threadIndex] += count;
-
-                    coutMutex.lock();
-                    std::cout << std::setw(5) << m.toString() << ": " << count << std::endl;
-                    coutMutex.unlock();
-
-                    moveArrayMutex.lock();
+            const std::function<void(Board&, size_t, std::vector<Board>&)> unpackBoards =
+                [&unpackBoards](Board& root, size_t depth, std::vector<Board>& boards) {
+                if(depth == 0) {
+                    boards.push_back(root);
+                    return;
                 }
 
-                moveArrayMutex.unlock();
-            }, i));
-        }
+                Array<Move, 256> moves;
+                root.generateLegalMoves(moves);
 
-        for(size_t i = 0; i < threads.size(); i++) {
-            threads[i].join();
-            accumulatedNodes += nodes[i];
+                for(Move m : moves) {
+                    root.makeMove(m);
+                    unpackBoards(root, depth - 1, boards);
+                    root.undoMove();
+                }
+            };
+
+            for(Move m : moves) {
+                board.makeMove(m);
+
+                std::get<0>(work[moveIndex]) = m;
+                std::get<1>(work[moveIndex]).reserve(numBoardsPerMove + numBoardsPerMove / 2);
+                unpackBoards(board, unpackingDepth, std::get<1>(work[moveIndex]));
+
+                board.undoMove();
+                moveIndex++;
+            }
+
+            moveIndex = 0;
+
+            for(size_t i = 0; i < numThreads; i++) {
+                threads.push_back(std::thread([&]() {
+                    do {
+                        bool output = false;
+                        workMutex.lock();
+                        size_t localMoveIndex = moveIndex;
+                        if(localMoveIndex >= work.size()) {
+                            workMutex.unlock();
+                            return;
+                        }
+
+                        size_t localBoardIndex = boardIndex++;
+                        if(boardIndex >= std::get<1>(work[localMoveIndex]).size()) {
+                            moveIndex += 1;
+                            boardIndex = 0;
+                            output = true;
+                        }
+                        workMutex.unlock();
+
+                        Board& board = std::get<1>(work[localMoveIndex])[localBoardIndex];
+
+                        uint64_t count = perft(board, depth - unpackingDepth - 1);
+                        nodes[localMoveIndex].fetch_add(count);
+
+                        // Live output of finished nodes at 1 ply
+                        if(output) {
+                            coutMutex.lock();
+                            std::cout << std::setw(5) << std::get<0>(work[localMoveIndex]).toString() << ": " << nodes[localMoveIndex].load() << std::endl;
+                            coutMutex.unlock();
+                        }
+                    } while(true);
+                }));
+            }
+
+            for(size_t i = 0; i < threads.size(); i++) {
+                threads[i].join();
+            }
+
+            for(size_t i = 0; i < moves.size(); i++) {
+                accumulatedNodes += nodes[i].load();
+            }
+            std::cout << "\n";
         }
 
     #endif
@@ -113,6 +188,6 @@ void printPerftResults(Board& board, int depth) {
     std::cout << "Total: " << accumulatedNodes << "\n";
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     std::cout << " Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "ms" << "\n";
-    std::cout << "  N/s: " << accumulatedNodes / std::max((uint64_t)std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count(),
-                            (uint64_t)1) * 1000 << std::endl;
+    std::cout << " kN/s: " << accumulatedNodes / std::max((uint64_t)std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count(),
+                            (uint64_t)1) << std::endl;
 }
