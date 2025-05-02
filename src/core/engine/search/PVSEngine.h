@@ -30,11 +30,11 @@ class PVSEngine {
          */
         Board& board;
 
-        #if defined(USE_HCE) && defined(TUNE)
+        #if defined(USE_HCE)
         /**
          * @brief Die HCE-Parameter, die für die Suche verwendet werden.
          */
-        HCEParameters hceParams;
+        const HCEParameters& hceParams;
         #endif
 
         /**
@@ -152,6 +152,12 @@ class PVSEngine {
         PVSSearchInstance* mainInstance = nullptr;
 
         /**
+         * @brief Bestimmt, ob die Ausgabe der Suchinformationen
+         * nach dem UCI-Protokoll erfolgen soll.
+         */
+        bool uciOutput = true;
+
+        /**
          * @brief Die Funktion, die von den
          * Helper-Threads ausgeführt wird.
          */
@@ -231,6 +237,7 @@ class PVSEngine {
         }
 
     public:
+        #if defined(USE_HCE)
         /**
          * @brief Konstruktor
          * 
@@ -240,11 +247,11 @@ class PVSEngine {
          * @param checkupCallback Die Funktion, die bei jedem Checkup aufgerufen
          * werden soll. Wenn keine Funktion aufgerufen werden soll, kann dieser
          * Parameter weggelassen werden.
+         * @param uciOutput Bestimmt, ob nach dem UCI-Protokoll ausgegeben werden soll.
          */
-        PVSEngine(Board& board, uint64_t checkupInterval = 2, std::function<void()> checkupCallback = nullptr)
-                : board(board), checkupInterval(checkupInterval), checkupCallback(checkupCallback) {}
+        PVSEngine(Board& board, uint64_t checkupInterval = 2, std::function<void()> checkupCallback = nullptr, bool uciOutput = true)
+                : board(board), hceParams(HCE_PARAMS), checkupInterval(checkupInterval), checkupCallback(checkupCallback), uciOutput(uciOutput) {}
 
-        #if defined(USE_HCE) && defined(TUNE)
         /**
          * @brief Konstruktor mit HCE-Parametern.
          * 
@@ -255,9 +262,24 @@ class PVSEngine {
          * @param checkupCallback Die Funktion, die bei jedem Checkup aufgerufen
          * werden soll. Wenn keine Funktion aufgerufen werden soll, kann dieser
          * Parameter weggelassen werden.
+         * @param uciOutput Bestimmt, ob nach dem UCI-Protokoll ausgegeben werden soll.
          */
-        PVSEngine(Board& board, HCEParameters& hceParams, uint64_t checkupInterval = 2, std::function<void()> checkupCallback = nullptr)
-                : board(board), hceParams(hceParams), checkupInterval(checkupInterval), checkupCallback(checkupCallback) {}
+        PVSEngine(Board& board, const HCEParameters& hceParams, uint64_t checkupInterval = 2, std::function<void()> checkupCallback = nullptr, bool uciOutput = true)
+                : board(board), hceParams(hceParams), checkupInterval(checkupInterval), checkupCallback(checkupCallback), uciOutput(uciOutput) {}
+        #else
+        /**
+         * @brief Konstruktor
+         * 
+         * @param board Das, zu betrachtende, Schachbrett.
+         * @param checkupInterval Die Anzahl an Millisekunden, die zwischen
+         * zwei Checkups vergehen sollen.
+         * @param checkupCallback Die Funktion, die bei jedem Checkup aufgerufen
+         * werden soll. Wenn keine Funktion aufgerufen werden soll, kann dieser
+         * Parameter weggelassen werden.
+         * @param uciOutput Bestimmt, ob nach dem UCI-Protokoll ausgegeben werden soll.
+         */
+        PVSEngine(Board& board, uint64_t checkupInterval = 2, std::function<void()> checkupCallback = nullptr, bool uciOutput = true)
+                : board(board), checkupInterval(checkupInterval), checkupCallback(checkupCallback), uciOutput(uciOutput) {}
         #endif
 
         PVSEngine(const PVSEngine& other) = delete;
@@ -319,6 +341,10 @@ class PVSEngine {
          */
         inline void setCheckupCallback(std::function<void()> checkupCallback) {
             this->checkupCallback = checkupCallback;
+        }
+
+        inline void setUCIOutput(bool uciOutput) {
+            this->uciOutput = uciOutput;
         }
 
         inline void setPondering(bool isPondering) {

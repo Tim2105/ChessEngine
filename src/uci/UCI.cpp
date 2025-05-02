@@ -51,13 +51,28 @@ void handleGoCommand(std::string args);
 void handleStopCommand();
 void handlePonderHitCommand();
 
-void UCI::listen() {
+// struct stringbuf :
+
+void UCI::listen(const std::vector<std::string>& args) {
     std::cout << ENGINE_NAME << " " << ENGINE_VERSION << std::endl << std::endl;
 
-    std::string command;
+    if(args.size() > 0) {
+        // Führe die Engine mit den gegebenen Argumenten aus
+        for(const std::string& arg : args) {
+            std::stringbuf buf(arg);
+            std::istream is(&buf);
+            readAndHandleNextCommand(is);
 
-    while(!quitFlag)
-        readAndHandleNextCommand(std::cin);
+            #ifndef DISABLE_THREADS
+                if(searchThread.joinable())
+                    searchThread.join();
+            #endif
+        }
+    } else {
+        // Warte auf UCI-Befehle in der Standardeingabe
+        while(!quitFlag)
+            readAndHandleNextCommand(std::cin);
+    }
 
     engine.stop();
 
@@ -81,13 +96,13 @@ void readAndHandleNextCommand(std::istream& is) {
     else if(command == "ponderhit")
         handlePonderHitCommand();
     else if(command == "position")
-        handlePositionCommand(getNextLine(std::cin));
+        handlePositionCommand(getNextLine(is));
     else if(command == "go")
-        handleGoCommand(getNextLine(std::cin));
+        handleGoCommand(getNextLine(is));
     else if(command == "debug")
-        handleDebugCommand(getNextLine(std::cin));
+        handleDebugCommand(getNextLine(is));
     else if(command == "setoption")
-        handleSetOptionCommand(getNextLine(std::cin));
+        handleSetOptionCommand(getNextLine(is));
     else if(command == "register")
         handleRegisterCommand();
     else if(command == "quit")

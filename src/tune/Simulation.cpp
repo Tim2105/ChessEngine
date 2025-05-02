@@ -1,5 +1,3 @@
-#if defined(USE_HCE) && defined(TUNE)
-
 #include "tune/Simulation.h"
 
 #include "core/chess/Referee.h"
@@ -52,7 +50,9 @@ GameResult Simulation::simulateSingleGame(Board& board) {
     }
 
     PVSEngine white(board, whiteParameters);
+    white.setUCIOutput(false);
     PVSEngine black(board, blackParameters);
+    black.setUCIOutput(false);
 
     int32_t wtime = timeControl;
     int32_t btime = timeControl;
@@ -80,12 +80,6 @@ GameResult Simulation::simulateSingleGame(Board& board) {
 
             if(Referee::isCheckmate(board))
                 return WHITE_WIN;
-
-            int score = white.getBestMoveScore();
-            if(score >= DECISIVE_SCORE)
-                return WHITE_WIN;
-            else if(score <= -DECISIVE_SCORE)
-                return BLACK_WIN;
         } else {
             std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
             black.search(params);
@@ -100,15 +94,9 @@ GameResult Simulation::simulateSingleGame(Board& board) {
 
             if(Referee::isCheckmate(board))
                 return BLACK_WIN;
-
-            int score = black.getBestMoveScore();
-            if(score >= DECISIVE_SCORE)
-                return BLACK_WIN;
-            else if(score <= -DECISIVE_SCORE)
-                return WHITE_WIN;
         }
 
-        if(Referee::isDraw(board))
+        if(Referee::isDraw(board) || board.getAge() >= DRAW_AFTER_N_MOVES)
             return DRAW;
     }
 }
@@ -155,5 +143,3 @@ void Simulation::run() {
 
     std::cout << "\rRemaining games: 0      " << std::endl;
 }
-
-#endif

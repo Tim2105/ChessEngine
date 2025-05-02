@@ -1,6 +1,3 @@
-#ifdef TUNE
-#ifdef USE_HCE
-
 #include "core/chess/Board.h"
 #include "core/utils/magics/Magics.h"
 #include "tune/Simulation.h"
@@ -16,13 +13,20 @@
 #include <optional>
 #include <random>
 
-void simulateGames(size_t n, std::istream& pgnFile, std::ostream& outFile, std::optional<HCEParameters> params = std::nullopt);
+void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, bool useNoisyParameters, double noiseDefaultStdDev,
+                   double noiseLinearStdDev, std::istream& pgnFile, std::ostream& outFile,
+                   std::optional<HCEParameters> params = std::nullopt);
 
 void generateData() {
-    std::ifstream pgnFile(pgnFilePath);
-    std::ofstream resultFile(samplesFilePath, std::ios::app);
+    std::ifstream pgnFile(pgnFilePath.get<std::string>());
+    std::ofstream resultFile(samplesFilePath.get<std::string>(), std::ios::app);
 
-    simulateGames(numGames, pgnFile, resultFile);
+    simulateGames(numGames.get<size_t>(), timeControl.get<uint32_t>(), increment.get<uint32_t>(), 
+                  useNoisyParameters.get<bool>(), noiseDefaultStdDev.get<double>(), noiseLinearStdDev.get<double>(),
+                  pgnFile, resultFile);
+
+    pgnFile.close();
+    resultFile.close();
 }
 
 std::vector<DataPoint> loadData(std::istream& resultFile, size_t n = std::numeric_limits<size_t>::max());
@@ -37,86 +41,22 @@ void learn();
 
 void setParameter(std::string parameter, std::string value) {
     try {
-        if(parameter == "numGames")
-            numGames = std::stoi(value);
-        else if(parameter == "timeControl")
-            timeControl = std::stoi(value);
-        else if(parameter == "increment")
-            increment = std::stoi(value);
-        else if(parameter == "pgnFilePath")
-            pgnFilePath = value;
-        else if(parameter == "samplesFilePath")
-            samplesFilePath = value;
-        else if(parameter == "learningRate")
-            learningRate = std::stod(value);
-        else if(parameter == "learningRateDecay")
-            learningRateDecay = std::stod(value);
-        else if(parameter == "numEpochs")
-            numEpochs = std::stoi(value);
-        else if(parameter == "numGenerations")
-            numGenerations = std::stoi(value);
-        else if(parameter == "batchSize")
-            batchSize = std::stoi(value);
-        else if(parameter == "k")
-            k = std::stod(value);
-        else if(parameter == "epsilon")
-            epsilon = std::stod(value);
-        else if(parameter == "discount")
-            discount = std::stod(value);
-        else if(parameter == "beta1")
-            beta1 = std::stod(value);
-        else if(parameter == "beta2")
-            beta2 = std::stod(value);
-        else if(parameter == "weightDecay")
-            weightDecay = std::stod(value);
-        else if(parameter == "validationSplit")
-            validationSplit = std::stod(value);
-        else if(parameter == "noImprovementPatience")
-            noImprovementPatience = std::stoi(value);
-        else if(parameter == "startOutputAtMove")
-            startOutputAtMove = std::stoi(value);
-        else if(parameter == "startingMoves")
-            startingMoves = std::stod(value);
-        else if(parameter == "useNoisyParameters")
-            useNoisyParameters = value == "true";
-        else if(parameter == "noiseDefaultStdDev")
-            noiseDefaultStdDev = std::stod(value);
-        else if(parameter == "noiseLinearStdDev")
-            noiseLinearStdDev = std::stod(value);
-        else if(parameter == "noiseDecay")
-            noiseDecay = std::stod(value);
-        else
-            std::cerr << "Unknown parameter: " << parameter << std::endl;
+        for(Variable* var : tuneVariables) {
+            if(var->getName() == parameter) {
+                var->set(value);
+                std::cout << "Set parameter " << parameter << " to " << var->getAsString() << std::endl;
+                break;
+            }
+        }
     } catch(std::invalid_argument& e) {
         std::cerr << "Invalid value for parameter " << parameter << ": " << value << std::endl;
     }
 }
 
 void displayParameters() {
-    std::cout << "numGames: " << numGames << std::endl;
-    std::cout << "timeControl: " << timeControl << std::endl;
-    std::cout << "increment: " << increment << std::endl;
-    std::cout << "pgnFilePath: " << pgnFilePath << std::endl;
-    std::cout << "samplesFilePath: " << samplesFilePath << std::endl;
-    std::cout << "learningRate: " << learningRate << std::endl;
-    std::cout << "learningRateDecay: " << learningRateDecay << std::endl;
-    std::cout << "numEpochs: " << numEpochs << std::endl;
-    std::cout << "numGenerations: " << numGenerations << std::endl;
-    std::cout << "batchSize: " << batchSize << std::endl;
-    std::cout << "k: " << k << std::endl;
-    std::cout << "epsilon: " << epsilon << std::endl;
-    std::cout << "discount: " << discount << std::endl;
-    std::cout << "beta1: " << beta1 << std::endl;
-    std::cout << "beta2: " << beta2 << std::endl;
-    std::cout << "weightDecay: " << weightDecay << std::endl;
-    std::cout << "validationSplit: " << validationSplit << std::endl;
-    std::cout << "noImprovementPatience: " << noImprovementPatience << std::endl;
-    std::cout << "startOutputAtMove: " << startOutputAtMove << std::endl;
-    std::cout << "startingMoves: " << startingMoves << std::endl;
-    std::cout << "useNoisyParameters: " << (useNoisyParameters ? "true" : "false") << std::endl;
-    std::cout << "noiseDefaultStdDev: " << noiseDefaultStdDev << std::endl;
-    std::cout << "noiseLinearStdDev: " << noiseLinearStdDev << std::endl;
-    std::cout << "noiseDecay: " << noiseDecay << std::endl;
+    std::cout << "Current parameters:" << std::endl;
+    for(Variable* var : tuneVariables)
+        std::cout << var->getName() << "(" << var->getTypeString() << "): " << var->getAsString() << " - " << var->getDescription() << std::endl;
 }
 
 int main() {
@@ -140,7 +80,7 @@ int main() {
             findOptimalK();
         else if(input == "grad")
             gradientDescent();
-        else if(input == "dpParams")
+        else if(input == "printResult")
             displayFinalEpoch();
         else if(input == "dp")
             displayParameters();
@@ -166,18 +106,24 @@ int main() {
     return 0;
 }
 
-void simulateGames(size_t n, std::istream& pgnFile, std::ostream& outFile, std::optional<HCEParameters> params) {
+void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, bool useNoisyParameters, double noiseDefaultStdDev,
+                   double noiseLinearStdDev, std::istream& pgnFile, std::ostream& outFile,
+                   std::optional<HCEParameters> params) {
     std::vector<Board> startingPositions;
+    std::vector<unsigned int> startingMoves;
     startingPositions.reserve(n);
+    startingMoves.reserve(n);
 
-    std::default_random_engine generator;
+    std::mt19937 generator(std::time(0));
+    std::uniform_int_distribution openingBookMoves(openingBookMovesMin.get<size_t>(), openingBookMovesMax.get<size_t>());
+    std::uniform_int_distribution randomMoves(randomMovesMin.get<size_t>(), randomMovesMax.get<size_t>());
 
     std::cout << "Loaded 0 games" << std::flush;
 
     // Lade alle Positionen aus der PGN-Datei
     size_t i = 0;
     while(pgnFile.good()) {
-        startingPositions.push_back(std::get<0>(Board::fromPGN(pgnFile, startingMoves)));
+        startingPositions.push_back(std::get<0>(Board::fromPGN(pgnFile, openingBookMoves(generator))));
         i++;
 
         if(i % 10 == 0)
@@ -193,7 +139,21 @@ void simulateGames(size_t n, std::istream& pgnFile, std::ostream& outFile, std::
     std::shuffle(startingPositions.begin(), startingPositions.end(), generator);
     startingPositions.resize(n);
 
-    Simulation sim(startingPositions, timeControl, increment, 10);
+    for(size_t i = 0; i < startingPositions.size(); i++) {
+        size_t numRandomMoves = randomMoves(generator);
+        for(size_t j = 0; j < numRandomMoves; j++) {
+            Array<Move, 256> moves = startingPositions[i].generateLegalMoves();
+            if(moves.size() == 0)
+                break;
+
+            std::uniform_int_distribution<size_t> moveDist(0, moves.size() - 1);
+            startingPositions[i].makeMove(moves[moveDist(generator)]);
+        }
+
+        startingMoves.push_back(startingPositions[i].getAge());
+    }
+
+    Simulation sim(startingPositions, timeControl, increment, numThreads.get<size_t>());
 
     if(params.has_value()) {
         sim.setWhiteParams(params.value());
@@ -209,19 +169,19 @@ void simulateGames(size_t n, std::istream& pgnFile, std::ostream& outFile, std::
     std::cout << "Writing results to file..." << std::endl;
     std::cout << "Remaining games: " << startingPositions.size() << std::flush;
 
-    std::vector<GameResult> results = sim.getResults();
+    std::vector<GameResult>& results = sim.getResults();
 
     for(size_t i = 0; i < startingPositions.size(); i++) {
         std::vector<std::string> output;
-        int outputSize = std::max(0u, startingPositions[i].getAge() - startOutputAtMove);
+        int outputSize = (int)(startingPositions[i].getAge() - startingMoves[i]);
         output.resize(outputSize);
 
         int numPlayedMoves = startingPositions[i].getAge();
 
-        for(int j = startingPositions[i].getAge(); j > startOutputAtMove; j--) {
+        for(int j = (int)startingPositions[i].getAge(); j > (int)startingMoves[i]; j--) {
             std::stringstream ss;
             ss << startingPositions[i].toFEN() << ";";
-            int gameEndsIn = numPlayedMoves - j + 1;
+            int gameEndsIn = numPlayedMoves - j;
             switch(results[i]) {
                 case WHITE_WIN:
                     if(startingPositions[i].getSideToMove() == WHITE)
@@ -240,7 +200,7 @@ void simulateGames(size_t n, std::istream& pgnFile, std::ostream& outFile, std::
                     break;
             }
 
-            output[j - startOutputAtMove - 1] = ss.str();
+            output[j - startingMoves[i] - 1] = ss.str();
             startingPositions[i].undoMove();
         }
 
@@ -290,7 +250,7 @@ std::vector<DataPoint> loadData(std::istream& resultFile, size_t n) {
 void findOptimalK() {
     std::cout << "Finding optimal k..." << std::endl;
 
-    std::ifstream samplesFile(samplesFilePath);
+    std::ifstream samplesFile(samplesFilePath.get<std::string>());
     std::vector<DataPoint> data = loadData(samplesFile);
     samplesFile.close();
 
@@ -299,13 +259,13 @@ void findOptimalK() {
 
     while(loss < prevLoss) {
         prevLoss = loss;
-        double newK = 1e-6 * i * i;
+        double newK = 1e-8 * i * i;
 
-        loss = Tune::loss(data, HCE_PARAMS, newK, discount);
+        loss = Tune::loss(data, HCE_PARAMS, newK, discount.get<double>());
 
         if(loss < prevLoss) {
             std::stringstream ss;
-            ss << "\r(" << i << ") Loss: " << loss << " with k = " << newK << " at discount = " << discount;
+            ss << "\r(" << i << ") Loss: " << loss << " with k = " << newK << " at discount = " << discount.get<double>();
             std::cout << std::left << std::setw(70) << ss.str() << std::right << std::flush;
         }
 
@@ -318,11 +278,13 @@ void findOptimalK() {
 void gradientDescent() {
     HCEParameters currentHCEParams;
 
-    std::ifstream samplesFile(samplesFilePath);
+    Tune::trainingSession = Tune::TrainingSession(currentHCEParams);
+
+    std::ifstream samplesFile(samplesFilePath.get<std::string>());
     std::vector<DataPoint> data = loadData(samplesFile);
     samplesFile.close();
 
-    HCEParameters bestHCEParams = Tune::adaGrad(data, currentHCEParams);
+    HCEParameters bestHCEParams = Tune::adamW(data, currentHCEParams, numEpochs.get<size_t>(), learningRate.get<double>());
 
     std::ofstream outFile("data/epochFinal.hce");
     bestHCEParams.saveParameters(outFile);
@@ -340,75 +302,55 @@ void displayFinalEpoch() {
 }
 
 void learn() {
-    size_t oldNumGames = numGames;
-    size_t oldTimeControl = timeControl;
-    size_t oldIncrement = increment;
-    size_t oldNumEpochs = numEpochs;
-
     // Erstelle ein neuen Parametersatz
-    HCEParameters currentHCEParams;
+    HCEParameters params;
 
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::normal_distribution<double> noiseDist(0.0, noiseDefaultStdDev);
-    
-    for(size_t i = 0; i < currentHCEParams.size(); i++)
-        if(currentHCEParams.isOptimizable(i))
-            currentHCEParams[i] = noiseDist(gen);
-        else if(currentHCEParams.isParameterDead(i))
-            currentHCEParams[i] = 0;
-
-    currentHCEParams.unpackPSQT();
+    // Lade die Trainingssession, falls sie existiert
+    std::ifstream trainingSessionFile("data/trainingSession.tsession");
+    if(trainingSessionFile.good())
+        trainingSessionFile >> Tune::trainingSession;
+    else
+        Tune::trainingSession = Tune::TrainingSession(params);
 
     // Durchlaufe alle Generationen
-    for(size_t i = 0; i < numGenerations; i++) {
-        std::cout << "Generation " << i + 1 << "/" << numGenerations << std::endl;
+    for(size_t i = Tune::trainingSession.generation; i < numGenerations.get<size_t>(); i++) {
+        std::cout << "----------Generation " << i + 1 << "/" << numGenerations.get<size_t>() << "----------" << std::endl;
 
-        numGames = oldNumGames + numGamesIncrement * i;
-        timeControl = oldTimeControl + timeControlIncrement * i;
-        increment = oldIncrement + incrementIncrement * i;
-        numEpochs = oldNumEpochs + numEpochsIncrement * i;
-
+        size_t currentNumGames = numGames.get<size_t>() + numGamesIncrement.get<size_t>() * i;
+        double growthFactor = std::pow(timeGrowth.get<double>(), i);
+        size_t currentTimeControl = timeControl.get<size_t>() * growthFactor;
+        size_t currentIncrement = increment.get<size_t>() * growthFactor;  
+        size_t currentNumEpochs = numEpochs.get<size_t>() + numEpochsIncrement.get<size_t>() * i;
+        double currentNoiseDefaultStdDev = noiseDefaultStdDev.get<double>() * std::pow(noiseDecay.get<double>(), i);
+        double currentNoiseLinearStdDev = noiseLinearStdDev.get<double>() * std::pow(noiseDecay.get<double>(), i);
+        double currentLearningRate = learningRate.get<double>() * std::pow(learningRateDecay.get<double>(), i);
+                
         // Generiere die Datenpunkte
-        std::ifstream pgnFile(pgnFilePath);
-        std::ofstream resultFile(samplesFilePath, std::ios::trunc);
-        double oldNoiseDefaultStdDev = noiseDefaultStdDev;
-        double oldNoiseLinearStdDev = noiseLinearStdDev;
-        noiseDefaultStdDev = noiseDefaultStdDev * std::pow(noiseDecay, i);
-        noiseLinearStdDev = noiseLinearStdDev * std::pow(noiseDecay, i);
-        simulateGames(numGames, pgnFile, resultFile, currentHCEParams);
-        noiseDefaultStdDev = oldNoiseDefaultStdDev;
-        noiseLinearStdDev = oldNoiseLinearStdDev;
+        std::ifstream pgnFile(pgnFilePath.get<std::string>());
+        std::ofstream resultFile(samplesFilePath.get<std::string>(), std::ios::trunc);
+        simulateGames(currentNumGames, currentTimeControl, currentIncrement, useNoisyParameters.get<bool>(),
+                        currentNoiseDefaultStdDev, currentNoiseLinearStdDev, pgnFile, resultFile, params);
         pgnFile.close();
         resultFile.close();
 
         // Lade die Datenpunkte
-        std::ifstream samplesFile(samplesFilePath);
+        std::ifstream samplesFile(samplesFilePath.get<std::string>());
         std::vector<DataPoint> data = loadData(samplesFile);
 
         // Führe den Gradientenabstieg durch
-        double oldLearningRate = learningRate;
-        learningRate = learningRate * std::pow(learningRateDecay, i);
-        currentHCEParams = Tune::adamW(data, currentHCEParams);
-        learningRate = oldLearningRate;
+        std::cout << "Optimizing parameters:" << std::endl;
+        params = Tune::adamW(data, params, currentNumEpochs, currentLearningRate);
 
         // Speichere die Parameter
         std::ofstream outFile("data/generation" + std::to_string(i) + ".hce");
+        params.saveParameters(outFile);
+        outFile.close();
 
-        currentHCEParams.saveParameters(outFile);
+        // Speichere die Trainingssession
+        std::ofstream trainingSessionFile("data/trainingSession.tsession");
+        trainingSessionFile << Tune::trainingSession;
+        trainingSessionFile.close();
     }
 
     std::cout << "Finished training" << std::endl;
-
-    // Speichere die finalen Parameter
-    std::ofstream outFile("data/epochFinal.hce");
-    currentHCEParams.saveParameters(outFile);
-
-    numGames = oldNumGames;
-    timeControl = oldTimeControl;
-    increment = oldIncrement;
-    numEpochs = oldNumEpochs;
 }
-
-#endif
-#endif

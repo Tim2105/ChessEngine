@@ -17,12 +17,10 @@ class HandcraftedEvaluator: public Evaluator {
             Bitboard blackBackwardPawns; // Rückständige schwarze Bauern
             Bitboard whitePassedPawns; // Weiße Freibauern
             Bitboard blackPassedPawns; // Schwarze Freibauern
-            Bitboard whiteCandidatePassedPawns; // Weiße Freibauerkandidaten
-            Bitboard blackCandidatePassedPawns; // Schwarze Freibauerkandidaten
             Bitboard whiteImmobilePawns; // Weiße unbewegbare Bauern
             Bitboard blackImmobilePawns; // Schwarze unbewegbare Bauern
-            Bitboard whiteStrongSquares; // Starke Felder für weiße Figuren
-            Bitboard blackStrongSquares; // Starke Felder für schwarze Figuren
+            Bitboard whiteOutposts; // Starke Felder für weiße Figuren
+            Bitboard blackOutposts; // Starke Felder für schwarze Figuren
             double phase; // Aktuelle Spielphase (0 = Mittelspiel, 1 = Endspiel)
             int phaseWeight; // Materialgewichtung für die Spielphase
         };
@@ -39,7 +37,7 @@ class HandcraftedEvaluator: public Evaluator {
         Score calculateKingSafetyScore();
         Score calculatePieceScore();
 
-        int evaluateKingAttackZone();
+        Score evaluateKingAttackZone();
         int evaluateOpenFiles();
         int evaluatePawnSafety();
 
@@ -60,9 +58,6 @@ class HandcraftedEvaluator: public Evaluator {
 
         int evaluateKNBKEndgame(int ownBishopSq, int oppKingSq);
         int evaluateWinningNoPawnsEndgame(int oppKingSq);
-
-        static constexpr int EG_WINNING_BONUS = 800;
-        static constexpr int EG_SPECIAL_MATE_PROGRESS_BONUS = 150;
 
     public:
         HandcraftedEvaluator(Board& b, const HCEParameters& hceParams) : Evaluator(b), hceParams(hceParams) {
@@ -98,12 +93,12 @@ class HandcraftedEvaluator: public Evaluator {
                         if(board.getPieceBitboard(WHITE_KNIGHT).popcount() == 0 && board.getPieceBitboard(WHITE_BISHOP).popcount() == 2 &&
                            board.getPieceBitboard(WHITE_ROOK).popcount() == 0 && board.getPieceBitboard(WHITE_QUEEN).popcount() == 0 &&
                             board.getPieceBitboard(BLACK_KNIGHT).popcount() == 1 && board.getPieceBitboard(BLACK_BISHOP).popcount() == 0)
-                            return (evaluateWinningNoPawnsEndgame(blackKingSq) - EG_WINNING_BONUS) * (board.getSideToMove() == WHITE ? 1 : -1) / 10; // Skaliere dei Bewertung runter, da der Sieg nicht sicher ist
+                            return (evaluateWinningNoPawnsEndgame(blackKingSq) - hceParams.getMopupBaseBonus()) * (board.getSideToMove() == WHITE ? 1 : -1) / 10; // Skaliere dei Bewertung runter, da der Sieg nicht sicher ist
                     } else {
                         if(board.getPieceBitboard(BLACK_KNIGHT).popcount() == 0 && board.getPieceBitboard(BLACK_BISHOP).popcount() == 2 &&
                            board.getPieceBitboard(BLACK_ROOK).popcount() == 0 && board.getPieceBitboard(BLACK_QUEEN).popcount() == 0 &&
                             board.getPieceBitboard(WHITE_KNIGHT).popcount() == 1 && board.getPieceBitboard(WHITE_BISHOP).popcount() == 0)
-                            return (evaluateWinningNoPawnsEndgame(whiteKingSq) - EG_WINNING_BONUS) * (board.getSideToMove() == WHITE ? -1 : 1) / 10; // Skaliere dei Bewertung runter, da der Sieg nicht sicher ist
+                            return (evaluateWinningNoPawnsEndgame(whiteKingSq) - hceParams.getMopupBaseBonus()) * (board.getSideToMove() == WHITE ? -1 : 1) / 10; // Skaliere dei Bewertung runter, da der Sieg nicht sicher ist
                     }
 
                     return DRAW_SCORE;
@@ -276,47 +271,28 @@ class HandcraftedEvaluator: public Evaluator {
         };
 
         static constexpr Bitboard extendedCenter = 0x3c3c000000ULL;
+        static constexpr Bitboard fileCtoF = 0x3c3c3c3c3c3c3c3cULL;
 
-        static constexpr Bitboard kingAttackZone[2][64] = {
-            {
-                0x3030303ULL,0x7070707ULL,0xe0e0e0eULL,0x1c1c1c1cULL,0x38383838ULL,0x70707070ULL,0xe0e0e0e0ULL,0xc0c0c0c0ULL,
-                0x303030303ULL,0x707070707ULL,0xe0e0e0e0eULL,0x1c1c1c1c1cULL,0x3838383838ULL,0x7070707070ULL,0xe0e0e0e0e0ULL,0xc0c0c0c0c0ULL,
-                0x30303030300ULL,0x70707070700ULL,0xe0e0e0e0e00ULL,0x1c1c1c1c1c00ULL,0x383838383800ULL,0x707070707000ULL,0xe0e0e0e0e000ULL,0xc0c0c0c0c000ULL,
-                0x3030303030000ULL,0x7070707070000ULL,0xe0e0e0e0e0000ULL,0x1c1c1c1c1c0000ULL,0x38383838380000ULL,0x70707070700000ULL,0xe0e0e0e0e00000ULL,0xc0c0c0c0c00000ULL,
-                0x303030303000000ULL,0x707070707000000ULL,0xe0e0e0e0e000000ULL,0x1c1c1c1c1c000000ULL,0x3838383838000000ULL,0x7070707070000000ULL,0xe0e0e0e0e0000000ULL,0xc0c0c0c0c0000000ULL,
-                0x303030300000000ULL,0x707070700000000ULL,0xe0e0e0e00000000ULL,0x1c1c1c1c00000000ULL,0x3838383800000000ULL,0x7070707000000000ULL,0xe0e0e0e000000000ULL,0xc0c0c0c000000000ULL,
-                0x303030000000000ULL,0x707070000000000ULL,0xe0e0e0000000000ULL,0x1c1c1c0000000000ULL,0x3838380000000000ULL,0x7070700000000000ULL,0xe0e0e00000000000ULL,0xc0c0c00000000000ULL,
-                0x303000000000000ULL,0x707000000000000ULL,0xe0e000000000000ULL,0x1c1c000000000000ULL,0x3838000000000000ULL,0x7070000000000000ULL,0xe0e0000000000000ULL,0xc0c0000000000000ULL,
-            },
-            {
-                0x303ULL,0x707ULL,0xe0eULL,0x1c1cULL,0x3838ULL,0x7070ULL,0xe0e0ULL,0xc0c0ULL,
-                0x30303ULL,0x70707ULL,0xe0e0eULL,0x1c1c1cULL,0x383838ULL,0x707070ULL,0xe0e0e0ULL,0xc0c0c0ULL,
-                0x3030303ULL,0x7070707ULL,0xe0e0e0eULL,0x1c1c1c1cULL,0x38383838ULL,0x70707070ULL,0xe0e0e0e0ULL,0xc0c0c0c0ULL,
-                0x303030303ULL,0x707070707ULL,0xe0e0e0e0eULL,0x1c1c1c1c1cULL,0x3838383838ULL,0x7070707070ULL,0xe0e0e0e0e0ULL,0xc0c0c0c0c0ULL,
-                0x30303030300ULL,0x70707070700ULL,0xe0e0e0e0e00ULL,0x1c1c1c1c1c00ULL,0x383838383800ULL,0x707070707000ULL,0xe0e0e0e0e000ULL,0xc0c0c0c0c000ULL,
-                0x3030303030000ULL,0x7070707070000ULL,0xe0e0e0e0e0000ULL,0x1c1c1c1c1c0000ULL,0x38383838380000ULL,0x70707070700000ULL,0xe0e0e0e0e00000ULL,0xc0c0c0c0c00000ULL,
-                0x303030303000000ULL,0x707070707000000ULL,0xe0e0e0e0e000000ULL,0x1c1c1c1c1c000000ULL,0x3838383838000000ULL,0x7070707070000000ULL,0xe0e0e0e0e0000000ULL,0xc0c0c0c0c0000000ULL,
-                0x303030300000000ULL,0x707070700000000ULL,0xe0e0e0e00000000ULL,0x1c1c1c1c00000000ULL,0x3838383800000000ULL,0x7070707000000000ULL,0xe0e0e0e000000000ULL,0xc0c0c0c000000000ULL,
-            }
+        static constexpr Bitboard kingAttackZone[64] = {
+            0x7070707ULL, 0x7070707ULL, 0xe0e0e0eULL, 0x1c1c1c1cULL, 0x38383838ULL, 0x70707070ULL, 0xe0e0e0e0ULL, 0xe0e0e0e0ULL,
+            0x7070707ULL, 0x7070707ULL, 0xe0e0e0eULL, 0x1c1c1c1cULL, 0x38383838ULL, 0x70707070ULL, 0xe0e0e0e0ULL, 0xe0e0e0e0ULL,
+            0x707070700ULL, 0x707070700ULL, 0xe0e0e0e00ULL, 0x1c1c1c1c00ULL, 0x3838383800ULL, 0x7070707000ULL, 0xe0e0e0e000ULL, 0xe0e0e0e000ULL,
+            0x707070000ULL, 0x707070000ULL, 0xe0e0e0000ULL, 0x1c1c1c0000ULL, 0x3838380000ULL, 0x7070700000ULL, 0xe0e0e00000ULL, 0xe0e0e00000ULL,
+            0x70707000000ULL, 0x70707000000ULL, 0xe0e0e000000ULL, 0x1c1c1c000000ULL, 0x383838000000ULL, 0x707070000000ULL, 0xe0e0e0000000ULL, 0xe0e0e0000000ULL,
+            0x7070707000000ULL, 0x7070707000000ULL, 0xe0e0e0e000000ULL, 0x1c1c1c1c000000ULL, 0x38383838000000ULL, 0x70707070000000ULL, 0xe0e0e0e0000000ULL, 0xe0e0e0e0000000ULL,
+            0x707070700000000ULL, 0x707070700000000ULL, 0xe0e0e0e00000000ULL, 0x1c1c1c1c00000000ULL, 0x3838383800000000ULL, 0x7070707000000000ULL, 0xe0e0e0e000000000ULL, 0xe0e0e0e000000000ULL,
+            0x707070700000000ULL, 0x707070700000000ULL, 0xe0e0e0e00000000ULL, 0x1c1c1c1c00000000ULL, 0x3838383800000000ULL, 0x7070707000000000ULL, 0xe0e0e0e000000000ULL, 0xe0e0e0e000000000ULL
         };
 
-        static constexpr int kingAttackBonus[50] = {
-            1, 1, 2, 2, 3, 4, 5, 7, 8, 11,
-            14, 18, 23, 30, 37, 47, 59, 74, 91, 111,
-            134, 160, 188, 218, 250, 281, 311, 339, 365, 388,
-            408, 425, 440, 452, 462, 469, 476, 481, 485, 488,
-            491, 492, 494, 495, 496, 497, 497, 498, 498, 499
-        };
-
-        static constexpr Bitboard queenContactSquares[64] = {
-            0x302ULL,0x705ULL,0xe0aULL,0x1c14ULL,0x3828ULL,0x7050ULL,0xe0a0ULL,0xc040ULL,
-            0x30203ULL,0x70507ULL,0xe0a0eULL,0x1c141cULL,0x382838ULL,0x705070ULL,0xe0a0e0ULL,0xc040c0ULL,
-            0x3020300ULL,0x7050700ULL,0xe0a0e00ULL,0x1c141c00ULL,0x38283800ULL,0x70507000ULL,0xe0a0e000ULL,0xc040c000ULL,
-            0x302030000ULL,0x705070000ULL,0xe0a0e0000ULL,0x1c141c0000ULL,0x3828380000ULL,0x7050700000ULL,0xe0a0e00000ULL,0xc040c00000ULL,
-            0x30203000000ULL,0x70507000000ULL,0xe0a0e000000ULL,0x1c141c000000ULL,0x382838000000ULL,0x705070000000ULL,0xe0a0e0000000ULL,0xc040c0000000ULL,
-            0x3020300000000ULL,0x7050700000000ULL,0xe0a0e00000000ULL,0x1c141c00000000ULL,0x38283800000000ULL,0x70507000000000ULL,0xe0a0e000000000ULL,0xc040c000000000ULL,
-            0x302030000000000ULL,0x705070000000000ULL,0xe0a0e0000000000ULL,0x1c141c0000000000ULL,0x3828380000000000ULL,0x7050700000000000ULL,0xe0a0e00000000000ULL,0xc040c00000000000ULL,
-            0x203000000000000ULL,0x507000000000000ULL,0xa0e000000000000ULL,0x141c000000000000ULL,0x2838000000000000ULL,0x5070000000000000ULL,0xa0e0000000000000ULL,0x40c0000000000000ULL,
+        static constexpr int kingAttackBonus[80] = {
+            0, 1, 2, 3, 4, 5, 7, 8, 9, 11, 
+            12, 13, 15, 17, 18, 20, 22, 23, 25, 27, 
+            29, 31, 34, 36, 38, 41, 43, 46, 49, 52, 
+            55, 58, 61, 64, 68, 71, 75, 79, 83, 87, 
+            91, 96, 101, 105, 110, 116, 121, 127, 132, 139, 
+            145, 151, 158, 165, 172, 180, 188, 196, 205, 213, 
+            223, 232, 242, 252, 263, 274, 285, 297, 309, 322, 
+            336, 349, 364, 379, 394, 410, 427, 444, 462, 481
         };
 
         static constexpr Bitboard rookContactSquares[64] = {
@@ -328,6 +304,17 @@ class HandcraftedEvaluator: public Evaluator {
             0x1020100000000ULL,0x2050200000000ULL,0x40a0400000000ULL,0x8140800000000ULL,0x10281000000000ULL,0x20502000000000ULL,0x40a04000000000ULL,0x80408000000000ULL,
             0x102010000000000ULL,0x205020000000000ULL,0x40a040000000000ULL,0x814080000000000ULL,0x1028100000000000ULL,0x2050200000000000ULL,0x40a0400000000000ULL,0x8040800000000000ULL,
             0x201000000000000ULL,0x502000000000000ULL,0xa04000000000000ULL,0x1408000000000000ULL,0x2810000000000000ULL,0x5020000000000000ULL,0xa040000000000000ULL,0x4080000000000000ULL,
+        };
+
+        static constexpr Bitboard queenContactSquares[64] = {
+            0x302ULL,0x705ULL,0xe0aULL,0x1c14ULL,0x3828ULL,0x7050ULL,0xe0a0ULL,0xc040ULL,
+            0x30203ULL,0x70507ULL,0xe0a0eULL,0x1c141cULL,0x382838ULL,0x705070ULL,0xe0a0e0ULL,0xc040c0ULL,
+            0x3020300ULL,0x7050700ULL,0xe0a0e00ULL,0x1c141c00ULL,0x38283800ULL,0x70507000ULL,0xe0a0e000ULL,0xc040c000ULL,
+            0x302030000ULL,0x705070000ULL,0xe0a0e0000ULL,0x1c141c0000ULL,0x3828380000ULL,0x7050700000ULL,0xe0a0e00000ULL,0xc040c00000ULL,
+            0x30203000000ULL,0x70507000000ULL,0xe0a0e000000ULL,0x1c141c000000ULL,0x382838000000ULL,0x705070000000ULL,0xe0a0e0000000ULL,0xc040c0000000ULL,
+            0x3020300000000ULL,0x7050700000000ULL,0xe0a0e00000000ULL,0x1c141c00000000ULL,0x38283800000000ULL,0x70507000000000ULL,0xe0a0e000000000ULL,0xc040c000000000ULL,
+            0x302030000000000ULL,0x705070000000000ULL,0xe0a0e0000000000ULL,0x1c141c0000000000ULL,0x3828380000000000ULL,0x7050700000000000ULL,0xe0a0e00000000000ULL,0xc040c00000000000ULL,
+            0x203000000000000ULL,0x507000000000000ULL,0xa0e000000000000ULL,0x141c000000000000ULL,0x2838000000000000ULL,0x5070000000000000ULL,0xa0e0000000000000ULL,0x40c0000000000000ULL,
         };
 
         static constexpr Bitboard pawnShieldMask[2][64] = {

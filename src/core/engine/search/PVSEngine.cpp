@@ -73,7 +73,7 @@ void PVSEngine::helperThreadLoop(size_t instanceIdx) {
 void PVSEngine::createHelperInstances(size_t numThreads) {
     #if not defined(DISABLE_THREADS)
         for(size_t i = 0; i < numThreads; i++) {
-            #if defined(USE_HCE) && defined(TUNE)
+            #if defined(USE_HCE)
             // Erstelle eine Hilfsinstanz mit HCE-Parametern
             instances.push_back(new PVSSearchInstance(board, hceParams, transpositionTable, threadSleepFlag, startTime,
                                                       stopTime, nodesSearched, nullptr));
@@ -262,9 +262,8 @@ void PVSEngine::search(const UCI::SearchParams& params) {
     // Wenn keine legalen Züge vorhanden sind,
     // gebe den Nullzug aus und beende die Suche.
     if(legalMoves.size() == 0) {
-        #if not defined(TUNE)
-        std::cout << "bestmove 0000" << std::endl;
-        #endif
+        if(uciOutput)
+            std::cout << "bestmove 0000" << std::endl;
         return;
     }
 
@@ -279,10 +278,8 @@ void PVSEngine::search(const UCI::SearchParams& params) {
                 stop();
 
             // Mindestens alle 2 Sekunden die Ausgabe aktualisieren
-            #if not defined(TUNE)
-            if(lastCheckupTime >= lastOutputTime + std::chrono::milliseconds(MAX_TIME_BETWEEN_OUTPUTS))
+            if(uciOutput && lastCheckupTime >= lastOutputTime + std::chrono::milliseconds(MAX_TIME_BETWEEN_OUTPUTS))
                 outputNodesInfo();
-            #endif
             
             if(checkupCallback)
                 checkupCallback();
@@ -290,7 +287,7 @@ void PVSEngine::search(const UCI::SearchParams& params) {
     };
 
     // Erstelle die Hauptinstanz, die die Suche durchführt.
-    #if defined(USE_HCE) && defined(TUNE)
+    #if defined(USE_HCE)
         // Erstelle die Hauptinstanz mit HCE-Parametern für das Tuning
         mainInstance = new PVSSearchInstance(board, hceParams, transpositionTable, threadSleepFlag, startTime,
                                              stopTime, nodesSearched, checkupFunction);
@@ -512,7 +509,7 @@ void PVSEngine::search(const UCI::SearchParams& params) {
             (int16_t)getBestMoveScore()
         });
 
-        #if not defined(TUNE)
+        if(uciOutput) {
             // Im Multi-PV-Modus werden Informationen zu den
             // einzelnen Varianten ausgegeben.
             if(multiPV > 1)
@@ -521,7 +518,7 @@ void PVSEngine::search(const UCI::SearchParams& params) {
 
             // Gebe die Suchinformationen zu dieser Tiefe aus.
             outputSearchInfo();
-        #endif
+        }
 
         // Sagt die dynamische Zeitkontrolle, dass die Suche
         // abgebrochen werden soll?
@@ -543,7 +540,7 @@ void PVSEngine::search(const UCI::SearchParams& params) {
     // Wir suchen nicht mehr.
     searching.store(false);
     
-    #if not defined(TUNE)
+    if(uciOutput) {
         // Finale Ausgabe der Suchinformationen.
         outputSearchInfo();
 
@@ -556,7 +553,7 @@ void PVSEngine::search(const UCI::SearchParams& params) {
         }
 
         std::cout << std::endl;
-    #endif
+    }
 }
 
 void PVSEngine::calculateTimeLimits(const UCI::SearchParams& params) {

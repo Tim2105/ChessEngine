@@ -225,7 +225,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
     if(depthReduction > 0)
         depth -= depthReduction;
 
-    addMovesToSearchStack(ply, depthReduction > 0 && nodeType != ALL_NODE, depth);
+    addMovesToSearchStack(ply, nodeType != ALL_NODE, depth);
 
     // Prüfe, ob die Suche abgebrochen werden soll.
     if(stopFlag.load() && currentSearchDepth > 1)
@@ -650,10 +650,10 @@ int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int ply, int d
         return 0;
 
     // Reduziere standardmäßig anhand einer Funktion, die von der Suchtiefe abhängt.
-    double reduction = std::log(depth) * std::log(2 * moveCount) / std::log(20) + 1.0;
+    double reduction = std::log(depth) * std::log(2 * moveCount) / std::log(20) + 0.75;
 
     int historyScore = getHistoryScore(lastMove, ply);
-    reduction -= std::max(historyScore / 40000.0, -1.0);
+    reduction -= historyScore / 30000.0;
 
     // Runde die Reduktion ab.
     return (int)reduction;

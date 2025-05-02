@@ -20,7 +20,7 @@ namespace UCI {
     
     static std::string ENGINE_AUTHOR = "Tim Plotzki";
 
-    void listen();
+    void listen(const std::vector<std::string>& args = {});
 
     struct SearchParams {
         int depth = std::numeric_limits<int>::max();

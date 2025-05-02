@@ -293,16 +293,48 @@ void HCEParameters::displayParameters(std::ostream& os) const {
 
     os << "  0]\n";
 
-    os << "Strong Square Bonus MG: " << mgStrongSquareBonus << "\n";
+    os << "Center Outpost Bonus MG: " << mgCenterOutpostBonus << "\n";
+    os << "Edge Outpost Bonus MG: " << mgEdgeOutpostBonus << "\n";
 
-    os << "Num Attacker Weight: [";
-    for(size_t i = 0; i < 3; i++)
-        os << std::setw(3) << numAttackerWeight[i] + 128 << (i == 2 ? "]\n" : ", ");
+    os << "Attack Weight MG: [  0, ";
+    for(size_t i = 0; i < 4; i++)
+        os << std::setw(3) << mgAttackWeight[i] << (i == 3 ? "]\n" : ", ");
 
-    os << "Knight Attack Bonus: " << knightAttackBonus << "\n";
-    os << "Bishop Attack Bonus: " << bishopAttackBonus << "\n";
-    os << "Rook Attack Bonus: " << rookAttackBonus << "\n";
-    os << "Queen Attack Bonus: " << queenAttackBonus << "\n";
+    os << "Attack Weight EG: [  0, ";
+    for(size_t i = 0; i < 4; i++)
+        os << std::setw(3) << egAttackWeight[i] << (i == 3 ? "]\n" : ", ");
+
+    os << "Undefended Attack Weight MG: [  0, ";
+    for(size_t i = 0; i < 4; i++)
+        os << std::setw(3) << mgUndefendedAttackWeight[i] << (i == 3 ? "]\n" : ", ");
+
+    os << "Undefended Attack Weight EG: [  0, ";
+    for(size_t i = 0; i < 4; i++)
+        os << std::setw(3) << egUndefendedAttackWeight[i] << (i == 3 ? "]\n" : ", ");
+
+    os << "Safe Check Weight MG: [  0, ";
+    for(size_t i = 0; i < 4; i++)
+        os << std::setw(3) << mgSafeCheckWeight[i] << (i == 3 ? "]\n" : ", ");
+
+    os << "Safe Check Weight EG: [  0, ";
+    for(size_t i = 0; i < 4; i++)
+        os << std::setw(3) << egSafeCheckWeight[i] << (i == 3 ? "]\n" : ", ");
+
+    os << "Safe Contact Check Weight MG: [  0,   0,   0, ";
+    for(size_t i = 0; i < 2; i++)
+        os << std::setw(3) << mgSafeContactCheckWeight[i] << (i == 1 ? "]\n" : ", ");
+
+    os << "Safe Contact Check Weight EG: [  0,   0,   0, ";
+    for(size_t i = 0; i < 2; i++)
+        os << std::setw(3) << egSafeContactCheckWeight[i] << (i == 1 ? "]\n" : ", ");
+
+    os << "Defense Weight MG: [  0, ";
+    for(size_t i = 0; i < 4; i++)
+        os << std::setw(3) << mgDefenseWeight[i] << (i == 3 ? "]\n" : ", ");
+
+    os << "Defense Weight EG: [  0, ";
+    for(size_t i = 0; i < 4; i++)
+        os << std::setw(3) << egDefenseWeight[i] << (i == 3 ? "]\n" : ", ");
 
     os << "Pawn Shield Size Bonus MG: [  0, ";
     for(size_t i = 0; i < 3; i++)
@@ -334,8 +366,10 @@ void HCEParameters::displayParameters(std::ostream& os) const {
     for(size_t i = 0; i < 4; i++)
         os << std::setw(3) << egPieceNoMobilityPenalty[i] << (i == 3 ? "]\n" : ", ");
 
-    os << "Knight On Strong Square Bonus MG: " << mgKnightOnStrongSquareBonus << "\n";
-    os << "Bishop On Strong Square Bonus MG: " << mgBishopOnStrongSquareBonus << "\n";
+    os << "Knight On Center Outpost Bonus MG: " << mgKnightOnCenterOutpostBonus << "\n";
+    os << "Knight On Edge Outpost Bonus MG: " << mgKnightOnEdgeOutpostBonus << "\n";
+    os << "Bishop On Center Outpost Bonus MG: " << mgBishopOnCenterOutpostBonus << "\n";
+    os << "Bishop On Edge Outpost Bonus MG: " << mgBishopOnEdgeOutpostBonus << "\n";
 
     os << "Bad Bishop Penalty MG: " << mgBadBishopPenalty << "\n";
     os << "Bad Bishop Penalty EG: " << egBadBishopPenalty << "\n";
@@ -349,9 +383,10 @@ void HCEParameters::displayParameters(std::ostream& os) const {
 
     os << "Enemy Passed Pawn Blocked Bonus EG: " << egBlockedEnemyPassedPawnBonus << "\n";
 
+    os << "Attack On Passed Pawn Path Bonus EG: " << egAttackOnPassedPawnPathBonus << "\n";
+
     os << "King Pawn Proximity Weight: " << egKingProximityPawnWeight << "\n";
     os << "King Backward Pawn Proximity Weight: " << egKingProximityBackwardPawnWeight << "\n";
-    os << "King Candidate Passed Pawn Proximity Weight: " << egKingProximityCandidatePassedPawnWeight << "\n";
     os << "King Passed Pawn Proximity Weight: " << egKingProximityPassedPawnWeight << "\n";
 
     os << "Rule Of The Square Bonus: " << ruleOfTheSquareBonus << "\n";
@@ -359,6 +394,9 @@ void HCEParameters::displayParameters(std::ostream& os) const {
     os << "Opposite Color Bishops Penalty: " << oppositeColorBishopsPenalty << "\n";
 
     os << "Rook Endgame Penalty: " << rookEndgamePenalty << "\n";
+
+    os << "Mopup Base Bonus: " << egMopupBaseBonus << "\n";
+    os << "Mopup Progress Bonus: " << egMopupProgressBonus << "\n";
 
     os << std::endl;
 }

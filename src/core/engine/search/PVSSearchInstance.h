@@ -63,17 +63,6 @@ class PVSSearchInstance {
         Move killerMoves[MAX_PLY][2];
 
         /**
-         * @brief Speichert die relative Vergangenheitsbewertung
-         * für jedes Tupel (Farbe, Ursprungsfeld, Zielfeld).
-         * Die relative Vergangenheitsbewertung ist eine ganzzahlige
-         * Approximation der Wahrscheinlichkeit, dass ein Zug
-         * nicht zu einer Bewertung <= alpha führt. Je höher die
-         * Zahl, desto häufiger führte der Zug zu einer Bewertung
-         * > alpha.
-         */
-        // int32_t historyTable[2][64][64];
-
-        /**
          * @brief Speichert für jedes Tupel (Farbe, Figur, Zielfeld)
          * den besten Zug, der in der Vergangenheit in dieser Position
          * gespielt wurde. Dieser Zug wird in der Zugvorsortierung
@@ -319,7 +308,7 @@ class PVSSearchInstance {
             numPVs = UCI::options["MultiPV"].getValue<size_t>();
         }
 
-        #if defined(USE_HCE) && defined(TUNE)
+        #if defined(USE_HCE)
         /**
          * @brief Konstruktor für eine Suchinstanz mit benutzerdefinierten Parametern für die HCE.
          */
@@ -499,23 +488,29 @@ class PVSSearchInstance {
             return move == killerMoves[ply][0] || move == killerMoves[ply][1];
         }
 
-        static constexpr int HISTORY_SCORE_LOOKAHEAD = 6;
+        static constexpr int HISTORY_SCORE_LOOKAHEAD = 10;
         static constexpr int HISTORY_SCORE_LOOKBEHIND = 4;
 
         inline void incrementHistoryScore(Move move, int ply, int depth) {
-            for(int i = ply; i < std::min(MAX_PLY, ply + HISTORY_SCORE_LOOKAHEAD + 1); i += 2)
-                historyStack[i].historyTable[move.getOrigin()][move.getDestination()] += depth * (depth - 1) + 1;
+            int baselineIncrement = depth * depth;
+            int lookahead = ply + HISTORY_SCORE_LOOKAHEAD;
+            for(int i = ply; i < std::min(MAX_PLY, lookahead + 1); i += 2)
+                historyStack[i].historyTable[move.getOrigin()][move.getDestination()] += baselineIncrement * (int32_t)(HISTORY_SCORE_LOOKAHEAD - i + lookahead) / HISTORY_SCORE_LOOKAHEAD;
 
+            int lookbehind = ply - HISTORY_SCORE_LOOKBEHIND;
             for(int i = ply - 2; i >= std::max(0, ply - HISTORY_SCORE_LOOKBEHIND); i -= 2)
-                historyStack[i].historyTable[move.getOrigin()][move.getDestination()] += depth * (depth - 1) + 1;
+                historyStack[i].historyTable[move.getOrigin()][move.getDestination()] += baselineIncrement * (int32_t)(HISTORY_SCORE_LOOKBEHIND - lookbehind + i) / HISTORY_SCORE_LOOKBEHIND;
         }
 
         inline void decrementHistoryScore(Move move, int ply, int depth) {
-            for(int i = ply; i < std::min(MAX_PLY, ply + HISTORY_SCORE_LOOKAHEAD + 1); i += 2)
-                historyStack[i].historyTable[move.getOrigin()][move.getDestination()] -= depth;
+            int baselineDecrement = depth;
+            int lookahead = ply + HISTORY_SCORE_LOOKAHEAD;
+            for(int i = ply; i < std::min(MAX_PLY, lookahead + 1); i += 2)
+                historyStack[i].historyTable[move.getOrigin()][move.getDestination()] -= baselineDecrement * (int32_t)(HISTORY_SCORE_LOOKAHEAD - i + lookahead) / HISTORY_SCORE_LOOKAHEAD;
 
-            for(int i = ply - 2; i >= std::max(0, ply - HISTORY_SCORE_LOOKBEHIND); i -= 2)
-                historyStack[i].historyTable[move.getOrigin()][move.getDestination()] -= depth;
+            int lookbehind = ply - HISTORY_SCORE_LOOKBEHIND;
+            for(int i = ply - 2; i >= std::max(0, lookbehind); i -= 2)
+                historyStack[i].historyTable[move.getOrigin()][move.getDestination()] -= baselineDecrement * (int32_t)(HISTORY_SCORE_LOOKBEHIND - lookbehind + i) / HISTORY_SCORE_LOOKBEHIND;
         }
 
         inline int32_t getHistoryScore(Move move, int ply) {
