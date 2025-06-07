@@ -110,10 +110,11 @@ void Simulation::run() {
 
     std::mutex lock;
     std::atomic_int64_t currentIdx = startingPositions.size() - 1;
+    uint64_t completedGames = 0;
 
     auto threadFunction = [&]() {
+        lock.lock();
         while(true) {
-            lock.lock();
             if(currentIdx.load() < 0) {
                 lock.unlock();
                 break;
@@ -123,15 +124,17 @@ void Simulation::run() {
             Board& board = startingPositions[index];
             lock.unlock();
 
-            if(index % 10 == 9) {
-                std::stringstream ss;
-                ss << "\rRemaining games: " << std::left << std::setw(7) << index + 1;
-                std::cout << ss.str() << std::flush;
-            }
-
             GameResult result = simulateSingleGame(board);
             results[index] = result;
+
+            lock.lock();
+            completedGames++;
+            std::stringstream ss;
+            ss << "\rRemaining games: " << std::left << std::setw(7) << startingPositions.size() - completedGames;
+            std::cout << ss.str() << std::flush;
         }
+
+        lock.unlock();
     };
 
     std::vector<std::thread> threads;

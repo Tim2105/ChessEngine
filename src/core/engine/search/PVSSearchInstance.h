@@ -492,7 +492,7 @@ class PVSSearchInstance {
         static constexpr int HISTORY_SCORE_LOOKBEHIND = 4;
 
         inline void incrementHistoryScore(Move move, int ply, int depth) {
-            int baselineIncrement = depth * depth;
+            int32_t baselineIncrement = depth * depth * 2;
             int lookahead = ply + HISTORY_SCORE_LOOKAHEAD;
             for(int i = ply; i < std::min(MAX_PLY, lookahead + 1); i += 2)
                 historyStack[i].historyTable[move.getOrigin()][move.getDestination()] += baselineIncrement * (int32_t)(HISTORY_SCORE_LOOKAHEAD - i + lookahead) / HISTORY_SCORE_LOOKAHEAD;
@@ -503,7 +503,7 @@ class PVSSearchInstance {
         }
 
         inline void decrementHistoryScore(Move move, int ply, int depth) {
-            int baselineDecrement = depth;
+            int32_t baselineDecrement = depth * 2;
             int lookahead = ply + HISTORY_SCORE_LOOKAHEAD;
             for(int i = ply; i < std::min(MAX_PLY, lookahead + 1); i += 2)
                 historyStack[i].historyTable[move.getOrigin()][move.getDestination()] -= baselineDecrement * (int32_t)(HISTORY_SCORE_LOOKAHEAD - i + lookahead) / HISTORY_SCORE_LOOKAHEAD;

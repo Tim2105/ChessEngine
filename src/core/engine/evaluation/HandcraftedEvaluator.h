@@ -17,6 +17,8 @@ class HandcraftedEvaluator: public Evaluator {
             Bitboard blackBackwardPawns; // Rückständige schwarze Bauern
             Bitboard whitePassedPawns; // Weiße Freibauern
             Bitboard blackPassedPawns; // Schwarze Freibauern
+            Bitboard whiteCandidatePassedPawns; // Weiße Kandidaten für Freibauern
+            Bitboard blackCandidatePassedPawns; // Schwarze Kandidaten für Freibauern
             Bitboard whiteImmobilePawns; // Weiße unbewegbare Bauern
             Bitboard blackImmobilePawns; // Schwarze unbewegbare Bauern
             Bitboard whiteOutposts; // Starke Felder für weiße Figuren
@@ -38,8 +40,6 @@ class HandcraftedEvaluator: public Evaluator {
         Score calculatePieceScore();
 
         Score evaluateKingAttackZone();
-        int evaluateOpenFiles();
-        int evaluatePawnSafety();
 
         Score evaluateAttackedPieces();
         Score evaluatePieceMobility();
@@ -52,8 +52,9 @@ class HandcraftedEvaluator: public Evaluator {
 
         Score evaluateRuleOfTheSquare();
 
+        Score getDrawPenalty(int side);
         bool isWinnable(int side);
-        bool isOppositeColorBishopEndgame();
+        bool isOppositeColorBishop();
         bool isDrawnKRPKREndgame();
 
         int evaluateKNBKEndgame(int ownBishopSq, int oppKingSq);
@@ -93,12 +94,12 @@ class HandcraftedEvaluator: public Evaluator {
                         if(board.getPieceBitboard(WHITE_KNIGHT).popcount() == 0 && board.getPieceBitboard(WHITE_BISHOP).popcount() == 2 &&
                            board.getPieceBitboard(WHITE_ROOK).popcount() == 0 && board.getPieceBitboard(WHITE_QUEEN).popcount() == 0 &&
                             board.getPieceBitboard(BLACK_KNIGHT).popcount() == 1 && board.getPieceBitboard(BLACK_BISHOP).popcount() == 0)
-                            return (evaluateWinningNoPawnsEndgame(blackKingSq) - hceParams.getMopupBaseBonus()) * (board.getSideToMove() == WHITE ? 1 : -1) / 10; // Skaliere dei Bewertung runter, da der Sieg nicht sicher ist
+                            return (evaluateWinningNoPawnsEndgame(blackKingSq) - hceParams.getMopupBaseBonus()) * (board.getSideToMove() == WHITE ? 1 : -1) / 8; // Skaliere die Bewertung runter, da der Sieg nicht sicher ist
                     } else {
                         if(board.getPieceBitboard(BLACK_KNIGHT).popcount() == 0 && board.getPieceBitboard(BLACK_BISHOP).popcount() == 2 &&
                            board.getPieceBitboard(BLACK_ROOK).popcount() == 0 && board.getPieceBitboard(BLACK_QUEEN).popcount() == 0 &&
                             board.getPieceBitboard(WHITE_KNIGHT).popcount() == 1 && board.getPieceBitboard(WHITE_BISHOP).popcount() == 0)
-                            return (evaluateWinningNoPawnsEndgame(whiteKingSq) - hceParams.getMopupBaseBonus()) * (board.getSideToMove() == WHITE ? -1 : 1) / 10; // Skaliere dei Bewertung runter, da der Sieg nicht sicher ist
+                            return (evaluateWinningNoPawnsEndgame(whiteKingSq) - hceParams.getMopupBaseBonus()) * (board.getSideToMove() == WHITE ? -1 : 1) / 8; // Skaliere die Bewertung runter, da der Sieg nicht sicher ist
                     }
 
                     return DRAW_SCORE;
@@ -111,10 +112,15 @@ class HandcraftedEvaluator: public Evaluator {
                     bool isKNNK = (board.getPieceBitboard(WHITE_KNIGHT).popcount() == 2 && board.getPieceBitboard(WHITE_BISHOP).popcount() == 0 &&
                                     board.getPieceBitboard(WHITE_ROOK).popcount() == 0 && board.getPieceBitboard(WHITE_QUEEN).popcount() == 0);
 
+                    bool isKQKR = ((board.getPieceBitboard(WHITE_QUEEN) | board.getPieceBitboard(BLACK_ROOK)) == board.getPieceBitboard() &&
+                                    board.getPieceBitboard(WHITE_QUEEN).popcount() == 1 && board.getPieceBitboard(BLACK_ROOK).popcount() == 1);
+
                     if(isKBNK) // Läufer und Springer gegen König -> Matt
                         return evaluateKNBKEndgame(board.getPieceBitboard(WHITE_BISHOP).getFSB(), blackKingSq) * (board.getSideToMove() == WHITE ? 1 : -1);
                     else if(isKNNK) // Zwei Springer gegen König -> Unentschieden
                         return DRAW_SCORE;
+                    else if(isKQKR) // Dame gegen Turm und König -> Schwierig zu gewinnen, aber möglich
+                        return (evaluateWinningNoPawnsEndgame(blackKingSq) - hceParams.getMopupBaseBonus()) * (board.getSideToMove() == WHITE ? 1 : -1) / 4; // Skaliere die Bewertung runter
                     else // Jede andere Kombination -> Matt
                         return evaluateWinningNoPawnsEndgame(blackKingSq) * (board.getSideToMove() == WHITE ? 1 : -1);
                 } else if(simpleMaterialScore <= -EG_WINNING_ADVANTAGE) {
@@ -124,10 +130,15 @@ class HandcraftedEvaluator: public Evaluator {
                     bool isKNNK = (board.getPieceBitboard(BLACK_KNIGHT).popcount() == 2 && board.getPieceBitboard(BLACK_BISHOP).popcount() == 0 &&
                                     board.getPieceBitboard(BLACK_ROOK).popcount() == 0 && board.getPieceBitboard(BLACK_QUEEN).popcount() == 0);
 
+                    bool isKQKR = ((board.getPieceBitboard(BLACK_QUEEN) | board.getPieceBitboard(WHITE_ROOK)) == board.getPieceBitboard() &&
+                                    board.getPieceBitboard(BLACK_QUEEN).popcount() == 1 && board.getPieceBitboard(WHITE_ROOK).popcount() == 1);
+
                     if(isKBNK) // Läufer und Springer gegen König -> Matt
                         return evaluateKNBKEndgame(board.getPieceBitboard(BLACK_BISHOP).getFSB(), whiteKingSq) * (board.getSideToMove() == WHITE ? -1 : 1);
                     else if(isKNNK) // Zwei Springer gegen König -> Unentschieden
                         return DRAW_SCORE;
+                    else if(isKQKR) // Dame gegen Turm und König -> Schwierig zu gewinnen, aber möglich
+                        return (evaluateWinningNoPawnsEndgame(whiteKingSq) - hceParams.getMopupBaseBonus()) * (board.getSideToMove() == WHITE ? -1 : 1) / 4; // Skaliere die Bewertung runter
                     else // Jede andere Kombination -> Matt
                         return evaluateWinningNoPawnsEndgame(whiteKingSq) * (board.getSideToMove() == WHITE ? -1 : 1);
                 }
@@ -151,21 +162,14 @@ class HandcraftedEvaluator: public Evaluator {
             int evaluation = ((1.0 - evaluationVars.phase) * score.mg + evaluationVars.phase * score.eg) *
                               (board.getSideToMove() == WHITE ? 1 : -1);
 
-            // Endspiele mit Bauern und Läufern auf unterschiedlichen
+            // Endspiele mit Läufern auf unterschiedlichen
             // Feldern sind schwierig zu gewinnen
             int evaluationSign = evaluation >= 0 ? 1 : -1;
-            if(isOppositeColorBishopEndgame())
-                evaluation += hceParams.getOppositeColorBishopsPenalty() * evaluationSign;
-            else {
-                int numWhiteRooks = board.getPieceBitboard(WHITE_ROOK).popcount();
-                int numBlackRooks = board.getPieceBitboard(BLACK_ROOK).popcount();
+            int winningSide = evaluationSign == 1 ? board.getSideToMove() : board.getSideToMove() ^ COLOR_MASK;
+            Score drawPenalty = getDrawPenalty(winningSide);
 
-                int rookMaterialWeight = PIECE_WEIGHT[ROOK] * (numWhiteRooks + numBlackRooks);
-                int totalMaterialWeight = TOTAL_WEIGHT - evaluationVars.phaseWeight;
-
-                if(numWhiteRooks == numBlackRooks && numWhiteRooks > 0 && rookMaterialWeight == totalMaterialWeight)
-                    evaluation += hceParams.getRookEndgamePenalty() * evaluationSign;
-            }
+            evaluation += drawPenalty.mg * evaluationSign * (1.0 - evaluationVars.phase) +
+                          drawPenalty.eg * evaluationSign * evaluationVars.phase;
 
             if(evaluationSign == 1)
                 evaluation = std::max(evaluation, DRAW_SCORE);

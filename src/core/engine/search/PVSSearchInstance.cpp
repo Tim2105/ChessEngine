@@ -335,15 +335,15 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
          * Ähnlich wie bei der Singular Reply Extension, erweitern wir die Suchtiefe
          * unter bestimmten Bedingungen.
          */
-
-        /**
-         * Schacherweiterung:
-         * Wenn der Zug den Gegner in Schach setzt, erweitern wir die Suchtiefe.
-         */
-        if(isCheck) {
-            // Erweitere die Suchtiefe, wenn der Zug den Gegner in Schach setzt.
-            if(extension == 0 && allowHeuristicExtensions)
+        if(extension == 0 && allowHeuristicExtensions) {
+            /**
+             * Schacherweiterung:
+             * Wenn der Zug den Gegner in Schach setzt, erweitern wir die Suchtiefe.
+             */
+            if(isCheck) {
+                // Erweitere die Suchtiefe, wenn der Zug den Gegner in Schach setzt.
                 extension += 1;
+            }
         }
 
         extensionsOnPath += extension;
@@ -653,7 +653,7 @@ int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int ply, int d
     double reduction = std::log(depth) * std::log(2 * moveCount) / std::log(20) + 0.75;
 
     int historyScore = getHistoryScore(lastMove, ply);
-    reduction -= historyScore / 30000.0;
+    reduction -= historyScore / 60000.0;
 
     // Runde die Reduktion ab.
     return (int)reduction;
@@ -915,7 +915,7 @@ void PVSSearchInstance::scoreMoves(const Array<Move, 256>& moves, int ply) {
                 killers.push_back(MoveScorePair(move, score));
             } else {
                 // Ruhige Züge. Gebe einen Bonus für den Konterzug.
-                score = std::clamp(QUIET_MOVES_NEUTRAL + (getHistoryScore(move, ply) + (move == counterMove) * 300),
+                score = std::clamp(QUIET_MOVES_NEUTRAL + getHistoryScore(move, ply) + (move == counterMove) * 300,
                                    QUIET_MOVES_MIN,
                                    QUIET_MOVES_MAX); // Bewerte anhand der relativen Vergangenheitsbewertung
 

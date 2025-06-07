@@ -335,6 +335,9 @@ void HandcraftedEvaluator::calculatePawnScore() {
     }
 
     // Freibauerkandidaten
+    evaluationVars.whiteCandidatePassedPawns = 0ULL;
+    evaluationVars.blackCandidatePassedPawns = 0ULL;
+
     Bitboard whiteCandidatePassedPawns = whitePawns & ~(evaluationVars.whitePassedPawns | blackPawns.extrudeSouth());
     Bitboard blackCandidatePassedPawns = blackPawns & ~(evaluationVars.blackPassedPawns | whitePawns.extrudeNorth());
 
@@ -348,6 +351,7 @@ void HandcraftedEvaluator::calculatePawnScore() {
         Bitboard whiteSupport = blackOpposition.shiftSouth(2).extrudeSouth() & whiteSupportCandidates & ~((sq.shiftWest() | sq.shiftEast()).extrudeSouth() & blackPawns).extrudeSouth();
         
         if(whiteSupport.popcount() >= blackOpposition.popcount()) {
+            evaluationVars.whiteCandidatePassedPawns |= sq;
             int rank = Square::rankOf(sq.getFSB());
             score += Score{hceParams.getMGCandidatePassedPawnBonus(rank), hceParams.getEGCandidatePassedPawnBonus(rank)};
         }
@@ -360,6 +364,7 @@ void HandcraftedEvaluator::calculatePawnScore() {
         Bitboard blackSupport = whiteOpposition.shiftNorth(2).extrudeNorth() & blackSupportCandidates & ~((sq.shiftWest() | sq.shiftEast()).extrudeNorth() & whitePawns).extrudeNorth();
 
         if(blackSupport.popcount() >= whiteOpposition.popcount()) {
+            evaluationVars.blackCandidatePassedPawns |= sq;
             int rank = Square::rankOf(Square::flipY(sq.getFSB()));
             score -= Score{hceParams.getMGCandidatePassedPawnBonus(rank), hceParams.getEGCandidatePassedPawnBonus(rank)};
         }
@@ -407,11 +412,7 @@ void HandcraftedEvaluator::calculateGamePhase() {
 }
 
 Score HandcraftedEvaluator::calculateKingSafetyScore() {
-    Score kingSafety = evaluateKingAttackZone();
-    int kingMGSafety = evaluateOpenFiles() + evaluatePawnSafety();
-    kingSafety.mg += kingMGSafety;
-
-    return kingSafety;
+    return evaluateKingAttackZone();
 }
 
 Score HandcraftedEvaluator::evaluateKingAttackZone() {
@@ -766,26 +767,10 @@ Score HandcraftedEvaluator::evaluateKingAttackZone() {
         }
     }
 
-    whiteMGAttackWeight = std::clamp(whiteMGAttackWeight, 0, (int)(sizeof(kingAttackBonus) / sizeof(kingAttackBonus[0]) - 1));
-    whiteEGAttackWeight = std::clamp(whiteEGAttackWeight, 0, (int)(sizeof(kingAttackBonus) / sizeof(kingAttackBonus[0]) - 1));
-    blackMGAttackWeight = std::clamp(blackMGAttackWeight, 0, (int)(sizeof(kingAttackBonus) / sizeof(kingAttackBonus[0]) - 1));
-    blackEGAttackWeight = std::clamp(blackEGAttackWeight, 0, (int)(sizeof(kingAttackBonus) / sizeof(kingAttackBonus[0]) - 1));
-
-    return Score{
-        kingAttackBonus[whiteMGAttackWeight] - kingAttackBonus[blackMGAttackWeight],
-        kingAttackBonus[whiteEGAttackWeight] - kingAttackBonus[blackEGAttackWeight]
-    };
-}
-
-int HandcraftedEvaluator::evaluateOpenFiles() {
-    int whiteKingSquare = board.getKingSquare(WHITE);
-    int blackKingSquare = board.getKingSquare(BLACK);
+    // offene Linien
 
     int whiteKingFile = Square::fileOf(whiteKingSquare);
     int blackKingFile = Square::fileOf(blackKingSquare);
-
-    Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
-    Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);
 
     int whiteOpenFiles = 0;
     int blackOpenFiles = 0;
@@ -798,30 +783,25 @@ int HandcraftedEvaluator::evaluateOpenFiles() {
         if(!(blackPawns & fileMasks[file]))
             blackOpenFiles++;
 
-    return hceParams.getMGKingOpenFilePenalty(whiteOpenFiles) - hceParams.getMGKingOpenFilePenalty(blackOpenFiles);
-}
+    whiteMGAttackWeight += hceParams.getMGKingOpenFileWeight(blackOpenFiles);
+    blackMGAttackWeight += hceParams.getMGKingOpenFileWeight(whiteOpenFiles);
 
-int HandcraftedEvaluator::evaluatePawnSafety() {
-    int score = 0;
-
-    int whiteKingSquare = board.getKingSquare(WHITE);
-    int blackKingSquare = board.getKingSquare(BLACK);
-
-    Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
-    Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);
+    // Bauernsturm
 
     Bitboard whitePawnStorm = pawnStormMask[BLACK / COLOR_MASK][blackKingSquare] & whitePawns & ~evaluationVars.whiteImmobilePawns & blackPawns.shiftSouthWestEast().extrudeSouth();
     Bitboard blackPawnStorm = pawnStormMask[WHITE / COLOR_MASK][whiteKingSquare] & blackPawns & ~evaluationVars.blackImmobilePawns & whitePawns.shiftNorthWestEast().extrudeNorth();
 
     while(whitePawnStorm) {
         int rank = Square::rankOf(whitePawnStorm.popFSB());
-        score += hceParams.getMGPawnStormBonus(rank);
+        whiteMGAttackWeight += hceParams.getMGPawnStormWeight(rank);
     }
 
     while(blackPawnStorm) {
         int rank = Square::rankOf(Square::flipY(blackPawnStorm.popFSB()));
-        score -= hceParams.getMGPawnStormBonus(rank);
+        blackMGAttackWeight += hceParams.getMGPawnStormWeight(rank);
     }
+
+    // Bauernschild
 
     Bitboard whitePawnShield = pawnShieldMask[WHITE / COLOR_MASK][whiteKingSquare] & whitePawns;
     Bitboard blackPawnShield = pawnShieldMask[BLACK / COLOR_MASK][blackKingSquare] & blackPawns;
@@ -832,9 +812,18 @@ int HandcraftedEvaluator::evaluatePawnSafety() {
     whitePawnShieldSize = std::min(whitePawnShieldSize, 3);
     blackPawnShieldSize = std::min(blackPawnShieldSize, 3);
 
-    score += hceParams.getMGPawnShieldSizeBonus(whitePawnShieldSize) - hceParams.getMGPawnShieldSizeBonus(blackPawnShieldSize);
+    whiteMGAttackWeight -= hceParams.getMGPawnShieldSizeWeight(whitePawnShieldSize);
+    blackMGAttackWeight -= hceParams.getMGPawnShieldSizeWeight(blackPawnShieldSize);
 
-    return score;
+    whiteMGAttackWeight = std::clamp(whiteMGAttackWeight, 0, (int)(sizeof(kingAttackBonus) / sizeof(kingAttackBonus[0]) - 1));
+    whiteEGAttackWeight = std::clamp(whiteEGAttackWeight, 0, (int)(sizeof(kingAttackBonus) / sizeof(kingAttackBonus[0]) - 1));
+    blackMGAttackWeight = std::clamp(blackMGAttackWeight, 0, (int)(sizeof(kingAttackBonus) / sizeof(kingAttackBonus[0]) - 1));
+    blackEGAttackWeight = std::clamp(blackEGAttackWeight, 0, (int)(sizeof(kingAttackBonus) / sizeof(kingAttackBonus[0]) - 1));
+
+    return Score{
+        kingAttackBonus[whiteMGAttackWeight] - kingAttackBonus[blackMGAttackWeight],
+        kingAttackBonus[whiteEGAttackWeight] - kingAttackBonus[blackEGAttackWeight]
+    };
 }
 
 Score HandcraftedEvaluator::calculatePieceScore() {
@@ -1313,6 +1302,61 @@ Score HandcraftedEvaluator::evaluateRuleOfTheSquare() {
     return {0, 0};
 }
 
+Score HandcraftedEvaluator::getDrawPenalty(int side) {
+    Score penalty{hceParams.getMGDefaultWinnablePenalty(), hceParams.getEGDefaultWinnablePenalty()};
+
+    int otherSide = side ^ COLOR_MASK;
+
+    Bitboard ourPawns = board.getPieceBitboard(side | PAWN);
+    Bitboard otherPawns = board.getPieceBitboard(otherSide | PAWN);
+    Bitboard pawns = ourPawns | otherPawns;
+
+    if(pawns == board.getPieceBitboard())
+        penalty.eg += hceParams.getKingAndPawnEndgameWinnableBonus();
+    else {
+        if(isOppositeColorBishop()) {
+            penalty.mg += hceParams.getMGOppositeColorBishopsWinnablePenalty();
+            penalty.eg += hceParams.getEGOppositeColorBishopsWinnablePenalty();
+
+            // Spezialfall: Die Läufer sind die einzigen verbliebenen Figuren,
+            // die keine Bauern sind.
+            if((board.getPieceBitboard(WHITE_BISHOP) | board.getPieceBitboard(BLACK_BISHOP) |
+                pawns) == board.getPieceBitboard()) {
+                penalty.eg += hceParams.getOppositeColorBishopsEndgameWinnablePenalty();
+            }
+        }
+
+        Bitboard ourRooks = board.getPieceBitboard(side | ROOK);
+        Bitboard otherRooks = board.getPieceBitboard(otherSide | ROOK);
+
+        if(ourRooks && ourRooks.popcount() == otherRooks.popcount()) {
+            Bitboard whiteMinorPieces = board.getPieceBitboard(WHITE_KNIGHT) | board.getPieceBitboard(WHITE_BISHOP);
+            Bitboard blackMinorPieces = board.getPieceBitboard(BLACK_KNIGHT) | board.getPieceBitboard(BLACK_BISHOP);
+            if(whiteMinorPieces.popcount() == blackMinorPieces.popcount() && whiteMinorPieces.popcount() <= 1 &&
+            (whiteMinorPieces | blackMinorPieces | pawns | ourRooks | otherRooks) == board.getPieceBitboard()) {
+                penalty.eg += hceParams.getRookEndgameWinnablePenalty();
+            }
+        }
+    }
+
+    int numPawns = pawns.popcount();
+    penalty.mg += hceParams.getMGPawnWinnableBonus() * numPawns;
+    penalty.eg += hceParams.getEGPawnWinnableBonus() * numPawns;
+
+    int numPassedOrCandidatePawns = (evaluationVars.whitePassedPawns | evaluationVars.blackPassedPawns |
+                                     evaluationVars.whiteCandidatePassedPawns | evaluationVars.blackCandidatePassedPawns).popcount();
+    penalty.mg += hceParams.getMGPassedPawnWinnableBonus() * numPassedOrCandidatePawns;
+    penalty.eg += hceParams.getEGPassedPawnWinnableBonus() * numPassedOrCandidatePawns;
+
+    if(Square::rankOf(board.getWhiteKingSquare()) >= RANK_5 ||
+       Square::rankOf(board.getBlackKingSquare()) <= RANK_4) {
+        penalty.mg += hceParams.getKingInfiltrationWinnableBonus();
+        penalty.eg += hceParams.getKingInfiltrationWinnableBonus();
+    }
+
+    return Score{std::min(penalty.mg, 0), std::min(penalty.eg, 0)};
+}
+
 bool HandcraftedEvaluator::isWinnable(int side) {
     if(board.getPieceBitboard(side | PAWN))
         return true;
@@ -1339,13 +1383,11 @@ bool HandcraftedEvaluator::isWinnable(int side) {
     return false;
 }
 
-bool HandcraftedEvaluator::isOppositeColorBishopEndgame() {
-    Bitboard pawns = board.getPieceBitboard(WHITE_PAWN) | board.getPieceBitboard(BLACK_PAWN);
+bool HandcraftedEvaluator::isOppositeColorBishop() {
     Bitboard whiteBishops = board.getPieceBitboard(WHITE_BISHOP);
     Bitboard blackBishops = board.getPieceBitboard(BLACK_BISHOP);
 
-    return (pawns | whiteBishops | blackBishops) == board.getPieceBitboard() &&
-            whiteBishops.popcount() == 1 && blackBishops.popcount() == 1 &&
+    return whiteBishops.popcount() == 1 && blackBishops.popcount() == 1 &&
            (bool)(whiteBishops & lightSquares) != (bool)(blackBishops & lightSquares);
 }
 

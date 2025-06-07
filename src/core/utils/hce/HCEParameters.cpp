@@ -82,9 +82,9 @@ bool HCEParameters::isParameterDead(size_t index) const {
     void* idxAddress = (void*)&((int16_t*)this)[index];
 
     return (idxAddress >= mgPSQTPawnFirstRowStart && idxAddress < mgPSQTPawnFirstRowEnd) ||
-            (idxAddress >= mgPSQTPawnLastRowStart && idxAddress < mgPSQTPawnLastRowEnd) ||
-            (idxAddress >= egPSQTPawnFirstRowStart && idxAddress < egPSQTPawnFirstRowEnd) ||
-            (idxAddress >= egPSQTPawnLastRowStart && idxAddress < egPSQTPawnLastRowEnd);
+           (idxAddress >= mgPSQTPawnLastRowStart && idxAddress < mgPSQTPawnLastRowEnd) ||
+           (idxAddress >= egPSQTPawnFirstRowStart && idxAddress < egPSQTPawnFirstRowEnd) ||
+           (idxAddress >= egPSQTPawnLastRowStart && idxAddress < egPSQTPawnLastRowEnd);
 }
 
 bool HCEParameters::isOptimizable(size_t index) const {
@@ -336,17 +336,17 @@ void HCEParameters::displayParameters(std::ostream& os) const {
     for(size_t i = 0; i < 4; i++)
         os << std::setw(3) << egDefenseWeight[i] << (i == 3 ? "]\n" : ", ");
 
-    os << "Pawn Shield Size Bonus MG: [  0, ";
+    os << "Pawn Shield Size Weight MG: [  0, ";
     for(size_t i = 0; i < 3; i++)
-        os << std::setw(3) << mgPawnShieldSizeBonus[i] << (i == 2 ? "]\n" : ", ");
+        os << std::setw(3) << mgPawnShieldSizeWeight[i] << (i == 2 ? "]\n" : ", ");
 
-    os << "King Open File Penalty MG: [  0, ";
+    os << "King Open File Weight MG: [  0, ";
     for(size_t i = 0; i < 3; i++)
-        os << std::setw(3) << mgKingOpenFilePenalty[i] << (i == 2 ? "]\n" : ", ");
+        os << std::setw(3) << mgKingOpenFileWeight[i] << (i == 2 ? "]\n" : ", ");
 
-    os << "Pawn Storm Bonus MG: [  0, ";
+    os << "Pawn Storm Weight MG: [  0, ";
     for(size_t i = 0; i < 5; i++)
-        os << std::setw(3) << mgPawnStormBonus[i] << ", ";
+        os << std::setw(3) << mgPawnStormWeight[i] << ", ";
 
     os << "  0,   0]\n";
 
@@ -391,9 +391,25 @@ void HCEParameters::displayParameters(std::ostream& os) const {
 
     os << "Rule Of The Square Bonus: " << ruleOfTheSquareBonus << "\n";
 
-    os << "Opposite Color Bishops Penalty: " << oppositeColorBishopsPenalty << "\n";
+    os << "Opposite Color Bishops Endgame Winnable Penalty: " << oppositeColorBishopsEndgameWinnablePenalty << "\n";
 
-    os << "Rook Endgame Penalty: " << rookEndgamePenalty << "\n";
+    os << "Opposite Color Bishops Winnable Penalty EG: " << mgOppositeColorBishopsWinnablePenalty << "\n";
+    os << "Opposite Color Bishops Winnable Penalty MG: " << egOppositeColorBishopsWinnablePenalty << "\n";
+
+    os << "Rook Endgame Winnable Penalty: " << rookEndgameWinnablePenalty << "\n";
+
+    os << "Default Winnable Penalty MG: " << mgDefaultWinnablePenalty << "\n";
+    os << "Default Winnable Penalty EG: " << egDefaultWinnablePenalty << "\n";
+
+    os << "King and Pawn Endgame Winnable Bonus: " << kingAndPawnEndgameWinnableBonus << "\n";
+
+    os << "Pawn Winnable Bonus MG: " << mgPawnWinnableBonus << "\n";
+    os << "Pawn Winnable Bonus EG: " << egPawnWinnableBonus << "\n";
+
+    os << "Passed Pawn Winnable Bonus MG: " << mgPassedPawnWinnableBonus << "\n";
+    os << "Passed Pawn Winnable Bonus EG: " << egPassedPawnWinnableBonus << "\n";
+
+    os << "King Infiltration Winnable Bonus: " << kingInfiltrationWinnableBonus << "\n";
 
     os << "Mopup Base Bonus: " << egMopupBaseBonus << "\n";
     os << "Mopup Progress Bonus: " << egMopupProgressBonus << "\n";

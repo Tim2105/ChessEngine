@@ -35,25 +35,15 @@ namespace Tune {
     double loss(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k, double discount, double weightDecay) {
         double sum = 0;
 
-        // Initialisiere Objekte, die dem Konstruktor der Suchinstanz übergeben werden müssen
-        TranspositionTable tt(1);
-        std::atomic_bool stop = false;
-        std::atomic<std::chrono::system_clock::time_point> startTime = std::chrono::system_clock::now();
-        std::atomic<std::chrono::system_clock::time_point> endTime = startTime.load() + std::chrono::seconds(1);
-        std::atomic_uint64_t nodes = 0;
-
-        // Erstelle eine Suchinstanz
-        PVSSearchInstance searchInstance(Board(), hceParams, tt, stop, startTime, endTime, nodes, nullptr);
-
         for(size_t i : indices) {
             // Extrahiere den Datenpunkt
             DataPoint& dp = data[i % data.size()];
 
             // Setze das Schachbrett auf die aktuelle Position
-            searchInstance.setBoard(dp.board);
+            HandcraftedEvaluator evaluator(dp.board, hceParams);
 
             // Berechne die Vorhersage
-            double prediction = tanh(searchInstance.pvs(0, 0, MIN_SCORE, MAX_SCORE, PV_NODE), k);
+            double prediction = tanh(evaluator.evaluate(), k);
 
             // Berechne den wahren Wert
             double trueValue;
@@ -86,16 +76,6 @@ namespace Tune {
         std::mutex mutex;
 
         auto threadFunc = [&]() {
-            // Initialisiere Objekte, die dem Konstruktor der Suchinstanz übergeben werden müssen
-            TranspositionTable tt(1);
-            std::atomic_bool stop = false;
-            std::atomic<std::chrono::system_clock::time_point> startTime = std::chrono::system_clock::now();
-            std::atomic<std::chrono::system_clock::time_point> endTime = startTime.load() + std::chrono::seconds(1);
-            std::atomic_uint64_t nodes = 0;
-
-            // Erstelle eine Suchinstanz
-            PVSSearchInstance searchInstance(Board(), hceParams, tt, stop, startTime, endTime, nodes, nullptr);
-
             // Sperre den Mutex um die zu bearbeitenden Datenpunkte zu extrahieren
             mutex.lock();
             while(currIndex < data.size()) {
@@ -111,10 +91,10 @@ namespace Tune {
                     DataPoint& dp = data[i];
 
                     // Setze das Schachbrett auf die aktuelle Position
-                    searchInstance.setBoard(dp.board);
+                    HandcraftedEvaluator evaluator(dp.board, hceParams);
 
                     // Berechne die Vorhersage
-                    double prediction = tanh(searchInstance.pvs(0, 0, MIN_SCORE, MAX_SCORE, PV_NODE), k);
+                    double prediction = tanh(evaluator.evaluate(), k);
 
                     // Berechne den wahren Wert
                     double trueValue;
