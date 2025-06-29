@@ -927,6 +927,14 @@ Score HandcraftedEvaluator::evaluateAttackedPieces() {
     return score;
 }
 
+constexpr int signedSquare(int value) {
+    return value < 0 ? -value * value : value * value;
+}
+
+constexpr double signedSqrt(double value) {
+    return value < 0.0 ? -std::sqrt(-value) : std::sqrt(value);
+}
+
 Score HandcraftedEvaluator::evaluatePieceMobility() {
     Score score{0, 0};
 
@@ -948,8 +956,8 @@ Score HandcraftedEvaluator::evaluatePieceMobility() {
         if(numAttacks == 0)
             score += {hceParams.getMGPieceNoMobilityPenalty(KNIGHT), hceParams.getEGPieceNoMobilityPenalty(KNIGHT)};
         else {
-            numAttacks = std::sqrt(numAttacks);
-            score += {numAttacks * hceParams.getMGPieceMobilityBonus(KNIGHT), numAttacks * hceParams.getEGPieceMobilityBonus(KNIGHT)};
+            score += {(int)signedSqrt(numAttacks * (int32_t)signedSquare(hceParams.getMGPieceMobilityBonus(KNIGHT))),
+                      (int)signedSqrt(numAttacks * (int32_t)signedSquare(hceParams.getEGPieceMobilityBonus(KNIGHT)))};
             score.eg += (attacks & passedPawnTrajectories).popcount() * hceParams.getEGAttackOnPassedPawnPathBonus();
         }
     }
@@ -963,8 +971,8 @@ Score HandcraftedEvaluator::evaluatePieceMobility() {
         if(numAttacks == 0)
             score -= {hceParams.getMGPieceNoMobilityPenalty(KNIGHT), hceParams.getEGPieceNoMobilityPenalty(KNIGHT)};
         else {
-            numAttacks = std::sqrt(numAttacks);
-            score -= {numAttacks * hceParams.getMGPieceMobilityBonus(KNIGHT), numAttacks * hceParams.getEGPieceMobilityBonus(KNIGHT)};
+            score -= {(int)signedSqrt(numAttacks * (int32_t)signedSquare(hceParams.getMGPieceMobilityBonus(KNIGHT))),
+                      (int)signedSqrt(numAttacks * (int32_t)signedSquare(hceParams.getEGPieceMobilityBonus(KNIGHT)))};
             score.eg -= (attacks & passedPawnTrajectories).popcount() * hceParams.getEGAttackOnPassedPawnPathBonus();
         }
     }
@@ -978,8 +986,8 @@ Score HandcraftedEvaluator::evaluatePieceMobility() {
         if(numAttacks == 0)
             score += {hceParams.getMGPieceNoMobilityPenalty(BISHOP), hceParams.getEGPieceNoMobilityPenalty(BISHOP)};
         else {
-            numAttacks = std::sqrt(numAttacks);
-            score += {numAttacks * hceParams.getMGPieceMobilityBonus(BISHOP), numAttacks * hceParams.getEGPieceMobilityBonus(BISHOP)};
+            score += {(int)signedSqrt(numAttacks * (int32_t)signedSquare(hceParams.getMGPieceMobilityBonus(BISHOP))),
+                      (int)signedSqrt(numAttacks * (int32_t)signedSquare(hceParams.getEGPieceMobilityBonus(BISHOP)))};
             score.eg += (attacks & passedPawnTrajectories).popcount() * hceParams.getEGAttackOnPassedPawnPathBonus();
         }
     }
@@ -993,8 +1001,8 @@ Score HandcraftedEvaluator::evaluatePieceMobility() {
         if(numAttacks == 0)
             score -= {hceParams.getMGPieceNoMobilityPenalty(BISHOP), hceParams.getEGPieceNoMobilityPenalty(BISHOP)};
         else {
-            numAttacks = std::sqrt(numAttacks);
-            score -= {numAttacks * hceParams.getMGPieceMobilityBonus(BISHOP), numAttacks * hceParams.getEGPieceMobilityBonus(BISHOP)};
+            score -= {(int)signedSqrt(numAttacks * (int32_t)signedSquare(hceParams.getMGPieceMobilityBonus(BISHOP))),
+                      (int)signedSqrt(numAttacks * (int32_t)signedSquare(hceParams.getEGPieceMobilityBonus(BISHOP)))};
             score.eg -= (attacks & passedPawnTrajectories).popcount() * hceParams.getEGAttackOnPassedPawnPathBonus();
         }
     }
@@ -1011,8 +1019,8 @@ Score HandcraftedEvaluator::evaluatePieceMobility() {
         if(numAttacks == 0)
             score += {hceParams.getMGPieceNoMobilityPenalty(ROOK), hceParams.getEGPieceNoMobilityPenalty(ROOK)};
         else {
-            numAttacks = std::sqrt(numAttacks);
-            score += {numAttacks * hceParams.getMGPieceMobilityBonus(ROOK), numAttacks * hceParams.getEGPieceMobilityBonus(ROOK)};
+            score += {(int)signedSqrt(numAttacks * (int32_t)signedSquare(hceParams.getMGPieceMobilityBonus(ROOK))),
+                      (int)signedSqrt(numAttacks * (int32_t)signedSquare(hceParams.getEGPieceMobilityBonus(ROOK)))};
             score.eg += (attacks & passedPawnTrajectories).popcount() * hceParams.getEGAttackOnPassedPawnPathBonus();
         }
     }
@@ -1026,8 +1034,8 @@ Score HandcraftedEvaluator::evaluatePieceMobility() {
         if(numAttacks == 0)
             score -= {hceParams.getMGPieceNoMobilityPenalty(ROOK), hceParams.getEGPieceNoMobilityPenalty(ROOK)};
         else {
-            numAttacks = std::sqrt(numAttacks);
-            score -= {numAttacks * hceParams.getMGPieceMobilityBonus(ROOK), numAttacks * hceParams.getEGPieceMobilityBonus(ROOK)};
+            score -= {(int)signedSqrt(numAttacks * (int32_t)signedSquare(hceParams.getMGPieceMobilityBonus(ROOK))),
+                      (int)signedSqrt(numAttacks * (int32_t)signedSquare(hceParams.getEGPieceMobilityBonus(ROOK)))};
             score.eg -= (attacks & passedPawnTrajectories).popcount() * hceParams.getEGAttackOnPassedPawnPathBonus();
         }
     }
@@ -1045,8 +1053,8 @@ Score HandcraftedEvaluator::evaluatePieceMobility() {
         if(numAttacks == 0)
             score += {hceParams.getMGPieceNoMobilityPenalty(QUEEN), hceParams.getEGPieceNoMobilityPenalty(QUEEN)};
         else {
-            numAttacks = std::sqrt(numAttacks);
-            score += {numAttacks * hceParams.getMGPieceMobilityBonus(QUEEN), numAttacks * hceParams.getEGPieceMobilityBonus(QUEEN)};
+            score += {(int)signedSqrt(numAttacks * (int32_t)signedSquare(hceParams.getMGPieceMobilityBonus(QUEEN))),
+                      (int)signedSqrt(numAttacks * (int32_t)signedSquare(hceParams.getEGPieceMobilityBonus(QUEEN)))};
             score.eg += (attacks & passedPawnTrajectories).popcount() * hceParams.getEGAttackOnPassedPawnPathBonus();
         }
     }
@@ -1061,8 +1069,8 @@ Score HandcraftedEvaluator::evaluatePieceMobility() {
         if(numAttacks == 0)
             score -= {hceParams.getMGPieceNoMobilityPenalty(QUEEN), hceParams.getEGPieceNoMobilityPenalty(QUEEN)};
         else {
-            numAttacks = std::sqrt(numAttacks);
-            score -= {numAttacks * hceParams.getMGPieceMobilityBonus(QUEEN), numAttacks * hceParams.getEGPieceMobilityBonus(QUEEN)};
+            score -= {(int)signedSqrt(numAttacks * (int32_t)signedSquare(hceParams.getMGPieceMobilityBonus(QUEEN))),
+                      (int)signedSqrt(numAttacks * (int32_t)signedSquare(hceParams.getEGPieceMobilityBonus(QUEEN)))};
             score.eg -= (attacks & passedPawnTrajectories).popcount() * hceParams.getEGAttackOnPassedPawnPathBonus();
         }
     }

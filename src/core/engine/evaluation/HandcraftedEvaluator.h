@@ -244,7 +244,7 @@ class HandcraftedEvaluator: public Evaluator {
 
         // Phasengrenzen, können unter 0 oder über 1 sein,
         // die berechnete Phase wird aber zwischen 0 und 1 eingeschränkt
-        static constexpr double MIN_PHASE = -0.5;
+        static constexpr double MIN_PHASE = -0.25;
         static constexpr double MAX_PHASE = 1.25;
 
         static constexpr Bitboard lightSquares = 0x55aa55aa55aa55aaULL;

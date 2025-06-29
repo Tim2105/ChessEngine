@@ -393,8 +393,8 @@ void HCEParameters::displayParameters(std::ostream& os) const {
 
     os << "Opposite Color Bishops Endgame Winnable Penalty: " << oppositeColorBishopsEndgameWinnablePenalty << "\n";
 
-    os << "Opposite Color Bishops Winnable Penalty EG: " << mgOppositeColorBishopsWinnablePenalty << "\n";
-    os << "Opposite Color Bishops Winnable Penalty MG: " << egOppositeColorBishopsWinnablePenalty << "\n";
+    os << "Opposite Color Bishops Winnable Penalty MG: " << mgOppositeColorBishopsWinnablePenalty << "\n";
+    os << "Opposite Color Bishops Winnable Penalty EG: " << egOppositeColorBishopsWinnablePenalty << "\n";
 
     os << "Rook Endgame Winnable Penalty: " << rookEndgameWinnablePenalty << "\n";
 
