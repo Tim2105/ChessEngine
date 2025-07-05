@@ -265,8 +265,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
          * abgeschaltet, wenn alpha eine Mattbewertung gegen uns ist.
          */
         if(depth <= 4 && moveScore <= KILLER_MOVE_SCORE && !isCheckEvasion &&
-           nodeType != PV_NODE && !(isMateScore(alpha) && alpha < NEUTRAL_SCORE) &&
-           !(move.isCapture() || move.isPromotion())) {
+           nodeType != PV_NODE && !(move.isCapture() || move.isPromotion())) {
             
             int preliminaryEval = searchStack[ply].preliminaryScore;
 
@@ -309,8 +308,8 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
          * Als Failsafe wenden wir LMP nicht an, wenn wir im Schach stehen oder alpha eine Mattbewertung gegen uns ist.
          * Dadurch vermeiden wir, versehentlich eine Mattverteidigung zu übersehen.
          */
-        if(nodeType != PV_NODE && moveCount >= lmpCount && moveScore <= NEUTRAL_SCORE &&
-           !(isMateScore(alpha) && alpha < NEUTRAL_SCORE) && !isCheckEvasion && !board.isCheck()) {
+        if(nodeType != PV_NODE && moveCount >= lmpCount &&
+           moveScore <= NEUTRAL_SCORE && !isCheckEvasion && !board.isCheck()) {
 
             evaluator.updateBeforeUndo();
             board.undoMove();
@@ -374,6 +373,9 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
             }
 
             reduction = std::max(reduction, 0);
+
+            if(isMateScore(alpha) && alpha < NEUTRAL_SCORE && nodeType == PV_NODE)
+                childType = PV_NODE;
 
             score = -pvs(depth - 1 + extension - reduction, ply + 1, -alpha - 1, -alpha, childType, nullMoveCooldown - 1, singularExtCooldown - 1);
 
@@ -650,7 +652,7 @@ int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int ply, int d
         return 0;
 
     // Reduziere standardmäßig anhand einer Funktion, die von der Suchtiefe abhängt.
-    double reduction = std::log(depth) * std::log(2 * moveCount) / std::log(20) + 0.75;
+    double reduction = std::log(depth) * std::log(2 * moveCount) / std::log(30) + 1.0;
 
     int historyScore = getHistoryScore(lastMove, ply);
     reduction -= historyScore / 60000.0;
