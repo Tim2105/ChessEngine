@@ -655,7 +655,7 @@ int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int ply, int d
     double reduction = std::log(depth) * std::log(2 * moveCount) / std::log(30) + 1.0;
 
     int historyScore = getHistoryScore(lastMove, ply);
-    reduction -= historyScore / 60000.0;
+    reduction -= historyScore / (60000.0 * numPVs);
 
     // Runde die Reduktion ab.
     return (int)reduction;

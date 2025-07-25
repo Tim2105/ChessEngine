@@ -374,6 +374,9 @@ void HCEParameters::displayParameters(std::ostream& os) const {
     os << "Bad Bishop Penalty MG: " << mgBadBishopPenalty << "\n";
     os << "Bad Bishop Penalty EG: " << egBadBishopPenalty << "\n";
 
+    os << "Bishop Dominance Bonus MG: " << mgBishopDominanceBonus << "\n";
+    os << "Bishop Dominance Bonus EG: " << egBishopDominanceBonus << "\n";
+
     os << "Rook On Open File Bonus MG: " << mgRookOnOpenFileBonus << "\n";
     os << "Rook On Semi-Open File Bonus MG: " << mgRookOnSemiOpenFileBonus << "\n";
     os << "Doubled Rooks On Open File Bonus MG: " << mgDoubledRooksOnOpenFileBonus << "\n";

@@ -15,10 +15,10 @@ class HCEParameters {
          */
 
         int16_t pieceValues[20] = {
-            123, 159, 282, 585, 454,
-            -4, 6, 46, 45, 392,
-            -6, -11, 36, 8, 42,
-            64, 12, 55, 80, 173
+            124, 158, 281, 588, 461,
+            -6, 1, 46, 48, 398,
+            -10, -15, 15, 2, 38,
+            59, 15, 51, 74, 159
         };
 
         /**
@@ -27,8 +27,8 @@ class HCEParameters {
          */
 
         int16_t pieceImbalanceValues[10] = {
-            -7, -12, -25, -12, -73,
-            -45, 7, -73, -1, 130
+            -14, -15, -26, -19, -70,
+            -40, 6, -68, 1, 144
         };
 
         /**
@@ -37,129 +37,129 @@ class HCEParameters {
 
         int16_t mgPSQTPawn[64] = {
             0,   0,   0,   0,   0,   0,   0,   0,
-            -33, -25, -15, -32, -30,  22,  20,  -6,
-            -25, -25, -27, -19, -13, -11,   2,   3,
-            -11,  -4,  -5,   3,   9,  10, -17, -18,
-            -17,  -2,  -9,   3,  22,  18,   2, -28,
-            41,  54,  34,  32,  96, 126, 108,  91,
-            133,  58,  88, 135,  22, -20,  18,  77,
+            -31, -19, -24, -36, -24,  28,  20,  -8,
+            -23, -30, -25, -24, -19,   0,   5,  -3,
+            -15, -12,  -8,   6,  11,  -2, -18, -10,
+            -18,   2,  -4,  14,  26,  11,  -7, -17,
+            30,  56,  46,  46,  89, 122,  91,  79,
+            128,  59,  80, 128,  36, -25,  16,  80,
             0,   0,   0,   0,   0,   0,   0,   0,
         };
 
         int16_t mgPSQTPacked[5][32] = {
             {
-                -74, -18, -34,   6,
-                -29, -23,  30,  19,
-                -1,  14,  32,  18,
-                3,  33,  45,  45,
-                61,  28,  49,  69,
-                40,   6,  62,  53,
-                24, -16,  84,  89,
-                -53, -11, -59,  97,
+                -57, -24, -23,   0,
+                -17, -37,  18,  17,
+                -9,  19,  35,  36,
+                -6,  30,  51,  48,
+                61,  28,  47,  55,
+                38,  17,  58,  47,
+                28,  -6,  87,  85,
+                -48, -17, -76,  82,
             },
             {
-                -29,   4,   4, -16,
-                -7,  32,  45,  24,
-                14,  24,  21,  37,
-                -11,  11,  20,  35,
-                -2,   4,  31,  37,
-                20,  33,  48,  43,
-                -27, -14,  21,  -4,
-                -43, -32, -34, -93,
+                -22, -13,   2, -14,
+                -8,  31,  48,  21,
+                6,  38,  21,  43,
+                -1,  -9,  19,  43,
+                0,   6,  22,  36,
+                10,  29,  24,  37,
+                -28, -23,  23, -28,
+                -56, -31, -60, -106,
             },
             {
-                  2,  -9,   8,  23,
-                -79, -25, -15, -15,
-                -43, -15, -27, -17,
-                -12, -12,  -7,  -2,
-                -12,  -2,  21,  16,
-                0,  40,  49,  85,
-                36,  47,  60,  57,
-                110, 110,  62, 100,
+                 -4,  -7,   9,  25,
+                -52, -24, -14, -23,
+                -38, -21, -35, -17,
+                -19,  -9,  -4,   3,
+                -10,  -9,  20,  11,
+                -3,  37,  44,  99,
+                54,  40,  56,  66,
+                108,  94,  39,  76,
             },
             {
-                 30, -22,  -7,  34,
-                -58,  33,  37,  35,
-                4,  34,  36,  37,
-                38,  43,  38,  54,
-                40,  41,  45,  57,
-                6,  76,  53,  60,
-                60,  14,  78,  48,
-                45,  20,  22,  67,
+                 21, -26, -13,  31,
+                -52,  29,  43,  34,
+                8,  38,  32,  44,
+                32,  32,  33,  55,
+                29,  47,  49,  57,
+                13,  65,  52,  68,
+                55,  24,  85,  58,
+                51,  34,  46,  79,
             },
             {
-                 57,  49, -25,  -6,
-                52,  56,   0, -16,
-                -49,  62,  -5, -24,
-                -102, -74, -13, -27,
-                -128, -89, -67,  62,
-                -114, -48, -52,   5,
-                -17, -37, -49, -15,
-                -78,  32, -12,  40,
+                 50,  62, -17, -17,
+                58,  54,  -8, -21,
+                -44,  48,  -8, -21,
+                -103, -55, -18, -27,
+                -130, -79, -63,  60,
+                -106, -41, -48,  -3,
+                -16, -38, -40, -19,
+                -77,  32,  -7,  32,
             }
         };
 
         int16_t egPSQTPawn[64] = {
             0,   0,   0,   0,   0,   0,   0,   0,
-            42,  60,  13,   1,  25,  21,  23,  16,
-            47,  45,   7,  22,   8,  16,  18,   8,
-            53,  37,  33,  27,  31,   7,   5,  11,
-            79,  60,  37,  20,  22,  15,  30,  23,
-            90,  89,  48,  72,  47,  78,  78,  61,
-            123, 146, 160, 158, 146, 173, 152, 120,
+            58,  67,  23,  -5,  32,  28,  15,  19,
+            45,  48,  14,  25,  13,  12,  19,  13,
+            49,  33,  29,  23,  26,  17,  18,  12,
+            73,  60,  38,  29,  18,  12,  26,  19,
+            87,  91,  49,  64,  44,  66,  65,  66,
+            122, 154, 149, 148, 145, 159, 159, 114,
             0,   0,   0,   0,   0,   0,   0,   0,
         };
 
         int16_t egPSQTPacked[5][32] = {
             {
-                72, 116,  51,  51,
-                65,  61,  29,  57,
-                80,  39,  62,  74,
-                87,  32,  62,  79,
-                52,  82,  60,  86,
-                45,  92,  52,  83,
-                118,  90,  54,  32,
-                8,  96,  96,  52,
+                70, 113,  53,  51,
+                69,  59,  29,  66,
+                75,  47,  45,  80,
+                93,  47,  65,  79,
+                58,  67,  68,  79,
+                54,  91,  64,  70,
+                125,  99,  64,  43,
+                14, 100,  85,  59,
             },
             {
-                86,  68,  76,  92,
-                81,  76,  23,  72,
-                48,  43,  60,  65,
-                29,  53,  53,  38,
-                82,  88,  66,  30,
-                100,  61,  47,  46,
-                115,  63,  43,  95,
-                122,  65,  70, 113,
+                83,  59,  74,  85,
+                70,  80,  34,  69,
+                51,  46,  63,  70,
+                41,  53,  48,  53,
+                69,  89,  76,  42,
+                81,  74,  51,  41,
+                108,  67,  56,  91,
+                113,  72,  69,  99,
             },
             {
-                72,  73,  70,  61,
-                54,  73,  74,  61,
-                84,  80,  96,  72,
-                84, 105,  79,  94,
-                105, 122,  93,  92,
-                116, 111, 104,  80,
-                86,  98, 100,  94,
-                79, 101, 108,  94,
+                64,  74,  65,  54,
+                51,  66,  84,  63,
+                76,  85,  86,  75,
+                86, 112,  85,  91,
+                113, 123,  99,  91,
+                123, 127, 111,  93,
+                99, 111, 100,  98,
+                75, 101, 104,  85,
             },
             {
-                2,  19,  13,   7,
-                66,   4, -16,  11,
-                26,  54,  66,  56,
-                37,  96,  51,  56,
-                140,  95,  63,  81,
-                163,  84, 144, 119,
-                127,  94,  69, 140,
-                108,  94,  82,  94,
+                -5,  12,   4,  -3,
+                72,   3, -17,   9,
+                32,  54,  65,  51,
+                55,  96,  54,  65,
+                128, 117,  74,  93,
+                169,  76, 149, 118,
+                119, 115,  86, 144,
+                109, 108, 105, 100,
             },
             {
-                -7, -10,  -1, -16,
-                -9,   5,  -4, -14,
-                -1, -17,   4,  -1,
-                -12,   4,  22,  18,
-                27,  52,  41,  27,
-                43,  86,  53,  30,
-                44,  83,  55,  40,
-                -142,  23,  41,  11,
+                -18,  -7,   3, -28,
+                2,   8,  -1,  -7,
+                2, -14,   3,  -2,
+                -13,  15,   6,   7,
+                26,  48,  43,  20,
+                47,  91,  59,  33,
+                36,  87,  59,  35,
+                -142,  29,  48,  6,
             }
         };
 
@@ -167,8 +167,8 @@ class HCEParameters {
          * Bonus für das Zugrecht im Mittel- und Endspiel.
          */
 
-        int16_t mgTempoBonus = 16;
-        int16_t egTempoBonus = 16;
+        int16_t mgTempoBonus = 36;
+        int16_t egTempoBonus = 22;
 
         /**
          * Bonus für angegriffene Figuren im Mittel- und Endspiel.
@@ -177,19 +177,19 @@ class HCEParameters {
          */
 
         int16_t mgAttackByMinorPieceBonus[5] = {
-            12, 19, 33, 72, 55
+            6, 24, 52, 95, 38
         };
 
         int16_t mgAttackByRookBonus[5] = {
-            0, 48, 31, 44, 57
+            7, 55, 63, 43, 66
         };
 
         int16_t egAttackByMinorPieceBonus[5] = {
-            40, 52, 19, 18, 37
+            43, 59, 32, 76, 43
         };
 
         int16_t egAttackByRookBonus[5] = {
-            32, 32, 36, 2, -8
+            48, 59, 61, 8, 3
         };
 
         /**
@@ -198,46 +198,46 @@ class HCEParameters {
          */
 
         int16_t mgConnectedPawnBonus[6] = {
-            5, 11, 14, 21, 40, 72
+            9, 12, 11, 23, 50, 92
         }; // pro Rang (2 - 7)
         int16_t egConnectedPawnBonus[6] = {
-            3, -5, 5, 15, 26, 47
+            -1, 2, 6, 17, 29, 68
         }; // pro Rang (2 - 7)
         int16_t mgDoubledPawnPenalty[4] = {
-            -18, -6, -5, -23
+            -9, -14, -6, -13
         }; // pro Linie (1 - 4, gespiegelt)
         int16_t egDoubledPawnPenalty[4] = {
-            -39, -16, -7, -8
+            -24, -31, 5, 2
         }; // pro Linie (1 - 4, gespiegelt)
         int16_t mgIsolatedPawnPenalty[4] = {
-            -12, -7, -10, -33
+            -11, -2, -11, -20
         }; // pro Linie (1 - 4, gespiegelt)
         int16_t egIsolatedPawnPenalty[4] = {
-            -12, -18, -12, -24
+            -13, -22, -14, -20
         }; // pro Linie (1 - 4, gespiegelt)
         int16_t mgBackwardPawnPenalty[5] = {
-            -24, -27, -18, -10, 5
+            -14, -31, -15, -9, 6
         }; // pro Rang (2 - 6)
         int16_t egBackwardPawnPenalty[5] = {
-            -10, -26, -32, -59, 8
+            -5, -26, -33, -56, 15
         }; // pro Rang (2 - 6)
         int16_t mgPassedPawnBonus[6] = {
-            18, 13, 30, 70, 89, 160
+            18, 7, 26, 69, 95, 148
         }; // pro Rang (2 - 7)
         int16_t egPassedPawnBonus[6] = {
-            25, 32, 63, 109, 160, 237
+            22, 28, 64, 110, 149, 219
         }; // pro Rang (2 - 7)
         int16_t mgCandidatePassedPawnBonus[5] = {
-            18, 17, 16, 36, 67
+            17, 20, 15, 42, 56
         }; // pro Rang (2 - 6)
         int16_t egCandidatePassedPawnBonus[5] = {
-            3, 10, 19, 30, 44
+            -7, 17, 25, 37, 32
         }; // pro Rang (2 - 6)
         int16_t mgConnectedPassedPawnBonus[6] = {
-            -25, 19, 7, 10, -5, -7
+            -21, 11, -4, 2, -7, -5
         }; // pro Rang (2 - 7)
         int16_t egConnectedPassedPawnBonus[6] = {
-            39, -1, 6, 9, 29, 36
+            43, -5, 1, -5, 28, 32
         }; // pro Rang (2 - 7)
 
         /**
@@ -247,51 +247,51 @@ class HCEParameters {
          * angegriffen werden können.
          */
 
-        int16_t mgCenterOutpostBonus = -4; // Linien C - F
-        int16_t mgEdgeOutpostBonus = 16; // Linien A - B und G - H
+        int16_t mgCenterOutpostBonus = -2; // Linien C - F
+        int16_t mgEdgeOutpostBonus = -4; // Linien A - B und G - H
 
         /**
          * Bewertungen für die Sicherheit des Königs im Mittel- und Endspiel.
          */
 
         int16_t mgAttackWeight[4] = {
-            4, 3, 4, 0
+            3, 4, 1, 0
         }; // Gewichtung der Angreifer (Springer, Läufer, Turm, Dame)
         int16_t egAttackWeight[4] = {
-            -3, -2, -3, 2
+            -6, -11, -2, 0
         }; // Gewichtung der Angreifer (Springer, Läufer, Turm, Dame)
         int16_t mgUndefendedAttackWeight[4] = {
-            8, 5, 3, 7
+            0, 6, 3, 8
         }; // Gewichtung der unverteidigten Angriffe (Springer, Läufer, Turm, Dame)
         int16_t egUndefendedAttackWeight[4] = {
-            -1, 7, -3, 1
+            -3, -2, 3, -5
         }; // Gewichtung der unverteidigten Angriffe (Springer, Läufer, Turm, Dame)
         int16_t mgSafeCheckWeight[4] = {
-            17, 11, 14, 20
+            19, 11, 17, 20
         }; // (Springer, Läufer, Turm, Dame)
         int16_t egSafeCheckWeight[4] = {
-            3, 20, 7, 20
+            -1, 9, 12, 16
         }; // (Springer, Läufer, Turm, Dame)
         int16_t mgSafeContactCheckWeight[2] = {
-            7, 25
+            18, 14
         }; // (Turm, Dame)
         int16_t egSafeContactCheckWeight[2] = {
-            6, 14
+            19, 6
         }; // (Turm, Dame)
         int16_t mgDefenseWeight[4] = {
-            3, -1, 1, -3
+            1, 1, -1, -1
         }; // Gewichtung der Verteidiger (Springer, Läufer, Turm, Dame)
         int16_t egDefenseWeight[4] = {
-            -12, -4, 0, 6
+            -5, 1, -1, 14
         }; // Gewichtung der Verteidiger (Springer, Läufer, Turm, Dame)
         int16_t mgPawnShieldSizeWeight[3] = {
-            3, 6, 4
+            9, 2, 5
         }; // Gewichtung der Größe des Bauernschildes (defensiv)
         int16_t mgKingOpenFileWeight[3] = {
-            10, 16, 19
+            6, 9, 8
         }; // Gewichtung der offenen Linien (offensiv)
         int16_t mgPawnStormWeight[5] = {
-            0, -5, 3, 10, 11
+            -5, -11, -4, 6, -5
         }; // pro Rang (2 - 6)
 
         /**
@@ -301,17 +301,17 @@ class HCEParameters {
          */
 
         int16_t mgPieceMobilityBonus[4] = {
-            7, 13, 18, 9
+            5, 9, 8, 4
         };
         int16_t egPieceMobilityBonus[4] = {
-            112, 63, 59, 150
+            110, 60, 58, 135
         };
 
         int16_t mgPieceNoMobilityPenalty[4] = {
-            -93, -102, -157, -187
+            -95, -92, -142, -185
         };
         int16_t egPieceNoMobilityPenalty[4] = {
-            -44, -44, -55, -58
+            -43, -52, -58, -58
         };
 
         /**
@@ -320,10 +320,10 @@ class HCEParameters {
          * im nächsten Zug erreichen kann.
          */
 
-        int16_t mgKnightOnCenterOutpostBonus = 56;
-        int16_t mgKnightOnEdgeOutpostBonus = 23;
-        int16_t mgBishopOnCenterOutpostBonus = 52;
-        int16_t mgBishopOnEdgeOutpostBonus = 30;
+        int16_t mgKnightOnCenterOutpostBonus = 66;
+        int16_t mgKnightOnEdgeOutpostBonus = 32;
+        int16_t mgBishopOnCenterOutpostBonus = 57;
+        int16_t mgBishopOnEdgeOutpostBonus = 31;
 
         /**
          * Eine Bestrafung für Läufer, die durch eigene
@@ -331,59 +331,66 @@ class HCEParameters {
          * Bauern gedeckte, Bauern blockiert werden.
          */
 
-        int16_t mgBadBishopPenalty = -10;
-        int16_t egBadBishopPenalty = -18;
+        int16_t mgBadBishopPenalty = -6;
+        int16_t egBadBishopPenalty = -7;
+
+        /**
+         * Ein Bonus für einen viel besseren Läufer auf einer Farbe.
+         */
+
+        int16_t mgBishopDominanceBonus = 5;
+        int16_t egBishopDominanceBonus = 3;
 
         /**
          * Ein Bonus für jede offene oder halboffene
          * Linie, auf der sich ein Turm befindet.
          */
 
-        int16_t mgRookOnOpenFileBonus = 47;
-        int16_t mgRookOnSemiOpenFileBonus = 26;
+        int16_t mgRookOnOpenFileBonus = 41;
+        int16_t mgRookOnSemiOpenFileBonus = 27;
 
         /**
          * Ein Bonus für gedoppelte Türme auf
          * halboffenen oder offenen Linien.
          */
-        int16_t mgDoubledRooksOnOpenFileBonus = 41;
-        int16_t mgDoubledRooksOnSemiOpenFileBonus = 27;
+        int16_t mgDoubledRooksOnOpenFileBonus = 32;
+        int16_t mgDoubledRooksOnSemiOpenFileBonus = 25;
 
         /**
          * Ein Bonus für jeden Freibauern, der von
          * einem Turm auf derselben Linie verteidigt wird.
          */
 
-        int16_t egRookBehindPassedPawnBonus = 47;
+        int16_t egRookBehindPassedPawnBonus = 51;
 
         /**
          * @brief Bonus für jede Figur, die einen
          * gegnerischen Freibauern blockiert.
          */
 
-        int16_t egBlockedEnemyPassedPawnBonus = 41;
+        int16_t egBlockedEnemyPassedPawnBonus = 45;
 
         /**
          * @brief Bonus für jeden Angriff auf den
          * Promotionspfad eines Freibauern.
          */
-        int16_t egAttackOnPassedPawnPathBonus = 2;
+        int16_t egAttackOnPassedPawnPathBonus = 3;
 
         /**
          * Gewichtungsparameter für die Bewertung der Distanz
          * des Königs zu Bauern im Endspiel.
          */
 
-        int16_t egKingProximityPawnWeight = 3;
-        int16_t egKingProximityBackwardPawnWeight = 9;
-        int16_t egKingProximityPassedPawnWeight = 19;
+        int16_t egKingProximityPawnWeight = 7;
+        int16_t egKingProximityBackwardPawnWeight = 2;
+        int16_t egKingProximityPassedPawnWeight = 21;
 
         /**
          * @brief Bonus für Freibauern in einem Bauernendspiel,
          * die nicht mehr vom gegnerischen König erreicht werden können.
          */
 
-        int16_t ruleOfTheSquareBonus = 469;
+        int16_t ruleOfTheSquareBonus = 447;
 
         /**
          * "Draw Conditions"
@@ -395,7 +402,7 @@ class HCEParameters {
          * der ansonsten führenden Seite angerechnet und
          * kann das Vorzeichen der Bewertung nicht ändern.
          */
-        int16_t oppositeColorBishopsEndgameWinnablePenalty = -221;
+        int16_t oppositeColorBishopsEndgameWinnablePenalty = -105;
 
         /**
          * @brief Bestrafung, wenn beide Seiten einen Läufer
@@ -404,8 +411,8 @@ class HCEParameters {
          * kann das Vorzeichen der Bewertung nicht ändern.
          */
 
-        int16_t mgOppositeColorBishopsWinnablePenalty = -30;
-        int16_t egOppositeColorBishopsWinnablePenalty = -80;
+        int16_t mgOppositeColorBishopsWinnablePenalty = -21;
+        int16_t egOppositeColorBishopsWinnablePenalty = -75;
 
         /**
          * @brief Bestrafung für ein Endspiel mit Türmen
@@ -413,7 +420,7 @@ class HCEParameters {
          * Die Bestrafung wird der ansonsten führenden Seite
          * angerechnet und kann das Vorzeichen der Bewertung nicht ändern.
          */
-        int16_t rookEndgameWinnablePenalty = -48;
+        int16_t rookEndgameWinnablePenalty = -45;
 
         /**
          * @brief Konstante Bestrafung Richtung 0 für
@@ -422,8 +429,8 @@ class HCEParameters {
          * kann das Vorzeichen der Bewertung nicht ändern.
          */
 
-        int16_t mgDefaultWinnablePenalty = -50;
-        int16_t egDefaultWinnablePenalty = -70;
+        int16_t mgDefaultWinnablePenalty = -60;
+        int16_t egDefaultWinnablePenalty = -90;
 
         /**
          * @brief Bonus für ein Endspiel mit nur Bauern
@@ -441,7 +448,7 @@ class HCEParameters {
          */
 
         int16_t mgPawnWinnableBonus = 8;
-        int16_t egPawnWinnableBonus = 10;
+        int16_t egPawnWinnableBonus = 16;
 
         /**
          * @brief Bonus für jeden Freibauern(kandidat).
@@ -450,7 +457,7 @@ class HCEParameters {
          * die tatsächliche Bewertung erhöhen.
          */
 
-        int16_t mgPassedPawnWinnableBonus = 5;
+        int16_t mgPassedPawnWinnableBonus = -1;
         int16_t egPassedPawnWinnableBonus = 7;
 
         /**
@@ -461,14 +468,14 @@ class HCEParameters {
          * die tatsächliche Bewertung erhöhen.
          */
 
-        int16_t kingInfiltrationWinnableBonus = 20;
+        int16_t kingInfiltrationWinnableBonus = 2;
 
         /**
          * Parameter für die Mop-Up Evaluation.
          */
 
-        int16_t egMopupBaseBonus = 760;
-        int16_t egMopupProgressBonus = 94;
+        int16_t egMopupBaseBonus = 716;
+        int16_t egMopupProgressBonus = 115;
 
         /**
          * Hier werden die entpackten Positionstabellen
@@ -595,6 +602,9 @@ class HCEParameters {
 
         inline int getMGBadBishopPenalty() const { return mgBadBishopPenalty; }
         inline int getEGBadBishopPenalty() const { return egBadBishopPenalty; }
+
+        inline int getMGBishopDominanceBonus() const { return mgBishopDominanceBonus; }
+        inline int getEGBishopDominanceBonus() const { return egBishopDominanceBonus; }
 
         inline int getMGRookOnOpenFileBonus() const { return mgRookOnOpenFileBonus; }
         inline int getMGRookOnSemiOpenFileBonus() const { return mgRookOnSemiOpenFileBonus; }

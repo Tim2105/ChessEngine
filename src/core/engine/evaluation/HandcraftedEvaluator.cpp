@@ -1120,15 +1120,54 @@ Score HandcraftedEvaluator::evaluateBadBishops() {
 
     Score score = {0, 0};
 
+    int bishopBadness[2][2] = {
+        {-1, -1}, // White
+        {-1, -1}  // Black
+    };
+
     while(whiteBishops) {
         int sq = whiteBishops.popFSB();
-        score += Score{hceParams.getMGBadBishopPenalty(), hceParams.getEGBadBishopPenalty()} * (badBishopMask[WHITE / COLOR_MASK][sq] & whiteBlockedSquares).popcount();
+        Bitboard blockedSquaresInFront = badBishopMask[WHITE / COLOR_MASK][sq] & evaluationVars.whiteImmobilePawns;
+        Bitboard blockedSquaresOnDiagonal = diagonalAttackBitboard(sq, Bitboard::ZEROS) & whiteBlockedSquares; // Count squares on the same diagonal as the bishop again
+        bool isLightSquare = lightSquares.getBit(sq);
+        Bitboard pawnsOnSameColor = isLightSquare ? whitePawns & lightSquares : whitePawns & ~lightSquares;
+        pawnsOnSameColor &= badBishopMask[WHITE / COLOR_MASK][sq];
+
+        int badness = pawnsOnSameColor.popcount() * (1 + blockedSquaresInFront.popcount()) + blockedSquaresOnDiagonal.popcount();
+        bishopBadness[WHITE / COLOR_MASK][isLightSquare] = std::max(bishopBadness[WHITE / COLOR_MASK][isLightSquare], badness);
+
+        score += Score{hceParams.getMGBadBishopPenalty(), hceParams.getEGBadBishopPenalty()} * badness;
     }
 
     while(blackBishops) {
         int sq = blackBishops.popFSB();
-        score -= Score{hceParams.getMGBadBishopPenalty(), hceParams.getEGBadBishopPenalty()} * (badBishopMask[BLACK / COLOR_MASK][sq] & blackBlockedSquares).popcount();
+        Bitboard blockedSquaresInFront = badBishopMask[BLACK / COLOR_MASK][sq] & evaluationVars.blackImmobilePawns;
+        Bitboard blockedSquaresOnDiagonal = diagonalAttackBitboard(sq, Bitboard::ZEROS) & blackBlockedSquares; // Count squares on the same diagonal as the bishop again
+        bool isLightSquare = lightSquares.getBit(sq);
+        Bitboard pawnsOnSameColor = isLightSquare ? blackPawns & lightSquares : blackPawns & ~lightSquares;
+        pawnsOnSameColor &= badBishopMask[BLACK / COLOR_MASK][sq];
+
+        int badness = pawnsOnSameColor.popcount() * (1 + blockedSquaresInFront.popcount()) + blockedSquaresOnDiagonal.popcount();
+        bishopBadness[BLACK / COLOR_MASK][isLightSquare] = std::max(bishopBadness[BLACK / COLOR_MASK][isLightSquare], badness);
+
+        score -= Score{hceParams.getMGBadBishopPenalty(), hceParams.getEGBadBishopPenalty()} * badness;
     }
+
+    // Apply bonus for bishop badness inequality
+    int lightSquareBadnessDiff = bishopBadness[BLACK / COLOR_MASK][1] - bishopBadness[WHITE / COLOR_MASK][1];
+    int darkSquareBadnessDiff = bishopBadness[BLACK / COLOR_MASK][0] - bishopBadness[WHITE / COLOR_MASK][0];
+
+    // If only one side has a bishop on a color, set the badness difference to 0
+    if(bishopBadness[WHITE / COLOR_MASK][1] == -1 || bishopBadness[BLACK / COLOR_MASK][1] == -1)
+        lightSquareBadnessDiff = 0;
+
+    if(bishopBadness[WHITE / COLOR_MASK][0] == -1 || bishopBadness[BLACK / COLOR_MASK][0] == -1)
+        darkSquareBadnessDiff = 0;
+
+    score += Score{
+        hceParams.getMGBishopDominanceBonus() * (lightSquareBadnessDiff + darkSquareBadnessDiff),
+        hceParams.getEGBishopDominanceBonus() * (lightSquareBadnessDiff + darkSquareBadnessDiff)
+    };
 
     return score;
 }
@@ -1351,16 +1390,23 @@ Score HandcraftedEvaluator::getDrawPenalty(int side) {
     penalty.mg += hceParams.getMGPawnWinnableBonus() * numPawns;
     penalty.eg += hceParams.getEGPawnWinnableBonus() * numPawns;
 
-    int numPassedOrCandidatePawns = (evaluationVars.whitePassedPawns | evaluationVars.blackPassedPawns |
-                                     evaluationVars.whiteCandidatePassedPawns | evaluationVars.blackCandidatePassedPawns).popcount();
+    int numPassedOrCandidatePawns;
+    if(side == WHITE) {
+        numPassedOrCandidatePawns = (evaluationVars.whitePassedPawns | evaluationVars.whiteCandidatePassedPawns).popcount();
+        if(Square::rankOf(board.getWhiteKingSquare()) >= RANK_5) {
+            penalty.mg += hceParams.getKingInfiltrationWinnableBonus();
+            penalty.eg += hceParams.getKingInfiltrationWinnableBonus();
+        }
+    } else {
+        numPassedOrCandidatePawns = (evaluationVars.blackPassedPawns | evaluationVars.blackCandidatePassedPawns).popcount();
+        if(Square::rankOf(board.getBlackKingSquare()) <= RANK_4) {
+            penalty.mg += hceParams.getKingInfiltrationWinnableBonus();
+            penalty.eg += hceParams.getKingInfiltrationWinnableBonus();
+        }
+    }
+
     penalty.mg += hceParams.getMGPassedPawnWinnableBonus() * numPassedOrCandidatePawns;
     penalty.eg += hceParams.getEGPassedPawnWinnableBonus() * numPassedOrCandidatePawns;
-
-    if(Square::rankOf(board.getWhiteKingSquare()) >= RANK_5 ||
-       Square::rankOf(board.getBlackKingSquare()) <= RANK_4) {
-        penalty.mg += hceParams.getKingInfiltrationWinnableBonus();
-        penalty.eg += hceParams.getKingInfiltrationWinnableBonus();
-    }
 
     return Score{std::min(penalty.mg, 0), std::min(penalty.eg, 0)};
 }
