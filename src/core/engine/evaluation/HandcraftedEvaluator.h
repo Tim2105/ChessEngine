@@ -143,10 +143,14 @@ class HandcraftedEvaluator: public Evaluator {
                         return evaluateWinningNoPawnsEndgame(whiteKingSq) * (board.getSideToMove() == WHITE ? -1 : 1);
                 }
             } else if(numPawns == 1) {
-                int numWhiteRooks = board.getPieceBitboard(WHITE_ROOK).popcount();
-                int numBlackRooks = board.getPieceBitboard(BLACK_ROOK).popcount();
+                Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
+                Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);
+                Bitboard whiteRooks = board.getPieceBitboard(WHITE_ROOK);
+                Bitboard blackRooks = board.getPieceBitboard(BLACK_ROOK);
 
-                if(numWhiteRooks == 1 && numBlackRooks == 1 && isDrawnKRPKREndgame())
+                if(whiteRooks.popcount() == 1 && blackRooks.popcount() == 1 &&
+                   board.getPieceBitboard() == (whitePawns | blackPawns | whiteRooks | blackRooks) && 
+                   isDrawnKRPKREndgame())
                     return DRAW_SCORE;
             }
 

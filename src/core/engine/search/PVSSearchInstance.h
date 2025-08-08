@@ -192,13 +192,10 @@ class PVSSearchInstance {
          * 
          * @param moveCount Die Platzierung des Knotens in der Zugvorsortierung.
          * @param moveScore Die Bewertung des letzten Zuges durch die Zugvorsortierung.
-         * @param ply Der Abstand zum Wurzelknoten.
          * @param depth Die verbleibende Suchtiefe.
-         * @param isImproving Gibt an, ob die Farbe, die am Zug ist,
-         * ihre Position verbessert hat.
          * @return Die Tiefe, um die der Knoten zusätzlich reduziert werden soll.
          */
-        int determineLMR(int moveCount, int moveScore, int ply, int depth, bool isImproving);
+        int determineLMR(int moveCount, int moveScore, int depth);
 
         /**
          * @brief Bestimmt, ab welchem Zug das Null Move Pruning
@@ -523,6 +520,26 @@ class PVSSearchInstance {
 
         constexpr Move getCounterMove(int side, int piece, int destination) {
             return counterMoveTable[side / COLOR_MASK][piece - 1][destination];
+        }
+
+        constexpr int16_t normalizeScoreForTT(int score, int ply) {
+            if(!isMateScore(score))
+                return (int16_t)score;
+            
+            if(score > NEUTRAL_SCORE)
+                return (int16_t)(score + ply);
+            else
+                return (int16_t)(score - ply);
+        }
+
+        constexpr int denormalizeScoreFromTT(int16_t score, int ply) {
+            if(!isMateScore(score))
+                return score;
+
+            if(score > NEUTRAL_SCORE)
+                return score - ply;
+            else
+                return score + ply;
         }
 
         /**

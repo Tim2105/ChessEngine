@@ -54,24 +54,25 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
         // Ein Eintrag kann nur verwendet werden, wenn die eingetragene
         // Suchtiefe mindestens so groß ist wie unsere Suchtiefe.
         if(entry.depth >= depth) {
+            int denormalizedScore = denormalizeScoreFromTT(entry.score, ply);
             if(entry.type == TranspositionTableEntry::EXACT) {
                 // Der Eintrag speichert eine exakte Bewertung,
                 // d.h. er stammt aus einem PV-Knoten.
-                return entry.score;
+                return denormalizedScore;
             } else if(entry.type == TranspositionTableEntry::LOWER_BOUND) {
                 // Der Eintrag speichert eine untere Schranke,
                 // d.h. er stammt aus einem Cut-Knoten.
-                if(entry.score >= beta)
-                    return entry.score;
-                else if(entry.score > alpha)
-                    alpha = entry.score;
+                if(denormalizedScore >= beta)
+                    return denormalizedScore;
+                else if(denormalizedScore > alpha)
+                    alpha = denormalizedScore;
             } else if(entry.type == TranspositionTableEntry::UPPER_BOUND) {
                 // Der Eintrag speichert eine obere Schranke,
                 // d.h. er stammt aus einem All-Knoten.
-                if(entry.score <= alpha)
-                    return entry.score;
-                else if(entry.score < beta)
-                    beta = entry.score;
+                if(denormalizedScore <= alpha)
+                    return denormalizedScore;
+                else if(denormalizedScore < beta)
+                    beta = denormalizedScore;
             }
         }
     }
@@ -132,28 +133,6 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
 
     clearPVTable(ply + 1);
 
-    // Lade den Eintrag aus der Transpositionstabelle neu, da
-    // bei der Suche mit mehreren Threads ein neuer Eintrag
-    // vorliegen könnte.
-    transpositionTable.probe(board.getHashValue(), entry);
-    if(entryExists && nodeType != PV_NODE && !skipHashMove) {
-        if(entry.depth >= depth) {
-            if(entry.type == TranspositionTableEntry::EXACT) {
-                return entry.score;
-            } else if(entry.type == TranspositionTableEntry::LOWER_BOUND) {
-                if(entry.score >= beta)
-                    return entry.score;
-                else if(entry.score > alpha)
-                    alpha = entry.score;
-            } else if(entry.type == TranspositionTableEntry::UPPER_BOUND) {
-                if(entry.score <= alpha)
-                    return entry.score;
-                else if(entry.score < beta)
-                    beta = entry.score;
-            }
-        }
-    }
-
     /**
      * Singular Reply Extension (nur in Cut-Knoten):
      * 
@@ -175,35 +154,13 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
 
         int singleDepthThreshold = std::abs(alpha) / 4 + 160;
         int depthThresholdStep = singleDepthThreshold / 16;
-        int reducedBeta = alpha - singleDepthThreshold + std::max(singularDepth, 10) * depthThresholdStep;
+        int reducedAlpha = alpha - singleDepthThreshold + std::max(singularDepth, 10) * depthThresholdStep;
 
-        int score = pvs(singularDepth, ply, reducedBeta - 1, reducedBeta, CUT_NODE, std::max(nullMoveCooldown, 1), SINGULAR_EXT_COOLDOWN, true);
+        int score = pvs(singularDepth, ply, reducedAlpha - 1, reducedAlpha, CUT_NODE, std::max(nullMoveCooldown, 1), SINGULAR_EXT_COOLDOWN, true);
 
         // Überprüfe, ob wir unter unserem reduzierten Beta-Wert liegen.
-        if(score < reducedBeta)
+        if(score < reducedAlpha)
             singularExtension = 1;
-    }
-
-    // Lade den Eintrag aus der Transpositionstabelle neu, da
-    // bei der Suche mit mehreren Threads ein neuer Eintrag
-    // vorliegen könnte.
-    transpositionTable.probe(board.getHashValue(), entry);
-    if(entryExists && nodeType != PV_NODE && !skipHashMove) {
-        if(entry.depth >= depth) {
-            if(entry.type == TranspositionTableEntry::EXACT) {
-                return entry.score;
-            } else if(entry.type == TranspositionTableEntry::LOWER_BOUND) {
-                if(entry.score >= beta)
-                    return entry.score;
-                else if(entry.score > alpha)
-                    alpha = entry.score;
-            } else if(entry.type == TranspositionTableEntry::UPPER_BOUND) {
-                if(entry.score <= alpha)
-                    return entry.score;
-                else if(entry.score < beta)
-                    beta = entry.score;
-            }
-        }
     }
 
     /**
@@ -218,9 +175,9 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
     int depthReduction = 0;
     if(entryExists) {
         int depthDiff = depth - entry.depth;
-        depthReduction = (depthDiff > 1 + (nodeType == PV_NODE));
+        depthReduction = depthDiff / 3;
     } else
-        depthReduction = (depth > 1 + (nodeType == PV_NODE));
+        depthReduction = depth / 3;
 
     if(depthReduction > 0)
         depth -= depthReduction;
@@ -305,8 +262,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
          * Späte Züge in All-/Cut-Knoten mit geringer Tiefe, die den Gegner nicht in Schach setzen,
          * werden sehr wahrscheinlich nicht zu einem Beta-Schnitt führen. Deshalb überspringen wir diese Züge.
          * 
-         * Als Failsafe wenden wir LMP nicht an, wenn wir im Schach stehen oder alpha eine Mattbewertung gegen uns ist.
-         * Dadurch vermeiden wir, versehentlich eine Mattverteidigung zu übersehen.
+         * Als Failsafe wenden wir LMP nicht an, wenn wir im Schach stehen.
          */
         if(nodeType != PV_NODE && moveCount >= lmpCount &&
            moveScore <= NEUTRAL_SCORE && !isCheckEvasion && !board.isCheck()) {
@@ -354,7 +310,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
             // Durchsuche die restlichen Kinder mit einem Nullfenster (nur in PV-Knoten) und bei,
             // auf ersten Blick, uninteressanten Zügen mit einer reduzierten Suchtiefe
             // (=> Late Move Reductions).
-            int reduction = determineLMR(moveCount + 1, moveScore, ply, depth, isImproving);
+            int reduction = determineLMR(moveCount + 1, moveScore, depth);
 
             if(isCheck || isCheckEvasion)
                 reduction -= 1;
@@ -373,9 +329,6 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
             }
 
             reduction = std::max(reduction, 0);
-
-            if(isMateScore(alpha) && alpha < NEUTRAL_SCORE && nodeType == PV_NODE)
-                childType = PV_NODE;
 
             score = -pvs(depth - 1 + extension - reduction, ply + 1, -alpha - 1, -alpha, childType, nullMoveCooldown - 1, singularExtCooldown - 1);
 
@@ -417,7 +370,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
             // (wir könnten ja noch einen besseren Zug finden).
             TranspositionTableEntry entry(
                 move,
-                (int16_t)score,
+                normalizeScoreForTT(score, ply),
                 (uint16_t)rootAge,
                 (uint8_t)depth,
                 TranspositionTableEntry::LOWER_BOUND
@@ -492,7 +445,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
     // zustande und war nur eine obere Schranke im Kindknoten).
     entry = {
         bestMove,
-        (int16_t)bestScore,
+        normalizeScoreForTT(bestScore, ply),
         (uint16_t)rootAge,
         (uint8_t)depth,
         ttEntryType
@@ -638,24 +591,21 @@ int PVSSearchInstance::quiescence(int ply, int alpha, int beta) {
     return bestScore;
 }
 
-int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int ply, int depth, bool isImproving) {
-    UNUSED(isImproving);
-
+int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int depth) {
     // LMR reduziert nie den ersten Zug
     if(moveCount <= 1)
         return 0;
 
     Move lastMove = board.getLastMove();
-    // Wir reduzieren keine Schlagzüge, die unser Zugvorsortierer als neutral/gut bewertet hat
-    // oder die einen Bauern aufwerten.
-    if(moveScore >= GOOD_CAPTURE_MOVES_MIN || lastMove.isPromotionQueen())
-        return 0;
 
     // Reduziere standardmäßig anhand einer Funktion, die von der Suchtiefe abhängt.
-    double reduction = std::log(depth) * std::log(2 * moveCount) / std::log(30) + 1.0;
-
-    int historyScore = getHistoryScore(lastMove, ply);
-    reduction -= historyScore / (60000.0 * numPVs);
+    double reduction;
+    if(moveScore > GOOD_CAPTURE_MOVES_NEUTRAL || lastMove.isPromotionQueen())
+        reduction = std::log(depth) * std::log(2 * moveCount) / std::log(22) - 0.3;
+    else if(moveScore >= GOOD_CAPTURE_MOVES_MIN)
+        reduction = std::log(depth) * std::log(2 * moveCount) / std::log(13) + 0.4;
+    else
+        reduction = std::log(depth) * std::log(2 * moveCount) / std::log(9) + 0.7;
 
     // Runde die Reduktion ab.
     return (int)reduction;
