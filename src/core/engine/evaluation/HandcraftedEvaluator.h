@@ -166,19 +166,19 @@ class HandcraftedEvaluator: public Evaluator {
             int evaluation = ((1.0 - evaluationVars.phase) * score.mg + evaluationVars.phase * score.eg) *
                               (board.getSideToMove() == WHITE ? 1 : -1);
 
-            // Endspiele mit Läufern auf unterschiedlichen
-            // Feldern sind schwierig zu gewinnen
             int evaluationSign = evaluation >= 0 ? 1 : -1;
             int winningSide = evaluationSign == 1 ? board.getSideToMove() : board.getSideToMove() ^ COLOR_MASK;
-            Score drawPenalty = getDrawPenalty(winningSide);
+            Score drawPenaltyScore = -getDrawPenalty(winningSide);
+            int drawPenalty = drawPenaltyScore.mg * (1.0 - evaluationVars.phase) +
+                              drawPenaltyScore.eg * evaluationVars.phase;
 
-            evaluation += drawPenalty.mg * evaluationSign * (1.0 - evaluationVars.phase) +
-                          drawPenalty.eg * evaluationSign * evaluationVars.phase;
+            int linearDrawPenalty = std::min(drawPenalty, std::max(std::abs(evaluation) - DRAW_PENALTY_EXP_THRESHOLD, 0));
+            int exponentialDrawPenalty = 0;
+            if(drawPenalty > linearDrawPenalty)
+                exponentialDrawPenalty = std::round(DRAW_PENALTY_EXP_THRESHOLD -
+                            std::exp((linearDrawPenalty - drawPenalty) * (1.0 / (double)DRAW_PENALTY_EXP_THRESHOLD)) * DRAW_PENALTY_EXP_THRESHOLD);
 
-            if(evaluationSign == 1)
-                evaluation = std::max(evaluation, DRAW_SCORE);
-            else
-                evaluation = std::min(evaluation, -DRAW_SCORE);
+            evaluation -= evaluationSign * (linearDrawPenalty + exponentialDrawPenalty);
 
             // Skaliere die Bewertung in Richtung 0, wenn wir uns der 50-Züge-Regel annähern.
             // (Starte erst nach 10 Zügen, damit die Bewertung nicht zu früh verzerrt wird.)
@@ -250,6 +250,9 @@ class HandcraftedEvaluator: public Evaluator {
         // die berechnete Phase wird aber zwischen 0 und 1 eingeschränkt
         static constexpr double MIN_PHASE = -0.25;
         static constexpr double MAX_PHASE = 1.25;
+
+        // Die Bewertung ab der bei dem "Draw-Score" von linearem auf exponentiellen Abfall umgeschaltet wird
+        static constexpr int DRAW_PENALTY_EXP_THRESHOLD = 12;
 
         static constexpr Bitboard lightSquares = 0x55aa55aa55aa55aaULL;
 
