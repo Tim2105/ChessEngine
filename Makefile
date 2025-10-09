@@ -36,7 +36,12 @@ CFLAGS_GEN = -fprofile-generate
 CFLAGS_USE = -fprofile-use -fprofile-correction
 
 # Linkerflags
-LDFLAGS =
+ifeq ($(OS),Windows_NT)
+LDFLAGS = 
+else
+LDFLAGS = -z noexecstack
+endif
+
 LDLIBS =
 
 # Argumente für den Profiling-Prozess
