@@ -252,7 +252,7 @@ class HandcraftedEvaluator: public Evaluator {
         static constexpr double MAX_PHASE = 1.25;
 
         // Die Bewertung ab der bei dem "Draw-Score" von linearem auf exponentiellen Abfall umgeschaltet wird
-        static constexpr int DRAW_PENALTY_EXP_THRESHOLD = 12;
+        static constexpr int DRAW_PENALTY_EXP_THRESHOLD = 9;
 
         static constexpr Bitboard lightSquares = 0x55aa55aa55aa55aaULL;
 

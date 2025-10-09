@@ -148,17 +148,16 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
     int singularExtension = 0;
     int singularDepth = std::min(depth / 2, depth - 4);
 
-    if(ply > 0 && nodeType != PV_NODE && singularExtCooldown <= 0 && singularDepth >= 2 && !isMateScore(alpha) &&
+    if(ply > 0 && nodeType == CUT_NODE && singularExtCooldown <= 0 && singularDepth >= 2 && !isMateScore(alpha) &&
        entryExists && entry.depth >= singularDepth && entry.score > alpha &&
        entry.type != TranspositionTableEntry::UPPER_BOUND) {
 
-        int singleDepthThreshold = std::abs(alpha) / 4 + 160;
-        int depthThresholdStep = singleDepthThreshold / 16;
-        int reducedAlpha = alpha - singleDepthThreshold + std::max(singularDepth, 10) * depthThresholdStep;
+        int singleDepthThreshold = std::abs(alpha) / 4 + 120;
+        int reducedAlpha = alpha - singleDepthThreshold + std::min(singularDepth, 10) * (int32_t)singleDepthThreshold / 16;
 
         int score = pvs(singularDepth, ply, reducedAlpha - 1, reducedAlpha, CUT_NODE, std::max(nullMoveCooldown, 1), SINGULAR_EXT_COOLDOWN, true);
 
-        // Überprüfe, ob wir unter unserem reduzierten Beta-Wert liegen.
+        // Überprüfe, ob wir unter unserem reduzierten Alpha-Wert liegen.
         if(score < reducedAlpha)
             singularExtension = 1;
     }
@@ -265,7 +264,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
          * Als Failsafe wenden wir LMP nicht an, wenn wir im Schach stehen.
          */
         if(nodeType != PV_NODE && moveCount >= lmpCount &&
-           moveScore <= NEUTRAL_SCORE && !isCheckEvasion && !board.isCheck()) {
+           moveScore < KILLER_MOVE_SCORE && !isCheckEvasion && !board.isCheck()) {
 
             evaluator.updateBeforeUndo();
             board.undoMove();

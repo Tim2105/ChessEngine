@@ -199,7 +199,7 @@ namespace Tune {
         if(validationSize == 0) {
             validationData = data;
         } else {
-            std::random_shuffle(data.begin(), data.end());
+            std::shuffle(data.begin(), data.end(), std::default_random_engine(std::rand()));
             validationData = std::vector<DataPoint>(data.end() - validationSize, data.end());
             data.erase(data.end() - validationSize, data.end());
         }
