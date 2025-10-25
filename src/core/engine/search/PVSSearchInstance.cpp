@@ -174,14 +174,14 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
     int depthReduction = 0;
     if(entryExists) {
         int depthDiff = depth - entry.depth;
-        depthReduction = depthDiff / 3;
+        depthReduction = depthDiff > 2;
     } else
-        depthReduction = depth / 3;
+        depthReduction = depth > 2;
 
     if(depthReduction > 0)
         depth -= depthReduction;
 
-    addMovesToSearchStack(ply, nodeType != ALL_NODE, depth);
+    addMovesToSearchStack(ply, nodeType != ALL_NODE && !isMateScore(alpha), depth);
 
     // Prüfe, ob die Suche abgebrochen werden soll.
     if(stopFlag.load() && currentSearchDepth > 1)
@@ -297,6 +297,9 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
             if(isCheck) {
                 // Erweitere die Suchtiefe, wenn der Zug den Gegner in Schach setzt.
                 extension += 1;
+            } else if(searchStack[ply].moveScorePairs.size() == 1) {
+                // Wenn das der einzige Zug ist, erweitern wir die Suchtiefe.
+                extension += 1;
             }
         }
 
@@ -326,6 +329,10 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
                     }
                 }
             }
+
+            if(searchStack[ply].hashMove.isCapture() ||
+               searchStack[ply].hashMove.isPromotion())
+                reduction += (int)(std::log(depth) / std::log(3));
 
             reduction = std::max(reduction, 0);
 
