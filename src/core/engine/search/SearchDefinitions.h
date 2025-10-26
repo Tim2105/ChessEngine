@@ -119,12 +119,10 @@ static constexpr int calculateNullMoveReduction(int depth, int staticEval, int b
  * um Futility-Pruning anzuwenden.
  * 
  * @param depth Die aktuelle Suchtiefe.
- * @param isImproving Gibt an, ob die Position sich verbessert hat.
- * 
  * @return Die Margin für Futility-Pruning.
  */
-static constexpr int calculateFutilityMargin(int depth, bool isImproving) {
-    return 200 + 200 * (depth - 1) + 100 * !isImproving;
+static constexpr int calculateFutilityMargin(int depth) {
+    return 300 + 200 * (depth - 1);
 }
 
 /**

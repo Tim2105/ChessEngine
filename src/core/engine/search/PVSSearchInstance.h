@@ -358,11 +358,13 @@ class PVSSearchInstance {
          * wieder angewendet werden darf.
          * @param singularExtCooldown Gibt an, in wie vielen Zügen die Singular Extension
          * wieder angewendet werden darf.
+         * @param isPlausibleLine Gibt an, ob der Knoten Teil einer plausiblen
+         * Zugfolge ist.
          * @param skipHashMove Gibt an, ob der Hashzug übersprungen werden soll.
          * @return Die Bewertung der Position (oder 0, wenn die Suche vorzeitig über die Stop-Flag abgebrochen wurde).
          * Die Hauptvariante kann über die Methode getPV() ausgelesen werden.
          */
-        int pvs(int depth, int ply, int alpha, int beta, unsigned int nodeType, int nullMoveCooldown = 0, int singularExtCooldown = 0, bool skipHashMove = false);
+        int pvs(int depth, int ply, int alpha, int beta, unsigned int nodeType, int nullMoveCooldown = 0, int singularExtCooldown = 0, bool isPlausibleLine = true, bool skipHashMove = false);
 
         /**
          * @brief Setzt das Schachbrett auf eine neue Position.

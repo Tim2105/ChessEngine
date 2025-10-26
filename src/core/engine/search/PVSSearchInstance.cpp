@@ -1,6 +1,6 @@
 #include "core/engine/search/PVSSearchInstance.h"
 
-int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int nodeType, int nullMoveCooldown, int singularExtCooldown, bool skipHashMove) {
+int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int nodeType, int nullMoveCooldown, int singularExtCooldown, bool isPlausibleLine, bool skipHashMove) {
     // Setze die momentane Suchtiefe, wenn wir uns im Wurzelknoten befinden.
     if(ply == 0) {
         currentSearchDepth = std::max(depth, 1);
@@ -94,7 +94,15 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
     /**
      * Überprüfe, ob wir uns gegenüber dem letzten Zug verbessert haben.
      */
-    bool isImproving = ply < 2 || searchStack[ply].preliminaryScore > searchStack[ply - 2].preliminaryScore + IMPROVING_THRESHOLD;
+    int scoreDiff = 0;
+    int normalizationFactor = 1;
+    if(ply >= 2) {
+        scoreDiff = searchStack[ply].preliminaryScore - searchStack[ply - 2].preliminaryScore;
+        normalizationFactor = std::min(std::abs(searchStack[ply - 2].preliminaryScore), std::abs(searchStack[ply].preliminaryScore));
+        normalizationFactor = std::max(normalizationFactor, 56);
+    }
+    
+    bool isImproving = scoreDiff > normalizationFactor / 4;
 
     /**
      * Null-Move-Pruning:
@@ -116,7 +124,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
             Move nullMove = Move::nullMove();
             board.makeMove(nullMove);
 
-            int score = -pvs(depth - depthReduction, ply + 1, -beta, -beta + 1, CUT_NODE, NULL_MOVE_COOLDOWN, std::max(singularExtCooldown - 1, 1));
+            int score = -pvs(depth - depthReduction, ply + 1, -beta, -beta + 1, CUT_NODE, NULL_MOVE_COOLDOWN, std::max(singularExtCooldown - 1, 1), false);
 
             board.undoMove();
 
@@ -124,7 +132,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
                 if(!verifyNullMove() || depth + 1 <= depthReduction)
                     return score;
 
-                score = pvs(depth - depthReduction + 1, ply, beta - 1, beta, CUT_NODE, NULL_MOVE_COOLDOWN, singularExtCooldown);
+                score = pvs(depth - depthReduction + 1, ply, beta - 1, beta, CUT_NODE, NULL_MOVE_COOLDOWN, singularExtCooldown, false);
                 if(score >= beta)
                     return score;
             }
@@ -155,7 +163,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
         int singleDepthThreshold = std::abs(alpha) / 4 + 120;
         int reducedAlpha = alpha - singleDepthThreshold + std::min(singularDepth, 10) * (int32_t)singleDepthThreshold / 16;
 
-        int score = pvs(singularDepth, ply, reducedAlpha - 1, reducedAlpha, CUT_NODE, std::max(nullMoveCooldown, 1), SINGULAR_EXT_COOLDOWN, true);
+        int score = pvs(singularDepth, ply, reducedAlpha - 1, reducedAlpha, CUT_NODE, std::max(nullMoveCooldown, 1), SINGULAR_EXT_COOLDOWN, false, true);
 
         // Überprüfe, ob wir unter unserem reduzierten Alpha-Wert liegen.
         if(score < reducedAlpha)
@@ -232,7 +240,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
 
             bool isCheck = board.isCheck();
 
-            int futilityMargin = calculateFutilityMargin(depth, isImproving);
+            int futilityMargin = calculateFutilityMargin(depth);
             if(!isCheck && preliminaryEval + futilityMargin < alpha) {
                 // Mache den Zug rückgängig und informiere den Evaluator.
                 evaluator.updateBeforeUndo();
@@ -307,7 +315,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
 
         if(moveCount == 0) {
             // Führe eine vollständige Suche durch.
-            score = -pvs(depth - 1 + extension, ply + 1, -beta, -alpha, childType, nullMoveCooldown - 1, singularExtCooldown - 1);
+            score = -pvs(depth - 1 + extension, ply + 1, -beta, -alpha, childType, nullMoveCooldown - 1, singularExtCooldown - 1, isPlausibleLine);
         } else {
             // Durchsuche die restlichen Kinder mit einem Nullfenster (nur in PV-Knoten) und bei,
             // auf ersten Blick, uninteressanten Zügen mit einer reduzierten Suchtiefe
@@ -334,9 +342,12 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
                searchStack[ply].hashMove.isPromotion())
                 reduction += (int)(std::log(depth) / std::log(3));
 
+            if(isImproving && (moveCount < 3 || moveScore >= KILLER_MOVE_SCORE))
+                reduction -= 1 + isPlausibleLine;
+
             reduction = std::max(reduction, 0);
 
-            score = -pvs(depth - 1 + extension - reduction, ply + 1, -alpha - 1, -alpha, childType, nullMoveCooldown - 1, singularExtCooldown - 1);
+            score = -pvs(depth - 1 + extension - reduction, ply + 1, -alpha - 1, -alpha, childType, nullMoveCooldown - 1, singularExtCooldown - 1, isPlausibleLine && (moveCount < 3 || moveScore >= KILLER_MOVE_SCORE));
 
             // Wenn die Bewertung über dem Nullfenster liegt,
             // führe eine vollständige Suche durch, wenn:
@@ -349,7 +360,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
                 else
                     childType = ALL_NODE;
 
-                score = -pvs(depth - 1 + extension, ply + 1, -beta, -alpha, childType, std::max(nullMoveCooldown - 1, 1), singularExtCooldown - 1);
+                score = -pvs(depth - 1 + extension, ply + 1, -beta, -alpha, childType, std::max(nullMoveCooldown - 1, 1), singularExtCooldown - 1, isPlausibleLine);
             }
         }
 
