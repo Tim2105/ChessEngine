@@ -618,12 +618,11 @@ int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int depth) {
     // Reduziere standardmäßig anhand einer Funktion, die von der Suchtiefe abhängt.
     double reduction;
     if(moveScore > GOOD_CAPTURE_MOVES_NEUTRAL || lastMove.isPromotionQueen())
-        reduction = std::log(depth) * std::log(2 * moveCount) / std::log(22) - 0.3;
-    else if(moveScore >= GOOD_CAPTURE_MOVES_MIN)
-        reduction = std::log(depth) * std::log(2 * moveCount) / std::log(13) + 0.4;
+        reduction = std::log(depth) * std::log(moveCount) / std::log(18) + 0.25;
+    else if(lastMove.isCapture())
+        reduction = std::log(depth) * std::log(moveCount) / std::log(12) + 0.8; // 14, 1.0
     else
-        reduction = std::log(depth) * std::log(2 * moveCount) / std::log(9) + 0.7;
-
+        reduction = std::log(depth) * std::log(moveCount) / std::log(12) + 1.35;
     // Runde die Reduktion ab.
     return (int)reduction;
 }
