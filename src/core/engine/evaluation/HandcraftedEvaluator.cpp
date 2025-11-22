@@ -1674,7 +1674,7 @@ bool HandcraftedEvaluator::isWinnable(int side) {
                               board.getPieceBitboard(otherSide | ROOK).popcount() * SIMPLE_PIECE_VALUE[ROOK] +
                               board.getPieceBitboard(otherSide | QUEEN).popcount() * SIMPLE_PIECE_VALUE[QUEEN];
 
-        return ownPieceValue - enemyPieceValue >= SIMPLE_PIECE_VALUE[ROOK];
+        return ownPieceValue - enemyPieceValue >= EG_WINNING_ADVANTAGE;
     }
 
     return false;
@@ -1699,6 +1699,46 @@ bool HandcraftedEvaluator::isDrawnKRPKREndgame() {
         return whitePawns.shiftNorth().extrudeNorth() & blackKings;
     else
         return blackPawns.shiftSouth().extrudeSouth() & whiteKings;
+}
+
+bool HandcraftedEvaluator::isDrawnSinglePawnEndgame() {
+    Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
+    Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);
+    Bitboard whiteRooks = board.getPieceBitboard(WHITE_ROOK);
+    Bitboard blackRooks = board.getPieceBitboard(BLACK_ROOK);
+
+    if(whiteRooks.popcount() == 1 && blackRooks.popcount() == 1 &&
+        board.getPieceBitboard() == (whitePawns | blackPawns | whiteRooks | blackRooks) && 
+        isDrawnKRPKREndgame())
+        return true; // KRPKR ist sehr wahrscheinlich Remis
+
+    int simpleMaterialScore = (board.getPieceBitboard(WHITE_KNIGHT).popcount() - board.getPieceBitboard(BLACK_KNIGHT).popcount()) * SIMPLE_PIECE_VALUE[KNIGHT] +
+                              (board.getPieceBitboard(WHITE_BISHOP).popcount() - board.getPieceBitboard(BLACK_BISHOP).popcount()) * SIMPLE_PIECE_VALUE[BISHOP] +
+                              (board.getPieceBitboard(WHITE_ROOK).popcount() - board.getPieceBitboard(BLACK_ROOK).popcount()) * SIMPLE_PIECE_VALUE[ROOK] +
+                              (board.getPieceBitboard(WHITE_QUEEN).popcount() - board.getPieceBitboard(BLACK_QUEEN).popcount()) * SIMPLE_PIECE_VALUE[QUEEN];
+
+    if(simpleMaterialScore != 0)
+        return false; // Ungleicher Materialstand, also nicht Remis
+
+    if(whitePawns) {
+        Bitboard blackMinorPieceAttacks = board.getAttackBitboard(BLACK_KNIGHT) | board.getAttackBitboard(BLACK_BISHOP);
+        whitePawns = whitePawns.shiftNorth().extrudeNorth();
+        if(board.getSideToMove() == BLACK)
+            whitePawns |= whitePawns.shiftSouth(); // Berücksichtigung des Zugrechts
+
+        if(whitePawns & blackMinorPieceAttacks)
+            return true; // Eine Leichtfigur kann sich opfern, also Remis
+    } else {
+        Bitboard whiteMinorPieceAttacks = board.getAttackBitboard(WHITE_KNIGHT) | board.getAttackBitboard(WHITE_BISHOP);
+        blackPawns = blackPawns.shiftSouth().extrudeSouth();
+        if(board.getSideToMove() == WHITE)
+            blackPawns |= blackPawns.shiftNorth(); // Berücksichtigung des Zugrechts
+
+        if(blackPawns & whiteMinorPieceAttacks)
+            return true; // Eine Leichtfigur kann sich opfern, also Remis
+    }
+
+    return false;
 }
 
 int HandcraftedEvaluator::evaluateKNBKEndgame(int b, int k) {

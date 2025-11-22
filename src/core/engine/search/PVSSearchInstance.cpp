@@ -99,10 +99,10 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
     if(ply >= 2) {
         scoreDiff = searchStack[ply].preliminaryScore - searchStack[ply - 2].preliminaryScore;
         normalizationFactor = std::min(std::abs(searchStack[ply - 2].preliminaryScore), std::abs(searchStack[ply].preliminaryScore));
-        normalizationFactor = std::max(normalizationFactor, 56);
+        normalizationFactor = std::max(normalizationFactor, 40);
     }
     
-    bool isImproving = scoreDiff > normalizationFactor / 4;
+    bool isImproving = scoreDiff >= normalizationFactor / 4;
 
     /**
      * Null-Move-Pruning:
@@ -158,7 +158,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
 
     if(ply > 0 && nodeType == CUT_NODE && singularExtCooldown <= 0 && singularDepth >= 2 && !isMateScore(alpha) &&
        entryExists && entry.depth >= singularDepth && entry.score > alpha &&
-       entry.type != TranspositionTableEntry::UPPER_BOUND) {
+       entry.type == TranspositionTableEntry::LOWER_BOUND) {
 
         int singleDepthThreshold = std::abs(alpha) / 4 + 120;
         int reducedAlpha = alpha - singleDepthThreshold + std::min(singularDepth, 10) * (int32_t)singleDepthThreshold / 16;
@@ -182,9 +182,9 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
     int depthReduction = 0;
     if(entryExists) {
         int depthDiff = depth - entry.depth;
-        depthReduction = depthDiff > 2;
+        depthReduction = depthDiff > 3;
     } else
-        depthReduction = depth > 2;
+        depthReduction = depth > 3;
 
     if(depthReduction > 0)
         depth -= depthReduction;
@@ -338,12 +338,8 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
                 }
             }
 
-            if(searchStack[ply].hashMove.isCapture() ||
-               searchStack[ply].hashMove.isPromotion())
-                reduction += (int)(std::log(depth) / std::log(3));
-
-            if(isImproving && (moveCount < 3 || moveScore >= KILLER_MOVE_SCORE))
-                reduction -= 1 + isPlausibleLine;
+            if(isImproving && isPlausibleLine && (moveCount < 3 || moveScore >= KILLER_MOVE_SCORE))
+                reduction = reduction * (int32_t)normalizationFactor / (normalizationFactor + scoreDiff);
 
             reduction = std::max(reduction, 0);
 
@@ -617,12 +613,12 @@ int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int depth) {
 
     // Reduziere standardmäßig anhand einer Funktion, die von der Suchtiefe abhängt.
     double reduction;
-    if(moveScore > GOOD_CAPTURE_MOVES_NEUTRAL || lastMove.isPromotionQueen())
-        reduction = std::log(depth) * std::log(moveCount) / std::log(18) + 0.25;
+    if(moveScore >= GOOD_CAPTURE_MOVES_MIN || lastMove.isPromotionQueen())
+        reduction = std::log(depth) * std::log(moveCount) / std::log(20) + 0.25;
     else if(lastMove.isCapture())
-        reduction = std::log(depth) * std::log(moveCount) / std::log(12) + 0.8; // 14, 1.0
+        reduction = std::log(depth) * std::log(moveCount) / std::log(20) + 0.8;
     else
-        reduction = std::log(depth) * std::log(moveCount) / std::log(12) + 1.35;
+        reduction = std::log(depth) * std::log(moveCount) / std::log(20) + 1.35;
     // Runde die Reduktion ab.
     return (int)reduction;
 }
@@ -687,7 +683,7 @@ void PVSSearchInstance::addMovesToSearchStack(int ply, bool useIID, int depth) {
         // ein vorläufig bester Zug bestimmt wird.
 
         // Bestimme die reduzierte Suchtiefe.
-        int reducedDepth = std::min(depth * 2 / 3, depth - 2);
+        int reducedDepth = std::min(depth / 2, depth - 4);
 
         TranspositionTableEntry entry;
         bool entryExists = transpositionTable.probe(board.getHashValue(), entry);

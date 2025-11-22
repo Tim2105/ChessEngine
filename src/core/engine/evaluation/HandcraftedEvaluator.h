@@ -58,6 +58,7 @@ class HandcraftedEvaluator: public Evaluator {
         bool isWinnable(int side);
         bool isOppositeColorBishop();
         bool isDrawnKRPKREndgame();
+        bool isDrawnSinglePawnEndgame();
 
         int evaluateKNBKEndgame(int ownBishopSq, int oppKingSq);
         int evaluateWinningNoPawnsEndgame(int oppKingSq);
@@ -144,17 +145,8 @@ class HandcraftedEvaluator: public Evaluator {
                     else // Jede andere Kombination -> Matt
                         return evaluateWinningNoPawnsEndgame(whiteKingSq) * (board.getSideToMove() == WHITE ? -1 : 1);
                 }
-            } else if(numPawns == 1) {
-                Bitboard whitePawns = board.getPieceBitboard(WHITE_PAWN);
-                Bitboard blackPawns = board.getPieceBitboard(BLACK_PAWN);
-                Bitboard whiteRooks = board.getPieceBitboard(WHITE_ROOK);
-                Bitboard blackRooks = board.getPieceBitboard(BLACK_ROOK);
-
-                if(whiteRooks.popcount() == 1 && blackRooks.popcount() == 1 &&
-                   board.getPieceBitboard() == (whitePawns | blackPawns | whiteRooks | blackRooks) && 
-                   isDrawnKRPKREndgame())
-                    return DRAW_SCORE;
-            }
+            } else if(numPawns == 1 && isDrawnSinglePawnEndgame())
+                return DRAW_SCORE;
 
             // Aktualisiere die Königssicherheitsbewertung
             Score kingSafetyScore = calculateKingSafetyScore();
@@ -221,7 +213,7 @@ class HandcraftedEvaluator: public Evaluator {
          */
         static constexpr int SIMPLE_PIECE_VALUE[7] = {0, 100, 300, 300, 500, 900, 0};
 
-        static constexpr int EG_WINNING_ADVANTAGE = (SIMPLE_PIECE_VALUE[ROOK] - std::max(SIMPLE_PIECE_VALUE[KNIGHT], SIMPLE_PIECE_VALUE[BISHOP])) / 2 + std::max(SIMPLE_PIECE_VALUE[KNIGHT], SIMPLE_PIECE_VALUE[BISHOP]);
+        static constexpr int EG_WINNING_ADVANTAGE = std::max(SIMPLE_PIECE_VALUE[KNIGHT], SIMPLE_PIECE_VALUE[BISHOP]) + 1;
 
         /**
          * @brief Konstanten zur Berechnung der Spielphase.
