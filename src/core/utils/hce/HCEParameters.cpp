@@ -217,6 +217,12 @@ void HCEParameters::displayParameters(std::ostream& os) const {
     for(size_t i = 0; i < 5; i++)
         os << std::setw(3) << egAttackByRookBonus[i] << (i == 4 ? "]\n" : ", ");
 
+    os << "Pinned Piece Bonus MG: " << mgPinnedPieceBonus << "\n";
+    os << "Pinned Piece Bonus EG: " << egPinnedPieceBonus << "\n";
+
+    os << "Skewered Piece Bonus MG: " << mgSkeweredPieceBonus << "\n";
+    os << "Skewered Piece Bonus EG: " << egSkeweredPieceBonus << "\n";
+
     os << "Connected Pawn Bonus MG: " << "[  0, ";
     for(size_t i = 0; i < 6; i++)
         os << std::setw(3) << mgConnectedPawnBonus[i] << ", ";
@@ -349,6 +355,9 @@ void HCEParameters::displayParameters(std::ostream& os) const {
         os << std::setw(3) << mgPawnStormWeight[i] << ", ";
 
     os << "  0,   0]\n";
+
+    os << "MG Space Bonus: " << mgSpaceBonus << "\n";
+    os << "EG Space Bonus: " << egSpaceBonus << "\n";
 
     os << "Piece Mobility Bonus MG: [  0, ";
     for(size_t i = 0; i < 4; i++)

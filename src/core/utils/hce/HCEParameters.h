@@ -57,6 +57,24 @@ class HCEParameters {
         int16_t egAttackByRookBonus[5];
 
         /**
+         * Bonus für gefesselte Figuren im Mittel- und Endspiel.
+         * (Läufer, Turm, Dame) fesselt (Springer, Läufer, Turm, Dame) gegen
+         * eine höherwertige oder ungedeckte gegnerische Leicht- oder Schwerfigur.
+         */
+
+        int16_t mgPinnedPieceBonus;
+        int16_t egPinnedPieceBonus;
+
+        /**
+         * Bonus für Figurenspieße im Mittel- und Endspiel.
+         * (Läufer, Turm, Dame) spießt (Bauer, Springer, Läufer, Turm, Dame) gegen
+         * eine höherwertige oder ungedeckte gegnerische Leicht- oder Schwerfigur.
+         */
+
+        int16_t mgSkeweredPieceBonus;
+        int16_t egSkeweredPieceBonus;
+
+        /**
          * Bewertungen für verschiedene Merkmale in
          * Bauernstrukturen im Mittel- und Endspiel.
          */
@@ -103,6 +121,9 @@ class HCEParameters {
         int16_t mgPawnShieldSizeWeight[3]; // Gewichtung der Größe des Bauernschildes (defensiv)
         int16_t mgKingOpenFileWeight[3]; // Gewichtung der offenen Linien (offensiv)
         int16_t mgPawnStormWeight[5]; // pro Rang (2 - 6)
+
+        int16_t mgSpaceBonus;
+        int16_t egSpaceBonus;
 
         /**
          * Bewertungen für die Mobilität der Figuren
@@ -352,6 +373,12 @@ class HCEParameters {
         inline int getEGAttackByMinorPieceBonus(int piece) const { return egAttackByMinorPieceBonus[piece - 1]; }
         inline int getEGAttackByRookBonus(int piece) const { return egAttackByRookBonus[piece - 1]; }
 
+        inline int getMGPinnedPieceBonus() const { return mgPinnedPieceBonus; }
+        inline int getEGPinnedPieceBonus() const { return egPinnedPieceBonus; }
+
+        inline int getMGSkeweredPieceBonus() const { return mgSkeweredPieceBonus; }
+        inline int getEGSkeweredPieceBonus() const { return egSkeweredPieceBonus; }
+
         inline int getMGConnectedPawnBonus(int rank) const { return mgConnectedPawnBonus[rank - 1]; }
         inline int getEGConnectedPawnBonus(int rank) const { return egConnectedPawnBonus[rank - 1]; }
 
@@ -390,6 +417,9 @@ class HCEParameters {
         inline int getMGPawnShieldSizeWeight(int size) const { return size == 0 ? 0 : mgPawnShieldSizeWeight[size - 1]; }
         inline int getMGKingOpenFileWeight(int numFiles) const { return numFiles == 0 ? 0 : mgKingOpenFileWeight[numFiles - 1]; }
         inline int getMGPawnStormWeight(int rank) const { return mgPawnStormWeight[rank - 1]; }
+
+        inline int getMGSpaceBonus() const { return mgSpaceBonus; }
+        inline int getEGSpaceBonus() const { return egSpaceBonus; }
 
         inline int getMGPieceMobilityBonus(int piece) const { return mgPieceMobilityBonus[piece - 2]; }
         inline int getEGPieceMobilityBonus(int piece) const { return egPieceMobilityBonus[piece - 2]; }

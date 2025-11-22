@@ -827,9 +827,10 @@ Score HandcraftedEvaluator::evaluateKingAttackZone() {
 }
 
 Score HandcraftedEvaluator::calculatePieceScore() {
-    return evaluateAttackedPieces() + evaluatePieceMobility() + evaluateMinorPiecesOnStrongSquares() +
-           evaluateBadBishops() + evaluateRooksOnOpenFiles() + evaluateRooksBehindPassedPawns() +
-           evaluateBlockedPassedPawns() + evaluateKingPawnProximity() + evaluateRuleOfTheSquare();
+    return evaluateAttackedPieces() + evaluatePinnedPieces() + evaluateSpace() + evaluatePieceMobility() +
+           evaluateMinorPiecesOnStrongSquares() + evaluateBadBishops() + evaluateRooksOnOpenFiles() +
+           evaluateRooksBehindPassedPawns() + evaluateBlockedPassedPawns() + evaluateKingPawnProximity() +
+           evaluateRuleOfTheSquare();
 }
 
 Score HandcraftedEvaluator::evaluateAttackedPieces() {
@@ -925,6 +926,248 @@ Score HandcraftedEvaluator::evaluateAttackedPieces() {
     };
 
     return score;
+}
+
+Score HandcraftedEvaluator::evaluatePinnedPieces() {
+    Score score{0, 0};
+
+    int whitePins = 0;
+    int blackPins = 0;
+
+    Bitboard fullOccupancy = board.getPieceBitboard() | board.getPieceBitboard(WHITE_KING) | board.getPieceBitboard(BLACK_KING);
+
+    Bitboard unguardedWhitePieces = board.getPieceBitboard(WHITE) & ~board.getAttackBitboard(WHITE);
+    Bitboard unguardedBlackPieces = board.getPieceBitboard(BLACK) & ~board.getAttackBitboard(BLACK);
+
+    // Weiße Dame Diagonalfesselungen
+    Bitboard sources = board.getPieceBitboard(WHITE_QUEEN);
+    Bitboard targets = board.getPieceBitboard(BLACK_KING) | unguardedBlackPieces;
+    Bitboard blockers = board.getPieceBitboard(BLACK_KNIGHT) | board.getPieceBitboard(BLACK_ROOK);
+    while(sources) {
+        int sq = sources.popFSB();
+        Bitboard attacks = diagonalAttackBitboard(sq, fullOccupancy);
+        Bitboard attackedBlockers = blockers & attacks;
+        attacks = attacks ^ diagonalAttackBitboard(sq, attackedBlockers ^ fullOccupancy);
+        
+        whitePins += (attacks & targets).popcount();
+    }
+
+    // Weiße Dame Horizontalfesselungen
+    sources = board.getPieceBitboard(WHITE_QUEEN);
+    blockers = board.getPieceBitboard(BLACK_KNIGHT) | board.getPieceBitboard(BLACK_BISHOP);
+    while(sources) {
+        int sq = sources.popFSB();
+        Bitboard attacks = horizontalAttackBitboard(sq, fullOccupancy);
+        Bitboard attackedBlockers = blockers & attacks;
+        attacks = attacks ^ horizontalAttackBitboard(sq, attackedBlockers ^ fullOccupancy);
+        
+        whitePins += (attacks & targets).popcount();
+    }
+
+    // Weiße Türme Horizontalfesselungen
+    sources = board.getPieceBitboard(WHITE_ROOK);
+    targets |= board.getPieceBitboard(BLACK_QUEEN);
+    blockers = board.getPieceBitboard(BLACK_KNIGHT) | board.getPieceBitboard(BLACK_BISHOP) | board.getPieceBitboard(BLACK_QUEEN);
+    while(sources) {
+        int sq = sources.popFSB();
+        Bitboard attacks = horizontalAttackBitboard(sq, fullOccupancy);
+        Bitboard attackedBlockers = blockers & attacks;
+        attacks = attacks ^ horizontalAttackBitboard(sq, attackedBlockers ^ fullOccupancy);
+        
+        whitePins += (attacks & targets).popcount();
+    }
+
+    // Weißer Läufer Diagonalfesselungen
+    sources = board.getPieceBitboard(WHITE_BISHOP);
+    targets |= board.getPieceBitboard(BLACK_ROOK);
+    blockers = board.getPieceBitboard(BLACK_KNIGHT) | board.getPieceBitboard(BLACK_ROOK) | board.getPieceBitboard(BLACK_QUEEN);
+    while(sources) {
+        int sq = sources.popFSB();
+        Bitboard attacks = diagonalAttackBitboard(sq, fullOccupancy);
+        Bitboard attackedBlockers = blockers & attacks;
+        attacks = attacks ^ diagonalAttackBitboard(sq, attackedBlockers ^ fullOccupancy);
+        
+        whitePins += (attacks & targets).popcount();
+    }
+
+    // Schwarze Dame Diagonalfesselungen
+    sources = board.getPieceBitboard(BLACK_QUEEN);
+    targets = board.getPieceBitboard(WHITE_KING) | unguardedWhitePieces;
+    blockers = board.getPieceBitboard(WHITE_KNIGHT) | board.getPieceBitboard(WHITE_ROOK);
+    while(sources) {
+        int sq = sources.popFSB();
+        Bitboard attacks = diagonalAttackBitboard(sq, fullOccupancy);
+        Bitboard attackedBlockers = blockers & attacks;
+        attacks = attacks ^ diagonalAttackBitboard(sq, attackedBlockers ^ fullOccupancy);
+        
+        blackPins += (attacks & targets).popcount();
+    }
+
+    // Schwarze Dame Horizontalfesselungen
+    sources = board.getPieceBitboard(BLACK_QUEEN);
+    blockers = board.getPieceBitboard(WHITE_KNIGHT) | board.getPieceBitboard(WHITE_BISHOP);
+    while(sources) {
+        int sq = sources.popFSB();
+        Bitboard attacks = horizontalAttackBitboard(sq, fullOccupancy);
+        Bitboard attackedBlockers = blockers & attacks;
+        attacks = attacks ^ horizontalAttackBitboard(sq, attackedBlockers ^ fullOccupancy);
+        
+        blackPins += (attacks & targets).popcount();
+    }
+
+    // Schwarze Türme Horizontalfesselungen
+    sources = board.getPieceBitboard(BLACK_ROOK);
+    targets |= board.getPieceBitboard(WHITE_QUEEN);
+    blockers = board.getPieceBitboard(WHITE_KNIGHT) | board.getPieceBitboard(WHITE_BISHOP) | board.getPieceBitboard(WHITE_QUEEN);
+    while(sources) {
+        int sq = sources.popFSB();
+        Bitboard attacks = horizontalAttackBitboard(sq, fullOccupancy);
+        Bitboard attackedBlockers = blockers & attacks;
+        attacks = attacks ^ horizontalAttackBitboard(sq, attackedBlockers ^ fullOccupancy);
+        
+        blackPins += (attacks & targets).popcount();
+    }
+
+    // Schwarzer Läufer Diagonalfesselungen
+    sources = board.getPieceBitboard(BLACK_BISHOP);
+    targets |= board.getPieceBitboard(WHITE_ROOK);
+    blockers = board.getPieceBitboard(WHITE_KNIGHT) | board.getPieceBitboard(WHITE_ROOK) | board.getPieceBitboard(WHITE_QUEEN);
+    while(sources) {
+        int sq = sources.popFSB();
+        Bitboard attacks = diagonalAttackBitboard(sq, fullOccupancy);
+        Bitboard attackedBlockers = blockers & attacks;
+        attacks = attacks ^ diagonalAttackBitboard(sq, attackedBlockers ^ fullOccupancy);
+        
+        blackPins += (attacks & targets).popcount();
+    }
+
+    score += {
+        (whitePins - blackPins) * hceParams.getMGPinnedPieceBonus(),
+        (whitePins - blackPins) * hceParams.getEGPinnedPieceBonus()
+    };
+
+    int whiteSkewers = 0;
+    int blackSkewers = 0;
+
+    // Weiße Dame Diagonalspieße
+    sources = board.getPieceBitboard(WHITE_QUEEN);
+    targets = board.getPieceBitboard(BLACK_KING) | unguardedBlackPieces;
+    blockers = board.getPieceBitboard(WHITE) & ~evaluationVars.whiteImmobilePawns;
+    while(sources) {
+        int sq = sources.popFSB();
+        Bitboard attacks = diagonalAttackBitboard(sq, fullOccupancy);
+        Bitboard attackedBlockers = blockers & attacks;
+        attacks = attacks ^ diagonalAttackBitboard(sq, attackedBlockers ^ fullOccupancy);
+        
+        whiteSkewers += (attacks & targets).popcount();
+    }
+
+    // Weiße Dame Horizontalspieße
+    sources = board.getPieceBitboard(WHITE_QUEEN);
+    while(sources) {
+        int sq = sources.popFSB();
+        Bitboard attacks = horizontalAttackBitboard(sq, fullOccupancy);
+        Bitboard attackedBlockers = blockers & attacks;
+        attacks = attacks ^ horizontalAttackBitboard(sq, attackedBlockers ^ fullOccupancy);
+        
+        whiteSkewers += (attacks & targets).popcount();
+    }
+
+    // Weiße Türme Horizontalspieße
+    sources = board.getPieceBitboard(WHITE_ROOK);
+    targets |= board.getPieceBitboard(BLACK_QUEEN);
+    while(sources) {
+        int sq = sources.popFSB();
+        Bitboard attacks = horizontalAttackBitboard(sq, fullOccupancy);
+        Bitboard attackedBlockers = blockers & attacks;
+        attacks = attacks ^ horizontalAttackBitboard(sq, attackedBlockers ^ fullOccupancy);
+        
+        whiteSkewers += (attacks & targets).popcount();
+    }
+
+    // Weißer Läufer Diagonalspieße
+    sources = board.getPieceBitboard(WHITE_BISHOP);
+    targets |= board.getPieceBitboard(BLACK_ROOK);
+    while(sources) {
+        int sq = sources.popFSB();
+        Bitboard attacks = diagonalAttackBitboard(sq, fullOccupancy);
+        Bitboard attackedBlockers = blockers & attacks;
+        attacks = attacks ^ diagonalAttackBitboard(sq, attackedBlockers ^ fullOccupancy);
+        
+        whiteSkewers += (attacks & targets).popcount();
+    }
+
+    // Schwarze Dame Diagonalspieße
+    sources = board.getPieceBitboard(BLACK_QUEEN);
+    targets = board.getPieceBitboard(WHITE_KING) | unguardedWhitePieces;
+    blockers = board.getPieceBitboard(BLACK) & ~evaluationVars.blackImmobilePawns;
+    while(sources) {
+        int sq = sources.popFSB();
+        Bitboard attacks = diagonalAttackBitboard(sq, fullOccupancy);
+        Bitboard attackedBlockers = blockers & attacks;
+        attacks = attacks ^ diagonalAttackBitboard(sq, attackedBlockers ^ fullOccupancy);
+        
+        blackSkewers += (attacks & targets).popcount();
+    }
+
+    // Schwarze Dame Horizontalspieße
+    sources = board.getPieceBitboard(BLACK_QUEEN);
+    while(sources) {
+        int sq = sources.popFSB();
+        Bitboard attacks = horizontalAttackBitboard(sq, fullOccupancy);
+        Bitboard attackedBlockers = blockers & attacks;
+        attacks = attacks ^ horizontalAttackBitboard(sq, attackedBlockers ^ fullOccupancy);
+        
+        blackSkewers += (attacks & targets).popcount();
+    }
+
+    // Schwarze Türme Horizontalspieße
+    sources = board.getPieceBitboard(BLACK_ROOK);
+    targets |= board.getPieceBitboard(WHITE_QUEEN);
+    while(sources) {
+        int sq = sources.popFSB();
+        Bitboard attacks = horizontalAttackBitboard(sq, fullOccupancy);
+        Bitboard attackedBlockers = blockers & attacks;
+        attacks = attacks ^ horizontalAttackBitboard(sq, attackedBlockers ^ fullOccupancy);
+        
+        blackSkewers += (attacks & targets).popcount();
+    }
+
+    // Schwarzer Läufer Diagonalspieße
+    sources = board.getPieceBitboard(BLACK_BISHOP);
+    targets |= board.getPieceBitboard(WHITE_ROOK);
+    while(sources) {
+        int sq = sources.popFSB();
+        Bitboard attacks = diagonalAttackBitboard(sq, fullOccupancy);
+        Bitboard attackedBlockers = blockers & attacks;
+        attacks = attacks ^ diagonalAttackBitboard(sq, attackedBlockers ^ fullOccupancy);
+        
+        blackSkewers += (attacks & targets).popcount();
+    }
+
+    score += {
+        (whiteSkewers - blackSkewers) * hceParams.getMGSkeweredPieceBonus(),
+        (whiteSkewers - blackSkewers) * hceParams.getEGSkeweredPieceBonus()
+    };
+
+    return score;
+}
+
+Score HandcraftedEvaluator::evaluateSpace() {
+    Bitboard whitePawnAttacks = board.getAttackBitboard(WHITE_PAWN);
+    Bitboard blackPawnAttacks = board.getAttackBitboard(BLACK_PAWN);
+
+    Bitboard whiteSafeSquares = (board.getPieceBitboard(WHITE_PAWN).shiftSouth().extrudeSouth() | whitePawnAttacks) & ~blackPawnAttacks;
+    Bitboard blackSafeSquares = (board.getPieceBitboard(BLACK_PAWN).shiftNorth().extrudeNorth() | blackPawnAttacks) & ~whitePawnAttacks;
+
+    // Zähle Felder im Zentrum doppelt, gewichte mit der Anzahl der Leicht- und Schwerfiguren
+    int spaceDiff = (whiteSafeSquares.popcount() + (whiteSafeSquares & fileCtoFRank2to5).popcount()) -
+                    (blackSafeSquares.popcount() + (blackSafeSquares & fileCtoFRank4to7).popcount());
+
+    return Score{
+        spaceDiff * hceParams.getMGSpaceBonus(),
+        spaceDiff * hceParams.getEGSpaceBonus()
+    };
 }
 
 constexpr int signedSquare(int value) {

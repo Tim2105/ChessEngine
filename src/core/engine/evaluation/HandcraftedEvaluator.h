@@ -42,6 +42,8 @@ class HandcraftedEvaluator: public Evaluator {
         Score evaluateKingAttackZone();
 
         Score evaluateAttackedPieces();
+        Score evaluatePinnedPieces();
+        Score evaluateSpace();
         Score evaluatePieceMobility();
         Score evaluateMinorPiecesOnStrongSquares();
         Score evaluateBadBishops();
@@ -283,6 +285,8 @@ class HandcraftedEvaluator: public Evaluator {
 
         static constexpr Bitboard extendedCenter = 0x3c3c000000ULL;
         static constexpr Bitboard fileCtoF = 0x3c3c3c3c3c3c3c3cULL;
+        static constexpr Bitboard fileCtoFRank2to5 = 0x3c3c3c3c00ULL;
+        static constexpr Bitboard fileCtoFRank4to7 = 0x3c3c3c3c000000ULL;
 
         static constexpr Bitboard kingAttackZone[64] = {
             0x7070707ULL, 0x7070707ULL, 0xe0e0e0eULL, 0x1c1c1c1cULL, 0x38383838ULL, 0x70707070ULL, 0xe0e0e0e0ULL, 0xe0e0e0e0ULL,
