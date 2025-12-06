@@ -335,6 +335,14 @@ class Bitboard {
         }
 
         /**
+         * @brief Bitweises XOR mit Zuweisung.
+         */
+        constexpr Bitboard operator^= (const Bitboard& bitboard) {
+            this->bits ^= bitboard.bits;
+            return *this;
+        }
+
+        /**
          * @brief Bitweises NOT.
          */
         constexpr Bitboard operator~() const {

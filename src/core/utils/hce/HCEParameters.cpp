@@ -334,6 +334,14 @@ void HCEParameters::displayParameters(std::ostream& os) const {
     for(size_t i = 0; i < 2; i++)
         os << std::setw(3) << egSafeContactCheckWeight[i] << (i == 1 ? "]\n" : ", ");
 
+    os << "Skewered By Weight MG: [  0,   0, ";
+    for(size_t i = 0; i < 3; i++)
+        os << std::setw(3) << mgSkeweredByWeight[i] << (i == 2 ? "]\n" : ", ");
+
+    os << "Skewered By Weight EG: [  0,   0, ";
+    for(size_t i = 0; i < 3; i++)
+        os << std::setw(3) << egSkeweredByWeight[i] << (i == 2 ? "]\n" : ", ");
+
     os << "Defense Weight MG: [  0, ";
     for(size_t i = 0; i < 4; i++)
         os << std::setw(3) << mgDefenseWeight[i] << (i == 3 ? "]\n" : ", ");

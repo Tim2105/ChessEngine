@@ -598,6 +598,51 @@ Score HandcraftedEvaluator::evaluateKingAttackZone() {
         }
     }
 
+    // Finde Spieße auf den schwarzen König
+
+    // Diagonal
+    occupied = board.getPieceBitboard() | board.getPieceBitboard(WHITE_KING);
+    Bitboard whiteBlockers = board.getPieceBitboard(WHITE_PAWN) | board.getPieceBitboard(WHITE_KNIGHT) | board.getPieceBitboard(WHITE_ROOK) | board.getPieceBitboard(WHITE_KING);
+    Bitboard attacks = diagonalAttackBitboard(blackKingSquare, occupied);
+    whiteBlockers &= attacks;
+    attacks ^= diagonalAttackBitboard(blackKingSquare, occupied ^ whiteBlockers);
+    attacks &= board.getPieceBitboard(WHITE_QUEEN) | board.getPieceBitboard(WHITE_BISHOP);
+
+    while(attacks) {
+        int sq = attacks.popFSB();
+        switch(TYPEOF(board.pieceAt(sq))) {
+            case QUEEN:
+                whiteMGAttackWeight += hceParams.getMGSkeweredByWeight(QUEEN);
+                whiteEGAttackWeight += hceParams.getEGSkeweredByWeight(QUEEN);
+                break;
+            case BISHOP:
+                whiteMGAttackWeight += hceParams.getMGSkeweredByWeight(BISHOP);
+                whiteEGAttackWeight += hceParams.getEGSkeweredByWeight(BISHOP);
+                break;
+        }
+    }
+
+    // Horizontal
+    whiteBlockers = board.getPieceBitboard(WHITE_KNIGHT) | board.getPieceBitboard(WHITE_BISHOP) | board.getPieceBitboard(WHITE_KING);
+    attacks = horizontalAttackBitboard(blackKingSquare, occupied);
+    whiteBlockers &= attacks;
+    attacks ^= horizontalAttackBitboard(blackKingSquare, occupied ^ whiteBlockers);
+    attacks &= board.getPieceBitboard(WHITE_QUEEN) | board.getPieceBitboard(WHITE_ROOK);
+
+    while(attacks) {
+        int sq = attacks.popFSB();
+        switch(TYPEOF(board.pieceAt(sq))) {
+            case QUEEN:
+                whiteMGAttackWeight += hceParams.getMGSkeweredByWeight(QUEEN);
+                whiteEGAttackWeight += hceParams.getEGSkeweredByWeight(QUEEN);
+                break;
+            case ROOK:
+                whiteMGAttackWeight += hceParams.getMGSkeweredByWeight(ROOK);
+                whiteEGAttackWeight += hceParams.getEGSkeweredByWeight(ROOK);
+                break;
+        }
+    }
+
     defendedSquares = board.getAttackBitboard(WHITE_PAWN) | board.getAttackBitboard(WHITE_KNIGHT) |
         board.getAttackBitboard(WHITE_BISHOP) | board.getAttackBitboard(WHITE_ROOK) | board.getAttackBitboard(WHITE_QUEEN);
     
@@ -764,6 +809,51 @@ Score HandcraftedEvaluator::evaluateKingAttackZone() {
                     }
                 }
             }
+        }
+    }
+
+    // Finde Spieße auf den weißen König
+
+    // Diagonal
+    occupied = board.getPieceBitboard() | board.getPieceBitboard(BLACK_KING);
+    Bitboard blackBlockers = board.getPieceBitboard(BLACK_PAWN) | board.getPieceBitboard(BLACK_KNIGHT) | board.getPieceBitboard(BLACK_ROOK) | board.getPieceBitboard(BLACK_KING);
+    attacks = diagonalAttackBitboard(whiteKingSquare, occupied);
+    blackBlockers &= attacks;
+    attacks ^= diagonalAttackBitboard(whiteKingSquare, occupied ^ blackBlockers);
+    attacks &= board.getPieceBitboard(BLACK_QUEEN) | board.getPieceBitboard(BLACK_BISHOP);
+
+    while(attacks) {
+        int sq = attacks.popFSB();
+        switch(TYPEOF(board.pieceAt(sq))) {
+            case QUEEN:
+                blackMGAttackWeight += hceParams.getMGSkeweredByWeight(QUEEN);
+                blackEGAttackWeight += hceParams.getEGSkeweredByWeight(QUEEN);
+                break;
+            case BISHOP:
+                blackMGAttackWeight += hceParams.getMGSkeweredByWeight(BISHOP);
+                blackEGAttackWeight += hceParams.getEGSkeweredByWeight(BISHOP);
+                break;
+        }
+    }
+
+    // Horizontal
+    blackBlockers = board.getPieceBitboard(BLACK_KNIGHT) | board.getPieceBitboard(BLACK_BISHOP) | board.getPieceBitboard(BLACK_KING);
+    attacks = horizontalAttackBitboard(whiteKingSquare, occupied);
+    blackBlockers &= attacks;
+    attacks ^= horizontalAttackBitboard(whiteKingSquare, occupied ^ blackBlockers);
+    attacks &= board.getPieceBitboard(BLACK_QUEEN) | board.getPieceBitboard(BLACK_ROOK);
+
+    while(attacks) {
+        int sq = attacks.popFSB();
+        switch(TYPEOF(board.pieceAt(sq))) {
+            case QUEEN:
+                blackMGAttackWeight += hceParams.getMGSkeweredByWeight(QUEEN);
+                blackEGAttackWeight += hceParams.getEGSkeweredByWeight(QUEEN);
+                break;
+            case ROOK:
+                blackMGAttackWeight += hceParams.getMGSkeweredByWeight(ROOK);
+                blackEGAttackWeight += hceParams.getEGSkeweredByWeight(ROOK);
+                break;
         }
     }
 

@@ -116,11 +116,17 @@ class HCEParameters {
         int16_t egSafeCheckWeight[4]; // (Springer, Läufer, Turm, Dame)
         int16_t mgSafeContactCheckWeight[2]; // (Turm, Dame)
         int16_t egSafeContactCheckWeight[2]; // (Turm, Dame)
+        int16_t mgSkeweredByWeight[3]; // Gewichtung von Spießen auf den König durch (Läufer, Turm, Dame)
+        int16_t egSkeweredByWeight[3]; // Gewichtung von Spießen auf den König durch (Läufer, Turm, Dame)
         int16_t mgDefenseWeight[4]; // Gewichtung der Verteidiger (Springer, Läufer, Turm, Dame)
         int16_t egDefenseWeight[4]; // Gewichtung der Verteidiger (Springer, Läufer, Turm, Dame)
         int16_t mgPawnShieldSizeWeight[3]; // Gewichtung der Größe des Bauernschildes (defensiv)
         int16_t mgKingOpenFileWeight[3]; // Gewichtung der offenen Linien (offensiv)
         int16_t mgPawnStormWeight[5]; // pro Rang (2 - 6)
+
+        /**
+         * Bewertungen für Raumvorteile im Mittel- und Endspiel.
+         */
 
         int16_t mgSpaceBonus;
         int16_t egSpaceBonus;
@@ -411,6 +417,8 @@ class HCEParameters {
         inline int getEGSafeCheckWeight(int piece) const { return egSafeCheckWeight[piece - 2]; }
         inline int getMGSafeContactCheckWeight(int piece) const { return mgSafeContactCheckWeight[piece - 4]; }
         inline int getEGSafeContactCheckWeight(int piece) const { return egSafeContactCheckWeight[piece - 4]; }
+        inline int getMGSkeweredByWeight(int piece) const { return mgSkeweredByWeight[piece - 3]; }
+        inline int getEGSkeweredByWeight(int piece) const { return egSkeweredByWeight[piece - 3]; }
         inline int getMGDefenseWeight(int piece) const { return mgDefenseWeight[piece - 2]; }
         inline int getEGDefenseWeight(int piece) const { return egDefenseWeight[piece - 2]; }
 
