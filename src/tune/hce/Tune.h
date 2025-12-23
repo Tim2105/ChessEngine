@@ -60,11 +60,10 @@ namespace Tune {
      * @param indices Die Indizes der Datenpunkte, die für die Berechnung des Fehlers verwendet werden sollen.
      * @param hceParams Der Parametersatz.
      * @param k Ein Faktor, der mit dem Argument der Sigmoid-Funktion multipliziert wird.
-     * @param discount Der Discount-Faktor.
      * @param weightDecay Der Gewichtungsabfall.
      * @return double Der mittlere quadratische Fehler.
      */
-    double loss(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k, double discount, double weightDecay = 0.0);
+    double loss(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k, double weightDecay = 0.0);
 
     /**
      * @brief Bestimmt den MSE eines Parametersatzes auf einem Datensatz.
@@ -74,11 +73,10 @@ namespace Tune {
      * @param data Der Datensatz.
      * @param hceParams Der Parametersatz.
      * @param k Ein Faktor, der mit dem Argument der Sigmoid-Funktion multipliziert wird.
-     * @param discount Der Discount-Faktor.
      * @param weightDecay Der Gewichtungsabfall.
      * @return double Der mittlere quadratische Fehler.
      */
-    double loss(std::vector<DataPoint>& data, const HCEParameters& hceParams, double k, double discount, double weightDecay = 0.0);
+    double loss(std::vector<DataPoint>& data, const HCEParameters& hceParams, double k, double weightDecay = 0.0);
 
     /**
      * @brief Berechnet den Gradienten des MSE eines Parametersatzes auf einem Datensatz.
@@ -89,10 +87,10 @@ namespace Tune {
      * @param indices Die Indizes der Datenpunkte, die für die Berechnung des Gradienten verwendet werden sollen.
      * @param hceParams Der Parametersatz.
      * @param k Ein Faktor, der mit dem Argument der Sigmoid-Funktion multipliziert wird.
-     * @param discount Der Discount-Faktor.
+     * @param weightDecay Der Gewichtungsabfall.
      * @return std::vector<double> Der Gradient.
      */
-    std::vector<double> gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k, double discount);
+    std::vector<double> gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k, double weightDecay = 0.0);
 
     /**
      * @brief Verbessert die Parameter eines HCE-Modells über den AdamW-Algorithmus.

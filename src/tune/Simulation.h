@@ -16,11 +16,17 @@ enum GameResult {
     DRAW
 };
 
+class Result {
+    public:
+        GameResult result;
+        std::vector<int> evaluations;
+};
+
 class Simulation {
 
     private:
         std::vector<Board>& startingPositions;
-        std::vector<GameResult> results;
+        std::vector<Result> results;
         uint32_t timeControl;
         uint32_t increment;
         size_t numThreads;
@@ -32,7 +38,7 @@ class Simulation {
         double noiseStdDev;
         double noiseLinearStdDev;
 
-        GameResult simulateSingleGame(Board& board);
+        Result simulateSingleGame(Board& board);
 
         static constexpr unsigned int DRAW_AFTER_N_MOVES = 400;
 
@@ -42,7 +48,7 @@ class Simulation {
 
         void run();
 
-        inline std::vector<GameResult>& getResults() {
+        inline std::vector<Result>& getResults() {
             return results;
         }
 

@@ -169,39 +169,19 @@ void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, bool useN
     std::cout << "Writing results to file..." << std::endl;
     std::cout << "Remaining games: " << startingPositions.size() << std::flush;
 
-    std::vector<GameResult>& results = sim.getResults();
+    std::vector<Result>& results = sim.getResults();
 
     for(size_t i = 0; i < startingPositions.size(); i++) {
         std::vector<std::string> output;
         int outputSize = (int)(startingPositions[i].getAge() - startingMoves[i]);
         output.resize(outputSize);
 
-        int numPlayedMoves = startingPositions[i].getAge();
-
-        for(int j = (int)startingPositions[i].getAge(); j > (int)startingMoves[i]; j--) {
-            std::stringstream ss;
-            ss << startingPositions[i].toFEN() << ";";
-            int gameEndsIn = numPlayedMoves - j;
-            switch(results[i]) {
-                case WHITE_WIN:
-                    if(startingPositions[i].getSideToMove() == WHITE)
-                        ss << gameEndsIn;
-                    else
-                        ss << -gameEndsIn;
-                    break;
-                case BLACK_WIN:
-                    if(startingPositions[i].getSideToMove() == BLACK)
-                        ss << gameEndsIn;
-                    else
-                        ss << -gameEndsIn;
-                    break;
-                case DRAW:
-                    ss << "0";
-                    break;
-            }
-
-            output[j - startingMoves[i] - 1] = ss.str();
+        for(int j = (int)results[i].evaluations.size() - 1; j >= 0; j--) {
+            // Mache den letzten Zug rückgängig, das Spiel ist da schon vorbei
             startingPositions[i].undoMove();
+            std::stringstream ss;
+            ss << startingPositions[i].toFEN() << ";" << results[i].evaluations[j];
+            output[j] = ss.str();
         }
 
         for(int j = 0; j < outputSize; j++)
@@ -254,20 +234,24 @@ void findOptimalK() {
     std::vector<DataPoint> data = loadData(samplesFile);
     samplesFile.close();
 
-    double prevLoss = std::numeric_limits<double>::max(), loss = 1.0;
+    double prevLoss = std::numeric_limits<double>::max(), bestLoss = std::numeric_limits<double>::max(), loss = 1.0, bestK = 0.0;
     int i = 1;
 
-    while(loss < prevLoss) {
+    while(loss < prevLoss || i <= 100) {
         prevLoss = loss;
-        double newK = 1e-8 * i * i;
+        double newK = 1e-4 * i * i;
 
-        loss = Tune::loss(data, HCE_PARAMS, newK, discount.get<double>());
+        loss = Tune::loss(data, HCE_PARAMS, newK, weightDecay.get<double>());
 
-        if(loss < prevLoss) {
-            std::stringstream ss;
-            ss << "\r(" << i << ") Loss: " << loss << " with k = " << newK << " at discount = " << discount.get<double>();
-            std::cout << std::left << std::setw(70) << ss.str() << std::right << std::flush;
+        if(loss < bestLoss) {
+            bestLoss = loss;
+            bestK = newK;
         }
+
+        std::stringstream ss;
+        ss << "\r(" << i << ") Loss: " << loss << " with k = " << newK << " (best loss = " << bestLoss <<
+              ", best k = " << bestK << ")" << " at discount = " << discount.get<double>();
+        std::cout << std::left << std::setw(100) << ss.str() << std::right << std::flush;
 
         i++;
     }

@@ -32,7 +32,7 @@ namespace Tune {
         return (x - y) * (x - y);
     }
 
-    double loss(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k, double discount, double weightDecay) {
+    double loss(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k, double weightDecay) {
         double sum = 0;
 
         for(size_t i : indices) {
@@ -44,15 +44,7 @@ namespace Tune {
 
             // Berechne die Vorhersage
             double prediction = tanh(evaluator.evaluate(), k);
-
-            // Berechne den wahren Wert
-            double trueValue;
-            if(dp.result == 0)
-                trueValue = 0.0;
-            else if(dp.result > 0)
-                trueValue = std::pow(discount, dp.result);
-            else
-                trueValue = -std::pow(discount, -dp.result);
+            double trueValue = tanh(dp.result, k);
 
             // Berechne den Fehler
             sum += mse(prediction, trueValue);
@@ -69,7 +61,7 @@ namespace Tune {
         return sum + weightDecay * wd;
     }
 
-    double loss(std::vector<DataPoint>& data, const HCEParameters& hceParams, double k, double discount, double weightDecay) {
+    double loss(std::vector<DataPoint>& data, const HCEParameters& hceParams, double k, double weightDecay) {
         std::atomic<double> sum = 0;
 
         size_t currIndex = 0;
@@ -95,15 +87,7 @@ namespace Tune {
 
                     // Berechne die Vorhersage
                     double prediction = tanh(evaluator.evaluate(), k);
-
-                    // Berechne den wahren Wert
-                    double trueValue;
-                    if(dp.result == 0)
-                        trueValue = 0.0;
-                    else if(dp.result > 0)
-                        trueValue = std::pow(discount, dp.result);
-                    else
-                        trueValue = -std::pow(discount, -dp.result);
+                    double trueValue = tanh(dp.result, k);
 
                     // Berechne den Fehler
                     double l = mse(prediction, trueValue);
@@ -139,7 +123,7 @@ namespace Tune {
         return sum + weightDecay * wd;
     }
 
-    std::vector<double> gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k, double discount) {
+    std::vector<double> gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k, double weightDecay) {
         // Rückgabevektor initialisieren
         std::vector<double> grad(hceParams.size(), 0);
 
@@ -147,7 +131,7 @@ namespace Tune {
         std::mutex mutex;
 
         // Berechne den aktuellen Fehler der zu betrachtenden Datenpunkte
-        double currLoss = loss(data, indices, hceParams, k, discount);
+        double currLoss = loss(data, indices, hceParams, k, weightDecay);
 
         auto threadFunc = [&]() {
             // Sperre den Mutex um den nächsten Parameter zu extrahieren
@@ -167,7 +151,7 @@ namespace Tune {
                 hceParamsCopy[i] += 1;
                 hceParamsCopy.unpackPSQT();
 
-                double l = loss(data, indices, hceParamsCopy, k, discount);
+                double l = loss(data, indices, hceParamsCopy, k, weightDecay);
                 grad[i] = l - currLoss;
 
                 // Sperre den Mutex um den nächsten Parameter zu extrahieren
@@ -225,7 +209,7 @@ namespace Tune {
         // Iteriere über die Epochen
         for(; trainingSession.epoch < targetEpochs; trainingSession.epoch++) {
             // Berechne den Fehler
-            double loss = Tune::loss(validationData, currentParams, k.get<double>(), discount.get<double>(), weightDecay.get<double>());
+            double loss = Tune::loss(validationData, currentParams, k.get<double>(), weightDecay.get<double>());
 
             std::cout << "\rEpoch: " << std::left << std::setw(4) << trainingSession.epoch;
             size_t currPrecision = std::cout.precision();
@@ -253,7 +237,7 @@ namespace Tune {
                 i = dist(gen);
 
             // Berechne den Gradienten
-            grad = Tune::gradient(data, indices, currentParams, k.get<double>(), discount.get<double>());
+            grad = Tune::gradient(data, indices, currentParams, k.get<double>(), weightDecay.get<double>());
 
             // Berechne die ersten und zweiten Momente
             for(size_t i = 0; i < currentParams.size(); i++) {
@@ -286,14 +270,14 @@ namespace Tune {
         }
 
         // Berechne den finalen Fehler
-        double loss = Tune::loss(validationData, currentParams, k.get<double>(), discount.get<double>(), weightDecay.get<double>());
+        double loss = Tune::loss(validationData, currentParams, k.get<double>(), weightDecay.get<double>());
         if(loss < bestLoss) {
             bestParams = currentParams;
             bestLoss = loss;
         }
 
         trainingSession.generation++;
-        trainingSession.averageLoss = trainingSession.averageLoss * alpha.get<double>() + (1.0 - alpha.get<double>()) * loss;
+        trainingSession.averageLoss = trainingSession.averageLoss * alpha.get<double>() + (1.0 - alpha.get<double>()) * bestLoss;
         // Bias-korrigierter Loss
         double biasCorrectedLoss = trainingSession.averageLoss / (1 - std::pow(alpha.get<double>(), trainingSession.generation));
 

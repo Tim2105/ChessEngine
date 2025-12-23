@@ -25,11 +25,13 @@ Simulation::Simulation(std::vector<Board>& startingPositions, uint32_t timeContr
     results.resize(startingPositions.size());
 }
 
-GameResult Simulation::simulateSingleGame(Board& board) {
+Result Simulation::simulateSingleGame(Board& board) {
     if(Referee::isCheckmate(board))
-        return board.getSideToMove() == WHITE ? BLACK_WIN : WHITE_WIN;
+        return board.getSideToMove() == WHITE ? Result{BLACK_WIN, {-MATE_SCORE}} : Result{WHITE_WIN, {-MATE_SCORE}};
     else if(Referee::isDraw(board))
-        return DRAW;
+        return Result{DRAW, {DRAW_SCORE}};
+
+    Result result;
 
     HCEParameters whiteParameters = whiteParams.value_or(HCEParameters());
     HCEParameters blackParameters = blackParams.value_or(HCEParameters());
@@ -71,6 +73,8 @@ GameResult Simulation::simulateSingleGame(Board& board) {
             white.search(params);
             std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
+            result.evaluations.push_back(white.getBestMoveScore());
+
             Move bestMove = white.getBestMove();
             board.makeMove(bestMove);
 
@@ -78,12 +82,16 @@ GameResult Simulation::simulateSingleGame(Board& board) {
             wtime = std::max(wtime, 0);
             wtime += increment;
 
-            if(Referee::isCheckmate(board))
-                return WHITE_WIN;
+            if(Referee::isCheckmate(board)) {
+                result.result = WHITE_WIN;
+                return result;
+            }
         } else {
             std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
             black.search(params);
             std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+            result.evaluations.push_back(black.getBestMoveScore());
 
             Move bestMove = black.getBestMove();
             board.makeMove(bestMove);
@@ -92,12 +100,16 @@ GameResult Simulation::simulateSingleGame(Board& board) {
             btime = std::max(btime, 0);
             btime += increment;
 
-            if(Referee::isCheckmate(board))
-                return BLACK_WIN;
+            if(Referee::isCheckmate(board)) {
+                result.result = BLACK_WIN;
+                return result;
+            }
         }
 
-        if(Referee::isDraw(board) || board.getAge() >= DRAW_AFTER_N_MOVES)
-            return DRAW;
+        if(Referee::isDraw(board) || board.getAge() >= DRAW_AFTER_N_MOVES) {
+            result.result = DRAW;
+            return result;
+        }
     }
 }
 
@@ -124,7 +136,7 @@ void Simulation::run() {
             Board& board = startingPositions[index];
             lock.unlock();
 
-            GameResult result = simulateSingleGame(board);
+            Result result = simulateSingleGame(board);
             results[index] = result;
 
             lock.lock();
