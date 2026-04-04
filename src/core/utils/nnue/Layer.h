@@ -145,11 +145,6 @@ namespace NNUE {
 
         return is;
     }
-
-    // using HalfKPLayer = ColMajorLinearLayer<41024, 256, int16_t, int16_t>;
-    
-    // template <size_t IN_SIZE, size_t OUT_SIZE>
-    // using DenseLayer = RowMajorLinearLayerI8ToI32<IN_SIZE, OUT_SIZE>;
 }
 
 #endif
