@@ -2,7 +2,6 @@
 #define LAYER_H
 
 #include <algorithm>
-#include <concepts>
 #include <cstddef>
 #include <istream>
 #include <stdint.h>
@@ -20,16 +19,6 @@ namespace NNUE {
         public:
             constexpr HalfKPLayer() {}
             constexpr ~HalfKPLayer() {}
-
-            inline void forward(const int16_t input[IN_SIZE], int16_t output[OUT_SIZE]) const noexcept {
-                // Setze Biases
-                std::copy(bias, bias + OUT_SIZE, output);
-
-                // Skalarprodukte
-                for(size_t i = 0; i < IN_SIZE; i++)
-                    for(size_t j = 0; j < OUT_SIZE; j++)
-                        output[j] += input[i] * weights[i][j];
-            }
 
             inline int16_t getBias(size_t i) const noexcept {
                 return bias[i];
@@ -76,6 +65,18 @@ namespace NNUE {
         return is;
     }
 
+
+    template <size_t IN_SIZE, size_t OUT_SIZE>
+    inline std::ostream& operator<<(std::ostream& os, const HalfKPLayer<IN_SIZE, OUT_SIZE>& layer) {
+        writeLittleEndian(os, layer.getBiasPtr(), OUT_SIZE);
+        writeLittleEndian(os, layer.getWeightPtr(0), IN_SIZE * OUT_SIZE);
+
+        if(!os.good())
+            throw std::runtime_error("Error while writing layer (" + std::to_string(IN_SIZE) +
+                                     "x" + std::to_string(OUT_SIZE) + ")");
+
+        return os;
+    }
 
     template <size_t IN_SIZE, size_t OUT_SIZE, bool POST_ACTIVATION = true, bool PRE_ACTIVATION = false>
     class DenseLayer {
@@ -144,6 +145,18 @@ namespace NNUE {
                                      "x" + std::to_string(OUT_SIZE) + ")");
 
         return is;
+    }
+
+    template <size_t IN_SIZE, size_t OUT_SIZE, bool POST_ACTIVATION, bool PRE_ACTIVATION>
+    inline std::ostream& operator<<(std::ostream& os, const DenseLayer<IN_SIZE, OUT_SIZE, POST_ACTIVATION, PRE_ACTIVATION>& layer) {
+        writeLittleEndian(os, layer.getBiasPtr(), OUT_SIZE);
+        writeLittleEndian(os, layer.getWeightPtr(0), IN_SIZE * OUT_SIZE);
+
+        if(!os.good())
+            throw std::runtime_error("Error while writing layer (" + std::to_string(IN_SIZE) +
+                                     "x" + std::to_string(OUT_SIZE) + ")");
+
+        return os;
     }
 }
 

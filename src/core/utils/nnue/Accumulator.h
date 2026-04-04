@@ -13,7 +13,7 @@ namespace NNUE {
             alignas(CACHE_LINE_ALIGNMENT) int16_t accumulator[2][Network::SINGLE_SUBNET_SIZE];
             const Network& network;
 
-            constexpr const HalfKPLayer<41024, Network::SINGLE_SUBNET_SIZE>& getHalfKPLayer() const noexcept {
+            constexpr const HalfKPLayer<Network::INPUT_SIZE, Network::SINGLE_SUBNET_SIZE>& getHalfKPLayer() const noexcept {
                 return network.getHalfKPLayer();
             }
 

@@ -35,6 +35,11 @@ class PVSEngine {
          * @brief Die HCE-Parameter, die für die Suche verwendet werden.
          */
         const HCEParameters& hceParams;
+        #else
+        /**
+         * @brief Das NNUE-Netzwerk, das für die Suche verwendet wird.
+         */
+        const NNUE::Network& nnueNetwork;
         #endif
 
         /**
@@ -279,7 +284,20 @@ class PVSEngine {
          * @param uciOutput Bestimmt, ob nach dem UCI-Protokoll ausgegeben werden soll.
          */
         PVSEngine(Board& board, uint64_t checkupInterval = 2, std::function<void()> checkupCallback = nullptr, bool uciOutput = true)
-                : board(board), checkupInterval(checkupInterval), checkupCallback(checkupCallback), uciOutput(uciOutput) {}
+                : board(board), nnueNetwork(NNUE::DEFAULT_NETWORK), checkupInterval(checkupInterval), checkupCallback(checkupCallback), uciOutput(uciOutput) {}
+
+        /**
+         * @brief Konstruktor mit NNUE-Parametern.
+         * 
+         * @param board Das, zu betrachtende, Schachbrett.
+         * @param nnueParams Die NNUE-Parameter, die für die Suche verwendet werden.
+         * @param checkupInterval Die Anzahl an Millisekunden, die zwischen zwei Checkups vergehen sollen.
+         * @param checkupCallback Die Funktion, die bei jedem Checkup aufgerufen
+         * werden soll. Wenn keine Funktion aufgerufen werden soll, kann dieser Parameter weggelassen werden.
+         * @param uciOutput Bestimmt, ob nach dem UCI-Protokoll ausgegeben werden soll.
+         */
+        PVSEngine(Board& board, const NNUE::Network& nnueParams, uint64_t checkupInterval = 2, std::function<void()> checkupCallback = nullptr, bool uciOutput = true)
+                : board(board), nnueNetwork(nnueParams), checkupInterval(checkupInterval), checkupCallback(checkupCallback), uciOutput(uciOutput) {}
         #endif
 
         PVSEngine(const PVSEngine& other) = delete;

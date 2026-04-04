@@ -1,5 +1,5 @@
 #include "core/engine/search/PVSSearchInstance.h"
-#include "tune/hce/Definitions.h"
+#include "tune/Definitions.h"
 #include "tune/hce/Tune.h"
 
 #include <atomic>

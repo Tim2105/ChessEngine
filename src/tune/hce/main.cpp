@@ -1,7 +1,7 @@
 #include "core/chess/Board.h"
 #include "core/utils/magics/Magics.h"
 #include "tune/Simulation.h"
-#include "tune/hce/Definitions.h"
+#include "tune/Definitions.h"
 #include "tune/hce/Tune.h"
 #include "uci/Options.h"
 

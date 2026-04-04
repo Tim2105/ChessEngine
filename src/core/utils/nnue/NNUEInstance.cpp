@@ -9,10 +9,10 @@ Instance::Instance(const Network& net) noexcept : network(net), accumulator(netw
 Instance::~Instance() noexcept {}
 
 int32_t Instance::evaluate(int32_t color) const noexcept {
-    alignas(REQUIRED_ALIGNMENT) int16_t layer1Input[2 * Network::SINGLE_SUBNET_SIZE];
-    alignas(REQUIRED_ALIGNMENT) int8_t layer1Output[32];
-    alignas(REQUIRED_ALIGNMENT) int8_t layer2Output[32];
-    alignas(REQUIRED_ALIGNMENT) int32_t output[1];
+    alignas(REQUIRED_ALIGNMENT) int16_t layer1Input[Network::LAYER_SIZES[0]];
+    alignas(REQUIRED_ALIGNMENT) int8_t layer1Output[Network::LAYER_SIZES[1]];
+    alignas(REQUIRED_ALIGNMENT) int8_t layer2Output[Network::LAYER_SIZES[2]];
+    alignas(REQUIRED_ALIGNMENT) int32_t output[Network::LAYER_SIZES[3]];
 
     // Baue die Eingabe für die erste Schicht aus den Akkumulatoren auf
     const int16_t* acc = accumulator.getOutput(color);

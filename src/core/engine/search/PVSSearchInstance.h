@@ -340,6 +340,41 @@ class PVSSearchInstance {
             // Setze die Anzahl der Varianten.
             numPVs = UCI::options["MultiPV"].getValue<size_t>();
         }
+        #else
+        /**
+         * @brief Konstruktor für eine Suchinstanz mit benutzerdefinierten Parametern für das NNUE-Netzwerk.
+         */
+        PVSSearchInstance(const Board& board, const NNUE::Network& nnueParams, TranspositionTable& transpositionTable,
+                          AtomicBool& stopFlag, Atomic<std::chrono::system_clock::time_point>& startTime,
+                          Atomic<std::chrono::system_clock::time_point>& stopTime, AtomicU64& nodesSearched,
+                          std::function<void()> checkupFunction) :
+            board(board), evaluator(this->board, nnueParams), transpositionTable(transpositionTable), stopFlag(stopFlag), startTime(startTime), 
+            stopTime(stopTime), nodesSearched(nodesSearched), searchStack(), checkupFunction(checkupFunction) {
+
+            // Leere die Killerzüge und die Vergangenheitsbewertung.
+
+            for(int i = 0; i < MAX_PLY; i++) {
+                killerMoves[i][0] = Move::nullMove();
+                killerMoves[i][1] = Move::nullMove();
+            }
+
+            historyStack.resize(MAX_PLY);
+
+            for(int i = 0; i < 2; i++)
+                for(int j = 0; j < 6; j++)
+                    for(int k = 0; k < 64; k++)
+                        counterMoveTable[i][j][k] = Move::nullMove();
+
+            // Leere die PV-Tabelle.
+            for(int i = 0; i < MAX_PLY; i++)
+                pvTable[i].clear();
+
+            // Setze die Anzahl der Threads.
+            numThreads = UCI::options["Threads"].getValue<size_t>();
+
+            // Setze die Anzahl der Varianten.
+            numPVs = UCI::options["MultiPV"].getValue<size_t>();
+        }
         #endif
 
         /**

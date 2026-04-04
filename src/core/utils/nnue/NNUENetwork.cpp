@@ -30,30 +30,11 @@ namespace NNUE {
 
         if(network.version != Network::SUPPORTED_VERSION)
             throw std::runtime_error("Unsupported network version");
-        
-        readLittleEndian(is, network.hash);
-        readLittleEndian(is, network.headerSize);
 
-        char c;
-        std::stringstream ss;
-        for(size_t i = 0; i < network.headerSize; i++) {
-            if(!is.get(c))
-                break;
-            
-            ss << c;
-        }
-
-        network.header = ss.str();
-
-        readLittleEndian(is, network.halfKPHash);
-
-        is >> network.halfKPLayer;
-
-        readLittleEndian(is, network.layer1Hash);
-
-        is >> network.layer1 >>
-              network.layer2 >>
-              network.layer3;
+        is >> network.halfKPLayer >>
+            network.layer1 >>
+            network.layer2 >>
+            network.layer3;
 
         if(!is.good())
             throw std::runtime_error("Error while reading network");
@@ -66,17 +47,15 @@ namespace NNUE {
     }
 
     std::ostream& operator<<(std::ostream& os, const Network& network) {
-        os << "Version: 0x" << std::hex << std::setw(8) <<
-            std::setfill('0') << network.version << std::dec << ", ";
+        writeLittleEndian(os, network.version);
 
-        os << "Hash: 0x" << std::hex << std::setw(8) <<
-            std::setfill('0') << network.hash << std::dec << ", ";
+        os << network.halfKPLayer <<
+           network.layer1 <<
+           network.layer2 <<
+           network.layer3;
 
-        os << "Header Size: " << network.headerSize << ", ";
-
-        os << "Header: " << network.header;
-
-        os << std::setfill(' ') << std::endl;
+        if(!os.good())
+            throw std::runtime_error("Error while writing network");
 
         return os;
     }

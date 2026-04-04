@@ -73,9 +73,13 @@ ENGINE_NNUE = bin/nnue_engine
 ENGINE_HCE = bin/hce_engine
 
 # Tuning-Objekte
-SRC_TUNE = $(filter-out src/emscripten/%.cpp src/main.cpp,$(SRC))
-TUNE_OBJ = $(patsubst src/%.cpp,bin/obj_hce/%.o,$(SRC_TUNE)) $(patsubst resources/%,bin/embed_hce/%.o,$(RES_HCE))
-TUNE = bin/tune
+SRC_TUNE_HCE = $(filter-out src/emscripten/%.cpp src/main.cpp src/tune/nnue/%.cpp,$(SRC))
+TUNE_HCE_OBJ = $(patsubst src/%.cpp,bin/obj_hce/%.o,$(SRC_TUNE_HCE)) $(patsubst resources/%,bin/embed_hce/%.o,$(RES_HCE))
+TUNE_HCE = bin/hce_tune
+
+SRC_TUNE_NNUE = $(filter-out src/emscripten/%.cpp src/main.cpp src/tune/hce/%.cpp,$(SRC))
+TUNE_NNUE_NNUE_OBJ = $(patsubst src/%.cpp,bin/obj_nnue/%.o,$(SRC_TUNE_NNUE)) $(patsubst resources/%,bin/embed_nnue/%.o,$(RES_NNUE))
+TUNE_NNUE = bin/nnue_tune
 
 release: clean
 	@$(MAKE) profile-gen
@@ -84,7 +88,7 @@ release: clean
 .PHONY: all clean profile profile-gen profile-use engines clean-profile clean-nonprofile
 
 # Allgemeines Ziel
-all: $(ENGINE_NNUE) $(ENGINE_HCE) $(TUNE)
+all: $(ENGINE_NNUE) $(ENGINE_HCE) $(TUNE_HCE) $(TUNE_NNUE)
 
 # Nur Engines
 engines: $(ENGINE_NNUE) $(ENGINE_HCE)
@@ -99,10 +103,15 @@ $(ENGINE_HCE): $(ENGINE_OBJ_HCE)
 	$(info Linking HCE Engine)
 	@$(CC) $(CFLAGS_HCE) $(LDFLAGS) $(LDLIBS) -o $@ $^
 
-# Tune
-$(TUNE): $(TUNE_OBJ)
-	$(info Linking Tune)
+# TUNE_HCE
+$(TUNE_HCE): $(TUNE_HCE_OBJ)
+	$(info Linking HCE Tuning)
 	@$(CC) $(CFLAGS_HCE) $(LDFLAGS) $(LDLIBS) -o $@ $^
+
+# TUNE_NNUE
+$(TUNE_NNUE): $(TUNE_NNUE_NNUE_OBJ)
+	$(info Linking NNUE Tuning)
+	@$(CC) $(CFLAGS_NNUE) $(LDFLAGS) $(LDLIBS) -o $@ $^
 
 # mkdir -p für Windows
 MKDIR = $(if $(filter $(OS),Windows_NT),if not exist $(subst /,\,$1) mkdir $(subst /,\,$1),mkdir -p $1)

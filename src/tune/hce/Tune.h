@@ -2,6 +2,7 @@
 #define TUNE_H
 
 #include "core/utils/hce/HCEParameters.h"
+#include "tune/Definitions.h"
 
 #include <cmath>
 #include <vector>

@@ -9,7 +9,11 @@ class NNUEEvaluator: public Evaluator {
         NNUE::Instance networkInstance;
 
     public:
-        NNUEEvaluator(Board& board) : Evaluator(board) {
+        NNUEEvaluator(Board& board) : Evaluator(board), networkInstance(NNUE::DEFAULT_NETWORK) {
+            networkInstance.initializeFromBoard(board);
+        }
+
+        NNUEEvaluator(Board& board, const NNUE::Network& nnueNetwork) : Evaluator(board), networkInstance(nnueNetwork) {
             networkInstance.initializeFromBoard(board);
         }
 

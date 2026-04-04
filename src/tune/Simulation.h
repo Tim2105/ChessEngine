@@ -5,6 +5,7 @@
 
 #include "core/chess/Board.h"
 #include "core/utils/hce/HCEParameters.h"
+#include "core/utils/nnue/NNUEInstance.h"
 
 #include <optional>
 #include <stdint.h>
@@ -23,6 +24,11 @@ class Result {
 };
 
 class Simulation {
+    #ifdef USE_HCE
+    using Parameters = HCEParameters;
+    #else
+    using Parameters = NNUE::Network;
+    #endif
 
     private:
         std::vector<Board>& startingPositions;
@@ -31,8 +37,8 @@ class Simulation {
         uint32_t increment;
         size_t numThreads;
 
-        std::optional<HCEParameters> whiteParams;
-        std::optional<HCEParameters> blackParams;
+        std::optional<Parameters> whiteParams;
+        std::optional<Parameters> blackParams;
 
         bool addParameterNoise;
         double noiseStdDev;
@@ -52,12 +58,12 @@ class Simulation {
             return results;
         }
 
-        inline void setWhiteParams(const HCEParameters& params) {
-            whiteParams = params;
+        inline void setWhiteParams(const Parameters& params) {
+            whiteParams.emplace(params);
         }
 
-        inline void setBlackParams(const HCEParameters& params) {
-            blackParams = params;
+        inline void setBlackParams(const Parameters& params) {
+            blackParams.emplace(params);
         }
 
         inline void setParameterNoise(double stdDev) {
