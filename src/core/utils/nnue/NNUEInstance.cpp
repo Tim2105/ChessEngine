@@ -2,27 +2,28 @@
 
 using namespace NNUE;
 
-Instance::Instance() noexcept {
+Instance::Instance(const Network& net) noexcept : network(net), accumulator(network) {
     pastAccumulators.reserve(128);
 }
 
 Instance::~Instance() noexcept {}
 
 int32_t Instance::evaluate(int32_t color) const noexcept {
-    alignas(REQUIRED_ALIGNMENT) int8_t kpActivationOutput[512];
-    alignas(REQUIRED_ALIGNMENT) int32_t layer1Output[32];
-    alignas(REQUIRED_ALIGNMENT) int8_t activation1Output[32];
-    alignas(REQUIRED_ALIGNMENT) int32_t layer2Output[32];
-    alignas(REQUIRED_ALIGNMENT) int8_t activation2Output[32];
+    alignas(REQUIRED_ALIGNMENT) int16_t layer1Input[2 * Network::SINGLE_SUBNET_SIZE];
+    alignas(REQUIRED_ALIGNMENT) int8_t layer1Output[32];
+    alignas(REQUIRED_ALIGNMENT) int8_t layer2Output[32];
     alignas(REQUIRED_ALIGNMENT) int32_t output[1];
 
-    network.getHalfKPActivation().forward(accumulator.getOutput(color), kpActivationOutput);
-    network.getHalfKPActivation().forward(accumulator.getOutput(color ^ COLOR_MASK), kpActivationOutput + Network::SINGLE_SUBNET_SIZE);
-    network.getLayer1().forward(kpActivationOutput, layer1Output);
-    network.getActivation1().forward(layer1Output, activation1Output);
-    network.getLayer2().forward(activation1Output, layer2Output);
-    network.getActivation2().forward(layer2Output, activation2Output);
-    network.getLayer3().forward(activation2Output, output);
+    // Baue die Eingabe für die erste Schicht aus den Akkumulatoren auf
+    const int16_t* acc = accumulator.getOutput(color);
+    const int16_t* accOther = accumulator.getOutput(color ^ COLOR_MASK);
+
+    std::copy(acc, acc + Network::SINGLE_SUBNET_SIZE, layer1Input);
+    std::copy(accOther, accOther + Network::SINGLE_SUBNET_SIZE, layer1Input + Network::SINGLE_SUBNET_SIZE);
+
+    network.getLayer1().forward(layer1Input, layer1Output);
+    network.getLayer2().forward(layer1Output, layer2Output);
+    network.getLayer3().forward(layer2Output, output);
 
     return output[0] * 100 / 3328;
 }
@@ -170,7 +171,7 @@ void Instance::initializeFromBoard(const Board& board) noexcept {
 }
 
 void Instance::updateAfterMove(const Board& board) noexcept {
-    pastAccumulators.push_back(Array<int16_t, 512>());
+    pastAccumulators.push_back({});
     std::copy(accumulator.getOutput(WHITE), accumulator.getOutput(WHITE) + Network::SINGLE_SUBNET_SIZE, pastAccumulators.back().begin());
     std::copy(accumulator.getOutput(BLACK), accumulator.getOutput(BLACK) + Network::SINGLE_SUBNET_SIZE, pastAccumulators.back().begin() + Network::SINGLE_SUBNET_SIZE);
 

@@ -14,8 +14,6 @@ struct membuf : std::streambuf {
 };
 
 Network::Network() {
-    halfKPLayer = new HalfKPLayer;
-
     #if not defined(USE_HCE)
         membuf buf(_binary_resources_network_nnue_start, _binary_resources_network_nnue_end);
         std::istream is(&buf);
@@ -24,12 +22,8 @@ Network::Network() {
     #endif
 }
 
-Network::~Network() {
-    delete halfKPLayer;
-}
-
 namespace NNUE {
-    Network network;
+    Network DEFAULT_NETWORK;
 
     std::istream& operator>>(std::istream& is, Network& network) {
         readLittleEndian(is, network.version);
@@ -53,7 +47,7 @@ namespace NNUE {
 
         readLittleEndian(is, network.halfKPHash);
 
-        is >> *network.halfKPLayer;
+        is >> network.halfKPLayer;
 
         readLittleEndian(is, network.layer1Hash);
 

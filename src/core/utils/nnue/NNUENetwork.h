@@ -13,13 +13,10 @@ namespace NNUE {
             static constexpr size_t SINGLE_SUBNET_SIZE = 256;
 
         private:
-            HalfKPLayer* halfKPLayer;
-            ClippedReLULayer halfKPActivation;
-            DenseLayer<2 * SINGLE_SUBNET_SIZE, 32> layer1;
-            ScaledClippedReLULayer activation1;
+            HalfKPLayer<41024, SINGLE_SUBNET_SIZE> halfKPLayer;
+            DenseLayer<2 * SINGLE_SUBNET_SIZE, 32, true, true> layer1;
             DenseLayer<32, 32> layer2;
-            ScaledClippedReLULayer activation2;
-            DenseLayer<32, 1> layer3;
+            DenseLayer<32, 1, false> layer3;
 
             std::string header;
             uint32_t version, hash, headerSize;
@@ -27,41 +24,29 @@ namespace NNUE {
 
         public:
             Network();
-            ~Network();
+            ~Network() = default;
 
             friend std::istream& operator>>(std::istream& is, Network& network);
             friend std::ostream& operator<<(std::ostream& os, const Network& network);
 
-            constexpr const HalfKPLayer* getHalfKPLayer() const noexcept {
+            constexpr const HalfKPLayer<41024, SINGLE_SUBNET_SIZE>& getHalfKPLayer() const noexcept {
                 return halfKPLayer;
             }
 
-            constexpr const ClippedReLULayer& getHalfKPActivation() const noexcept {
-                return halfKPActivation;
-            }
-
-            constexpr const DenseLayer<2 * SINGLE_SUBNET_SIZE, 32>& getLayer1() const noexcept {
+            constexpr const DenseLayer<2 * SINGLE_SUBNET_SIZE, 32, true, true>& getLayer1() const noexcept {
                 return layer1;
-            }
-
-            constexpr const ScaledClippedReLULayer& getActivation1() const noexcept {
-                return activation1;
             }
 
             constexpr const DenseLayer<32, 32>& getLayer2() const noexcept {
                 return layer2;
             }
 
-            constexpr const ScaledClippedReLULayer& getActivation2() const noexcept {
-                return activation2;
-            }
-
-            constexpr const DenseLayer<32, 1>& getLayer3() const noexcept {
+            constexpr const DenseLayer<32, 1, false>& getLayer3() const noexcept {
                 return layer3;
             }
     };
 
-    extern Network network;
+    extern Network DEFAULT_NETWORK;
 }
 
 #endif

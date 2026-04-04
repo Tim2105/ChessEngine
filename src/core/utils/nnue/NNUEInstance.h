@@ -9,14 +9,16 @@
 namespace NNUE {
     class Instance {
         private:
-            DefaultAccumulator accumulator;
-            std::vector<Array<int16_t, 2 * Network::SINGLE_SUBNET_SIZE>> pastAccumulators;
+            const Network& network;
+            Accumulator accumulator;
+            std::vector<std::array<int16_t, 2 * Network::SINGLE_SUBNET_SIZE>> pastAccumulators;
 
             void initializeFromBoard(const Board& board, int32_t color) noexcept;
             void updateAfterOppKingMove(const Board& board, int32_t color, Move move) noexcept;
 
         public:
-            Instance() noexcept;
+            Instance(const Network& net) noexcept;
+            Instance() noexcept : Instance(DEFAULT_NETWORK) {}
             ~Instance() noexcept;
 
             int32_t evaluate(int32_t color) const noexcept;
