@@ -2,88 +2,14 @@
 #define TRAIN_H
 
 #include "core/utils/nnue/NNUENetwork.h"
+#include "core/utils/nnue/NNUEMasterWeights.h"
 #include "tune/Definitions.h"
 
 #include <cmath>
+#include <unordered_map>
 #include <vector>
 
 namespace Train {
-    struct MasterWeights {
-        // Master-Parameter des HalfKP-Layers
-        std::vector<float> exactHalfKPBiases = std::vector<float>(NNUE::Network::SINGLE_SUBNET_SIZE, 0);
-        std::vector<float> exactHalfKP = std::vector<float>(NNUE::Network::INPUT_SIZE * NNUE::Network::SINGLE_SUBNET_SIZE, 0);
-
-        // Master-Parameter der Dense-Layer
-        std::array<std::vector<float>, NNUE::Network::NUM_LAYERS> exactDenseLayerBiases;
-        std::array<std::vector<float>, NNUE::Network::NUM_LAYERS> exactDenseLayerWeights;
-
-        inline MasterWeights() {
-            for(size_t i = 0; i < NNUE::Network::NUM_LAYERS; i++) {
-                exactDenseLayerBiases[i] = std::vector<float>(NNUE::Network::LAYER_SIZES[i + 1], 0);
-                exactDenseLayerWeights[i] = std::vector<float>(NNUE::Network::LAYER_SIZES[i] * NNUE::Network::LAYER_SIZES[i + 1], 0);
-            }
-        }
-
-        inline MasterWeights(const NNUE::Network& network) : MasterWeights() {
-            const auto& halfKP = network.getHalfKPLayer();
-
-            // Biases, dequantisiert
-            for(size_t i = 0; i < NNUE::Network::SINGLE_SUBNET_SIZE; i++)
-                exactHalfKPBiases[i] = halfKP.getBias(i) / 64.0f;
-
-            // Gewichte, dequantisiert
-            for(size_t i = 0; i < NNUE::Network::INPUT_SIZE; i++) {
-                for(size_t j = 0; j < NNUE::Network::SINGLE_SUBNET_SIZE; j++)
-                    exactHalfKP[i * NNUE::Network::SINGLE_SUBNET_SIZE + j] = halfKP.getWeight(i, j) / 64.0f;
-            }
-
-            const auto& layer1 = network.getLayer1();
-            const auto& layer2 = network.getLayer2();
-            const auto& layer3 = network.getLayer3();
-
-            for(size_t i = 0; i < NNUE::Network::LAYER_SIZES[1]; i++) {
-                exactDenseLayerBiases[0][i] = layer1.getBias(i) / (64.0f * 64.0f);
-
-                for(size_t j = 0; j < NNUE::Network::LAYER_SIZES[0]; j++)
-                    exactDenseLayerWeights[0][i * NNUE::Network::LAYER_SIZES[0] + j] = layer1.getWeight(j, i) / 64.0f;
-            }
-
-            for(size_t i = 0; i < NNUE::Network::LAYER_SIZES[2]; i++) {
-                exactDenseLayerBiases[1][i] = layer2.getBias(i) / (64.0f * 64.0f);
-
-                for(size_t j = 0; j < NNUE::Network::LAYER_SIZES[1]; j++)
-                    exactDenseLayerWeights[1][i * NNUE::Network::LAYER_SIZES[1] + j] = layer2.getWeight(j, i) / 64.0f;
-            }
-
-            for(size_t i = 0; i < NNUE::Network::LAYER_SIZES[3]; i++) {
-                exactDenseLayerBiases[2][i] = layer3.getBias(i) / (64.0f * 64.0f);
-
-                for(size_t j = 0; j < NNUE::Network::LAYER_SIZES[2]; j++)
-                    exactDenseLayerWeights[2][i * NNUE::Network::LAYER_SIZES[2] + j] = layer3.getWeight(j, i) / 64.0f;
-            }
-        }
-
-        /**
-         * @brief Konvertiert die Master-Parameter zurück in ein NNUE-Netzwerk. Dabei werden die Parameter quantisiert.
-         * Das zurückgegebene Objekt muss vom Aufrufer freigegeben werden.
-         */
-        NNUE::Network* toNetwork() const;
-    };
-
-    struct Gradients {
-        std::vector<float> halfKPBiases = std::vector<float>(NNUE::Network::SINGLE_SUBNET_SIZE, 0);
-        std::vector<float> halfKPWeights = std::vector<float>(NNUE::Network::INPUT_SIZE * NNUE::Network::SINGLE_SUBNET_SIZE, 0);
-        std::array<std::vector<float>, NNUE::Network::NUM_LAYERS> denseLayerBiases;
-        std::array<std::vector<float>, NNUE::Network::NUM_LAYERS> denseLayerWeights;
-
-        inline Gradients() {
-            for(size_t i = 0; i < NNUE::Network::NUM_LAYERS; i++) {
-                denseLayerBiases[i] = std::vector<float>(NNUE::Network::LAYER_SIZES[i + 1], 0);
-                denseLayerWeights[i] = std::vector<float>(NNUE::Network::LAYER_SIZES[i] * NNUE::Network::LAYER_SIZES[i + 1], 0);
-            }
-        }
-    };
-
     struct TrainingSession {
         // Erster Moment des HalfKP-Layers
         std::vector<float> mHalfKPBiases = std::vector<float>(NNUE::Network::SINGLE_SUBNET_SIZE, 0);
@@ -95,13 +21,13 @@ namespace Train {
 
         // Zweiter Moment des HalfKP-Layers
         std::vector<float> vHalfKPBiases = std::vector<float>(NNUE::Network::SINGLE_SUBNET_SIZE, 0);
-        std::vector<float> vHalfKP = std::vector<float>(NNUE::Network::INPUT_SIZE * NNUE::Network::SINGLE_SUBNET_SIZE, 0);
+        std::vector<float> vHalfKPWeights = std::vector<float>(NNUE::Network::INPUT_SIZE * NNUE::Network::SINGLE_SUBNET_SIZE, 0);
 
         // Zweiter Moment der Dense-Layer
         std::array<std::vector<float>, NNUE::Network::NUM_LAYERS> vDenseLayerBiases;
         std::array<std::vector<float>, NNUE::Network::NUM_LAYERS> vDenseLayerWeights;
 
-        MasterWeights masterWeights;
+        NNUE::MasterWeights masterWeights;
 
         size_t generation = 0;
         size_t epoch = 0;
@@ -117,7 +43,7 @@ namespace Train {
         }
 
         inline TrainingSession(const NNUE::Network& network) : TrainingSession() {
-            masterWeights = MasterWeights(network);
+            masterWeights = NNUE::MasterWeights(network);
         }
     };
 
@@ -133,7 +59,7 @@ namespace Train {
         }
 
         os.write(reinterpret_cast<const char*>(session.vHalfKPBiases.data()), session.vHalfKPBiases.size() * sizeof(float));
-        os.write(reinterpret_cast<const char*>(session.vHalfKP.data()), session.vHalfKP.size() * sizeof(float));
+        os.write(reinterpret_cast<const char*>(session.vHalfKPWeights.data()), session.vHalfKPWeights.size() * sizeof(float));
         for(size_t i = 0; i < NNUE::Network::NUM_LAYERS; i++) {
             os.write(reinterpret_cast<const char*>(session.vDenseLayerBiases[i].data()), session.vDenseLayerBiases[i].size() * sizeof(float));
             os.write(reinterpret_cast<const char*>(session.vDenseLayerWeights[i].data()), session.vDenseLayerWeights[i].size() * sizeof(float));
@@ -161,7 +87,7 @@ namespace Train {
         }
 
         is.read(reinterpret_cast<char*>(session.vHalfKPBiases.data()), session.vHalfKPBiases.size() * sizeof(float));
-        is.read(reinterpret_cast<char*>(session.vHalfKP.data()), session.vHalfKP.size() * sizeof(float));
+        is.read(reinterpret_cast<char*>(session.vHalfKPWeights.data()), session.vHalfKPWeights.size() * sizeof(float));
         for(size_t i = 0; i < NNUE::Network::NUM_LAYERS; i++) {
             is.read(reinterpret_cast<char*>(session.vDenseLayerBiases[i].data()), session.vDenseLayerBiases[i].size() * sizeof(float));
             is.read(reinterpret_cast<char*>(session.vDenseLayerWeights[i].data()), session.vDenseLayerWeights[i].size() * sizeof(float));
@@ -177,19 +103,6 @@ namespace Train {
         return is;
     }
 
-    struct NetworkActivations {
-        std::vector<float> halfKPOutputs = std::vector<float>(NNUE::Network::LAYER_SIZES[0], 0);
-        std::array<std::vector<float>, NNUE::Network::NUM_LAYERS> denseLayerOutputs;
-
-        inline NetworkActivations() {
-            for(size_t i = 0; i < NNUE::Network::NUM_LAYERS; i++)
-                denseLayerOutputs[i] = std::vector<float>(NNUE::Network::LAYER_SIZES[i + 1], 0);
-        }
-
-        float forward(const MasterWeights& masterWeights, const Board& board);
-        Gradients backward(const MasterWeights& masterWeights, const Board& board, float outputGrad);
-    };
-
     extern TrainingSession trainingSession;
 
     /**
@@ -203,7 +116,7 @@ namespace Train {
      * @param weightDecay Der Gewichtungsabfall.
      * @return double Der mittlere quadratische Fehler.
      */
-    double loss(std::vector<DataPoint>& data, const MasterWeights& masterWeights, double k, double weightDecay = 0.0);
+    double loss(std::vector<DataPoint>& data, const NNUE::MasterWeights& masterWeights, double k, double weightDecay = 0.0);
 
     /**
      * @brief Bestimmt den MSE eines quantisierten Parametersatzes auf einem Datensatz.
@@ -230,18 +143,17 @@ namespace Train {
      * @param weightDecay Der Gewichtungsabfall.
      * @return std::vector<float> Der Gradient.
      */
-    Gradients gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const MasterWeights& masterWeights, double k, double weightDecay = 0.0);
+    NNUE::Gradients gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const NNUE::MasterWeights& masterWeights, double k, double weightDecay = 0.0);
 
     /**
-     * @brief Verbessert die Parameter eines HCE-Modells über den AdamW-Algorithmus.
+     * @brief Verbessert die Parameter eines HCE-Modells über den Adam-Algorithmus.
      * 
      * @param data Der Datensatz.
-     * @param network Das Netzwerk.
      * @param numEpochs Die Anzahl der Epochen.
      * @param learningRate Die Lernrate.
      * @return HCEParameters Die verbesserten Parameter.
      */
-    NNUE::Network adamW(std::vector<DataPoint>& data, const NNUE::Network& network, size_t numEpochs, double learningRate);
+    NNUE::Network* adam(std::vector<DataPoint>& data, size_t numEpochs, double learningRate);
 };
 
 #endif

@@ -14,7 +14,7 @@ void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, std::istr
 
 void generateData() {
     std::ifstream pgnFile(pgnFilePath.get<std::string>());
-    std::ofstream resultFile(samplesFilePath.get<std::string>(), std::ios::app);
+    std::ofstream resultFile(samplesFilePath.get<std::string>(), std::ios::trunc);
 
     simulateGames(numGames.get<size_t>(), timeControl.get<uint32_t>(), increment.get<uint32_t>(), 
                   pgnFile, resultFile);
@@ -212,17 +212,16 @@ std::vector<DataPoint> loadData(std::istream& resultFile, size_t n) {
     return data;
 }
 
-
 void gradientDescent() {
     std::ifstream samplesFile(samplesFilePath.get<std::string>());
     std::vector<DataPoint> data = loadData(samplesFile);
     samplesFile.close();
 
-    Train::MasterWeights masterWeights(NNUE::DEFAULT_NETWORK);
+    Train::trainingSession = Train::TrainingSession(NNUE::DEFAULT_NETWORK);
 
-    double masterLoss = Train::loss(data, masterWeights, k.get<double>(), weightDecay.get<double>());
-    double quantizedLoss = Train::loss(data, NNUE::DEFAULT_NETWORK, k.get<double>(), weightDecay.get<double>());
+    NNUE::Network* network = Train::adam(data, numEpochs.get<size_t>(), learningRate.get<double>());
 
-    std::cout << "Initial master loss: " << masterLoss << std::endl;
-    std::cout << "Initial quantized loss: " << quantizedLoss << std::endl;
+    delete network;
+
+    std::cout << std::endl;
 }

@@ -19,9 +19,9 @@ Variable openingBookMovesMax("openingBookMovesMax", "Maximum number of half move
 Variable randomMovesMin("randomMovesMin", "Minimum number of random half moves to play before simulation", 0ull);
 Variable randomMovesMax("randomMovesMax", "Maximum number of random half moves to play before simulation", 1ull);
 Variable validationSplit("validationSplit", "Fraction of the training data to use for validation", 0.0);
-Variable learningRate("learningRate", "Learning rate for the optimizer at generation 0", 0.15);
+Variable learningRate("learningRate", "Learning rate for the optimizer at generation 0", 0.0001);
 Variable learningRateDecay("learningRateDecay", "Learning rate decay factor with each generation", 0.997);
-Variable numEpochs("numEpochs", "Number of epochs for training at generation 0", 5ull);
+Variable numEpochs("numEpochs", "Number of epochs for training at generation 0", 100ull);
 Variable numEpochsIncrement("numEpochsIncr", "Additional number of epochs for training with each generation", 0ull);
 Variable numGenerations("numGenerations", "Number of generations for training", 50000ull);
 Variable noImprovementPatience("noImprovementPatience", "Number of generations without improvement before stopping training", 10ull);

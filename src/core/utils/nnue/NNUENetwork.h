@@ -5,6 +5,7 @@
 #include "core/utils/nnue/Layer.h"
 
 #include <fstream>
+#include <tuple>
 
 namespace NNUE {
     class Network {
@@ -12,14 +13,25 @@ namespace NNUE {
             static constexpr uint32_t SUPPORTED_VERSION = 0x7AF32F16u;
             static constexpr size_t INPUT_SIZE = 41024;
             static constexpr size_t SINGLE_SUBNET_SIZE = 256;
-            static constexpr size_t NUM_LAYERS = 3;
-            static constexpr std::array<size_t, NUM_LAYERS + 1> LAYER_SIZES = {2 * SINGLE_SUBNET_SIZE, 32, 32, 1};
+            static constexpr size_t LAYER_SIZES[] = {2 * SINGLE_SUBNET_SIZE, 32, 32, 1};
+            static constexpr size_t NUM_LAYERS = sizeof(LAYER_SIZES) / sizeof(LAYER_SIZES[0]) - 1;
+
+            static constexpr size_t NUM_PARAMETERS = [] {
+                // HalfKP-Layer
+                size_t n = SINGLE_SUBNET_SIZE + INPUT_SIZE * SINGLE_SUBNET_SIZE;
+
+                // Dense-Layer
+                for(size_t i = 0; i < NUM_LAYERS; i++)
+                    n += LAYER_SIZES[i + 1] + LAYER_SIZES[i] * LAYER_SIZES[i + 1];
+
+                return n;
+            }();
 
         private:
             HalfKPLayer<INPUT_SIZE, SINGLE_SUBNET_SIZE> halfKPLayer;
-            DenseLayer<LAYER_SIZES[0], LAYER_SIZES[1], true, true> layer1;
+            DenseLayer<LAYER_SIZES[0], LAYER_SIZES[1]> layer1;
             DenseLayer<LAYER_SIZES[1], LAYER_SIZES[2]> layer2;
-            DenseLayer<LAYER_SIZES[2], LAYER_SIZES[3], false> layer3;
+            DenseLayer<LAYER_SIZES[2], LAYER_SIZES[3]> layer3;
 
             uint32_t version = SUPPORTED_VERSION;
 
@@ -34,7 +46,7 @@ namespace NNUE {
                 return halfKPLayer;
             }
 
-            constexpr const DenseLayer<LAYER_SIZES[0], LAYER_SIZES[1], true, true>& getLayer1() const noexcept {
+            constexpr const DenseLayer<LAYER_SIZES[0], LAYER_SIZES[1]>& getLayer1() const noexcept {
                 return layer1;
             }
 
@@ -42,7 +54,7 @@ namespace NNUE {
                 return layer2;
             }
 
-            constexpr const DenseLayer<LAYER_SIZES[2], LAYER_SIZES[3], false>& getLayer3() const noexcept {
+            constexpr const DenseLayer<LAYER_SIZES[2], LAYER_SIZES[3]>& getLayer3() const noexcept {
                 return layer3;
             }
     };
