@@ -2,9 +2,9 @@
 # das Ergebnis in das Verzeichnis "bin" legt.
 
 ifeq ($(OS),Windows_NT)
-	SHELL = cmd.exe
+    SHELL = cmd.exe
 else
-	SHELL = /bin/bash
+    SHELL = /bin/bash
 endif
 
 # Parallele Ausführung
@@ -26,8 +26,9 @@ rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 CC = g++
 LD = ld
 
-# Compilerflags
-CFLAGS_BASE = -Wall -Wextra -Werror -std=c++20 -Isrc -Ofast -flto=auto -march=native
+# Compilerflags (Header Dependency Tracking hinzugefügt: -MMD -MP)
+DEPFLAGS = -MMD -MP
+CFLAGS_BASE = -Wall -Wextra -Werror -std=c++20 -Isrc -Ofast -flto=auto -march=native $(DEPFLAGS)
 CFLAGS_HCE = $(CFLAGS_BASE) -DUSE_HCE
 CFLAGS_NNUE = $(CFLAGS_BASE)
 
@@ -47,11 +48,11 @@ LDLIBS =
 # Argumente für den Profiling-Prozess
 PROFILING_ARGS = "go movetime 3000"
 
-# Ausgabe der verwendeten Compilerflags (nur wenn das Ziel all oder engines ist)
+# Ausgabe der verwendeten Compilerflags
 ifeq ($(MAKECMDGOALS),all)
-$(info Compiling with $(CC) $(CFLAGS_BASE))
+$(info [INFO] Compiling with $(CC) $(CFLAGS_BASE))
 else ifeq ($(MAKECMDGOALS),engines)
-$(info Compiling with $(CC) $(CFLAGS_BASE))
+$(info [INFO] Compiling with $(CC) $(CFLAGS_BASE))
 endif
 
 # Quelldateien
@@ -95,22 +96,22 @@ engines: $(ENGINE_NNUE) $(ENGINE_HCE)
 
 # Engine ohne USE_HCE
 $(ENGINE_NNUE): $(ENGINE_OBJ_NNUE)
-	$(info Linking NNUE Engine)
+	@echo [LINK][NNUE]     Engine: $@
 	@$(CC) $(CFLAGS_NNUE) $(LDFLAGS) $(LDLIBS) -o $@ $^
 
 # Engine mit USE_HCE
 $(ENGINE_HCE): $(ENGINE_OBJ_HCE)
-	$(info Linking HCE Engine)
+	@echo [LINK][HCE]     Engine: $@
 	@$(CC) $(CFLAGS_HCE) $(LDFLAGS) $(LDLIBS) -o $@ $^
 
 # TUNE_HCE
 $(TUNE_HCE): $(TUNE_HCE_OBJ)
-	$(info Linking HCE Tuning)
+	@echo [LINK][HCE]     Tuning: $@
 	@$(CC) $(CFLAGS_HCE) $(LDFLAGS) $(LDLIBS) -o $@ $^
 
 # TUNE_NNUE
 $(TUNE_NNUE): $(TUNE_NNUE_NNUE_OBJ)
-	$(info Linking NNUE Tuning)
+	@echo [LINK][NNUE]     Tuning: $@
 	@$(CC) $(CFLAGS_NNUE) $(LDFLAGS) $(LDLIBS) -o $@ $^
 
 # mkdir -p für Windows
@@ -118,22 +119,22 @@ MKDIR = $(if $(filter $(OS),Windows_NT),if not exist $(subst /,\,$1) mkdir $(sub
 
 # Compile-Regeln
 bin/obj_nnue/%.o: src/%.cpp
-	$(info Compiling $< (NNUE))
+	@echo [CXX][NNUE]     $<
 	@$(call MKDIR,$(dir $@))
 	@$(CC) $(CFLAGS_NNUE) -c -o $@ $<
 
 bin/obj_hce/%.o: src/%.cpp
-	$(info Compiling $< (HCE))
+	@echo [CXX][HCE]     $<
 	@$(call MKDIR,$(dir $@))
 	@$(CC) $(CFLAGS_HCE) -c -o $@ $<
 
 bin/embed_nnue/%.o: resources/%
-	$(info Embedding $< (NNUE))
+	@echo [EMBED][NNUE]     $<
 	@$(call MKDIR,$(dir $@))
 	@$(LD) -r -b binary -o $@ $<
 
 bin/embed_hce/%.o: resources/%
-	$(info Embedding $< (HCE))
+	@echo [EMBED][HCE]     $<
 	@$(call MKDIR,$(dir $@))
 	@$(LD) -r -b binary -o $@ $<
 
@@ -142,7 +143,7 @@ bin/embed_hce/%.o: resources/%
 profile-gen: CFLAGS_NNUE += $(CFLAGS_GEN)
 profile-gen: CFLAGS_HCE += $(CFLAGS_GEN)
 profile-gen: clean-profile engines
-	$(info Profiling run started, this may take a while...)
+	@echo [PROFILE]  Profiling run started, this may take a while...
 ifeq ($(OS),Windows_NT)
 	@bin\nnue_engine.exe $(PROFILING_ARGS) > nul
 	@bin\hce_engine.exe $(PROFILING_ARGS) > nul
@@ -189,3 +190,9 @@ else
 		find bin -name '*.o' -delete; \
 	fi
 endif
+
+# --- Dependency Inclusion ---
+# Finde alle .d Dateien, die vom Compiler generiert wurden und binde sie ein
+DEP_FILES = $(patsubst src/%.cpp,bin/obj_nnue/%.d,$(SRC)) \
+            $(patsubst src/%.cpp,bin/obj_hce/%.d,$(SRC))
+-include $(DEP_FILES)
