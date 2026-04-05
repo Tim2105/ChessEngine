@@ -27,7 +27,7 @@ class Simulation {
     #ifdef USE_HCE
     using Parameters = HCEParameters;
     #else
-    using Parameters = NNUE::Network;
+    using Parameters = std::reference_wrapper<const NNUE::Network>;
     #endif
 
     private:

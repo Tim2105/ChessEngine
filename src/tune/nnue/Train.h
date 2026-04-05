@@ -186,35 +186,51 @@ namespace Train {
                 denseLayerOutputs[i] = std::vector<float>(NNUE::Network::LAYER_SIZES[i + 1], 0);
         }
 
-        float compute(const MasterWeights& masterWeights, const Board& board);
+        float forward(const MasterWeights& masterWeights, const Board& board);
+        Gradients backward(const MasterWeights& masterWeights, const Board& board, float outputGrad);
     };
 
     extern TrainingSession trainingSession;
 
     /**
-     * @brief Bestimmt den MSE eines Parametersatzes auf einem Datensatz.
+     * @brief Bestimmt den MSE eines unquantisierten Parametersatzes auf einem Datensatz.
      * Diese Funktion betrachtet den gesamten Datensatz. Die Berechnung
      * wird auf mehrere Threads aufgeteilt.
      * 
      * @param data Der Datensatz.
-     * @param network Das Netzwerk.
+     * @param masterWeights Die unquantisierten Parameter des Netzwerks.
+     * @param k Der Faktor, der mit dem Bewertungswert innerhalb der tanh-Funktion multipliziert wird.
      * @param weightDecay Der Gewichtungsabfall.
      * @return double Der mittlere quadratische Fehler.
      */
-    double loss(std::vector<DataPoint>& data, const NNUE::Network& network, double weightDecay = 0.0);
+    double loss(std::vector<DataPoint>& data, const MasterWeights& masterWeights, double k, double weightDecay = 0.0);
 
     /**
-     * @brief Berechnet den Gradienten des MSE eines Parametersatzes auf einem Datensatz.
+     * @brief Bestimmt den MSE eines quantisierten Parametersatzes auf einem Datensatz.
+     * Diese Funktion betrachtet den gesamten Datensatz. Die Berechnung
+     * wird auf mehrere Threads aufgeteilt.
+     * 
+     * @param data Der Datensatz.
+     * @param network Das Netzwerk (quantisierte Parameter).
+     * @param k Der Faktor, der mit dem Bewertungswert innerhalb der tanh-Funktion multipliziert wird.
+     * @param weightDecay Der Gewichtungsabfall.
+     * @return double Der mittlere quadratische Fehler.
+     */
+    double loss(std::vector<DataPoint>& data, const NNUE::Network& network, double k, double weightDecay = 0.0);
+
+    /**
+     * @brief Berechnet den Gradienten des MSE eines unquantisierten Parametersatzes auf einem Datensatz.
      * Zusätzlich werden die Indizes der Datenpunkte übergeben,
      * die für die Berechnung des Gradienten verwendet werden sollen.
      * 
      * @param data Der Datensatz.
      * @param indices Die Indizes der Datenpunkte, die für die Berechnung des Gradienten verwendet werden sollen.
-     * @param network Das Netzwerk.
+     * @param masterWeights Die unquantisierten Parameter des Netzwerks.
+     * @param k Der Faktor, der mit dem Bewertungswert innerhalb der tanh-Funktion multipliziert wird.
      * @param weightDecay Der Gewichtungsabfall.
      * @return std::vector<float> Der Gradient.
      */
-    Gradients gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const NNUE::Network& network, double weightDecay = 0.0);
+    Gradients gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const MasterWeights& masterWeights, double k, double weightDecay = 0.0);
 
     /**
      * @brief Verbessert die Parameter eines HCE-Modells über den AdamW-Algorithmus.

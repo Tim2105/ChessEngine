@@ -33,10 +33,10 @@ Result Simulation::simulateSingleGame(Board& board) {
 
     Result result;
 
+    #ifdef USE_HCE
     Parameters whiteParameters = whiteParams.value_or(Parameters());
     Parameters blackParameters = blackParams.value_or(Parameters());
 
-    #ifdef USE_HCE
     if(addParameterNoise) {
         std::random_device rd;
         std::mt19937 gen(rd());
@@ -51,6 +51,9 @@ Result Simulation::simulateSingleGame(Board& board) {
             blackParameters[i] = std::round(blackParameters[i] + defaultDist(gen) + linearDist(gen) * std::abs(blackParameters[i]));
         }
     }
+    #else
+    Parameters whiteParameters = whiteParams.value_or(NNUE::DEFAULT_NETWORK);
+    Parameters blackParameters = blackParams.value_or(NNUE::DEFAULT_NETWORK);
     #endif
 
     PVSEngine white(board, whiteParameters);

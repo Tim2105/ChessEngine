@@ -285,6 +285,7 @@ extern Variable numEpochs;
 extern Variable numEpochsIncrement;
 extern Variable numGenerations;
 extern Variable noImprovementPatience;
+extern Variable k;
 extern Variable batchSize;
 extern Variable epsilon;
 extern Variable discount;
@@ -292,9 +293,5 @@ extern Variable alpha;
 extern Variable beta1;
 extern Variable beta2;
 extern Variable weightDecay;
-
-#ifdef USE_HCE
-extern Variable k;
-#endif
 
 #endif

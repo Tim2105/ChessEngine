@@ -9,10 +9,10 @@ Variable pgnFilePath("pgnFile", "Path to the PGN file for sampling opening posit
 Variable samplesFilePath("samplesFilePath", "Path to the file for storing generated samples", "data/samples.txt");
 unsigned int nThreads = std::thread::hardware_concurrency();
 Variable numThreads("numThreads", "Number of threads to use for the simulation", std::max(1u, (unsigned int)std::round(nThreads * 5.0 / 8)));
-Variable numGames("numGames", "Number of games to simulate at generation 0", 30ull);
+Variable numGames("numGames", "Number of games to simulate at generation 0", 15ull);
 Variable numGamesIncrement("numGamesIncr", "Number of games to simulate more with each generation", 0ull);
-Variable timeControl("timeControl", "Time control in ms at generation 0", 2000ull);
-Variable increment("increment", "Time control increment in ms at generation 0", 200ull);
+Variable timeControl("timeControl", "Time control in ms at generation 0", 200ull);
+Variable increment("increment", "Time control increment in ms at generation 0", 20ull);
 Variable timeGrowth("timeGrowth", "Time control growth factor with each generation", 1.0);
 Variable openingBookMovesMin("openingBookMovesMin", "Minimum number of half moves to play from opening positions before simulation", 6ull);
 Variable openingBookMovesMax("openingBookMovesMax", "Maximum number of half moves to play from opening positions before simulation", 35ull);
@@ -25,6 +25,7 @@ Variable numEpochs("numEpochs", "Number of epochs for training at generation 0",
 Variable numEpochsIncrement("numEpochsIncr", "Additional number of epochs for training with each generation", 0ull);
 Variable numGenerations("numGenerations", "Number of generations for training", 50000ull);
 Variable noImprovementPatience("noImprovementPatience", "Number of generations without improvement before stopping training", 10ull);
+Variable k("k", "Factor multiplied with the evaluation value inside the tanh function", 0.015);
 Variable batchSize("batchSize", "Batch size for training", 2048ull);
 Variable epsilon("epsilon", "Epsilon value for the Adam optimizer", 1e-8);
 Variable discount("discount", "Discount factor for the learning algorithm", 1.0);
@@ -38,5 +39,4 @@ Variable useNoisyParameters("useNoisyParameters", "Use noisy parameters for the 
 Variable noiseDefaultStdDev("noiseDefaultStdDev", "Default standard deviation for noise", 1.0);
 Variable noiseLinearStdDev("noiseLinearStdDev", "Additional standard deviation for noise based on the absolute value of the parameter", 0.05);
 Variable noiseDecay("noiseDecay", "Noise decay factor with each generation", 0.99);
-Variable k("k", "Factor multiplied with the evaluation value inside the tanh function", 0.015);
 #endif

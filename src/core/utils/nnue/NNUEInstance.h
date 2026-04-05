@@ -9,9 +9,47 @@
 namespace NNUE {
     class Instance {
         private:
+            struct alignas(REQUIRED_ALIGNMENT) AccumulatorData {
+                int16_t accumulator[2 * Network::SINGLE_SUBNET_SIZE];
+
+                constexpr AccumulatorData() = default;
+
+                inline int16_t& operator[](size_t index) {
+                    return accumulator[index];
+                }
+
+                inline const int16_t& operator[](size_t index) const {
+                    return accumulator[index];
+                }
+
+                inline int16_t* data() {
+                    return accumulator;
+                }
+
+                inline const int16_t* data() const {
+                    return accumulator;
+                }
+
+                inline int16_t* begin() {
+                    return accumulator;
+                }
+
+                inline const int16_t* begin() const {
+                    return accumulator;
+                }
+
+                inline int16_t* end() {
+                    return accumulator + 2 * Network::SINGLE_SUBNET_SIZE;
+                }
+
+                inline const int16_t* end() const {
+                    return accumulator + 2 * Network::SINGLE_SUBNET_SIZE;
+                }
+            };
+
             const Network& network;
             Accumulator accumulator;
-            std::vector<std::array<int16_t, 2 * Network::SINGLE_SUBNET_SIZE>> pastAccumulators;
+            std::vector<AccumulatorData> pastAccumulators;
 
             void initializeFromBoard(const Board& board, int32_t color) noexcept;
             void updateAfterOppKingMove(const Board& board, int32_t color, Move move) noexcept;
