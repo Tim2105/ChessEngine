@@ -42,24 +42,24 @@ namespace Train {
             const auto& layer3 = network.getLayer3();
 
             for(size_t i = 0; i < NNUE::Network::LAYER_SIZES[1]; i++) {
-                exactDenseLayerBiases[0][i] = layer1.getBias(i) / 64.0f;
+                exactDenseLayerBiases[0][i] = layer1.getBias(i) / (64.0f * 64.0f);
 
                 for(size_t j = 0; j < NNUE::Network::LAYER_SIZES[0]; j++)
-                    exactDenseLayerWeights[0][j * NNUE::Network::LAYER_SIZES[1] + i] = layer1.getWeight(j, i) / 64.0f;
+                    exactDenseLayerWeights[0][i * NNUE::Network::LAYER_SIZES[0] + j] = layer1.getWeight(j, i) / 64.0f;
             }
 
             for(size_t i = 0; i < NNUE::Network::LAYER_SIZES[2]; i++) {
-                exactDenseLayerBiases[1][i] = layer2.getBias(i) / 64.0f;
+                exactDenseLayerBiases[1][i] = layer2.getBias(i) / (64.0f * 64.0f);
 
                 for(size_t j = 0; j < NNUE::Network::LAYER_SIZES[1]; j++)
-                    exactDenseLayerWeights[1][j * NNUE::Network::LAYER_SIZES[2] + i] = layer2.getWeight(j, i) / 64.0f;
+                    exactDenseLayerWeights[1][i * NNUE::Network::LAYER_SIZES[1] + j] = layer2.getWeight(j, i) / 64.0f;
             }
 
             for(size_t i = 0; i < NNUE::Network::LAYER_SIZES[3]; i++) {
-                exactDenseLayerBiases[2][i] = layer3.getBias(i) / 64.0f;
+                exactDenseLayerBiases[2][i] = layer3.getBias(i) / (64.0f * 64.0f);
 
                 for(size_t j = 0; j < NNUE::Network::LAYER_SIZES[2]; j++)
-                    exactDenseLayerWeights[2][j * NNUE::Network::LAYER_SIZES[3] + i] = layer3.getWeight(j, i) / 64.0f;
+                    exactDenseLayerWeights[2][i * NNUE::Network::LAYER_SIZES[2] + j] = layer3.getWeight(j, i) / 64.0f;
             }
         }
 
@@ -107,13 +107,17 @@ namespace Train {
         size_t epoch = 0;
         double averageLoss = 0.0;
 
-        inline TrainingSession(const NNUE::Network& network) : masterWeights(network) {
+        inline TrainingSession() {
             for(size_t i = 0; i < NNUE::Network::NUM_LAYERS; i++) {
                 mDenseLayerBiases[i] = std::vector<float>(NNUE::Network::LAYER_SIZES[i + 1], 0);
                 mDenseLayerWeights[i] = std::vector<float>(NNUE::Network::LAYER_SIZES[i] * NNUE::Network::LAYER_SIZES[i + 1], 0);
                 vDenseLayerBiases[i] = std::vector<float>(NNUE::Network::LAYER_SIZES[i + 1], 0);
                 vDenseLayerWeights[i] = std::vector<float>(NNUE::Network::LAYER_SIZES[i] * NNUE::Network::LAYER_SIZES[i + 1], 0);
             }
+        }
+
+        inline TrainingSession(const NNUE::Network& network) : TrainingSession() {
+            masterWeights = MasterWeights(network);
         }
     };
 
@@ -173,6 +177,18 @@ namespace Train {
         return is;
     }
 
+    struct NetworkActivations {
+        std::vector<float> halfKPOutputs = std::vector<float>(NNUE::Network::LAYER_SIZES[0], 0);
+        std::array<std::vector<float>, NNUE::Network::NUM_LAYERS> denseLayerOutputs;
+
+        inline NetworkActivations() {
+            for(size_t i = 0; i < NNUE::Network::NUM_LAYERS; i++)
+                denseLayerOutputs[i] = std::vector<float>(NNUE::Network::LAYER_SIZES[i + 1], 0);
+        }
+
+        float compute(const MasterWeights& masterWeights, const Board& board);
+    };
+
     extern TrainingSession trainingSession;
 
     /**
@@ -182,11 +198,10 @@ namespace Train {
      * 
      * @param data Der Datensatz.
      * @param network Das Netzwerk.
-     * @param k Ein Faktor, der mit dem Argument der Sigmoid-Funktion multipliziert wird.
      * @param weightDecay Der Gewichtungsabfall.
      * @return double Der mittlere quadratische Fehler.
      */
-    double loss(std::vector<DataPoint>& data, const NNUE::Network& network, double k, double weightDecay = 0.0);
+    double loss(std::vector<DataPoint>& data, const NNUE::Network& network, double weightDecay = 0.0);
 
     /**
      * @brief Berechnet den Gradienten des MSE eines Parametersatzes auf einem Datensatz.
@@ -196,11 +211,10 @@ namespace Train {
      * @param data Der Datensatz.
      * @param indices Die Indizes der Datenpunkte, die für die Berechnung des Gradienten verwendet werden sollen.
      * @param network Das Netzwerk.
-     * @param k Ein Faktor, der mit dem Argument der Sigmoid-Funktion multipliziert wird.
      * @param weightDecay Der Gewichtungsabfall.
      * @return std::vector<float> Der Gradient.
      */
-    Gradients gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const NNUE::Network& network, double k, double weightDecay = 0.0);
+    Gradients gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const NNUE::Network& network, double weightDecay = 0.0);
 
     /**
      * @brief Verbessert die Parameter eines HCE-Modells über den AdamW-Algorithmus.

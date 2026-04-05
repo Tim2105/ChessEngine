@@ -2,6 +2,7 @@
 #define NNUE_EVALUATOR_H
 
 #include "core/chess/Referee.h"
+#include "core/engine/evaluation/Evaluator.h"
 #include "core/utils/nnue/NNUEInstance.h"
 
 class NNUEEvaluator: public Evaluator {
