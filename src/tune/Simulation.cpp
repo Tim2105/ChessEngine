@@ -27,15 +27,20 @@ Simulation::Simulation(std::vector<Board>& startingPositions, uint32_t timeContr
 
 Result Simulation::simulateSingleGame(Board& board) {
     if(Referee::isCheckmate(board))
-        return board.getSideToMove() == WHITE ? Result{BLACK_WIN, {-MATE_SCORE}} : Result{WHITE_WIN, {-MATE_SCORE}};
+        return board.getSideToMove() == WHITE ? Result{BLACK_WIN, {-MATE_SCORE}, {board.toFEN()}} : Result{WHITE_WIN, {-MATE_SCORE}, {board.toFEN()}};
     else if(Referee::isDraw(board))
-        return Result{DRAW, {DRAW_SCORE}};
+        return Result{DRAW, {DRAW_SCORE}, {board.toFEN()}};
 
     Result result;
 
     #ifdef USE_HCE
-    Parameters whiteParameters = whiteParams.value_or(Parameters());
-    Parameters blackParameters = blackParams.value_or(Parameters());
+    HCEParameters parameters = params.value_or(HCEParameters());
+    HCEParameters whiteParameters = parameters;
+    HCEParameters blackParameters = parameters;
+    std::vector<double> whiteNoise(parameters.size(), 0.0);
+    std::vector<double> blackNoise(parameters.size(), 0.0);
+    double whiteDecayFactor = 1.0;
+    double blackDecayFactor = 1.0;
 
     if(addParameterNoise) {
         std::random_device rd;
@@ -43,17 +48,31 @@ Result Simulation::simulateSingleGame(Board& board) {
         std::normal_distribution<double> defaultDist(0.0, noiseStdDev);
         std::normal_distribution<double> linearDist(0.0, noiseLinearStdDev);
 
-        for(size_t i = 0; i < whiteParameters.size(); i++) {
-            if(!whiteParameters.isOptimizable(i))
+        for(size_t i = 0; i < parameters.size(); i++) {
+            if(!parameters.isOptimizable(i))
                 continue;
 
-            whiteParameters[i] = std::round(whiteParameters[i] + defaultDist(gen) + linearDist(gen) * std::abs(whiteParameters[i]));
-            blackParameters[i] = std::round(blackParameters[i] + defaultDist(gen) + linearDist(gen) * std::abs(blackParameters[i]));
+            whiteNoise[i] = defaultDist(gen) + linearDist(gen) * std::abs(parameters[i]);
+            blackNoise[i] = defaultDist(gen) + linearDist(gen) * std::abs(parameters[i]);
+        }
+
+        // Berechne verrauschende Parameter
+        for(size_t i = 0; i < parameters.size(); i++) {
+            if(!parameters.isOptimizable(i))
+                continue;
+
+            whiteParameters[i] = (int16_t)std::round(parameters[i] + whiteNoise[i] * whiteDecayFactor);
+            blackParameters[i] = (int16_t)std::round(parameters[i] + blackNoise[i] * blackDecayFactor);
         }
     }
+
+    HandcraftedEvaluator neutralEvaluator(board, parameters);
     #else
-    Parameters whiteParameters = whiteParams.value_or(NNUE::DEFAULT_NETWORK);
-    Parameters blackParameters = blackParams.value_or(NNUE::DEFAULT_NETWORK);
+    Parameters parameters = params.value_or(NNUE::DEFAULT_NETWORK);
+    Parameters whiteParameters = parameters;
+    Parameters blackParameters = parameters;
+
+    NNUEEvaluator neutralEvaluator(board, parameters);
     #endif
 
     PVSEngine white(board, whiteParameters);
@@ -74,11 +93,37 @@ Result Simulation::simulateSingleGame(Board& board) {
         };
 
         if(board.getSideToMove() == WHITE) {
+            #ifdef USE_HCE
+            if(addParameterNoise) {
+                // Berechne verrauschende Parameter für Weiß
+                for(size_t i = 0; i < whiteParameters.size(); i++) {
+                    if(!whiteParameters.isOptimizable(i))
+                        continue;
+
+                    whiteParameters[i] = (int16_t)std::round(parameters[i] + whiteNoise[i] * whiteDecayFactor);
+                }
+
+                whiteDecayFactor *= noiseDecay;
+            }
+            #endif
+
             std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
             white.search(params);
             std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
-            result.evaluations.push_back(white.getBestMoveScore());
+            // Laufe die beste Variante durch und speichere die Bewertung des Blattknotens
+            for(Move m : white.getPrincipalVariation())
+                board.makeMove(m);
+
+            double evaluation = neutralEvaluator.evaluate();
+            if(board.getSideToMove() == BLACK)
+                evaluation = -evaluation;
+            result.leafEvaluations.push_back(evaluation);
+            result.leafFENs.push_back(board.toFEN());
+            
+            // Mache die Züge wieder rückgängig
+            for(size_t i = 0; i < white.getPrincipalVariation().size(); i++)
+                board.undoMove();
 
             Move bestMove = white.getBestMove();
             board.makeMove(bestMove);
@@ -92,11 +137,37 @@ Result Simulation::simulateSingleGame(Board& board) {
                 return result;
             }
         } else {
+            #ifdef USE_HCE
+            if(addParameterNoise) {
+                // Berechne verrauschende Parameter für Schwarz
+                for(size_t i = 0; i < blackParameters.size(); i++) {
+                    if(!blackParameters.isOptimizable(i))
+                        continue;
+
+                    blackParameters[i] = (int16_t)std::round(parameters[i] + blackNoise[i] * blackDecayFactor);
+                }
+
+                blackDecayFactor *= noiseDecay;
+            }
+            #endif
+
             std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
             black.search(params);
             std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
-            result.evaluations.push_back(black.getBestMoveScore());
+            // Laufe die beste Variante durch und speichere die Bewertung des Blattknotens
+            for(Move m : black.getPrincipalVariation())
+                board.makeMove(m);
+
+            double evaluation = neutralEvaluator.evaluate();
+            if(board.getSideToMove() == BLACK)
+                evaluation = -evaluation;
+            result.leafEvaluations.push_back(evaluation);
+            result.leafFENs.push_back(board.toFEN());
+
+            // Mache die Züge wieder rückgängig
+            for(size_t i = 0; i < black.getPrincipalVariation().size(); i++)
+                board.undoMove();
 
             Move bestMove = black.getBestMove();
             board.makeMove(bestMove);
@@ -123,11 +194,15 @@ void Simulation::run() {
               << timeControl / 1000.0 << "s + " << increment / 1000.0 << "s increment) "
               << "with " << numThreads << " threads..." << std::endl;
 
-    std::cout << "Remaining games: " << startingPositions.size() << std::flush;
+    std::cout << "Remaining games: " << std::left << std::setw(7) << startingPositions.size();
+    std::cout << std::right << " | White wins: " << std::setw(7) << 0;
+    std::cout << " | Black wins: " << std::setw(7) << 0;
+    std::cout << " | Draws: " << std::setw(7) << 0 << std::flush;
 
     std::mutex lock;
     std::atomic_int64_t currentIdx = startingPositions.size() - 1;
-    uint64_t completedGames = 0;
+    std::atomic_uint64_t whiteWins = 0, blackWins = 0, draws = 0;
+    std::atomic_uint64_t completedGames = 0;
 
     auto threadFunction = [&]() {
         lock.lock();
@@ -143,11 +218,26 @@ void Simulation::run() {
 
             Result result = simulateSingleGame(board);
             results[index] = result;
+            completedGames.fetch_add(1);
+
+            switch(result.result) {
+                case WHITE_WIN:
+                    whiteWins.fetch_add(1);
+                    break;
+                case BLACK_WIN:
+                    blackWins.fetch_add(1);
+                    break;
+                case DRAW:
+                    draws.fetch_add(1);
+                    break;
+            }
 
             lock.lock();
-            completedGames++;
             std::stringstream ss;
             ss << "\rRemaining games: " << std::left << std::setw(7) << startingPositions.size() - completedGames;
+            ss << std::right << " | White wins: " << std::setw(7) << whiteWins.load();
+            ss << " | Black wins: " << std::setw(7) << blackWins.load();
+            ss << " | Draws: " << std::setw(7) << draws.load();
             std::cout << ss.str() << std::flush;
         }
 
@@ -161,5 +251,9 @@ void Simulation::run() {
     for(size_t i = 0; i < numThreads; i++)
         threads[i].join();
 
-    std::cout << "\rRemaining games: 0      " << std::endl;
+    std::cout << "\rRemaining games: " << std::left << std::setw(7) << 0;
+    std::cout << std::right;
+    std::cout << " | White wins: " << std::setw(7) << whiteWins.load();
+    std::cout << " | Black wins: " << std::setw(7) << blackWins.load();
+    std::cout << " | Draws: " << std::setw(7) << draws.load() << std::endl;
 }

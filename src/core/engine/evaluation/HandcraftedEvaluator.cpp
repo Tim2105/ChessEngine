@@ -1797,6 +1797,10 @@ bool HandcraftedEvaluator::isDrawnSinglePawnEndgame() {
     Bitboard whiteRooks = board.getPieceBitboard(WHITE_ROOK);
     Bitboard blackRooks = board.getPieceBitboard(BLACK_ROOK);
 
+    // Wenn es noch eine Dame gibt, ist es kein Remis
+    if((bool)board.getPieceBitboard(WHITE_QUEEN) || (bool)board.getPieceBitboard(BLACK_QUEEN))
+        return false;
+
     if(whiteRooks.popcount() == 1 && blackRooks.popcount() == 1 &&
         board.getPieceBitboard() == (whitePawns | blackPawns | whiteRooks | blackRooks) && 
         isDrawnKRPKREndgame())
@@ -1804,29 +1808,42 @@ bool HandcraftedEvaluator::isDrawnSinglePawnEndgame() {
 
     int simpleMaterialScore = (board.getPieceBitboard(WHITE_KNIGHT).popcount() - board.getPieceBitboard(BLACK_KNIGHT).popcount()) * SIMPLE_PIECE_VALUE[KNIGHT] +
                               (board.getPieceBitboard(WHITE_BISHOP).popcount() - board.getPieceBitboard(BLACK_BISHOP).popcount()) * SIMPLE_PIECE_VALUE[BISHOP] +
-                              (board.getPieceBitboard(WHITE_ROOK).popcount() - board.getPieceBitboard(BLACK_ROOK).popcount()) * SIMPLE_PIECE_VALUE[ROOK] +
-                              (board.getPieceBitboard(WHITE_QUEEN).popcount() - board.getPieceBitboard(BLACK_QUEEN).popcount()) * SIMPLE_PIECE_VALUE[QUEEN];
+                              (board.getPieceBitboard(WHITE_ROOK).popcount() - board.getPieceBitboard(BLACK_ROOK).popcount()) * SIMPLE_PIECE_VALUE[ROOK];
 
     if(simpleMaterialScore != 0)
         return false; // Ungleicher Materialstand, also nicht Remis
 
-    if(whitePawns) {
-        Bitboard blackMinorPieceAttacks = board.getAttackBitboard(BLACK_KNIGHT) | board.getAttackBitboard(BLACK_BISHOP);
-        whitePawns = whitePawns.shiftNorth().extrudeNorth();
-        if(board.getSideToMove() == BLACK)
-            whitePawns |= whitePawns.shiftSouth(); // Berücksichtigung des Zugrechts
+    int attacker = whitePawns ? WHITE : BLACK;
+    int attackingKingSquare = board.getKingSquare(attacker);
+    int defendingKingSquare = board.getKingSquare(attacker ^ COLOR_MASK);
+    int pawnSquare = whitePawns ? whitePawns.getFSB() : blackPawns.getFSB();
 
-        if(whitePawns & blackMinorPieceAttacks)
-            return true; // Eine Leichtfigur kann sich opfern, also Remis
-    } else {
-        Bitboard whiteMinorPieceAttacks = board.getAttackBitboard(WHITE_KNIGHT) | board.getAttackBitboard(WHITE_BISHOP);
-        blackPawns = blackPawns.shiftSouth().extrudeSouth();
-        if(board.getSideToMove() == WHITE)
-            blackPawns |= blackPawns.shiftNorth(); // Berücksichtigung des Zugrechts
+    Bitboard keySquares = keySquareMask[attacker / COLOR_MASK][pawnSquare];
 
-        if(blackPawns & whiteMinorPieceAttacks)
-            return true; // Eine Leichtfigur kann sich opfern, also Remis
+    // Steht der angreifende König auf einem Schlüsselfeld, ist es wahrscheinlich kein Remis
+    if(keySquares.getBit(attackingKingSquare))
+        return false;
+
+    // Ist der angreifende König näher an einem Schlüsselfeld als der verteidigende König,
+    // ist es wahrscheinlich kein Remis
+    int distAttackingKingToKeySquares = 8;
+    int keySquare = -1;
+    while(keySquares) {
+        int sq = keySquares.popFSB();
+        int dist = kingDistance(attackingKingSquare, sq);
+        if(dist < distAttackingKingToKeySquares) {
+            distAttackingKingToKeySquares = dist;
+            keySquare = sq;
+        }
     }
+
+    int distDefendingKingToKeySquares = kingDistance(defendingKingSquare, keySquare);
+
+    // Betrachte Zugrecht
+    distAttackingKingToKeySquares -= board.getSideToMove() == attacker;
+
+    if(distAttackingKingToKeySquares >= distDefendingKingToKeySquares)
+        return true;
 
     return false;
 }

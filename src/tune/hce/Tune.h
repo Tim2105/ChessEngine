@@ -61,10 +61,11 @@ namespace Tune {
      * @param indices Die Indizes der Datenpunkte, die für die Berechnung des Fehlers verwendet werden sollen.
      * @param hceParams Der Parametersatz.
      * @param k Ein Faktor, der mit dem Argument der Sigmoid-Funktion multipliziert wird.
+     * @param kappa Wie stark soll das finale Ergebnis in das TD-Ziel einfließen.
      * @param weightDecay Der Gewichtungsabfall.
      * @return double Der mittlere quadratische Fehler.
      */
-    double loss(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k, double weightDecay = 0.0);
+    double loss(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k, double kappa, double weightDecay = 0.0);
 
     /**
      * @brief Bestimmt den MSE eines Parametersatzes auf einem Datensatz.
@@ -74,10 +75,11 @@ namespace Tune {
      * @param data Der Datensatz.
      * @param hceParams Der Parametersatz.
      * @param k Ein Faktor, der mit dem Argument der Sigmoid-Funktion multipliziert wird.
+     * @param kappa Wie stark soll das finale Ergebnis in das TD-Ziel einfließen.
      * @param weightDecay Der Gewichtungsabfall.
      * @return double Der mittlere quadratische Fehler.
      */
-    double loss(std::vector<DataPoint>& data, const HCEParameters& hceParams, double k, double weightDecay = 0.0);
+    double loss(std::vector<DataPoint>& data, const HCEParameters& hceParams, double k, double kappa, double weightDecay = 0.0);
 
     /**
      * @brief Berechnet den Gradienten des MSE eines Parametersatzes auf einem Datensatz.
@@ -88,13 +90,14 @@ namespace Tune {
      * @param indices Die Indizes der Datenpunkte, die für die Berechnung des Gradienten verwendet werden sollen.
      * @param hceParams Der Parametersatz.
      * @param k Ein Faktor, der mit dem Argument der Sigmoid-Funktion multipliziert wird.
+     * @param kappa Wie stark soll das finale Ergebnis in das TD-Ziel einfließen.
      * @param weightDecay Der Gewichtungsabfall.
      * @return std::vector<double> Der Gradient.
      */
-    std::vector<double> gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k, double weightDecay = 0.0);
+    std::vector<double> gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k, double kappa, double weightDecay = 0.0);
 
     /**
-     * @brief Verbessert die Parameter eines HCE-Modells über den AdamW-Algorithmus.
+     * @brief Verbessert die Parameter eines HCE-Modells über Adam.
      * 
      * @param data Der Datensatz.
      * @param hceParams Die Parameter des HCE-Modells.
@@ -102,7 +105,7 @@ namespace Tune {
      * @param learningRate Die Lernrate.
      * @return HCEParameters Die verbesserten Parameter.
      */
-    HCEParameters adamW(std::vector<DataPoint>& data, const HCEParameters& hceParams, size_t numEpochs, double learningRate);
+    HCEParameters adam(std::vector<DataPoint>& data, const HCEParameters& hceParams, size_t numEpochs, double learningRate);
 };
 
 #endif

@@ -20,7 +20,8 @@ enum GameResult {
 class Result {
     public:
         GameResult result;
-        std::vector<int> evaluations;
+        std::vector<int> leafEvaluations;
+        std::vector<std::string> leafFENs;
 };
 
 class Simulation {
@@ -37,12 +38,12 @@ class Simulation {
         uint32_t increment;
         size_t numThreads;
 
-        std::optional<Parameters> whiteParams;
-        std::optional<Parameters> blackParams;
+        std::optional<Parameters> params;
 
         bool addParameterNoise;
         double noiseStdDev;
         double noiseLinearStdDev;
+        double noiseDecay;
 
         Result simulateSingleGame(Board& board);
 
@@ -58,12 +59,8 @@ class Simulation {
             return results;
         }
 
-        inline void setWhiteParams(const Parameters& params) {
-            whiteParams.emplace(params);
-        }
-
-        inline void setBlackParams(const Parameters& params) {
-            blackParams.emplace(params);
+        inline void setParams(const Parameters& newParams) {
+            params.emplace(newParams);
         }
 
         inline void setParameterNoise(double stdDev) {
@@ -74,6 +71,10 @@ class Simulation {
         inline void setLinearParameterNoise(double stdDev) {
             addParameterNoise = true;
             noiseLinearStdDev = stdDev;
+        }
+
+        inline void setNoiseDecay(double decay) {
+            noiseDecay = decay;
         }
 
         inline void setNoParameterNoise() {

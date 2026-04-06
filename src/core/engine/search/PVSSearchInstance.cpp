@@ -19,8 +19,10 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
 
     // Wenn die Suchtiefe 0 oder die maximale Suchdistanz erreicht wurde, bestimme die Bewertung
     // des aktuellen Knotens mit einer Quieszenzsuche.
-    if(depth <= 0 || ply >= MAX_PLY)
+    if(depth <= 0 || ply >= MAX_PLY) {
+        clearPVTable(ply);
         return quiescence(ply, alpha, beta);
+    }
 
     // Wir betrachten diesen Knoten.
     nodesSearched.fetch_add(1);
@@ -573,6 +575,8 @@ int PVSSearchInstance::quiescence(int ply, int alpha, int beta) {
         board.makeMove(move);
         evaluator.updateAfterMove();
 
+        clearPVTable(ply + 1);
+
         // Betrachte den Kindknoten.
         int score = -quiescence(ply + 1, -beta, -alpha);
 
@@ -589,8 +593,10 @@ int PVSSearchInstance::quiescence(int ply, int alpha, int beta) {
             // Wir haben einen neuen besten Zug gefunden.
             bestScore = score;
 
-            if(score > alpha)
+            if(score > alpha) {
                 alpha = score;
+                addPVMove(ply, move);
+            }
         }
 
         moveCount++;

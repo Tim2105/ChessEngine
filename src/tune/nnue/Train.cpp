@@ -39,7 +39,7 @@ double networkOutputToCentipawns(float output) {
     return (output * (64.0 * 64.0) * 100.0 / 3328.0);
 }
 
-double Train::loss(std::vector<DataPoint>& data, const NNUE::MasterWeights& masterWeights, double k, double weightDecay) {
+double Train::loss(std::vector<DataPoint>& data, const NNUE::MasterWeights& masterWeights, double k, double kappa, double weightDecay) {
     std::atomic<double> sum = 0.0;
 
     size_t currIndex = 0;
@@ -59,9 +59,9 @@ double Train::loss(std::vector<DataPoint>& data, const NNUE::MasterWeights& mast
 
                 float networkOutput = masterWeights.forward(dp.board, true).output();
                 double prediction = tanh(networkOutputToCentipawns(networkOutput), k);
-                double trueValue = tanh(dp.result, k);
+                double target = (1.0 - kappa) * tanh(dp.tdTarget, k) + kappa * (double)dp.finalResult;
 
-                sum.fetch_add(mse(prediction, trueValue));
+                sum.fetch_add(mse(prediction, target));
             }
 
             mutex.lock();
@@ -107,7 +107,7 @@ double Train::loss(std::vector<DataPoint>& data, const NNUE::MasterWeights& mast
     return sum.load() + weightDecay * wd;
 }
 
-double Train::loss(std::vector<DataPoint>& data, const NNUE::Network& network, double k, double weightDecay) {
+double Train::loss(std::vector<DataPoint>& data, const NNUE::Network& network, double k, double kappa, double weightDecay) {
     std::atomic<double> sum = 0.0;
 
     size_t currIndex = 0;
@@ -130,9 +130,9 @@ double Train::loss(std::vector<DataPoint>& data, const NNUE::Network& network, d
                 evaluator.setBoard(dp.board);
 
                 double prediction = tanh(evaluator.evaluate(), k);
-                double trueValue = tanh(dp.result, k);
+                double target = (1.0 - kappa) * tanh(dp.tdTarget, k) + kappa * (double)dp.finalResult;
 
-                sum.fetch_add(mse(prediction, trueValue));
+                sum.fetch_add(mse(prediction, target));
             }
 
             mutex.lock();
@@ -196,7 +196,7 @@ double Train::loss(std::vector<DataPoint>& data, const NNUE::Network& network, d
     return sum.load() + weightDecay * wd;
 }
 
-NNUE::Gradients Train::gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const NNUE::MasterWeights& masterWeights, double k, double weightDecay) {
+NNUE::Gradients Train::gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const NNUE::MasterWeights& masterWeights, double k, double kappa, double weightDecay) {
     size_t currIndex = 0;
     std::mutex mutex;
 
@@ -223,9 +223,9 @@ NNUE::Gradients Train::gradient(std::vector<DataPoint>& data, const std::vector<
                 float networkOutput = activations.output();
                 double cp = networkOutputToCentipawns(networkOutput);
                 double prediction = tanh(cp, k);
-                double trueValue = tanh(dp.result, k);
+                double target = (1.0 - kappa) * tanh(dp.tdTarget, k) + kappa * (double)dp.finalResult;
 
-                double errorGrad = 2.0 * (prediction - trueValue) * (1.0 - prediction * prediction) * k;
+                double errorGrad = 2.0 * (prediction - target) * (1.0 - prediction * prediction) * k;
 
                 // Berechne die Gradienten für die Master-Parameter und addiere sie zum Thread-Gradienten
                 NNUE::Gradients dpGrad = masterWeights.backward(dp.board, activations, errorGrad, true);
@@ -339,10 +339,10 @@ NNUE::Network* Train::adam(std::vector<DataPoint>& data, size_t numEpochs, doubl
 
     for(; trainingSession.epoch < targetEpochs; trainingSession.epoch++) {
         // Berechne den Fehler
-        double masterLoss = Train::loss(validationData, masterWeights, k.get<double>(), weightDecay.get<double>());
+        double masterLoss = Train::loss(validationData, masterWeights, k.get<double>(), kappa.get<double>(), weightDecay.get<double>());
 
         network = masterWeights.toNetwork();
-        double networkLoss = Train::loss(validationData, *network, k.get<double>(), weightDecay.get<double>());
+        double networkLoss = Train::loss(validationData, *network, k.get<double>(), kappa.get<double>(), weightDecay.get<double>());
 
         std::cout << "\rEpoch: " << std::left << std::setw(4) << trainingSession.epoch;
         size_t currPrecision = std::cout.precision();
@@ -371,7 +371,7 @@ NNUE::Network* Train::adam(std::vector<DataPoint>& data, size_t numEpochs, doubl
             i = dist(gen);
 
         // Berechne die Gradienten
-        NNUE::Gradients grad = Train::gradient(data, indices, masterWeights, k.get<double>(), weightDecay.get<double>());
+        NNUE::Gradients grad = Train::gradient(data, indices, masterWeights, k.get<double>(), kappa.get<double>(), weightDecay.get<double>());
 
         // Aktualisiere die ersten und zweiten Momente
         for(size_t i = 0; i < masterWeights.exactHalfKPBiases.size(); i++) {

@@ -10,7 +10,10 @@
 
 struct DataPoint {
     Board board;
-    int result;
+    Board leafBoard;
+    int leafEvaluation;
+    int finalResult;
+    double tdTarget;
 };
 
 class Variable;
@@ -266,6 +269,7 @@ extern Variable openingBookMovesMin;
 extern Variable openingBookMovesMax;
 extern Variable randomMovesMin;
 extern Variable randomMovesMax;
+extern Variable virtualMateScore;
 
 #ifdef USE_HCE
 extern Variable useNoisyParameters;
@@ -278,6 +282,7 @@ extern Variable noiseDecay;
  * Variablen des Trainings.
  */
 
+extern Variable startFromScratch;
 extern Variable validationSplit;
 extern Variable learningRate;
 extern Variable learningRateDecay;
@@ -289,6 +294,8 @@ extern Variable k;
 extern Variable batchSize;
 extern Variable epsilon;
 extern Variable discount;
+extern Variable lambda;
+extern Variable kappa;
 extern Variable alpha;
 extern Variable beta1;
 extern Variable beta2;

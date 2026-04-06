@@ -144,10 +144,8 @@ void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, std::istr
 
     Simulation sim(startingPositions, timeControl, increment, numThreads.get<size_t>());
 
-    if(network.has_value()) {
-        sim.setWhiteParams(*network.value());
-        sim.setBlackParams(*network.value());
-    }
+    if(network.has_value())
+        sim.setParams(*network.value());
 
     sim.run();
 
@@ -161,16 +159,32 @@ void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, std::istr
         int outputSize = (int)(startingPositions[i].getAge() - startingMoves[i]);
         output.resize(outputSize);
 
-        for(int j = (int)results[i].evaluations.size() - 1; j >= 0; j--) {
+        int finalResult;
+        switch(results[i].result) {
+            case WHITE_WIN:
+                finalResult = 1;
+                break;
+            case BLACK_WIN:
+                finalResult = -1;
+                break;
+            default:
+                finalResult = 0;
+                break;
+        }
+
+        for(int j = (int)results[i].leafEvaluations.size() - 1; j >= 0; j--) {
             // Mache den letzten Zug rückgängig, das Spiel ist da schon vorbei
             startingPositions[i].undoMove();
+
             std::stringstream ss;
-            ss << startingPositions[i].toFEN() << ";" << results[i].evaluations[j];
+            ss << startingPositions[i].toFEN() << ";" << results[i].leafFENs[j] << ";" << results[i].leafEvaluations[j] << ";" << finalResult;
             output[j] = ss.str();
         }
 
         for(int j = 0; j < outputSize; j++)
             outFile << output[j] << "\n";
+
+        outFile << "NEW_GAME\n";
 
         if(i % 10 == 0)
             std::cout << "\rRemaining games: " << std::left << std::setw(7) <<
@@ -180,6 +194,41 @@ void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, std::istr
     std::cout << "\rRemaining games: 0      " << std::endl;
 }
 
+void calculateTDTargets(std::vector<DataPoint>& dest, std::vector<DataPoint>& rawData) {
+    double terminalValue = 0.0;
+    int finalResult = rawData.empty() ? 0 : rawData.back().finalResult;
+    
+    if(finalResult == 1)
+        terminalValue = virtualMateScore.get<double>();
+    else if(finalResult == -1)
+        terminalValue = -virtualMateScore.get<double>();
+    
+    double tdTarget = terminalValue;
+    double currentLambda = lambda.get<double>();
+    double currentDiscount = discount.get<double>();
+    int mateScore = virtualMateScore.get<int>();
+
+    for(int j = (int)rawData.size() - 1; j >= 0; j--) {
+        int virtualizedEval = rawData[j].leafEvaluation;
+        if(virtualizedEval > mateScore)
+            virtualizedEval = mateScore;
+        else if(virtualizedEval < -mateScore)
+            virtualizedEval = -mateScore;
+
+        rawData[j].leafEvaluation = virtualizedEval;
+
+        double nextSearchValue;
+        if(j == (int)rawData.size() - 1)
+            nextSearchValue = terminalValue;
+        else
+            nextSearchValue = rawData[j + 1].leafEvaluation;
+
+        tdTarget = currentDiscount * ((1.0 - currentLambda) * nextSearchValue + currentLambda * tdTarget);
+
+        dest.push_back({rawData[j].board, rawData[j].leafBoard, rawData[j].leafEvaluation, finalResult, tdTarget});
+    }
+}
+
 std::vector<DataPoint> loadData(std::istream& resultFile, size_t n) {
     std::cout << "Loading data..." << std::endl;
 
@@ -187,25 +236,41 @@ std::vector<DataPoint> loadData(std::istream& resultFile, size_t n) {
 
     std::cout << "Loaded 0 data points" << std::flush;
 
-    for(size_t i = 0; i < n && !resultFile.eof(); i++) {
-        std::string fen;
-        std::getline(resultFile, fen, ';');
+    std::vector<DataPoint> currentGame;
 
-        if(fen.empty())
-            break;
+    std::string line;
+    while(std::getline(resultFile, line) && data.size() < n) {
+        if(line == "NEW_GAME") {
+            calculateTDTargets(data, currentGame);
+            currentGame.clear();
 
-        Board board(fen);
+            if(data.size() % 10 == 0)
+                std::cout << "\rLoaded " << data.size() << " data points" << std::flush;
 
-        std::string result;
-        std::getline(resultFile, result);
+            continue;
+        }
 
-        int res = std::stoi(result);
+        if(line.empty())
+            continue;
 
-        data.push_back({board, res});
+        std::stringstream ss(line);
+        std::string segment;
+        std::vector<std::string> parts;
+        while(std::getline(ss, segment, ';'))
+            parts.push_back(segment);
 
-        if(i % 1000 == 0)
-            std::cout << "\rLoaded " << i << " data points" << std::flush;
+        if(parts.size() < 4)
+            continue;
+
+        Board board(parts[0]);
+        Board leafBoard(parts[1]);
+        int leafEvaluation = std::stoi(parts[2]);
+        int finalResult = std::stoi(parts[3]);
+
+        currentGame.push_back({board, leafBoard, leafEvaluation, finalResult, 0.0});
     }
+
+    calculateTDTargets(data, currentGame);
 
     std::cout << "\rLoaded " << data.size() << " data points" << std::endl;
 

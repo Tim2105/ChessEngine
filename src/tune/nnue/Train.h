@@ -120,10 +120,11 @@ namespace Train {
      * @param data Der Datensatz.
      * @param masterWeights Die unquantisierten Parameter des Netzwerks.
      * @param k Der Faktor, der mit dem Bewertungswert innerhalb der tanh-Funktion multipliziert wird.
+     * @param kappa Bestimmt, wie stark das finale Ergebnis in das TD-Ziel einfließen soll.
      * @param weightDecay Der Gewichtungsabfall.
      * @return double Der mittlere quadratische Fehler.
      */
-    double loss(std::vector<DataPoint>& data, const NNUE::MasterWeights& masterWeights, double k, double weightDecay = 0.0);
+    double loss(std::vector<DataPoint>& data, const NNUE::MasterWeights& masterWeights, double k, double kappa, double weightDecay = 0.0);
 
     /**
      * @brief Bestimmt den MSE eines quantisierten Parametersatzes auf einem Datensatz.
@@ -133,10 +134,11 @@ namespace Train {
      * @param data Der Datensatz.
      * @param network Das Netzwerk (quantisierte Parameter).
      * @param k Der Faktor, der mit dem Bewertungswert innerhalb der tanh-Funktion multipliziert wird.
+     * @param kappa Bestimmt, wie stark das finale Ergebnis in das TD-Ziel einfließen soll.
      * @param weightDecay Der Gewichtungsabfall.
      * @return double Der mittlere quadratische Fehler.
      */
-    double loss(std::vector<DataPoint>& data, const NNUE::Network& network, double k, double weightDecay = 0.0);
+    double loss(std::vector<DataPoint>& data, const NNUE::Network& network, double k, double kappa, double weightDecay = 0.0);
 
     /**
      * @brief Berechnet den Gradienten des MSE eines unquantisierten Parametersatzes auf einem Datensatz.
@@ -147,10 +149,11 @@ namespace Train {
      * @param indices Die Indizes der Datenpunkte, die für die Berechnung des Gradienten verwendet werden sollen.
      * @param masterWeights Die unquantisierten Parameter des Netzwerks.
      * @param k Der Faktor, der mit dem Bewertungswert innerhalb der tanh-Funktion multipliziert wird.
+     * @param kappa Bestimmt, wie stark das finale Ergebnis in das TD-Ziel einfließen soll.
      * @param weightDecay Der Gewichtungsabfall.
      * @return std::vector<float> Der Gradient.
      */
-    NNUE::Gradients gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const NNUE::MasterWeights& masterWeights, double k, double weightDecay = 0.0);
+    NNUE::Gradients gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const NNUE::MasterWeights& masterWeights, double k, double kappa, double weightDecay = 0.0);
 
     /**
      * @brief Verbessert die Parameter eines HCE-Modells über den Adam-Algorithmus.

@@ -32,7 +32,7 @@ namespace Tune {
         return (x - y) * (x - y);
     }
 
-    double loss(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k, double weightDecay) {
+    double loss(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k, double kappa, double weightDecay) {
         double sum = 0;
 
         for(size_t i : indices) {
@@ -40,14 +40,17 @@ namespace Tune {
             DataPoint& dp = data[i % data.size()];
 
             // Setze das Schachbrett auf die aktuelle Position
-            HandcraftedEvaluator evaluator(dp.board, hceParams);
+            HandcraftedEvaluator evaluator(dp.leafBoard, hceParams);
 
             // Berechne die Vorhersage
             double prediction = tanh(evaluator.evaluate(), k);
-            double trueValue = tanh(dp.result, k);
+            if(dp.leafBoard.getSideToMove() == BLACK)
+                prediction = -prediction;
+
+            double target = (1.0 - kappa) * tanh(dp.tdTarget, k) + kappa * (double)dp.finalResult;
 
             // Berechne den Fehler
-            sum += mse(prediction, trueValue);
+            sum += mse(prediction, target);
         }
 
         sum /= indices.size();
@@ -56,12 +59,12 @@ namespace Tune {
         double wd = 0;
         for(size_t i = 0; i < hceParams.size(); i++)
             if(hceParams.isOptimizable(i))
-                wd += hceParams[i] * hceParams[i];
+                wd += std::abs(hceParams[i]);
 
-        return sum + weightDecay * wd;
+        return sum + weightDecay * wd / (double)hceParams.size();
     }
 
-    double loss(std::vector<DataPoint>& data, const HCEParameters& hceParams, double k, double weightDecay) {
+    double loss(std::vector<DataPoint>& data, const HCEParameters& hceParams, double k, double kappa, double weightDecay) {
         std::atomic<double> sum = 0;
 
         size_t currIndex = 0;
@@ -83,14 +86,17 @@ namespace Tune {
                     DataPoint& dp = data[i];
 
                     // Setze das Schachbrett auf die aktuelle Position
-                    HandcraftedEvaluator evaluator(dp.board, hceParams);
+                    HandcraftedEvaluator evaluator(dp.leafBoard, hceParams);
 
                     // Berechne die Vorhersage
                     double prediction = tanh(evaluator.evaluate(), k);
-                    double trueValue = tanh(dp.result, k);
+                    if(dp.leafBoard.getSideToMove() == BLACK)
+                        prediction = -prediction;
+
+                    double target = (1.0 - kappa) * tanh(dp.tdTarget, k) + kappa * (double)dp.finalResult;
 
                     // Berechne den Fehler
-                    double l = mse(prediction, trueValue);
+                    double l = mse(prediction, target);
 
                     // Addiere den Fehler zum Gesamtfehler
                     sum.fetch_add(l);
@@ -118,20 +124,17 @@ namespace Tune {
         double wd = 0;
         for(size_t i = 0; i < hceParams.size(); i++)
             if(hceParams.isOptimizable(i))
-                wd += hceParams[i] * hceParams[i];
+                wd += std::abs(hceParams[i]);
 
-        return sum + weightDecay * wd;
+        return sum + weightDecay * wd / (double)hceParams.size();
     }
 
-    std::vector<double> gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k, double weightDecay) {
+    std::vector<double> gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const HCEParameters& hceParams, double k, double kappa, double weightDecay) {
         // Rückgabevektor initialisieren
         std::vector<double> grad(hceParams.size(), 0);
 
         size_t currIndex = 0;
         std::mutex mutex;
-
-        // Berechne den aktuellen Fehler der zu betrachtenden Datenpunkte
-        double currLoss = loss(data, indices, hceParams, k, weightDecay);
 
         auto threadFunc = [&]() {
             // Sperre den Mutex um den nächsten Parameter zu extrahieren
@@ -145,14 +148,19 @@ namespace Tune {
 
                 mutex.unlock();
 
-                // Bestimme den Gradienten über die Ableitungsdefinition
-                // f'(x) = (f(x + h) - f(x)) / h
+                // Finite-Differenzen-Methode
                 HCEParameters hceParamsCopy = hceParams;
                 hceParamsCopy[i] += 1;
                 hceParamsCopy.unpackPSQT();
 
-                double l = loss(data, indices, hceParamsCopy, k, weightDecay);
-                grad[i] = l - currLoss;
+                double l1 = loss(data, indices, hceParamsCopy, k, kappa, weightDecay);
+
+                hceParamsCopy[i] -= 2;
+                hceParamsCopy.unpackPSQT();
+
+                double l2 = loss(data, indices, hceParamsCopy, k, kappa, weightDecay);
+
+                grad[i] = (l1 - l2) / (2.0 * k);
 
                 // Sperre den Mutex um den nächsten Parameter zu extrahieren
                 mutex.lock();
@@ -173,7 +181,7 @@ namespace Tune {
         return grad;
     }
 
-    HCEParameters adamW(std::vector<DataPoint>& data, const HCEParameters& hceParams, size_t numEpochs, double learningRate) {
+    HCEParameters adam(std::vector<DataPoint>& data, const HCEParameters& hceParams, size_t numEpochs, double learningRate) {
         HCEParameters currentParams = hceParams;
         HCEParameters bestParams = hceParams;
 
@@ -209,7 +217,7 @@ namespace Tune {
         // Iteriere über die Epochen
         for(; trainingSession.epoch < targetEpochs; trainingSession.epoch++) {
             // Berechne den Fehler
-            double loss = Tune::loss(validationData, currentParams, k.get<double>(), weightDecay.get<double>());
+            double loss = Tune::loss(validationData, currentParams, k.get<double>(), kappa.get<double>(), weightDecay.get<double>());
 
             std::cout << "\rEpoch: " << std::left << std::setw(4) << trainingSession.epoch;
             size_t currPrecision = std::cout.precision();
@@ -237,7 +245,7 @@ namespace Tune {
                 i = dist(gen);
 
             // Berechne den Gradienten
-            grad = Tune::gradient(data, indices, currentParams, k.get<double>(), weightDecay.get<double>());
+            grad = Tune::gradient(data, indices, currentParams, k.get<double>(), kappa.get<double>(), weightDecay.get<double>());
 
             // Berechne die ersten und zweiten Momente
             for(size_t i = 0; i < currentParams.size(); i++) {
@@ -270,7 +278,7 @@ namespace Tune {
         }
 
         // Berechne den finalen Fehler
-        double loss = Tune::loss(validationData, currentParams, k.get<double>(), weightDecay.get<double>());
+        double loss = Tune::loss(validationData, currentParams, k.get<double>(), kappa.get<double>(), weightDecay.get<double>());
         if(loss < bestLoss) {
             bestParams = currentParams;
             bestLoss = loss;

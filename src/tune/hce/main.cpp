@@ -14,7 +14,7 @@
 #include <random>
 
 void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, bool useNoisyParameters, double noiseDefaultStdDev,
-                   double noiseLinearStdDev, std::istream& pgnFile, std::ostream& outFile,
+                   double noiseLinearStdDev, double noiseDecay, std::istream& pgnFile, std::ostream& outFile,
                    std::optional<HCEParameters> params = std::nullopt);
 
 void generateData() {
@@ -23,7 +23,7 @@ void generateData() {
 
     simulateGames(numGames.get<size_t>(), timeControl.get<uint32_t>(), increment.get<uint32_t>(), 
                   useNoisyParameters.get<bool>(), noiseDefaultStdDev.get<double>(), noiseLinearStdDev.get<double>(),
-                  pgnFile, resultFile);
+                  noiseDecay.get<double>(), pgnFile, resultFile);
 
     pgnFile.close();
     resultFile.close();
@@ -107,7 +107,7 @@ int main() {
 }
 
 void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, bool useNoisyParameters, double noiseDefaultStdDev,
-                   double noiseLinearStdDev, std::istream& pgnFile, std::ostream& outFile,
+                   double noiseLinearStdDev, double noiseDecay, std::istream& pgnFile, std::ostream& outFile,
                    std::optional<HCEParameters> params) {
     std::vector<Board> startingPositions;
     std::vector<unsigned int> startingMoves;
@@ -155,14 +155,13 @@ void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, bool useN
 
     Simulation sim(startingPositions, timeControl, increment, numThreads.get<size_t>());
 
-    if(params.has_value()) {
-        sim.setWhiteParams(params.value());
-        sim.setBlackParams(params.value());
-    }
+    if(params.has_value())
+        sim.setParams(params.value());
 
     if(useNoisyParameters) {
         sim.setParameterNoise(noiseDefaultStdDev);
         sim.setLinearParameterNoise(noiseLinearStdDev);
+        sim.setNoiseDecay(noiseDecay);
     }
     sim.run();
 
@@ -176,16 +175,32 @@ void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, bool useN
         int outputSize = (int)(startingPositions[i].getAge() - startingMoves[i]);
         output.resize(outputSize);
 
-        for(int j = (int)results[i].evaluations.size() - 1; j >= 0; j--) {
+        int finalResult;
+        switch(results[i].result) {
+            case WHITE_WIN:
+                finalResult = 1;
+                break;
+            case BLACK_WIN:
+                finalResult = -1;
+                break;
+            default:
+                finalResult = 0;
+                break;
+        }
+
+        for(int j = (int)results[i].leafEvaluations.size() - 1; j >= 0; j--) {
             // Mache den letzten Zug rückgängig, das Spiel ist da schon vorbei
             startingPositions[i].undoMove();
+
             std::stringstream ss;
-            ss << startingPositions[i].toFEN() << ";" << results[i].evaluations[j];
+            ss << startingPositions[i].toFEN() << ";" << results[i].leafFENs[j] << ";" << results[i].leafEvaluations[j] << ";" << finalResult;
             output[j] = ss.str();
         }
 
         for(int j = 0; j < outputSize; j++)
             outFile << output[j] << "\n";
+
+        outFile << "NEW_GAME\n";
 
         if(i % 10 == 0)
             std::cout << "\rRemaining games: " << std::left << std::setw(7) <<
@@ -195,6 +210,41 @@ void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, bool useN
     std::cout << "\rRemaining games: 0      " << std::endl;
 }
 
+void calculateTDTargets(std::vector<DataPoint>& dest, std::vector<DataPoint>& rawData) {
+    double terminalValue = 0.0;
+    int finalResult = rawData.empty() ? 0 : rawData.back().finalResult;
+    
+    if(finalResult == 1)
+        terminalValue = virtualMateScore.get<double>();
+    else if(finalResult == -1)
+        terminalValue = -virtualMateScore.get<double>();
+    
+    double tdTarget = terminalValue;
+    double currentLambda = lambda.get<double>();
+    double currentDiscount = discount.get<double>();
+    int mateScore = virtualMateScore.get<int>();
+
+    for(int j = (int)rawData.size() - 1; j >= 0; j--) {
+        int virtualizedEval = rawData[j].leafEvaluation;
+        if(virtualizedEval > mateScore)
+            virtualizedEval = mateScore;
+        else if(virtualizedEval < -mateScore)
+            virtualizedEval = -mateScore;
+
+        rawData[j].leafEvaluation = virtualizedEval;
+
+        double nextSearchValue;
+        if(j == (int)rawData.size() - 1)
+            nextSearchValue = terminalValue;
+        else
+            nextSearchValue = rawData[j + 1].leafEvaluation;
+
+        tdTarget = currentDiscount * ((1.0 - currentLambda) * nextSearchValue + currentLambda * tdTarget);
+
+        dest.push_back({rawData[j].board, rawData[j].leafBoard, rawData[j].leafEvaluation, finalResult, tdTarget});
+    }
+}
+
 std::vector<DataPoint> loadData(std::istream& resultFile, size_t n) {
     std::cout << "Loading data..." << std::endl;
 
@@ -202,25 +252,41 @@ std::vector<DataPoint> loadData(std::istream& resultFile, size_t n) {
 
     std::cout << "Loaded 0 data points" << std::flush;
 
-    for(size_t i = 0; i < n && !resultFile.eof(); i++) {
-        std::string fen;
-        std::getline(resultFile, fen, ';');
+    std::vector<DataPoint> currentGame;
 
-        if(fen.empty())
-            break;
+    std::string line;
+    while(std::getline(resultFile, line) && data.size() < n) {
+        if(line == "NEW_GAME") {
+            calculateTDTargets(data, currentGame);
+            currentGame.clear();
 
-        Board board(fen);
+            if(data.size() % 10 == 0)
+                std::cout << "\rLoaded " << data.size() << " data points" << std::flush;
 
-        std::string result;
-        std::getline(resultFile, result);
+            continue;
+        }
 
-        int res = std::stoi(result);
+        if(line.empty())
+            continue;
 
-        data.push_back({board, res});
+        std::stringstream ss(line);
+        std::string segment;
+        std::vector<std::string> parts;
+        while(std::getline(ss, segment, ';'))
+            parts.push_back(segment);
 
-        if(i % 1000 == 0)
-            std::cout << "\rLoaded " << i << " data points" << std::flush;
+        if(parts.size() < 4)
+            continue;
+
+        Board board(parts[0]);
+        Board leafBoard(parts[1]);
+        int leafEvaluation = std::stoi(parts[2]);
+        int finalResult = std::stoi(parts[3]);
+
+        currentGame.push_back({board, leafBoard, leafEvaluation, finalResult, 0.0});
     }
+
+    calculateTDTargets(data, currentGame);
 
     std::cout << "\rLoaded " << data.size() << " data points" << std::endl;
 
@@ -234,14 +300,16 @@ void findOptimalK() {
     std::vector<DataPoint> data = loadData(samplesFile);
     samplesFile.close();
 
-    double prevLoss = std::numeric_limits<double>::max(), bestLoss = std::numeric_limits<double>::max(), loss = 1.0, bestK = 0.0;
+    double bestLoss = std::numeric_limits<double>::max(), loss = 1.0, bestK = 0.0;
     int i = 1;
 
-    while(loss < prevLoss || i <= 100) {
-        prevLoss = loss;
-        double newK = 1e-4 * i * i;
+    double centerK = 0.0025 * std::max(kappa.get<double>(), 0.01);
+    double startK = centerK * 0.1;
+    double endK = centerK * 2.0;
+    double stepK = centerK * 0.0125;
 
-        loss = Tune::loss(data, HCE_PARAMS, newK, weightDecay.get<double>());
+    for(double newK = startK; newK <= endK; newK += stepK) {
+        loss = Tune::loss(data, HCE_PARAMS, newK, kappa.get<double>(), weightDecay.get<double>());
 
         if(loss < bestLoss) {
             bestLoss = loss;
@@ -251,7 +319,7 @@ void findOptimalK() {
         std::stringstream ss;
         ss << "\r(" << i << ") Loss: " << loss << " with k = " << newK << " (best loss = " << bestLoss <<
               ", best k = " << bestK << ")" << " at discount = " << discount.get<double>();
-        std::cout << std::left << std::setw(100) << ss.str() << std::right << std::flush;
+        std::cout << std::left << std::setw(120) << ss.str() << std::right << std::flush;
 
         i++;
     }
@@ -268,7 +336,7 @@ void gradientDescent() {
     std::vector<DataPoint> data = loadData(samplesFile);
     samplesFile.close();
 
-    HCEParameters bestHCEParams = Tune::adamW(data, currentHCEParams, numEpochs.get<size_t>(), learningRate.get<double>());
+    HCEParameters bestHCEParams = Tune::adam(data, currentHCEParams, numEpochs.get<size_t>(), learningRate.get<double>());
 
     std::ofstream outFile("data/epochFinal.hce");
     bestHCEParams.saveParameters(outFile);
@@ -278,6 +346,11 @@ void gradientDescent() {
 
 void displayFinalEpoch() {
     std::ifstream epochFile("data/epochFinal.hce");
+    if(!epochFile.good()) {
+        std::cout << "No epochFinal.hce file found!" << std::endl;
+        return;
+    }
+
     HCEParameters finalHCEParams;
     finalHCEParams.loadParameters(epochFile);
 
@@ -286,15 +359,33 @@ void displayFinalEpoch() {
 }
 
 void learn() {
-    // Erstelle ein neuen Parametersatz
+    // Erstelle ein neuen Parametersatz, enthält die aktuellen Parameter
     HCEParameters params;
 
     // Lade die Trainingssession, falls sie existiert
     std::ifstream trainingSessionFile("data/trainingSession.tsession");
-    if(trainingSessionFile.good())
+    if(trainingSessionFile.good()) {
         trainingSessionFile >> Tune::trainingSession;
-    else
+
+        // Lade die Parameter aus der Trainingssession
+        for(size_t i = 0; i < params.size(); i++)
+            params[i] = std::round(Tune::trainingSession.exactParams[i]);
+
+        params.unpackPSQT();
+        trainingSessionFile.close();
+    } else {
+        // Starte von neu, wenn gewünscht
+        if(startFromScratch.get<bool>()) {
+            std::cout << "Starting training from scratch." << std::endl;
+            // Setze alle Parameter auf 0
+            for(size_t i = 0; i < params.size(); i++)
+                params[i] = 0;
+
+            params.unpackPSQT();
+        }
+
         Tune::trainingSession = Tune::TrainingSession(params);
+    }
 
     // Durchlaufe alle Generationen
     for(size_t i = Tune::trainingSession.generation; i < numGenerations.get<size_t>(); i++) {
@@ -305,15 +396,13 @@ void learn() {
         size_t currentTimeControl = timeControl.get<size_t>() * growthFactor;
         size_t currentIncrement = increment.get<size_t>() * growthFactor;  
         size_t currentNumEpochs = numEpochs.get<size_t>() + numEpochsIncrement.get<size_t>() * i;
-        double currentNoiseDefaultStdDev = noiseDefaultStdDev.get<double>() * std::pow(noiseDecay.get<double>(), i);
-        double currentNoiseLinearStdDev = noiseLinearStdDev.get<double>() * std::pow(noiseDecay.get<double>(), i);
         double currentLearningRate = learningRate.get<double>() * std::pow(learningRateDecay.get<double>(), i);
                 
         // Generiere die Datenpunkte
         std::ifstream pgnFile(pgnFilePath.get<std::string>());
         std::ofstream resultFile(samplesFilePath.get<std::string>(), std::ios::trunc);
         simulateGames(currentNumGames, currentTimeControl, currentIncrement, useNoisyParameters.get<bool>(),
-                        currentNoiseDefaultStdDev, currentNoiseLinearStdDev, pgnFile, resultFile, params);
+                      noiseDefaultStdDev.get<double>(), noiseLinearStdDev.get<double>(), noiseDecay.get<double>(), pgnFile, resultFile, params);
         pgnFile.close();
         resultFile.close();
 
@@ -323,7 +412,7 @@ void learn() {
 
         // Führe den Gradientenabstieg durch
         std::cout << "Optimizing parameters:" << std::endl;
-        params = Tune::adamW(data, params, currentNumEpochs, currentLearningRate);
+        params = Tune::adam(data, params, currentNumEpochs, currentLearningRate);
 
         // Speichere die Parameter
         std::ofstream outFile("data/generation" + std::to_string(i) + ".hce");
