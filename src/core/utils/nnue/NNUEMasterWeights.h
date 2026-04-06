@@ -79,15 +79,30 @@ namespace NNUE {
 
         /**
          * @brief Führt einen Vorwärtspass durch das Netzwerk mit den Master-Parametern durch und gibt die Aktivierungen zurück.
-         * Der Vorwärtspass führt "Fake-Quantisierungen" durch um das Verhalten des quantisierten Netzwerks besser zu approximieren.
+         * 
+         * @param board Das Schachbrett, für das die Aktivierungen berechnet werden sollen.
+         * @param fakeQuantization Wenn true ist, werden während des Vorwärtspasses "Fake-Quantisierungen"
+         * durchgeführt um das Verhalten des quantisierten Netzwerks besser zu approximieren.
+         * Andernfalls werden die genauen Werte der Master-Parameter verwendet.
          */
-        NetworkActivations forward(const Board& board) const;
+        NetworkActivations forward(const Board& board, bool fakeQuantization) const;
 
         /**
          * @brief Führt einen Rückwärtspass durch das Netzwerk mit den Master-Parametern durch und gibt die Gradienten zurück.
-         * Der Rückwärtspass führt "Fake-Quantisierungen" durch um das Verhalten des quantisierten Netzwerks besser zu approximieren.
+         * 
+         * @param board Das Schachbrett, für das die Gradienten berechnet werden sollen.
+         * @param activations Die Aktivierungen, die während des Vorwärtspasses berechnet wurden.
+         * @param outputGrad Der Gradient des Fehlers bezüglich der Ausgabe des Netzwerks (dL/d(output)).
+         * @param fakeQuantization Wenn true ist, werden während des Rückwärtspasses "Fake-Quantisierungen" durchgeführt um das Verhalten des quantisierten Netzwerks besser zu approximieren.
+         * Andernfalls werden die genauen Werte der Master-Parameter verwendet.
          */
-        Gradients backward(const Board& board, const NetworkActivations& activations, float outputGrad) const;
+        Gradients backward(const Board& board, const NetworkActivations& activations, float outputGrad, bool fakeQuantization) const;
+
+        private:
+            template <typename Q>
+            NetworkActivations forwardImpl(const Board& board, Q q) const;
+            template <typename Q>
+            Gradients backwardImpl(const Board& board, const NetworkActivations& activations, float outputGrad, Q q) const;
     };
 }
 

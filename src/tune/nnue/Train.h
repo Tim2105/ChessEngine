@@ -27,6 +27,9 @@ namespace Train {
         std::array<std::vector<float>, NNUE::Network::NUM_LAYERS> vDenseLayerBiases;
         std::array<std::vector<float>, NNUE::Network::NUM_LAYERS> vDenseLayerWeights;
 
+        // Letzte Aktualisierung der Parameter (für sparse Adam)
+        std::vector<size_t> lastUpdateHalfKPWeights = std::vector<size_t>(NNUE::Network::INPUT_SIZE * NNUE::Network::SINGLE_SUBNET_SIZE, 0);
+
         NNUE::MasterWeights masterWeights;
 
         size_t generation = 0;
@@ -65,6 +68,8 @@ namespace Train {
             os.write(reinterpret_cast<const char*>(session.vDenseLayerWeights[i].data()), session.vDenseLayerWeights[i].size() * sizeof(float));
         }
 
+        os.write(reinterpret_cast<const char*>(session.lastUpdateHalfKPWeights.data()), session.lastUpdateHalfKPWeights.size() * sizeof(size_t));
+
         os.write(reinterpret_cast<const char*>(session.masterWeights.exactHalfKPBiases.data()), session.masterWeights.exactHalfKPBiases.size() * sizeof(float));
         os.write(reinterpret_cast<const char*>(session.masterWeights.exactHalfKP.data()), session.masterWeights.exactHalfKP.size() * sizeof(float));
         for(size_t i = 0; i < NNUE::Network::NUM_LAYERS; i++) {
@@ -92,6 +97,8 @@ namespace Train {
             is.read(reinterpret_cast<char*>(session.vDenseLayerBiases[i].data()), session.vDenseLayerBiases[i].size() * sizeof(float));
             is.read(reinterpret_cast<char*>(session.vDenseLayerWeights[i].data()), session.vDenseLayerWeights[i].size() * sizeof(float));
         }
+
+        is.read(reinterpret_cast<char*>(session.lastUpdateHalfKPWeights.data()), session.lastUpdateHalfKPWeights.size() * sizeof(size_t));
 
         is.read(reinterpret_cast<char*>(session.masterWeights.exactHalfKPBiases.data()), session.masterWeights.exactHalfKPBiases.size() * sizeof(float));
         is.read(reinterpret_cast<char*>(session.masterWeights.exactHalfKP.data()), session.masterWeights.exactHalfKP.size() * sizeof(float));

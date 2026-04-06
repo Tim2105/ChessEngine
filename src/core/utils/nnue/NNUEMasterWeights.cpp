@@ -104,33 +104,35 @@ constexpr float clippedReLUGrad(float x) {
     return clippedReLUMask(x) ? 1.0f : 0.0f;
 }
 
-/**
- * @brief Quantisierungsfunktion,
- * die einen Wert auf einen darstellbaren Wert im quantisierten Format rundet.
- * 
- * @param x Der Wert.
- * @param minVal Das Minimum des Intervalls.
- * @param maxVal Das Maximum des Intervalls.
- * @param scale Der Skalierungsfaktor der Quantisierung.
- */
-constexpr float q(float x, float minVal, float maxVal, float scale = 64.0f) {
-    return std::clamp(std::round(x * scale) / scale, minVal, maxVal);
+namespace Quantization {
+    struct FakeQuantization {
+        /**
+         * @brief Quantisierungsfunktion,
+         * die einen Wert auf einen darstellbaren Wert im quantisierten Format rundet.
+         * 
+         * @param x Der Wert.
+         * @param minVal Das Minimum des Intervalls.
+         * @param maxVal Das Maximum des Intervalls.
+         * @param scale Der Skalierungsfaktor der Quantisierung.
+         */
+        constexpr float operator()(float x, float minVal, float maxVal, float scale = 64.0f) const {
+            return std::clamp(std::round(x * scale) / scale, minVal, maxVal);
+        }
+    };
+
+    struct Identity {
+        /**
+         * @brief Identitätsfunktion, die als Quantisierungsfunktion verwendet werden kann,
+         * wenn keine Quantisierung durchgeführt werden soll.
+         */
+        constexpr float operator()(float x, float, float, float = 64.0f) const {
+            return x;
+        }
+    };
 }
 
-/**
- * @brief Quantisierungsfunktion, die einen Wert auf einen
- * darstellbaren Wert im quantisierten Format rundet.
- * Es wird davon ausgegangen, dass die Werte bereits im darstellbaren Bereich liegen,
- * sodass keine Clamping-Operation notwendig ist.
- * 
- * @param x Der Wert.
- * @param scale Der Skalierungsfaktor der Quantisierung.
- */
-constexpr float q(float x, float scale = 64.0f) {
-    return std::round(x * scale) / scale;
-}
-
-NNUE::NetworkActivations NNUE::MasterWeights::forward(const Board& board) const {
+template <typename Q>
+NNUE::NetworkActivations NNUE::MasterWeights::forwardImpl(const Board& board, Q q) const {
     constexpr size_t SUBNET_SIZE = NNUE::Network::SINGLE_SUBNET_SIZE;
 
     NNUE::NetworkActivations activations;
@@ -217,7 +219,8 @@ NNUE::NetworkActivations NNUE::MasterWeights::forward(const Board& board) const 
     return activations;
 }
 
-NNUE::Gradients NNUE::MasterWeights::backward(const Board& board, const NetworkActivations& activations, float outputGrad) const {
+template <typename Q>
+NNUE::Gradients NNUE::MasterWeights::backwardImpl(const Board& board, const NetworkActivations& activations, float outputGrad, Q q) const {
     Gradients gradients;
     std::array<float, NNUE::Network::LAYER_SIZES[0]> halfKPGrad{};
 
@@ -302,4 +305,18 @@ NNUE::Gradients NNUE::MasterWeights::backward(const Board& board, const NetworkA
     }
 
     return gradients;
+}
+
+NNUE::NetworkActivations NNUE::MasterWeights::forward(const Board& board, bool fakeQuantization) const {
+    if(fakeQuantization)
+        return forwardImpl(board, Quantization::FakeQuantization{});
+    else
+        return forwardImpl(board, Quantization::Identity{});
+}
+
+NNUE::Gradients NNUE::MasterWeights::backward(const Board& board, const NetworkActivations& activations, float outputGrad, bool fakeQuantization) const {
+    if(fakeQuantization)
+        return backwardImpl(board, activations, outputGrad, Quantization::FakeQuantization{});
+    else
+        return backwardImpl(board, activations, outputGrad, Quantization::Identity{});
 }

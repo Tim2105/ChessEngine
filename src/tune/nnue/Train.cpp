@@ -57,7 +57,7 @@ double Train::loss(std::vector<DataPoint>& data, const NNUE::MasterWeights& mast
             for(size_t i = start; i < end; i++) {
                 DataPoint& dp = data[i];
 
-                float networkOutput = masterWeights.forward(dp.board).output();
+                float networkOutput = masterWeights.forward(dp.board, true).output();
                 double prediction = tanh(networkOutputToCentipawns(networkOutput), k);
                 double trueValue = tanh(dp.result, k);
 
@@ -209,9 +209,9 @@ NNUE::Gradients Train::gradient(std::vector<DataPoint>& data, const std::vector<
 
         mutex.lock();
         while(currIndex < indices.size()) {
-            // Bearbeite Blöcke von 16 Datenpunkten
+            // Bearbeite Blöcke von 64 Datenpunkten
             size_t start = currIndex;
-            size_t end = std::min(currIndex + 16, indices.size());
+            size_t end = std::min(currIndex + 64, indices.size());
             currIndex = end;
             mutex.unlock();
 
@@ -219,7 +219,7 @@ NNUE::Gradients Train::gradient(std::vector<DataPoint>& data, const std::vector<
                 size_t dataIndex = indices[i];
                 DataPoint& dp = data[dataIndex];
 
-                NNUE::NetworkActivations activations = masterWeights.forward(dp.board);
+                NNUE::NetworkActivations activations = masterWeights.forward(dp.board, true);
                 float networkOutput = activations.output();
                 double cp = networkOutputToCentipawns(networkOutput);
                 double prediction = tanh(cp, k);
@@ -228,7 +228,7 @@ NNUE::Gradients Train::gradient(std::vector<DataPoint>& data, const std::vector<
                 double errorGrad = 2.0 * (prediction - trueValue) * (1.0 - prediction * prediction) * k;
 
                 // Berechne die Gradienten für die Master-Parameter und addiere sie zum Thread-Gradienten
-                NNUE::Gradients dpGrad = masterWeights.backward(dp.board, activations, errorGrad);
+                NNUE::Gradients dpGrad = masterWeights.backward(dp.board, activations, errorGrad, true);
 
                 for(size_t j = 0; j < grads.halfKPBiases.size(); j++)
                     grads.halfKPBiases[j] += dpGrad.halfKPBiases[j];
@@ -379,13 +379,13 @@ NNUE::Network* Train::adam(std::vector<DataPoint>& data, size_t numEpochs, doubl
             trainingSession.vHalfKPBiases[i] = beta2.get<double>() * trainingSession.vHalfKPBiases[i] + (1.0 - beta2.get<double>()) * grad.halfKPBiases[i] * grad.halfKPBiases[i];
         }
 
-        for(size_t i = 0; i < masterWeights.exactHalfKP.size(); i++) {
-            double gradValue = 0.0;
-            if(grad.halfKPWeights.contains(i))
-                gradValue = grad.halfKPWeights[i];
+        for(const auto& [feature, value] : grad.halfKPWeights) {
+            // Anzahl der verpassten Momentum-Schritte
+            size_t tDelta = trainingSession.epoch - trainingSession.lastUpdateHalfKPWeights[feature];
+            trainingSession.lastUpdateHalfKPWeights[feature] = trainingSession.epoch + 1;
 
-            trainingSession.mHalfKPWeights[i] = beta1.get<double>() * trainingSession.mHalfKPWeights[i] + (1.0 - beta1.get<double>()) * gradValue;
-            trainingSession.vHalfKPWeights[i] = beta2.get<double>() * trainingSession.vHalfKPWeights[i] + (1.0 - beta2.get<double>()) * gradValue * gradValue;
+            trainingSession.mHalfKPWeights[feature] = std::pow(beta1.get<double>(), tDelta + 1) * trainingSession.mHalfKPWeights[feature] + (1.0 - beta1.get<double>()) * value;
+            trainingSession.vHalfKPWeights[feature] = std::pow(beta2.get<double>(), tDelta + 1) * trainingSession.vHalfKPWeights[feature] + (1.0 - beta2.get<double>()) * value * value;
         }
 
         for(size_t layer = 0; layer < NNUE::Network::NUM_LAYERS; layer++) {
