@@ -36,7 +36,7 @@ constexpr double mse(double x, double y) {
 }
 
 double networkOutputToCentipawns(float output) {
-    return (output * (64.0 * 64.0) * 100.0 / 3328.0);
+    return (output * (64.0 * 64.0) * 100.0 / 4096.0);
 }
 
 double Train::loss(std::vector<DataPoint>& data, const NNUE::MasterWeights& masterWeights, double k, double kappa, double weightDecay) {
@@ -225,7 +225,7 @@ NNUE::Gradients Train::gradient(std::vector<DataPoint>& data, const std::vector<
                 double prediction = tanh(cp, k);
                 double target = (1.0 - kappa) * tanh(dp.tdTarget, k) + kappa * (double)dp.finalResult;
 
-                double errorGrad = 2.0 * (prediction - target) * (1.0 - prediction * prediction) * k;
+                double errorGrad = 2.0 * (prediction - target) * (1.0 - prediction * prediction) * k * 100.0;
 
                 // Berechne die Gradienten für die Master-Parameter und addiere sie zum Thread-Gradienten
                 NNUE::Gradients dpGrad = masterWeights.backward(dp.board, activations, errorGrad, true);
@@ -310,8 +310,7 @@ NNUE::Gradients Train::gradient(std::vector<DataPoint>& data, const std::vector<
 
 NNUE::Network* Train::adam(std::vector<DataPoint>& data, size_t numEpochs, double learningRate) {
     NNUE::MasterWeights& masterWeights = trainingSession.masterWeights;
-    NNUE::Network* network = masterWeights.toNetwork();
-    NNUE::Network* bestNetwork = network;
+    NNUE::Network* bestNetwork = masterWeights.toNetwork();
 
     // Teile die Daten in Trainings- und Validierungsdaten auf
     size_t validationSize = data.size() * validationSplit.get<double>();
@@ -341,8 +340,8 @@ NNUE::Network* Train::adam(std::vector<DataPoint>& data, size_t numEpochs, doubl
         // Berechne den Fehler
         double masterLoss = Train::loss(validationData, masterWeights, k.get<double>(), kappa.get<double>(), weightDecay.get<double>());
 
-        network = masterWeights.toNetwork();
-        double networkLoss = Train::loss(validationData, *network, k.get<double>(), kappa.get<double>(), weightDecay.get<double>());
+        NNUE::Network* currentNetwork = masterWeights.toNetwork();
+        double networkLoss = Train::loss(validationData, *currentNetwork, k.get<double>(), kappa.get<double>(), weightDecay.get<double>());
 
         std::cout << "\rEpoch: " << std::left << std::setw(4) << trainingSession.epoch;
         size_t currPrecision = std::cout.precision();
@@ -355,9 +354,11 @@ NNUE::Network* Train::adam(std::vector<DataPoint>& data, size_t numEpochs, doubl
             bestLoss = networkLoss;
             patience = 0;
             delete bestNetwork;
-            bestNetwork = network;
-        } else
+            bestNetwork = currentNetwork;
+        } else {
+            delete currentNetwork;
             patience++;
+        }
 
         // Überprüfe, ob die Geduld erschöpft ist
         if(patience >= noImprovementPatience.get<size_t>()) {
@@ -441,5 +442,58 @@ NNUE::Network* Train::adam(std::vector<DataPoint>& data, size_t numEpochs, doubl
         }
     }
 
-    return network;
+    // Berechne den finalen Fehler
+    double masterLoss = Train::loss(validationData, masterWeights, k.get<double>(), kappa.get<double>(), weightDecay.get<double>());
+    NNUE::Network* currentNetwork = masterWeights.toNetwork();
+    double networkLoss = Train::loss(validationData, *currentNetwork, k.get<double>(), kappa.get<double>(), weightDecay.get<double>());
+    std::cout << "\rEpoch: " << std::left << std::setw(4) << trainingSession.epoch;
+    size_t currPrecision = std::cout.precision();
+    std::cout << " Master val loss: " << std::setw(10) << std::setprecision(6) << masterLoss << std::right << std::flush;
+    std::cout << " Quantized val loss: " << std::setw(10) << std::setprecision(6) << networkLoss << std::right << std::endl;
+
+    if(networkLoss < bestLoss) {
+        bestLoss = networkLoss;
+        delete bestNetwork;
+        bestNetwork = currentNetwork;
+    } else
+        delete currentNetwork;
+
+    trainingSession.generation++;
+    trainingSession.averageLoss = trainingSession.averageLoss * alpha.get<double>() + (1.0 - alpha.get<double>()) * bestLoss;
+    // Bias-korrigierter Loss
+    double biasCorrectedLoss = trainingSession.averageLoss / (1 - std::pow(alpha.get<double>(), trainingSession.generation));
+
+    std::cout << "Average loss: " << std::setprecision(6) << biasCorrectedLoss << std::endl;
+    std::cout.precision(currPrecision);
+
+    return bestNetwork;
+}
+
+void Train::kaimingInitialization(NNUE::MasterWeights& masterWeights) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+
+    // Initialisiere Half-KP-Gewichte mit N(0, 1/sqrt(32))
+    std::normal_distribution<float> halfKPDist(0.0f, 1.0f / std::sqrt(32.0f));
+    for(size_t i = 0; i < masterWeights.exactHalfKP.size(); i++)
+        masterWeights.exactHalfKP[i] = halfKPDist(gen);
+
+    // Initialisiere Half-KP-Biases mit 0.1
+    for(size_t i = 0; i < masterWeights.exactHalfKPBiases.size(); i++)
+        masterWeights.exactHalfKPBiases[i] = 0.1f;
+
+    // Initialisiere Dense-Gewichte mit Kaiming-Initialisierung
+    for(size_t layer = 0; layer < NNUE::Network::NUM_LAYERS; layer++) {
+        float fanIn = NNUE::Network::LAYER_SIZES[layer];
+        float stddev = std::sqrt(2.0f / fanIn);
+        std::normal_distribution<float> dist(0.0f, stddev);
+
+        for(size_t i = 0; i < masterWeights.exactDenseLayerWeights[layer].size(); i++)
+            masterWeights.exactDenseLayerWeights[layer][i] = dist(gen);
+    }
+
+    // Initialisiere alle Dense-Biases mit 0
+    for(size_t layer = 0; layer < NNUE::Network::NUM_LAYERS; layer++)
+        for(size_t i = 0; i < masterWeights.exactDenseLayerBiases[layer].size(); i++)
+            masterWeights.exactDenseLayerBiases[layer][i] = 0;
 }

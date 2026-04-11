@@ -4,6 +4,7 @@
 #include "core/chess/Referee.h"
 #include "core/engine/evaluation/Evaluator.h"
 #include "core/utils/nnue/NNUEInstance.h"
+#include "core/utils/nnue/NNUEUtils.h"
 
 class NNUEEvaluator: public Evaluator {
     private:
@@ -21,15 +22,10 @@ class NNUEEvaluator: public Evaluator {
         ~NNUEEvaluator() {}
 
         inline int evaluate() override {
-            int32_t evaluation = networkInstance.evaluate(board.getSideToMove());
+            int16_t additionalInput[NNUE::Network::INPUT_ADDITION];
+            NNUE::fillAdditionalInput(board, additionalInput);
 
-            // Skaliere die Bewertung in Richtung 0, wenn wir uns der 50-Züge-Regel annähern.
-            // (Starte erst nach 10 Zügen, damit die Bewertung nicht zu früh verzerrt wird.)
-            int32_t fiftyMoveCounter = board.getFiftyMoveCounter();
-            if(fiftyMoveCounter > 20)
-                evaluation = (int32_t)evaluation * (100 - fiftyMoveCounter) / 80;
-
-            return evaluation;
+            return networkInstance.evaluate(board.getSideToMove(), additionalInput);
         }
 
         inline void updateAfterMove() override {

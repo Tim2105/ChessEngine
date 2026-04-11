@@ -13,8 +13,8 @@ namespace NNUE {
 
     template <size_t IN_SIZE, size_t OUT_SIZE>
     class HalfKPLayer {
-        alignas(REQUIRED_ALIGNMENT) int16_t bias[OUT_SIZE];
-        alignas(REQUIRED_ALIGNMENT) int16_t weights[IN_SIZE][OUT_SIZE];
+        alignas(REQUIRED_ALIGNMENT) int16_t bias[OUT_SIZE] = {0};
+        alignas(REQUIRED_ALIGNMENT) int16_t weights[IN_SIZE][OUT_SIZE] = {{0}};
 
         public:
             constexpr HalfKPLayer() {}
@@ -80,8 +80,8 @@ namespace NNUE {
 
     template <size_t IN_SIZE, size_t OUT_SIZE>
     class DenseLayer {
-        alignas(REQUIRED_ALIGNMENT) int32_t bias[OUT_SIZE];
-        alignas(REQUIRED_ALIGNMENT) int8_t weights[OUT_SIZE][IN_SIZE];
+        alignas(REQUIRED_ALIGNMENT) int32_t bias[OUT_SIZE] = {0};
+        alignas(REQUIRED_ALIGNMENT) int8_t weights[OUT_SIZE][IN_SIZE] = {{0}};
 
         public:
             using in_size = std::integral_constant<size_t, IN_SIZE>;

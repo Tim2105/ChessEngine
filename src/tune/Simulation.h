@@ -44,6 +44,8 @@ class Simulation {
         double noiseStdDev;
         double noiseLinearStdDev;
         double noiseDecay;
+        double temperature;
+        double temperatureDecay;
 
         Result simulateSingleGame(Board& board);
 
@@ -79,6 +81,14 @@ class Simulation {
 
         inline void setNoParameterNoise() {
             addParameterNoise = false;
+        }
+
+        inline void setTemperature(double t) {
+            temperature = t;
+        }
+
+        inline void setTemperatureDecay(double decay) {
+            temperatureDecay = decay;
         }
 };
 

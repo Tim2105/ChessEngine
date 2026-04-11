@@ -166,6 +166,12 @@ NNUE::NetworkActivations NNUE::MasterWeights::forwardImpl(const Board& board, Q 
                                                             NNUE::MasterWeights::HALF_KP_MIN,
                                                             NNUE::MasterWeights::HALF_KP_MAX);
 
+    int16_t additionalInput[NNUE::Network::INPUT_ADDITION];
+    NNUE::fillAdditionalInput(board, additionalInput);
+
+    for(size_t i = 0; i < NNUE::Network::INPUT_ADDITION; i++)
+        activations.halfKPOutputs[2 * SUBNET_SIZE + i] = additionalInput[i] / 64.0f;
+
     for(size_t i = 0; i < NNUE::Network::LAYER_SIZES[0]; i++)
         activations.halfKPOutputs[i] = clippedReLU(activations.halfKPOutputs[i]);
 

@@ -9,7 +9,7 @@ Instance::Instance(const Network& net) noexcept : network(net), accumulator(netw
 
 Instance::~Instance() noexcept {}
 
-int32_t Instance::evaluate(int32_t color) const noexcept {
+int Instance::evaluate(int color, int16_t additionalInput[Network::INPUT_ADDITION]) const noexcept {
     alignas(REQUIRED_ALIGNMENT) int16_t layer1Input[Network::LAYER_SIZES[0]];
     alignas(REQUIRED_ALIGNMENT) int8_t layer1Output[Network::LAYER_SIZES[1]];
     alignas(REQUIRED_ALIGNMENT) int8_t layer2Output[Network::LAYER_SIZES[2]];
@@ -21,12 +21,13 @@ int32_t Instance::evaluate(int32_t color) const noexcept {
 
     std::copy(acc, acc + Network::SINGLE_SUBNET_SIZE, layer1Input);
     std::copy(accOther, accOther + Network::SINGLE_SUBNET_SIZE, layer1Input + Network::SINGLE_SUBNET_SIZE);
+    std::copy(additionalInput, additionalInput + Network::INPUT_ADDITION, layer1Input + 2 * Network::SINGLE_SUBNET_SIZE);
 
     network.getLayer1().forward(layer1Input, layer1Output);
     network.getLayer2().forward(layer1Output, layer2Output);
     network.getLayer3().forward(layer2Output, output);
 
-    return output[0] * 100 / 3328;
+    return (int)((int64_t)output[0] * 100 / 4096);
 }
 
 void Instance::initializeFromBoard(const Board& board, int32_t color) noexcept {

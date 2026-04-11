@@ -164,6 +164,13 @@ namespace Train {
      * @return HCEParameters Die verbesserten Parameter.
      */
     NNUE::Network* adam(std::vector<DataPoint>& data, size_t numEpochs, double learningRate);
+
+    /**
+     * @brief Initialisiert die Master-Parameter mit der Kaiming-Initialisierung.
+     * 
+     * @param masterWeights Die Master-Parameter, die initialisiert werden sollen.
+     */
+    void kaimingInitialization(NNUE::MasterWeights& masterWeights);
 };
 
 #endif

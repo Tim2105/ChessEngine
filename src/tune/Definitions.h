@@ -276,6 +276,10 @@ extern Variable useNoisyParameters;
 extern Variable noiseDefaultStdDev;
 extern Variable noiseLinearStdDev;
 extern Variable noiseDecay;
+#else
+extern Variable simMultiPV;
+extern Variable temperature;
+extern Variable temperatureDecay;
 #endif
 
 /**

@@ -131,13 +131,15 @@ void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, bool useN
     }
 
     // Entferne die letzte Position, da sie nicht vollständig geladen wurde
-    startingPositions.pop_back();
+    if(!startingPositions.empty())
+        startingPositions.pop_back();
 
     std::cout << "\rLoaded " << startingPositions.size() << " games" << std::endl;
 
     // Wähle n zufällige Positionen aus
     std::shuffle(startingPositions.begin(), startingPositions.end(), generator);
-    startingPositions.resize(n);
+    if(startingPositions.size() > n)
+        startingPositions.resize(n);
 
     for(size_t i = 0; i < startingPositions.size(); i++) {
         size_t numRandomMoves = randomMoves(generator);
@@ -171,8 +173,11 @@ void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, bool useN
     std::vector<Result>& results = sim.getResults();
 
     for(size_t i = 0; i < startingPositions.size(); i++) {
+        int outputSize = (int)startingPositions[i].getAge() - (int)startingMoves[i];
+        if(outputSize <= 0)
+            continue;
+
         std::vector<std::string> output;
-        int outputSize = (int)(startingPositions[i].getAge() - startingMoves[i]);
         output.resize(outputSize);
 
         int finalResult;

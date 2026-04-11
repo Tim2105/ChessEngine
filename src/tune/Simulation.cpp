@@ -25,11 +25,46 @@ Simulation::Simulation(std::vector<Board>& startingPositions, uint32_t timeContr
     results.resize(startingPositions.size());
 }
 
+thread_local std::mt19937 rng(std::random_device{}());
+
+std::vector<Move> sampleMove(const std::vector<Variation>& variations, double temperature) {
+    if(temperature <= 0.0)
+        return variations[0].moves;
+    
+    if(variations.size() == 1)
+        return variations[0].moves;
+
+    // Log-Sum-Exp-Trick für numerische Stabilität
+    double maxScore = variations[0].score;
+    for(const Variation& var : variations)
+        maxScore = std::max(maxScore, (double)var.score);
+
+    double sumExp = 0.0;
+    std::vector<double> logProbs(variations.size());
+    
+    for(size_t i = 0; i < variations.size(); i++) {
+        logProbs[i] = (variations[i].score - maxScore) / temperature;
+        sumExp += std::exp(logProbs[i]);
+    }
+
+    std::uniform_real_distribution<double> dis(0.0, sumExp);
+    double rand = dis(rng);
+    double cumulative = 0.0;
+    
+    for(size_t i = 0; i < variations.size(); i++) {
+        cumulative += std::exp(logProbs[i]);
+        if(rand <= cumulative || i == variations.size() - 1)
+            return variations[i].moves;
+    }
+
+    return variations.back().moves;
+}
+
 Result Simulation::simulateSingleGame(Board& board) {
     if(Referee::isCheckmate(board))
-        return board.getSideToMove() == WHITE ? Result{BLACK_WIN, {-MATE_SCORE}, {board.toFEN()}} : Result{WHITE_WIN, {-MATE_SCORE}, {board.toFEN()}};
+        return board.getSideToMove() == WHITE ? Result{BLACK_WIN, {}, {}} : Result{WHITE_WIN, {}, {}};
     else if(Referee::isDraw(board))
-        return Result{DRAW, {DRAW_SCORE}, {board.toFEN()}};
+        return Result{DRAW, {}, {}};
 
     Result result;
 
@@ -73,6 +108,8 @@ Result Simulation::simulateSingleGame(Board& board) {
     Parameters blackParameters = parameters;
 
     NNUEEvaluator neutralEvaluator(board, parameters);
+
+    double tau = temperature;
     #endif
 
     PVSEngine white(board, whiteParameters);
@@ -111,8 +148,15 @@ Result Simulation::simulateSingleGame(Board& board) {
             white.search(params);
             std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
-            // Laufe die beste Variante durch und speichere die Bewertung des Blattknotens
-            for(Move m : white.getPrincipalVariation())
+            #ifdef USE_HCE
+            const std::vector<Move>& bestVar = white.getPrincipalVariation();
+            #else
+            std::vector<Move> bestVar = sampleMove(white.getVariations(), tau);
+            tau *= temperatureDecay;
+            #endif
+
+            // Laufe die Variante durch und speichere die Bewertung des Blattknotens
+            for(Move m : bestVar)
                 board.makeMove(m);
 
             double evaluation = neutralEvaluator.evaluate();
@@ -122,10 +166,10 @@ Result Simulation::simulateSingleGame(Board& board) {
             result.leafFENs.push_back(board.toFEN());
             
             // Mache die Züge wieder rückgängig
-            for(size_t i = 0; i < white.getPrincipalVariation().size(); i++)
+            for(size_t i = 0; i < bestVar.size(); i++)
                 board.undoMove();
 
-            Move bestMove = white.getBestMove();
+            Move bestMove = bestVar[0];
             board.makeMove(bestMove);
 
             wtime -= std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
@@ -155,8 +199,15 @@ Result Simulation::simulateSingleGame(Board& board) {
             black.search(params);
             std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
-            // Laufe die beste Variante durch und speichere die Bewertung des Blattknotens
-            for(Move m : black.getPrincipalVariation())
+            #ifdef USE_HCE
+            const std::vector<Move>& bestVar = black.getPrincipalVariation();
+            #else
+            std::vector<Move> bestVar = sampleMove(black.getVariations(), tau);
+            tau *= temperatureDecay;
+            #endif
+
+            // Laufe die Variante durch und speichere die Bewertung des Blattknotens
+            for(Move m : bestVar)
                 board.makeMove(m);
 
             double evaluation = neutralEvaluator.evaluate();
@@ -166,10 +217,10 @@ Result Simulation::simulateSingleGame(Board& board) {
             result.leafFENs.push_back(board.toFEN());
 
             // Mache die Züge wieder rückgängig
-            for(size_t i = 0; i < black.getPrincipalVariation().size(); i++)
+            for(size_t i = 0; i < bestVar.size(); i++)
                 board.undoMove();
 
-            Move bestMove = black.getBestMove();
+            Move bestMove = bestVar[0];
             board.makeMove(bestMove);
 
             btime -= std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();

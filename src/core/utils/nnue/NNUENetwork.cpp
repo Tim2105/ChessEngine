@@ -26,10 +26,12 @@ namespace NNUE {
     Network DEFAULT_NETWORK;
 
     std::istream& operator>>(std::istream& is, Network& network) {
-        readLittleEndian(is, network.version);
+        uint32_t version;
+        readLittleEndian(is, version);
 
-        if(network.version != Network::SUPPORTED_VERSION)
-            throw std::runtime_error("Unsupported network version");
+        if(version != Network::SUPPORTED_VERSION)
+            throw std::runtime_error("Unsupported network version (" + std::to_string(version) + ")."
+                "Supported version is " + std::to_string(Network::SUPPORTED_VERSION) + ".");
 
         is >> network.halfKPLayer >>
             network.layer1 >>
@@ -47,7 +49,7 @@ namespace NNUE {
     }
 
     std::ostream& operator<<(std::ostream& os, const Network& network) {
-        writeLittleEndian(os, network.version);
+        writeLittleEndian(os, Network::SUPPORTED_VERSION);
 
         os << network.halfKPLayer <<
            network.layer1 <<

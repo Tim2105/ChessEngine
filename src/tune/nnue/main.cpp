@@ -74,8 +74,8 @@ int main() {
             gradientDescent();
         else if(input == "dp")
             displayParameters();
-        // else if(input == "learn")
-        //     learn();
+         else if(input == "learn")
+             learn();
         else {
             size_t pos = input.find("=");
             if(pos != std::string::npos) {
@@ -120,13 +120,15 @@ void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, std::istr
     }
 
     // Entferne die letzte Position, da sie nicht vollständig geladen wurde
-    startingPositions.pop_back();
+    if(!startingPositions.empty())
+        startingPositions.pop_back();
 
     std::cout << "\rLoaded " << startingPositions.size() << " games" << std::endl;
 
     // Wähle n zufällige Positionen aus
     std::shuffle(startingPositions.begin(), startingPositions.end(), generator);
-    startingPositions.resize(n);
+    if(startingPositions.size() > n)
+        startingPositions.resize(n);
 
     for(size_t i = 0; i < startingPositions.size(); i++) {
         size_t numRandomMoves = randomMoves(generator);
@@ -142,10 +144,16 @@ void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, std::istr
         startingMoves.push_back(startingPositions[i].getAge());
     }
 
+    size_t numPVs = simMultiPV.get<size_t>();
+    numPVs = std::max(numPVs, (size_t)1);
+    UCI::options["MultiPV"] = numPVs;
+
     Simulation sim(startingPositions, timeControl, increment, numThreads.get<size_t>());
 
     if(network.has_value())
         sim.setParams(*network.value());
+
+    sim.setTemperature(temperature.get<double>());
 
     sim.run();
 
@@ -155,8 +163,11 @@ void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, std::istr
     std::vector<Result>& results = sim.getResults();
 
     for(size_t i = 0; i < startingPositions.size(); i++) {
+        int outputSize = (int)startingPositions[i].getAge() - (int)startingMoves[i];
+        if(outputSize <= 0)
+            continue;
+
         std::vector<std::string> output;
-        int outputSize = (int)(startingPositions[i].getAge() - startingMoves[i]);
         output.resize(outputSize);
 
         int finalResult;
@@ -289,4 +300,64 @@ void gradientDescent() {
     delete network;
 
     std::cout << std::endl;
+}
+
+void learn() {
+    std::ifstream trainingSessionFile("data/trainingSessionNNUE.tsession");
+    if(trainingSessionFile.good()) {
+        trainingSessionFile >> Train::trainingSession;
+        trainingSessionFile.close();
+
+        std::cout << "Loaded training session from file." << std::endl;
+    } else {
+        std::cout << "Starting new training session." << std::endl;
+        Train::kaimingInitialization(Train::trainingSession.masterWeights);
+
+        std::ofstream newTrainingSessionFile("data/trainingSessionNNUE.tsession");
+        newTrainingSessionFile << Train::trainingSession;
+        newTrainingSessionFile.close();
+    }
+
+    NNUE::Network* network = Train::trainingSession.masterWeights.toNetwork();
+
+    // Durchlaufe Generationen
+    for(size_t i = Train::trainingSession.generation; i < numGenerations.get<size_t>(); i++) {
+        std::cout << "----------Generation " << i + 1 << "/" << numGenerations.get<size_t>() << "----------" << std::endl;
+
+        size_t currentNumGames = numGames.get<size_t>() + numGamesIncrement.get<size_t>() * i;
+        double growthFactor = std::pow(timeGrowth.get<double>(), i);
+        size_t currentTimeControl = timeControl.get<size_t>() * growthFactor;
+        size_t currentIncrement = increment.get<size_t>() * growthFactor;  
+        size_t currentNumEpochs = numEpochs.get<size_t>() + numEpochsIncrement.get<size_t>() * i;
+        double currentLearningRate = learningRate.get<double>() * std::pow(learningRateDecay.get<double>(), i);
+                
+        // Generiere die Datenpunkte
+        std::ifstream pgnFile(pgnFilePath.get<std::string>());
+        std::ofstream resultFile(samplesFilePath.get<std::string>(), std::ios::trunc);
+        simulateGames(currentNumGames, currentTimeControl, currentIncrement, pgnFile, resultFile, network);
+        pgnFile.close();
+        resultFile.close();
+
+        // Lade die Datenpunkte
+        std::ifstream samplesFile(samplesFilePath.get<std::string>());
+        std::vector<DataPoint> data = loadData(samplesFile);
+
+        // Führe den Gradientenabstieg durch
+        std::cout << "Optimizing parameters:" << std::endl;
+        delete network;
+        network = Train::adam(data, currentNumEpochs, currentLearningRate);
+
+        // Speichere die Parameter
+        std::ofstream outFile("data/generation" + std::to_string(i) + ".nnue");
+        outFile << *network;
+        outFile.close();
+
+        // Speichere die Trainingssession
+        std::ofstream trainingSessionFile("data/trainingSessionNNUE.tsession");
+        trainingSessionFile << Train::trainingSession;
+        trainingSessionFile.close();
+    }
+
+    delete network;
+    std::cout << "Finished training" << std::endl;
 }
