@@ -334,8 +334,8 @@ void PVSEngine::search(const UCI::SearchParams& params) {
             // einem Aspirationsfenster gestartet.
             if(depth > 1) {
                 int prevScore = variations[pv].score;
-                alpha = prevScore - prevScore * ASPIRATION_WINDOW_SCORE_FACTOR - ASPIRATION_WINDOW;
-                beta = prevScore + prevScore * ASPIRATION_WINDOW_SCORE_FACTOR + ASPIRATION_WINDOW;
+                alpha = prevScore - std::abs(prevScore) * ASPIRATION_WINDOW_SCORE_FACTOR - ASPIRATION_WINDOW;
+                beta = prevScore + std::abs(prevScore) * ASPIRATION_WINDOW_SCORE_FACTOR + ASPIRATION_WINDOW;
 
                 // Set the first PV-Table entry as the hash move,
                 // so that it is searched first in the next iteration.
