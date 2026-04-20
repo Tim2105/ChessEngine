@@ -625,6 +625,12 @@ int PVSSearchInstance::determineLMR(int moveCount, int moveScore, int depth) {
         reduction = std::log(depth) * std::log(moveCount) / std::log(20) + 0.8;
     else
         reduction = std::log(depth) * std::log(moveCount) / std::log(20) + 1.35;
+
+    if(numThreads > 1) {
+        double threadScalingFactor = std::log(numThreads) / (3.0 * std::log(16 * numThreads)) + 1;
+        reduction *= threadScalingFactor;
+    }
+    
     // Runde die Reduktion ab.
     return (int)reduction;
 }
@@ -698,10 +704,6 @@ void PVSSearchInstance::addMovesToSearchStack(int ply, bool useIID, int depth) {
             // Führe die interne iterative Tiefensuche durch.
             int iidScore = searchStack[ply].preliminaryScore;
 
-            // Speichere aktuelle Wurzelinformationen.
-            unsigned int rootAgeBackup = rootAge;
-            int currentSearchDepthBackup = currentSearchDepth;
-
             // Probiere eine Suche mit Aspirationsfenster.
             int alpha = iidScore - IID_ASPIRATION_WINDOW_SIZE;
             int beta = iidScore + IID_ASPIRATION_WINDOW_SIZE;
@@ -732,10 +734,6 @@ void PVSSearchInstance::addMovesToSearchStack(int ply, bool useIID, int depth) {
             }
 
             hashMove = pvTable[ply].front();
-
-            // Stelle die Wurzelinformationen wieder her.
-            rootAge = rootAgeBackup;
-            currentSearchDepth = currentSearchDepthBackup;
 
             clearMovesInSearchStack(ply);
         } else {

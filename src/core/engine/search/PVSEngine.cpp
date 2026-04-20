@@ -27,35 +27,28 @@ void PVSEngine::helperThreadLoop(size_t instanceIdx) {
             int alpha = currentAlpha;
             int beta = currentBeta;
 
-            // Schleife, die die Aspirationsfenster erweitert,
-            // wenn die Bewertung außerhalb des Fensters liegt
-            while(!(instance->shouldStop() || exitSearch.load())) {
-                score = instance->pvs(depth, 0, alpha, beta, PV_NODE);
+            score = instance->pvs(depth, 0, alpha, beta, PV_NODE);
 
-                bool alphaAlreadyWidened = false, betaAlreadyWidened = false;
+            bool alphaAlreadyWidened = false, betaAlreadyWidened = false;
 
-                while(score <= alpha || score >= beta) {
-                    if(score <= alpha) {
-                        if(alphaAlreadyWidened)
-                            alpha = MIN_SCORE;
-                        else {
-                            alphaAlreadyWidened = true;
-                            alpha -= PVSEngine::WIDENED_ASPIRATION_WINDOW - PVSEngine::ASPIRATION_WINDOW;
-                        }
-                    } else {
-                        if(betaAlreadyWidened)
-                            beta = MAX_SCORE;
-                        else {
-                            betaAlreadyWidened = true;
-                            beta += PVSEngine::WIDENED_ASPIRATION_WINDOW - PVSEngine::ASPIRATION_WINDOW;
-                        }
+            while(score <= alpha || score >= beta) {
+                if(score <= alpha) {
+                    if(alphaAlreadyWidened)
+                        alpha = MIN_SCORE;
+                    else {
+                        alphaAlreadyWidened = true;
+                        alpha -= PVSEngine::WIDENED_ASPIRATION_WINDOW - PVSEngine::ASPIRATION_WINDOW;
                     }
-
-                    score = instance->pvs(depth, 0, alpha, beta, PV_NODE);
+                } else {
+                    if(betaAlreadyWidened)
+                        beta = MAX_SCORE;
+                    else {
+                        betaAlreadyWidened = true;
+                        beta += PVSEngine::WIDENED_ASPIRATION_WINDOW - PVSEngine::ASPIRATION_WINDOW;
+                    }
                 }
 
-                alpha = score - PVSEngine::ASPIRATION_WINDOW;
-                beta = score + PVSEngine::ASPIRATION_WINDOW;
+                score = instance->pvs(depth, 0, alpha, beta, PV_NODE);
             }
 
             // Der Thread ist fertig und wartet auf die nächste Suche
@@ -317,13 +310,15 @@ void PVSEngine::search(const UCI::SearchParams& params) {
      */
     for(int depth = 1; depth < MAX_PLY; depth++) {
 
-        // Eine Liste von Zügen, die bestimmt welche Züge in
-        // einem Durchlauf betrachtet werden dürfen.
+        // Verbleibende Züge
         Array<Move, 256> searchMoves;
         if(params.searchmoves.size() > 0)
             searchMoves = params.searchmoves;
         else
             searchMoves = legalMoves;
+
+        // PVs der letzten Tiefe
+        std::vector<Variation> prevVariations = variations;
 
         // Wenn die Multi-PV-Einstellung aktiviert ist, wird für
         // jede PV eine eigene Suche durchgeführt.
@@ -333,19 +328,15 @@ void PVSEngine::search(const UCI::SearchParams& params) {
             // In allen Durchläufen mit Tiefe > 1 wird die Suche mit
             // einem Aspirationsfenster gestartet.
             if(depth > 1) {
-                int prevScore = variations[pv].score;
+                int prevScore = prevVariations[pv].score;
                 alpha = prevScore - std::abs(prevScore) * ASPIRATION_WINDOW_SCORE_FACTOR - ASPIRATION_WINDOW;
                 beta = prevScore + std::abs(prevScore) * ASPIRATION_WINDOW_SCORE_FACTOR + ASPIRATION_WINDOW;
 
-                // Set the first PV-Table entry as the hash move,
-                // so that it is searched first in the next iteration.
-                if(variations[pv].moves.size() > 0) {
-                    Move hashMove = variations[pv].moves[0];
-                    mainInstance->setBestRootMoveHint(hashMove);
+                Move hashMove = prevVariations[pv].moves[0];
+                mainInstance->setBestRootMoveHint(hashMove);
 
-                    for(size_t i = 0; i < numAdditionalInstances; i++)
-                        instances[i]->setBestRootMoveHint(hashMove);
-                }
+                for(size_t i = 0; i < numAdditionalInstances; i++)
+                    instances[i]->setBestRootMoveHint(hashMove);
             }
 
             // Starte die Hilfsthreads.
