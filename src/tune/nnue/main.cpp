@@ -4,23 +4,17 @@
 #include <optional>
 #include <random>
 
+#include "core/utils/Random.h"
 #include "tune/Definitions.h"
 #include "tune/Simulation.h"
 #include "tune/nnue/Train.h"
 #include "uci/Options.h"
 
-void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, std::istream& pgnFile,
-                   std::ostream& outFile, std::optional<NNUE::Network*> network = std::nullopt);
+void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, const NNUE::Network& network);
+void updateEloTable(size_t n, uint32_t timeControl, uint32_t increment, EloTable<NNUE::Network>& eloTable);
 
 void generateData() {
-    std::ifstream pgnFile(pgnFilePath.get<std::string>());
-    std::ofstream resultFile(samplesFilePath.get<std::string>(), std::ios::trunc);
-
-    simulateGames(numGames.get<size_t>(), timeControl.get<uint32_t>(), increment.get<uint32_t>(), 
-                  pgnFile, resultFile);
-
-    pgnFile.close();
-    resultFile.close();
+    simulateGames(numGames.get<size_t>(), timeControl.get<uint32_t>(), increment.get<uint32_t>(), NNUE::DEFAULT_NETWORK);
 }
 
 std::vector<DataPoint> loadData(std::istream& resultFile, size_t n = std::numeric_limits<size_t>::max());
@@ -96,14 +90,15 @@ int main() {
     return 0;
 }
 
-void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, std::istream& pgnFile,
-                   std::ostream& outFile, std::optional<NNUE::Network*> network) {
+void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, const NNUE::Network& network) {
+    std::ifstream pgnFile(pgnFilePath.get<std::string>());
+
     std::vector<Board> startingPositions;
     std::vector<unsigned int> startingMoves;
     startingPositions.reserve(n);
     startingMoves.reserve(n);
 
-    std::mt19937 generator(std::time(0));
+    std::mt19937& generator = Random::generator<5>();
     std::uniform_int_distribution openingBookMoves(openingBookMovesMin.get<size_t>(), openingBookMovesMax.get<size_t>());
     std::uniform_int_distribution randomMoves(randomMovesMin.get<size_t>(), randomMovesMax.get<size_t>());
 
@@ -144,18 +139,21 @@ void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, std::istr
         startingMoves.push_back(startingPositions[i].getAge());
     }
 
+    pgnFile.close();
+
     size_t numPVs = simMultiPV.get<size_t>();
     numPVs = std::max(numPVs, (size_t)1);
     UCI::options["MultiPV"] = numPVs;
 
     Simulation sim(startingPositions, timeControl, increment, numThreads.get<size_t>());
 
-    if(network.has_value())
-        sim.setParams(*network.value());
-
+    sim.setParams(network);
     sim.setTemperature(temperature.get<double>());
+    sim.setTemperatureDecay(temperatureDecay.get<double>());
 
     sim.run();
+
+    std::ofstream outFile(samplesFilePath.get<std::string>(), std::ios::trunc);
 
     std::cout << "Writing results to file..." << std::endl;
     std::cout << "Remaining games: " << startingPositions.size() << std::flush;
@@ -188,7 +186,8 @@ void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, std::istr
             startingPositions[i].undoMove();
 
             std::stringstream ss;
-            ss << startingPositions[i].toFEN() << ";" << results[i].leafFENs[j] << ";" << results[i].leafEvaluations[j] << ";" << finalResult;
+            ss << startingPositions[i].toFEN() << ";" << results[i].leafFENs[j] << ";" <<
+                results[i].leafEvaluations[j] << ";" << finalResult << ";" << results[i].logProbs[j];
             output[j] = ss.str();
         }
 
@@ -203,6 +202,61 @@ void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, std::istr
     }
 
     std::cout << "\rRemaining games: 0      " << std::endl;
+
+    outFile.close();
+}
+
+void updateEloTable(size_t n, uint32_t timeControl, uint32_t increment, EloTable<NNUE::Network>& eloTable) {
+    std::ifstream pgnFile(pgnFilePath.get<std::string>());
+
+    std::vector<Board> startingPositions;
+    startingPositions.reserve(n);
+
+    std::mt19937& generator = Random::generator<6>();
+    std::uniform_int_distribution openingBookMoves(eloOpeningBookMovesMin.get<size_t>(), eloOpeningBookMovesMax.get<size_t>());
+    std::uniform_int_distribution randomMoves(eloRandomMovesMin.get<size_t>(), eloRandomMovesMax.get<size_t>());
+
+    std::cout << "Loaded 0 games" << std::flush;
+
+    // Lade alle Positionen aus der PGN-Datei
+    size_t i = 0;
+    while(pgnFile.good()) {
+        startingPositions.push_back(std::get<0>(Board::fromPGN(pgnFile, openingBookMoves(generator))));
+        i++;
+
+        if(i % 10 == 0)
+            std::cout << "\rLoaded " << i << " games" << std::flush;
+    }
+
+    // Entferne die letzte Position, da sie nicht vollständig geladen wurde
+    if(!startingPositions.empty())
+        startingPositions.pop_back();
+
+    std::cout << "\rLoaded " << startingPositions.size() << " games" << std::endl;
+
+    // Wähle n zufällige Positionen aus
+    std::shuffle(startingPositions.begin(), startingPositions.end(), generator);
+    if(startingPositions.size() > n)
+        startingPositions.resize(n);
+
+    for(size_t i = 0; i < startingPositions.size(); i++) {
+        size_t numRandomMoves = randomMoves(generator);
+        for(size_t j = 0; j < numRandomMoves; j++) {
+            Array<Move, 256> moves = startingPositions[i].generateLegalMoves();
+            if(moves.size() == 0)
+                break;
+
+            std::uniform_int_distribution<size_t> moveDist(0, moves.size() - 1);
+            startingPositions[i].makeMove(moves[moveDist(generator)]);
+        }
+    }
+
+    pgnFile.close();
+
+    UCI::options["MultiPV"] = 1;
+
+    Simulation sim(startingPositions, timeControl, increment, numThreads.get<size_t>());
+    sim.run(eloTable, eloPlayerChoiceTemperature.get<double>());
 }
 
 void calculateTDTargets(std::vector<DataPoint>& dest, std::vector<DataPoint>& rawData) {
@@ -217,17 +271,8 @@ void calculateTDTargets(std::vector<DataPoint>& dest, std::vector<DataPoint>& ra
     double tdTarget = terminalValue;
     double currentLambda = lambda.get<double>();
     double currentDiscount = discount.get<double>();
-    int mateScore = virtualMateScore.get<int>();
 
     for(int j = (int)rawData.size() - 1; j >= 0; j--) {
-        int virtualizedEval = rawData[j].leafEvaluation;
-        if(virtualizedEval > mateScore)
-            virtualizedEval = mateScore;
-        else if(virtualizedEval < -mateScore)
-            virtualizedEval = -mateScore;
-
-        rawData[j].leafEvaluation = virtualizedEval;
-
         double nextSearchValue;
         if(j == (int)rawData.size() - 1)
             nextSearchValue = terminalValue;
@@ -236,7 +281,7 @@ void calculateTDTargets(std::vector<DataPoint>& dest, std::vector<DataPoint>& ra
 
         tdTarget = currentDiscount * ((1.0 - currentLambda) * nextSearchValue + currentLambda * tdTarget);
 
-        dest.push_back({rawData[j].board, rawData[j].leafBoard, rawData[j].leafEvaluation, finalResult, tdTarget});
+        dest.push_back({rawData[j].board, rawData[j].leafBoard, rawData[j].leafEvaluation, finalResult, rawData[j].logProb, tdTarget});
     }
 }
 
@@ -270,15 +315,16 @@ std::vector<DataPoint> loadData(std::istream& resultFile, size_t n) {
         while(std::getline(ss, segment, ';'))
             parts.push_back(segment);
 
-        if(parts.size() < 4)
+        if(parts.size() < 5)
             continue;
 
         Board board(parts[0]);
         Board leafBoard(parts[1]);
         int leafEvaluation = std::stoi(parts[2]);
         int finalResult = std::stoi(parts[3]);
+        double logProb = std::stod(parts[4]);
 
-        currentGame.push_back({board, leafBoard, leafEvaluation, finalResult, 0.0});
+        currentGame.push_back({board, leafBoard, leafEvaluation, finalResult, logProb, 0.0});
     }
 
     calculateTDTargets(data, currentGame);
@@ -295,14 +341,17 @@ void gradientDescent() {
 
     Train::trainingSession = Train::TrainingSession(NNUE::DEFAULT_NETWORK);
 
-    NNUE::Network* network = Train::adam(data, numEpochs.get<size_t>(), learningRate.get<double>());
+    NNUE::Network* network = Train::adamW(data, numEpochs.get<size_t>(), learningRate.get<double>(), kappa.get<double>());
+
+    std::ofstream outFile("data/optimized.nnue", std::ios::binary);
+    outFile << *network;
 
     delete network;
-
-    std::cout << std::endl;
 }
 
 void learn() {
+    Train::trainingSession.eloTable = EloTable<NNUE::Network>(eloTableSize.get<size_t>(), eloKFactor.get<double>());
+
     std::ifstream trainingSessionFile("data/trainingSessionNNUE.tsession");
     if(trainingSessionFile.good()) {
         trainingSessionFile >> Train::trainingSession;
@@ -311,7 +360,10 @@ void learn() {
         std::cout << "Loaded training session from file." << std::endl;
     } else {
         std::cout << "Starting new training session." << std::endl;
-        Train::kaimingInitialization(Train::trainingSession.masterWeights);
+        if(startFromScratch.get<bool>())
+            Train::kaimingInitialization(Train::trainingSession.masterWeights);
+        else
+            Train::trainingSession = Train::TrainingSession(NNUE::DEFAULT_NETWORK);
 
         std::ofstream newTrainingSessionFile("data/trainingSessionNNUE.tsession");
         newTrainingSessionFile << Train::trainingSession;
@@ -319,6 +371,30 @@ void learn() {
     }
 
     NNUE::Network* network = Train::trainingSession.masterWeights.toNetwork();
+
+    // Füge den initialen "current" Spieler zur Elo-Tabelle hinzu
+    if(!Train::trainingSession.eloTable.hasPlayer("current")) {
+        Train::trainingSession.eloTable.addPlayer("current", eloInitialRandomPlayerElo.get<double>(), *network);
+        
+        // Speichere das initiale Netzwerk als current.nnue
+        std::ofstream currentNetworkFile("data/current.nnue", std::ios::binary);
+        currentNetworkFile << *network;
+        currentNetworkFile.close();
+    }
+
+    // Füge den Initialspieler zur Elo-Tabelle hinzu
+    if(Train::trainingSession.generation == 0) {
+        std::string playerName = "generation0";
+        double elo = Train::trainingSession.eloTable.getElo("current");
+        
+        if(!Train::trainingSession.eloTable.hasPlayer(playerName))
+            Train::trainingSession.eloTable.addPlayer(playerName, elo, *network);
+
+        // Speichere die Parameter als generation0.nnue
+        std::ofstream outFile("data/" + playerName + ".nnue", std::ios::binary);
+        outFile << *network;
+        outFile.close();
+    }
 
     // Durchlaufe Generationen
     for(size_t i = Train::trainingSession.generation; i < numGenerations.get<size_t>(); i++) {
@@ -332,11 +408,7 @@ void learn() {
         double currentLearningRate = learningRate.get<double>() * std::pow(learningRateDecay.get<double>(), i);
                 
         // Generiere die Datenpunkte
-        std::ifstream pgnFile(pgnFilePath.get<std::string>());
-        std::ofstream resultFile(samplesFilePath.get<std::string>(), std::ios::trunc);
-        simulateGames(currentNumGames, currentTimeControl, currentIncrement, pgnFile, resultFile, network);
-        pgnFile.close();
-        resultFile.close();
+        simulateGames(currentNumGames, currentTimeControl, currentIncrement, *network);
 
         // Lade die Datenpunkte
         std::ifstream samplesFile(samplesFilePath.get<std::string>());
@@ -345,12 +417,44 @@ void learn() {
         // Führe den Gradientenabstieg durch
         std::cout << "Optimizing parameters:" << std::endl;
         delete network;
-        network = Train::adam(data, currentNumEpochs, currentLearningRate);
+        network = Train::adamW(data, currentNumEpochs, currentLearningRate, kappa.get<double>());
 
-        // Speichere die Parameter
-        std::ofstream outFile("data/generation" + std::to_string(i) + ".nnue");
-        outFile << *network;
-        outFile.close();
+        // Speichere die Parameter als current.nnue
+        std::ofstream currentNetworkFile("data/current.nnue", std::ios::binary);
+        currentNetworkFile << *network;
+        currentNetworkFile.close();
+
+        // Aktualisiere den "current" Spieler in der Elo-Tabelle
+        Train::trainingSession.eloTable.setCurrentData(*network);
+
+        // Alle eloUpdatePeriod Generationen: Aktualisiere die Elo-Werte
+        if((i + 1) % eloUpdatePeriod.get<size_t>() == 0) {
+            std::ifstream pgnFile(pgnFilePath.get<std::string>());
+            updateEloTable(eloNumGamesPerUpdate.get<size_t>(), currentTimeControl, currentIncrement, Train::trainingSession.eloTable);
+            pgnFile.close();
+
+            std::cout << "\nElo Table (Generation " << i + 1 << "):\n";
+            Train::trainingSession.eloTable.write(std::cout);
+            std::cout << "\n";
+
+            std::ofstream eloTableFile("data/eloTable.txt");
+            Train::trainingSession.eloTable.write(eloTableFile);
+            eloTableFile.close();
+        }
+
+        // Alle eloAddPeriod Generationen: Füge einen neuen Spieler hinzu
+        if((i + 1) % eloAddPeriod.get<size_t>() == 0) {
+            std::string playerName = "generation" + std::to_string(i + 1);
+            double elo = Train::trainingSession.eloTable.getElo("current");
+            
+            if(!Train::trainingSession.eloTable.hasPlayer(playerName))
+                Train::trainingSession.eloTable.addPlayer(playerName, elo, *network);
+
+            // Speichere die Parameter als generationX.nnue
+            std::ofstream outFile("data/" + playerName + ".nnue", std::ios::binary);
+            outFile << *network;
+            outFile.close();
+        }
 
         // Speichere die Trainingssession
         std::ofstream trainingSessionFile("data/trainingSessionNNUE.tsession");

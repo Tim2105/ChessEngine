@@ -10,11 +10,10 @@
 namespace NNUE {
     class Network {
         public:
-            static constexpr uint32_t SUPPORTED_VERSION = 0x1Au;
-            static constexpr size_t INPUT_SIZE = 45056;
-            static constexpr size_t SINGLE_SUBNET_SIZE = 256;
-            static constexpr size_t INPUT_ADDITION = 32;
-            static constexpr size_t LAYER_SIZES[] = {2 * SINGLE_SUBNET_SIZE + INPUT_ADDITION, 32, 32, 1};
+            static constexpr uint32_t SUPPORTED_VERSION = 0x1Bu;
+            static constexpr size_t INPUT_SIZE = 22540;
+            static constexpr size_t SINGLE_SUBNET_SIZE = 512;
+            static constexpr size_t LAYER_SIZES[] = {2 * SINGLE_SUBNET_SIZE, 32, 32, 1};
             static constexpr size_t NUM_LAYERS = sizeof(LAYER_SIZES) / sizeof(LAYER_SIZES[0]) - 1;
 
             static constexpr size_t NUM_PARAMETERS = [] {

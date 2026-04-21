@@ -59,7 +59,7 @@ namespace NNUE {
             Instance() noexcept : Instance(DEFAULT_NETWORK) {}
             ~Instance() noexcept;
 
-            int evaluate(int color, int16_t additionalInput[Network::INPUT_ADDITION]) const noexcept;
+            int evaluate(int color) const noexcept;
             void initializeFromBoard(const Board& board) noexcept;
             void updateAfterMove(const Board& board) noexcept;
             void undoMove() noexcept;

@@ -22,10 +22,7 @@ class NNUEEvaluator: public Evaluator {
         ~NNUEEvaluator() {}
 
         inline int evaluate() override {
-            int16_t additionalInput[NNUE::Network::INPUT_ADDITION];
-            NNUE::fillAdditionalInput(board, additionalInput);
-
-            return networkInstance.evaluate(board.getSideToMove(), additionalInput);
+            return networkInstance.evaluate(board.getSideToMove());
         }
 
         inline void updateAfterMove() override {

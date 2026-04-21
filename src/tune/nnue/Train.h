@@ -4,8 +4,10 @@
 #include "core/utils/nnue/NNUENetwork.h"
 #include "core/utils/nnue/NNUEMasterWeights.h"
 #include "tune/Definitions.h"
+#include "tune/EloTable.h"
 
 #include <cmath>
+#include <fstream>
 #include <unordered_map>
 #include <vector>
 
@@ -31,6 +33,7 @@ namespace Train {
         std::vector<size_t> lastUpdateHalfKPWeights = std::vector<size_t>(NNUE::Network::INPUT_SIZE * NNUE::Network::SINGLE_SUBNET_SIZE, 0);
 
         NNUE::MasterWeights masterWeights;
+        EloTable<NNUE::Network> eloTable;
 
         size_t generation = 0;
         size_t epoch = 0;
@@ -77,6 +80,21 @@ namespace Train {
             os.write(reinterpret_cast<const char*>(session.masterWeights.exactDenseLayerWeights[i].data()), session.masterWeights.exactDenseLayerWeights[i].size() * sizeof(float));
         }
 
+        // Speichere die Elo-Tabellen-Einträge (Name und Elo, nicht die Netzwerke)
+        size_t numEloEntries = session.eloTable.size();
+        os.write(reinterpret_cast<const char*>(&numEloEntries), sizeof(numEloEntries));
+        
+        for(const auto& [name, data] : session.eloTable) {
+            // Speichere den Namen (Length + String)
+            size_t nameLen = name.size();
+            os.write(reinterpret_cast<const char*>(&nameLen), sizeof(nameLen));
+            os.write(name.c_str(), nameLen);
+            
+            // Speichere die Elo-Zahl
+            double elo = data.elo;
+            os.write(reinterpret_cast<const char*>(&elo), sizeof(elo));
+        }
+
         return os;
     }
 
@@ -107,6 +125,42 @@ namespace Train {
             is.read(reinterpret_cast<char*>(session.masterWeights.exactDenseLayerWeights[i].data()), session.masterWeights.exactDenseLayerWeights[i].size() * sizeof(float));
         }
 
+        // Lade die Elo-Tabellen-Einträge (Namen und Elos)
+        // Die Netzwerke werden aus .nnue-Dateien im data/-Ordner rekonstruiert
+        size_t numEloEntries = 0;
+        is.read(reinterpret_cast<char*>(&numEloEntries), sizeof(numEloEntries));
+
+        for(size_t i = 0; i < numEloEntries; i++) {
+            // Lade den Namen (Length + String)
+            size_t nameLen = 0;
+            is.read(reinterpret_cast<char*>(&nameLen), sizeof(nameLen));
+            
+            std::string name(nameLen, '\0');
+            is.read(&name[0], nameLen);
+            
+            // Lade die Elo-Zahl
+            double elo = 0.0;
+            is.read(reinterpret_cast<char*>(&elo), sizeof(elo));
+            
+            // Lade das Netzwerk aus der entsprechenden .nnue-Datei
+            std::string networkFilePath = "data/" + name + ".nnue";
+            std::ifstream networkFile(networkFilePath, std::ios::binary);
+            
+            if(networkFile.good()) {
+                NNUE::Network* network = new NNUE::Network();
+                networkFile >> *network;
+                networkFile.close();
+                
+                // Füge den Spieler mit geladenen Daten zur EloTable hinzu
+                session.eloTable.addPlayer(name, elo, *network);
+
+                delete network;
+            } else {
+                std::cout << "Warning: Could not load network for player '" << name << "' from file '" <<
+                    networkFilePath << "'. Skipping this entry." << std::endl;
+            }
+        }
+
         return is;
     }
 
@@ -121,10 +175,9 @@ namespace Train {
      * @param masterWeights Die unquantisierten Parameter des Netzwerks.
      * @param k Der Faktor, der mit dem Bewertungswert innerhalb der tanh-Funktion multipliziert wird.
      * @param kappa Bestimmt, wie stark das finale Ergebnis in das TD-Ziel einfließen soll.
-     * @param weightDecay Der Gewichtungsabfall.
      * @return double Der mittlere quadratische Fehler.
      */
-    double loss(std::vector<DataPoint>& data, const NNUE::MasterWeights& masterWeights, double k, double kappa, double weightDecay = 0.0);
+    double loss(std::vector<DataPoint>& data, const NNUE::MasterWeights& masterWeights, double k, double kappa);
 
     /**
      * @brief Bestimmt den MSE eines quantisierten Parametersatzes auf einem Datensatz.
@@ -135,10 +188,9 @@ namespace Train {
      * @param network Das Netzwerk (quantisierte Parameter).
      * @param k Der Faktor, der mit dem Bewertungswert innerhalb der tanh-Funktion multipliziert wird.
      * @param kappa Bestimmt, wie stark das finale Ergebnis in das TD-Ziel einfließen soll.
-     * @param weightDecay Der Gewichtungsabfall.
      * @return double Der mittlere quadratische Fehler.
      */
-    double loss(std::vector<DataPoint>& data, const NNUE::Network& network, double k, double kappa, double weightDecay = 0.0);
+    double loss(std::vector<DataPoint>& data, const NNUE::Network& network, double k, double kappa);
 
     /**
      * @brief Berechnet den Gradienten des MSE eines unquantisierten Parametersatzes auf einem Datensatz.
@@ -150,20 +202,20 @@ namespace Train {
      * @param masterWeights Die unquantisierten Parameter des Netzwerks.
      * @param k Der Faktor, der mit dem Bewertungswert innerhalb der tanh-Funktion multipliziert wird.
      * @param kappa Bestimmt, wie stark das finale Ergebnis in das TD-Ziel einfließen soll.
-     * @param weightDecay Der Gewichtungsabfall.
      * @return std::vector<float> Der Gradient.
      */
-    NNUE::Gradients gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const NNUE::MasterWeights& masterWeights, double k, double kappa, double weightDecay = 0.0);
+    NNUE::Gradients gradient(std::vector<DataPoint>& data, const std::vector<size_t>& indices, const NNUE::MasterWeights& masterWeights, double k, double kappa);
 
     /**
-     * @brief Verbessert die Parameter eines HCE-Modells über den Adam-Algorithmus.
+     * @brief Verbessert die Parameter eines HCE-Modells über den AdamW-Algorithmus.
      * 
      * @param data Der Datensatz.
      * @param numEpochs Die Anzahl der Epochen.
      * @param learningRate Die Lernrate.
+     * @param kappa Bestimmt, wie stark das finale Ergebnis in das Ziel einfließen soll.
      * @return HCEParameters Die verbesserten Parameter.
      */
-    NNUE::Network* adam(std::vector<DataPoint>& data, size_t numEpochs, double learningRate);
+    NNUE::Network* adamW(std::vector<DataPoint>& data, size_t numEpochs, double learningRate, double kappa);
 
     /**
      * @brief Initialisiert die Master-Parameter mit der Kaiming-Initialisierung.

@@ -1,4 +1,5 @@
-#include "core/engine/search/PVSSearchInstance.h"
+#include "core/engine/evaluation/HandcraftedEvaluator.h"
+#include "core/utils/Random.h"
 #include "tune/Definitions.h"
 #include "tune/hce/Tune.h"
 
@@ -40,11 +41,11 @@ namespace Tune {
             DataPoint& dp = data[i % data.size()];
 
             // Setze das Schachbrett auf die aktuelle Position
-            HandcraftedEvaluator evaluator(dp.leafBoard, hceParams);
+            HandcraftedEvaluator evaluator(dp.board, hceParams);
 
             // Berechne die Vorhersage
             double prediction = tanh(evaluator.evaluate(), k);
-            if(dp.leafBoard.getSideToMove() == BLACK)
+            if(dp.board.getSideToMove() == BLACK)
                 prediction = -prediction;
 
             double target = (1.0 - kappa) * tanh(dp.tdTarget, k) + kappa * (double)dp.finalResult;
@@ -86,11 +87,11 @@ namespace Tune {
                     DataPoint& dp = data[i];
 
                     // Setze das Schachbrett auf die aktuelle Position
-                    HandcraftedEvaluator evaluator(dp.leafBoard, hceParams);
+                    HandcraftedEvaluator evaluator(dp.board, hceParams);
 
                     // Berechne die Vorhersage
                     double prediction = tanh(evaluator.evaluate(), k);
-                    if(dp.leafBoard.getSideToMove() == BLACK)
+                    if(dp.board.getSideToMove() == BLACK)
                         prediction = -prediction;
 
                     double target = (1.0 - kappa) * tanh(dp.tdTarget, k) + kappa * (double)dp.finalResult;
@@ -191,7 +192,8 @@ namespace Tune {
         if(validationSize == 0) {
             validationData = data;
         } else {
-            std::shuffle(data.begin(), data.end(), std::default_random_engine(std::rand()));
+            std::mt19937& rng = Random::generator<8>();
+            std::shuffle(data.begin(), data.end(), rng);
             validationData = std::vector<DataPoint>(data.end() - validationSize, data.end());
             data.erase(data.end() - validationSize, data.end());
         }
@@ -202,9 +204,7 @@ namespace Tune {
         // Initialisiere den Indexvektor
         std::vector<size_t> indices(std::min(batchSize.get<size_t>(), data.size()));
 
-        // Bestimme einen Zufallszahlengenerator
-        std::random_device rd;
-        std::mt19937 gen(rd());
+        std::mt19937& rng = Random::generator<9>();
 
         // Initialisiere den Zähler für die Geduld
         size_t patience = 0;
@@ -242,7 +242,7 @@ namespace Tune {
             // Bestimme zufällige Indizes
             std::uniform_int_distribution<size_t> dist(0, data.size() - 1);
             for(size_t& i : indices)
-                i = dist(gen);
+                i = dist(rng);
 
             // Berechne den Gradienten
             grad = Tune::gradient(data, indices, currentParams, k.get<double>(), kappa.get<double>(), weightDecay.get<double>());

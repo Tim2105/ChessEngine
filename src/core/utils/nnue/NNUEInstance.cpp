@@ -9,7 +9,7 @@ Instance::Instance(const Network& net) noexcept : network(net), accumulator(netw
 
 Instance::~Instance() noexcept {}
 
-int Instance::evaluate(int color, int16_t additionalInput[Network::INPUT_ADDITION]) const noexcept {
+int Instance::evaluate(int color) const noexcept {
     alignas(REQUIRED_ALIGNMENT) int16_t layer1Input[Network::LAYER_SIZES[0]];
     alignas(REQUIRED_ALIGNMENT) int8_t layer1Output[Network::LAYER_SIZES[1]];
     alignas(REQUIRED_ALIGNMENT) int8_t layer2Output[Network::LAYER_SIZES[2]];
@@ -21,39 +21,78 @@ int Instance::evaluate(int color, int16_t additionalInput[Network::INPUT_ADDITIO
 
     std::copy(acc, acc + Network::SINGLE_SUBNET_SIZE, layer1Input);
     std::copy(accOther, accOther + Network::SINGLE_SUBNET_SIZE, layer1Input + Network::SINGLE_SUBNET_SIZE);
-    std::copy(additionalInput, additionalInput + Network::INPUT_ADDITION, layer1Input + 2 * Network::SINGLE_SUBNET_SIZE);
 
     network.getLayer1().forward(layer1Input, layer1Output);
     network.getLayer2().forward(layer1Output, layer2Output);
     network.getLayer3().forward(layer2Output, output);
 
-    return (int)((int64_t)output[0] * 100 / 4096);
+    return (int)((int64_t)output[0] * 100 / 3328);
 }
 
-void Instance::initializeFromBoard(const Board& board, int32_t color) noexcept {
+void Instance::initializeFromBoard(const Board& board, int color) noexcept {
     accumulator.refresh(getHalfKPFeatures(board, color), color);
 }
 
-void Instance::updateAfterOppKingMove(const Board& board, int32_t color, Move move) noexcept {
-    int32_t colorMoved = color ^ COLOR_MASK;
+void Instance::updateAfterOppKingMove(const Board& board, int color, Move move) noexcept {
+    int colorMoved = color ^ COLOR_MASK;
 
-    Array<int32_t, 3> addedFeatures;
-    Array<int32_t, 3> removedFeatures;
+    Array<int, 8> addedFeatures;
+    Array<int, 8> removedFeatures;
+
+    // Bewege den König von seiner alten Position zu seiner neuen Position
+    int ownKingSq = board.getKingSquare(color);
+    int oldKingSq = move.getOrigin();
+    int newKingSq = move.getDestination();
+
+    if(color == WHITE) {
+        removedFeatures.push_back(getHalfKPIndex<WHITE>(ownKingSq, oldKingSq, colorMoved | KING));
+        addedFeatures.push_back(getHalfKPIndex<WHITE>(ownKingSq, newKingSq, colorMoved | KING));
+    } else {
+        removedFeatures.push_back(getHalfKPIndex<BLACK>(ownKingSq, oldKingSq, colorMoved | KING));
+        addedFeatures.push_back(getHalfKPIndex<BLACK>(ownKingSq, newKingSq, colorMoved | KING));
+    }
+
+    // Der Gegner hat auf jeden Fall alle Rochadenrechte verloren
+    int oldCastlingRights = board.getLastMoveHistoryEntry().castlingPermission;
+    if(color == WHITE) {
+        if(oldCastlingRights & BLACK_KINGSIDE_CASTLE)
+            removedFeatures.push_back(castlingIdx + 2);
+        if(oldCastlingRights & BLACK_QUEENSIDE_CASTLE)
+            removedFeatures.push_back(castlingIdx + 3);
+    } else {
+        if(oldCastlingRights & WHITE_KINGSIDE_CASTLE)
+            removedFeatures.push_back(castlingIdx + 2);
+        if(oldCastlingRights & WHITE_QUEENSIDE_CASTLE)
+            removedFeatures.push_back(castlingIdx + 3);
+    }
 
     if(move.isCapture()) {
-        int32_t capturedPiece = board.getLastMoveHistoryEntry().capturedPiece;
-        int32_t otherKingSq = board.getKingSquare(colorMoved ^ COLOR_MASK);
+        int capturedPiece = board.getLastMoveHistoryEntry().capturedPiece;
+        int otherKingSq = board.getKingSquare(colorMoved ^ COLOR_MASK);
 
         if(colorMoved == WHITE)
             removedFeatures.push_back(getHalfKPIndex<BLACK>(otherKingSq, move.getDestination(), capturedPiece));
         else
             removedFeatures.push_back(getHalfKPIndex<WHITE>(otherKingSq, move.getDestination(), capturedPiece));
 
-        accumulator.update(addedFeatures, removedFeatures, color);
+        // Wird ein Turm geschlagen, verlieren wir eventuell Rochadenrechte
+        if(TYPEOF(capturedPiece) == ROOK) {
+            if(colorMoved == WHITE) {
+                if(move.getDestination() == H8 && (oldCastlingRights & BLACK_KINGSIDE_CASTLE))
+                    removedFeatures.push_back(castlingIdx);
+                else if(move.getDestination() == A8 && (oldCastlingRights & BLACK_QUEENSIDE_CASTLE))
+                    removedFeatures.push_back(castlingIdx + 1);
+            } else {
+                if(move.getDestination() == H1 && (oldCastlingRights & WHITE_KINGSIDE_CASTLE))
+                    removedFeatures.push_back(castlingIdx);
+                else if(move.getDestination() == A1 && (oldCastlingRights & WHITE_QUEENSIDE_CASTLE))
+                    removedFeatures.push_back(castlingIdx + 1);
+            }
+        }
     } else if(move.isCastle()) {
-        int32_t kingSq = board.getKingSquare(colorMoved);
-        int32_t otherKingSq = board.getKingSquare(colorMoved ^ COLOR_MASK);
-        int32_t rookOrigin, rookDestination;
+        int kingSq = board.getKingSquare(colorMoved);
+        int otherKingSq = board.getKingSquare(colorMoved ^ COLOR_MASK);
+        int rookOrigin, rookDestination;
 
         if(move.isKingsideCastle()) {
             rookOrigin = kingSq + EAST;
@@ -70,37 +109,19 @@ void Instance::updateAfterOppKingMove(const Board& board, int32_t color, Move mo
             removedFeatures.push_back(getHalfKPIndex<WHITE>(otherKingSq, rookOrigin, colorMoved | ROOK));
             addedFeatures.push_back(getHalfKPIndex<WHITE>(otherKingSq, rookDestination, colorMoved | ROOK));
         }
-
-        accumulator.update(addedFeatures, removedFeatures, color);
     }
+
+    // En-Passant
+    int oldEp = board.getLastMoveHistoryEntry().enPassantSquare;
+    if(oldEp != NO_SQ)
+        removedFeatures.push_back(getHalfKPIndexForEnPassant(oldEp, ownKingSq));
+
+    accumulator.update(addedFeatures, removedFeatures, color);
 }
 
 void Instance::initializeFromBoard(const Board& board) noexcept {
-    Array<int32_t, 63> activeFeaturesWhite;
-    Array<int32_t, 63> activeFeaturesBlack;
-
-    // Weiße Figuren
-    for(int32_t piece = (WHITE | PAWN); piece <= (WHITE | QUEEN); piece++) {
-        Bitboard pieceBitboard = board.getPieceBitboard(piece);
-        while(pieceBitboard) {
-            int32_t sq = pieceBitboard.popFSB();
-            activeFeaturesWhite.push_back(getHalfKPIndex<WHITE>(board.getKingSquare(WHITE), sq, piece));
-            activeFeaturesBlack.push_back(getHalfKPIndex<BLACK>(board.getKingSquare(BLACK), sq, piece));
-        }
-    }
-
-    // Schwarze Figuren
-    for(int32_t piece = (BLACK | PAWN); piece <= (BLACK | QUEEN); piece++) {
-        Bitboard pieceBitboard = board.getPieceBitboard(piece);
-        while(pieceBitboard) {
-            int32_t sq = pieceBitboard.popFSB();
-            activeFeaturesWhite.push_back(getHalfKPIndex<WHITE>(board.getKingSquare(WHITE), sq, piece));
-            activeFeaturesBlack.push_back(getHalfKPIndex<BLACK>(board.getKingSquare(BLACK), sq, piece));
-        }
-    }
-
-    accumulator.refresh(activeFeaturesWhite, WHITE);
-    accumulator.refresh(activeFeaturesBlack, BLACK);
+    accumulator.refresh(getHalfKPFeatures(board, WHITE), WHITE);
+    accumulator.refresh(getHalfKPFeatures(board, BLACK), BLACK);
 }
 
 void Instance::updateAfterMove(const Board& board) noexcept {
@@ -108,10 +129,27 @@ void Instance::updateAfterMove(const Board& board) noexcept {
     std::copy(accumulator.getOutput(WHITE), accumulator.getOutput(WHITE) + Network::SINGLE_SUBNET_SIZE, pastAccumulators.back().begin());
     std::copy(accumulator.getOutput(BLACK), accumulator.getOutput(BLACK) + Network::SINGLE_SUBNET_SIZE, pastAccumulators.back().begin() + Network::SINGLE_SUBNET_SIZE);
 
-    Move move = board.getLastMove();
+    int whiteKingSq = board.getKingSquare(WHITE);
+    int blackKingSq = board.getKingSquare(BLACK);
 
-    int32_t movedPiece = board.pieceAt(move.getDestination());
-    int32_t colorMoved = movedPiece & COLOR_MASK;
+    Move move = board.getLastMove();
+    if(move.isNullMove()) {
+        // Entferne En-Passant Feature, falls vorhanden
+        int oldEp = board.getLastMoveHistoryEntry().enPassantSquare;
+        if(oldEp != NO_SQ) {
+            Array<int, 8> removedFeaturesWhite;
+            Array<int, 8> removedFeaturesBlack;
+            removedFeaturesWhite.push_back(getHalfKPIndexForEnPassant(oldEp, whiteKingSq));
+            removedFeaturesBlack.push_back(getHalfKPIndexForEnPassant(oldEp, blackKingSq));
+            accumulator.update({}, removedFeaturesWhite, WHITE);
+            accumulator.update({}, removedFeaturesBlack, BLACK);
+        }
+
+        return;
+    }
+
+    int movedPiece = board.pieceAt(move.getDestination());
+    int colorMoved = movedPiece & COLOR_MASK;
 
     if(TYPEOF(movedPiece) == KING) {
         // Wenn der König gezogen wurde,
@@ -121,13 +159,10 @@ void Instance::updateAfterMove(const Board& board) noexcept {
         return;
     }
 
-    Array<int32_t, 3> addedFeaturesWhite;
-    Array<int32_t, 3> addedFeaturesBlack;
-    Array<int32_t, 3> removedFeaturesWhite;
-    Array<int32_t, 3> removedFeaturesBlack;
-
-    int32_t whiteKingSq = board.getKingSquare(WHITE);
-    int32_t blackKingSq = board.getKingSquare(BLACK);
+    Array<int, 8> addedFeaturesWhite;
+    Array<int, 8> addedFeaturesBlack;
+    Array<int, 8> removedFeaturesWhite;
+    Array<int, 8> removedFeaturesBlack;
 
     // Wenn der Zug eine Promotion ist, wäre die gezogene Figur sonst
     // die aufgewertete Figur
@@ -142,16 +177,35 @@ void Instance::updateAfterMove(const Board& board) noexcept {
     if(move.isCapture()) {
         // Spezialfall: En-Passant
         if(move.isEnPassant()) {
-            int32_t capturedPawnSq = move.getDestination() + (colorMoved == WHITE ? SOUTH : NORTH);
-            int32_t capturedPiece = colorMoved == WHITE ? BLACK | PAWN : WHITE | PAWN;
+            int capturedPawnSq = move.getDestination() + (colorMoved == WHITE ? SOUTH : NORTH);
+            int capturedPiece = colorMoved == WHITE ? BLACK | PAWN : WHITE | PAWN;
 
             removedFeaturesWhite.push_back(getHalfKPIndex<WHITE>(whiteKingSq, capturedPawnSq, capturedPiece));
             removedFeaturesBlack.push_back(getHalfKPIndex<BLACK>(blackKingSq, capturedPawnSq, capturedPiece));
         } else {
-            int32_t capturedPiece = board.getLastMoveHistoryEntry().capturedPiece;
+            int capturedPiece = board.getLastMoveHistoryEntry().capturedPiece;
 
             removedFeaturesWhite.push_back(getHalfKPIndex<WHITE>(whiteKingSq, move.getDestination(), capturedPiece));
             removedFeaturesBlack.push_back(getHalfKPIndex<BLACK>(blackKingSq, move.getDestination(), capturedPiece));
+
+            // Spezialfall: Wenn ein Turm geschlagen wird, verlieren wir eventuell Rochadenrechte
+            if(TYPEOF(capturedPiece) == ROOK) {
+                int oldCastlingRights = board.getLastMoveHistoryEntry().castlingPermission;
+
+                if(move.getDestination() == H8 && (oldCastlingRights & BLACK_KINGSIDE_CASTLE)) {
+                    removedFeaturesWhite.push_back(castlingIdx + 2);
+                    removedFeaturesBlack.push_back(castlingIdx);
+                } else if(move.getDestination() == A8 && (oldCastlingRights & BLACK_QUEENSIDE_CASTLE)) {
+                    removedFeaturesWhite.push_back(castlingIdx + 3);
+                    removedFeaturesBlack.push_back(castlingIdx + 1);
+                } else if(move.getDestination() == H1 && (oldCastlingRights & WHITE_KINGSIDE_CASTLE)) {
+                    removedFeaturesWhite.push_back(castlingIdx);
+                    removedFeaturesBlack.push_back(castlingIdx + 2);
+                } else if(move.getDestination() == A1 && (oldCastlingRights & WHITE_QUEENSIDE_CASTLE)) {
+                    removedFeaturesWhite.push_back(castlingIdx + 1);
+                    removedFeaturesBlack.push_back(castlingIdx + 3);
+                }
+            }
         }
     }
 
@@ -159,7 +213,7 @@ void Instance::updateAfterMove(const Board& board) noexcept {
 
     // Spezialfall: Promotion
     if(move.isPromotion()) {
-        int32_t promotedPiece = QUEEN;
+        int promotedPiece = QUEEN;
         if(move.isPromotionRook())
             promotedPiece = ROOK;
         else if(move.isPromotionBishop())
@@ -174,6 +228,43 @@ void Instance::updateAfterMove(const Board& board) noexcept {
     } else {
         addedFeaturesWhite.push_back(getHalfKPIndex<WHITE>(whiteKingSq, move.getDestination(), movedPiece));
         addedFeaturesBlack.push_back(getHalfKPIndex<BLACK>(blackKingSq, move.getDestination(), movedPiece));
+    }
+
+    // Wird ein Turm gezogen, verlieren wir eventuell Rochadenrechte
+    if(TYPEOF(movedPiece) == ROOK) {
+        int oldCastlingRights = board.getLastMoveHistoryEntry().castlingPermission;
+
+        if(colorMoved == WHITE) {
+            if(move.getOrigin() == H1 && (oldCastlingRights & WHITE_KINGSIDE_CASTLE)) {
+                removedFeaturesWhite.push_back(castlingIdx);
+                removedFeaturesBlack.push_back(castlingIdx + 2);
+            } else if(move.getOrigin() == A1 && (oldCastlingRights & WHITE_QUEENSIDE_CASTLE)) {
+                removedFeaturesWhite.push_back(castlingIdx + 1);
+                removedFeaturesBlack.push_back(castlingIdx + 3);
+            }
+        } else {
+            if(move.getOrigin() == H8 && (oldCastlingRights & BLACK_KINGSIDE_CASTLE)) {
+                removedFeaturesBlack.push_back(castlingIdx);
+                removedFeaturesWhite.push_back(castlingIdx + 2);
+            } else if(move.getOrigin() == A8 && (oldCastlingRights & BLACK_QUEENSIDE_CASTLE)) {
+                removedFeaturesBlack.push_back(castlingIdx + 1);
+                removedFeaturesWhite.push_back(castlingIdx + 3);
+            }
+        }
+    }
+
+    // En-Passant
+    if(move.isDoublePawn()) {
+        int ep = board.getEnPassantSquare();
+
+        addedFeaturesWhite.push_back(getHalfKPIndexForEnPassant(ep, whiteKingSq));
+        addedFeaturesBlack.push_back(getHalfKPIndexForEnPassant(ep, blackKingSq));
+    }
+
+    int oldEp = board.getLastMoveHistoryEntry().enPassantSquare;
+    if(oldEp != NO_SQ) {
+        removedFeaturesWhite.push_back(getHalfKPIndexForEnPassant(oldEp, whiteKingSq));
+        removedFeaturesBlack.push_back(getHalfKPIndexForEnPassant(oldEp, blackKingSq));
     }
 
     accumulator.update(addedFeaturesWhite, removedFeaturesWhite, WHITE);

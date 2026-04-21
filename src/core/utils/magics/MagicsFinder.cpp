@@ -1,6 +1,7 @@
 #include "core/utils/magics/MagicsFinder.h"
 #include "core/utils/magics/Precomputed.h"
 #include "core/utils/Bitboard.h"
+#include "core/utils/Random.h"
 
 #include <bit>
 #include <iostream>
@@ -315,15 +316,14 @@ uint64_t MagicsFinder::findRookMagic(int sq, int shift) {
 
     generateAllOccupancyCombinations(mask, occupancies);
 
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
+    std::mt19937& rng = Random::generator<13>();
     std::uniform_int_distribution<uint64_t> dis(0ULL, 0xFFFFFFFFFFFFFFFFULL);
 
     bool valid = false;
 
     for(uint64_t i = 0; i < maxTries; i++) {
         // Generiere einen zufälligen (niedrigen) Magic-Number-Kandidaten
-        magic = dis(gen) & dis(gen) & dis(gen);
+        magic = dis(rng) & dis(rng) & dis(rng);
 
         // Überprüfe, ob der Kandidat funktioniert
         if(validateRookMagicNumber(magic, sq, shift, occupancies, numMaskBits)) {
@@ -400,15 +400,14 @@ uint64_t MagicsFinder::findBishopMagic(int sq, int shift) {
 
     generateAllOccupancyCombinations(mask, occupancies);
 
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
+    std::mt19937& rng = Random::generator<14>();
     std::uniform_int_distribution<uint64_t> dis(0ULL, 0xFFFFFFFFFFFFFFFFULL);
 
     bool valid = false;
 
     for(uint64_t i = 0; i < maxTries; i++) {
         // Generiere einen zufälligen (niedrigen) Magic-Number-Kandidaten
-        magic = dis(gen) & dis(gen) & dis(gen);
+        magic = dis(rng) & dis(rng) & dis(rng);
 
         // Überprüfe, ob der Kandidat funktioniert
         if(validateBishopMagicNumber(magic, sq, shift, occupancies, numMaskBits)) {

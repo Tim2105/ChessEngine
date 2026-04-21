@@ -13,6 +13,7 @@ struct DataPoint {
     Board leafBoard;
     int leafEvaluation;
     int finalResult;
+    double logProb;
     double tdTarget;
 };
 
@@ -304,5 +305,21 @@ extern Variable alpha;
 extern Variable beta1;
 extern Variable beta2;
 extern Variable weightDecay;
+
+/**
+ * Variablen der Validierung.
+ */
+
+extern Variable eloTableSize;
+extern Variable eloAddPeriod;
+extern Variable eloUpdatePeriod;
+extern Variable eloNumGamesPerUpdate;
+extern Variable eloPlayerChoiceTemperature;
+extern Variable eloOpeningBookMovesMin;
+extern Variable eloOpeningBookMovesMax;
+extern Variable eloRandomMovesMin;
+extern Variable eloRandomMovesMax;
+extern Variable eloKFactor;
+extern Variable eloInitialRandomPlayerElo;
 
 #endif

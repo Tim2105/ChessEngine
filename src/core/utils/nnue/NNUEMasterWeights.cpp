@@ -141,8 +141,8 @@ NNUE::NetworkActivations NNUE::MasterWeights::forwardImpl(const Board& board, Q 
     int oppColor = color ^ COLOR_MASK;
 
     // Berechnung der HalfKP-Features
-    Array<int32_t, 63> activeFeatures = NNUE::getHalfKPFeatures(board, color);
-    Array<int32_t, 63> oppActiveFeatures = NNUE::getHalfKPFeatures(board, oppColor);
+    Array<int, 68> activeFeatures = NNUE::getHalfKPFeatures(board, color);
+    Array<int, 68> oppActiveFeatures = NNUE::getHalfKPFeatures(board, oppColor);
 
     // Biases
     for(size_t i = 0; i < SUBNET_SIZE; i++) {
@@ -154,23 +154,17 @@ NNUE::NetworkActivations NNUE::MasterWeights::forwardImpl(const Board& board, Q 
     }
 
     // Gewichte
-    for(int32_t feature : activeFeatures)
+    for(int feature : activeFeatures)
         for(size_t i = 0; i < SUBNET_SIZE; i++)
             activations.halfKPOutputs[i] += q(exactHalfKP[feature * SUBNET_SIZE + i],
                                                 NNUE::MasterWeights::HALF_KP_MIN,
                                                 NNUE::MasterWeights::HALF_KP_MAX);
 
-    for(int32_t feature : oppActiveFeatures)
+    for(int feature : oppActiveFeatures)
         for(size_t i = 0; i < SUBNET_SIZE; i++)
             activations.halfKPOutputs[i + SUBNET_SIZE] += q(exactHalfKP[feature * SUBNET_SIZE + i],
                                                             NNUE::MasterWeights::HALF_KP_MIN,
                                                             NNUE::MasterWeights::HALF_KP_MAX);
-
-    int16_t additionalInput[NNUE::Network::INPUT_ADDITION];
-    NNUE::fillAdditionalInput(board, additionalInput);
-
-    for(size_t i = 0; i < NNUE::Network::INPUT_ADDITION; i++)
-        activations.halfKPOutputs[2 * SUBNET_SIZE + i] = additionalInput[i] / 64.0f;
 
     for(size_t i = 0; i < NNUE::Network::LAYER_SIZES[0]; i++)
         activations.halfKPOutputs[i] = clippedReLU(activations.halfKPOutputs[i]);
@@ -293,19 +287,19 @@ NNUE::Gradients NNUE::MasterWeights::backwardImpl(const Board& board, const Netw
     // Berechnung der HalfKP-Features
     int color = board.getSideToMove();
     int oppColor = color ^ COLOR_MASK;
-    Array<int32_t, 63> activeFeatures = NNUE::getHalfKPFeatures(board, color);
-    Array<int32_t, 63> oppActiveFeatures = NNUE::getHalfKPFeatures(board, oppColor);
+    Array<int, 68> activeFeatures = NNUE::getHalfKPFeatures(board, color);
+    Array<int, 68> oppActiveFeatures = NNUE::getHalfKPFeatures(board, oppColor);
 
     // Bias ist in beiden Subnetzen derselbe Vektor (256): Gradienten beider Perspektiven aufsummieren.
     for(size_t i = 0; i < NNUE::Network::SINGLE_SUBNET_SIZE; i++)
         gradients.halfKPBiases[i] = halfKPGrad[i] + halfKPGrad[i + NNUE::Network::SINGLE_SUBNET_SIZE];
 
-    for(int32_t feature : activeFeatures) {
+    for(int feature : activeFeatures) {
         for(size_t i = 0; i < NNUE::Network::SINGLE_SUBNET_SIZE; i++)
             gradients.halfKPWeights[feature * NNUE::Network::SINGLE_SUBNET_SIZE + i] += halfKPGrad[i];
     }
 
-    for(int32_t feature : oppActiveFeatures) {
+    for(int feature : oppActiveFeatures) {
         for(size_t i = 0; i < NNUE::Network::SINGLE_SUBNET_SIZE; i++)
             gradients.halfKPWeights[feature * NNUE::Network::SINGLE_SUBNET_SIZE + i] += halfKPGrad[i + NNUE::Network::SINGLE_SUBNET_SIZE];
     }

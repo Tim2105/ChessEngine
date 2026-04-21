@@ -6,29 +6,27 @@
 #include "core/chess/Board.h"
 #include "core/utils/hce/HCEParameters.h"
 #include "core/utils/nnue/NNUEInstance.h"
+#include "tune/EloTable.h"
 
 #include <optional>
 #include <stdint.h>
 #include <vector>
-
-enum GameResult {
-    WHITE_WIN,
-    BLACK_WIN,
-    DRAW
-};
 
 class Result {
     public:
         GameResult result;
         std::vector<int> leafEvaluations;
         std::vector<std::string> leafFENs;
+        std::vector<double> logProbs;
 };
 
 class Simulation {
     #ifdef USE_HCE
     using Parameters = HCEParameters;
+    using EloTableType = EloTable<HCEParameters>;
     #else
     using Parameters = std::reference_wrapper<const NNUE::Network>;
+    using EloTableType = EloTable<NNUE::Network>;
     #endif
 
     private:
@@ -38,7 +36,11 @@ class Simulation {
         uint32_t increment;
         size_t numThreads;
 
-        std::optional<Parameters> params;
+        #ifdef USE_HCE
+        Parameters currentParams;
+        #else
+        Parameters currentParams = NNUE::DEFAULT_NETWORK;
+        #endif
 
         bool addParameterNoise;
         double noiseStdDev;
@@ -47,7 +49,7 @@ class Simulation {
         double temperature;
         double temperatureDecay;
 
-        Result simulateSingleGame(Board& board);
+        Result simulateSingleGame(Board& board, Parameters whiteParams, Parameters blackParams);
 
         static constexpr unsigned int DRAW_AFTER_N_MOVES = 400;
 
@@ -56,13 +58,14 @@ class Simulation {
         Simulation(std::vector<Board>& startingPositions, uint32_t timeControl, uint32_t increment, size_t numThreads);
 
         void run();
+        void run(EloTableType& eloTable, double playerChoiceTemperature = 0.0);
 
         inline std::vector<Result>& getResults() {
             return results;
         }
 
         inline void setParams(const Parameters& newParams) {
-            params.emplace(newParams);
+            currentParams = newParams;
         }
 
         inline void setParameterNoise(double stdDev) {

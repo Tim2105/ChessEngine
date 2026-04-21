@@ -1,7 +1,10 @@
 #include "tune/Simulation.h"
 
+#include "tune/Definitions.h"
+
 #include "core/chess/Referee.h"
 #include "core/engine/search/PVSEngine.h"
+#include "core/utils/Random.h"
 
 #include <algorithm>
 #include <chrono>
@@ -25,20 +28,16 @@ Simulation::Simulation(std::vector<Board>& startingPositions, uint32_t timeContr
     results.resize(startingPositions.size());
 }
 
-thread_local std::mt19937 rng(std::random_device{}());
-
-std::vector<Move> sampleMove(const std::vector<Variation>& variations, double temperature) {
+std::pair<double, std::vector<Move>> sampleVariation(const std::vector<Variation>& variations, double temperature) {
     if(temperature <= 0.0)
-        return variations[0].moves;
+        return {0.0, variations[0].moves};
     
     if(variations.size() == 1)
-        return variations[0].moves;
+        return {0.0, variations[0].moves};
+
+    double maxScore = variations[0].score;
 
     // Log-Sum-Exp-Trick für numerische Stabilität
-    double maxScore = variations[0].score;
-    for(const Variation& var : variations)
-        maxScore = std::max(maxScore, (double)var.score);
-
     double sumExp = 0.0;
     std::vector<double> logProbs(variations.size());
     
@@ -48,67 +47,59 @@ std::vector<Move> sampleMove(const std::vector<Variation>& variations, double te
     }
 
     std::uniform_real_distribution<double> dis(0.0, sumExp);
+    std::mt19937& rng = Random::generator<1>();
     double rand = dis(rng);
     double cumulative = 0.0;
     
     for(size_t i = 0; i < variations.size(); i++) {
         cumulative += std::exp(logProbs[i]);
         if(rand <= cumulative || i == variations.size() - 1)
-            return variations[i].moves;
+            return {logProbs[i], variations[i].moves};
     }
 
-    return variations.back().moves;
+    return {logProbs.back(), variations.back().moves};
 }
 
-Result Simulation::simulateSingleGame(Board& board) {
+Result Simulation::simulateSingleGame(Board& board, Parameters whiteParameters, Parameters blackParameters) {
     if(Referee::isCheckmate(board))
-        return board.getSideToMove() == WHITE ? Result{BLACK_WIN, {}, {}} : Result{WHITE_WIN, {}, {}};
+        return board.getSideToMove() == WHITE ? Result{BLACK_WIN, {}, {}, {}} : Result{WHITE_WIN, {}, {}, {}};
     else if(Referee::isDraw(board))
-        return Result{DRAW, {}, {}};
+        return Result{DRAW, {}, {}, {}};
 
     Result result;
 
     #ifdef USE_HCE
-    HCEParameters parameters = params.value_or(HCEParameters());
-    HCEParameters whiteParameters = parameters;
-    HCEParameters blackParameters = parameters;
-    std::vector<double> whiteNoise(parameters.size(), 0.0);
-    std::vector<double> blackNoise(parameters.size(), 0.0);
+    std::vector<double> whiteNoise(currentParams.size(), 0.0);
+    std::vector<double> blackNoise(currentParams.size(), 0.0);
     double whiteDecayFactor = 1.0;
     double blackDecayFactor = 1.0;
 
     if(addParameterNoise) {
-        std::random_device rd;
-        std::mt19937 gen(rd());
+        std::mt19937& rng = Random::generator<2>();
         std::normal_distribution<double> defaultDist(0.0, noiseStdDev);
         std::normal_distribution<double> linearDist(0.0, noiseLinearStdDev);
 
-        for(size_t i = 0; i < parameters.size(); i++) {
-            if(!parameters.isOptimizable(i))
+        for(size_t i = 0; i < currentParams.size(); i++) {
+            if(!currentParams.isOptimizable(i))
                 continue;
 
-            whiteNoise[i] = defaultDist(gen) + linearDist(gen) * std::abs(parameters[i]);
-            blackNoise[i] = defaultDist(gen) + linearDist(gen) * std::abs(parameters[i]);
+            whiteNoise[i] = defaultDist(rng) + linearDist(rng) * std::abs(currentParams[i]);
+            blackNoise[i] = defaultDist(rng) + linearDist(rng) * std::abs(currentParams[i]);
         }
 
         // Berechne verrauschende Parameter
-        for(size_t i = 0; i < parameters.size(); i++) {
-            if(!parameters.isOptimizable(i))
+        for(size_t i = 0; i < currentParams.size(); i++) {
+            if(!currentParams.isOptimizable(i))
                 continue;
 
-            whiteParameters[i] = (int16_t)std::round(parameters[i] + whiteNoise[i] * whiteDecayFactor);
-            blackParameters[i] = (int16_t)std::round(parameters[i] + blackNoise[i] * blackDecayFactor);
+            whiteParameters[i] = (int16_t)std::round(currentParams[i] + whiteNoise[i] * whiteDecayFactor);
+            blackParameters[i] = (int16_t)std::round(currentParams[i] + blackNoise[i] * blackDecayFactor);
         }
     }
 
-    HandcraftedEvaluator neutralEvaluator(board, parameters);
+    HandcraftedEvaluator neutralEvaluator(board, currentParams);
     #else
-    Parameters parameters = params.value_or(NNUE::DEFAULT_NETWORK);
-    Parameters whiteParameters = parameters;
-    Parameters blackParameters = parameters;
-
-    NNUEEvaluator neutralEvaluator(board, parameters);
-
+    NNUEEvaluator neutralEvaluator(board, currentParams);
     double tau = temperature;
     #endif
 
@@ -137,7 +128,7 @@ Result Simulation::simulateSingleGame(Board& board) {
                     if(!whiteParameters.isOptimizable(i))
                         continue;
 
-                    whiteParameters[i] = (int16_t)std::round(parameters[i] + whiteNoise[i] * whiteDecayFactor);
+                    whiteParameters[i] = (int16_t)std::round(currentParams[i] + whiteNoise[i] * whiteDecayFactor);
                 }
 
                 whiteDecayFactor *= noiseDecay;
@@ -148,15 +139,18 @@ Result Simulation::simulateSingleGame(Board& board) {
             white.search(params);
             std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
+            double logProb = 0.0;
+
             #ifdef USE_HCE
-            const std::vector<Move>& bestVar = white.getPrincipalVariation();
+            std::vector<Move> sampledVar = white.getPrincipalVariation();
             #else
-            std::vector<Move> bestVar = sampleMove(white.getVariations(), tau);
+            std::vector<Move> sampledVar;
+            std::tie(logProb, sampledVar) = sampleVariation(white.getVariations(), tau);
             tau *= temperatureDecay;
             #endif
 
             // Laufe die Variante durch und speichere die Bewertung des Blattknotens
-            for(Move m : bestVar)
+            for(Move m : sampledVar)
                 board.makeMove(m);
 
             double evaluation = neutralEvaluator.evaluate();
@@ -164,13 +158,14 @@ Result Simulation::simulateSingleGame(Board& board) {
                 evaluation = -evaluation;
             result.leafEvaluations.push_back(evaluation);
             result.leafFENs.push_back(board.toFEN());
+            result.logProbs.push_back(logProb);
             
             // Mache die Züge wieder rückgängig
-            for(size_t i = 0; i < bestVar.size(); i++)
+            for(size_t i = 0; i < sampledVar.size(); i++)
                 board.undoMove();
 
-            Move bestMove = bestVar[0];
-            board.makeMove(bestMove);
+            Move chosenMove = sampledVar[0];
+            board.makeMove(chosenMove);
 
             wtime -= std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
             wtime = std::max(wtime, 0);
@@ -188,7 +183,7 @@ Result Simulation::simulateSingleGame(Board& board) {
                     if(!blackParameters.isOptimizable(i))
                         continue;
 
-                    blackParameters[i] = (int16_t)std::round(parameters[i] + blackNoise[i] * blackDecayFactor);
+                    blackParameters[i] = (int16_t)std::round(currentParams[i] + blackNoise[i] * blackDecayFactor);
                 }
 
                 blackDecayFactor *= noiseDecay;
@@ -199,15 +194,18 @@ Result Simulation::simulateSingleGame(Board& board) {
             black.search(params);
             std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
+            double logProb = 0.0;
+
             #ifdef USE_HCE
-            const std::vector<Move>& bestVar = black.getPrincipalVariation();
+            std::vector<Move> sampledVar = black.getPrincipalVariation();
             #else
-            std::vector<Move> bestVar = sampleMove(black.getVariations(), tau);
+            std::vector<Move> sampledVar;
+            std::tie(logProb, sampledVar) = sampleVariation(black.getVariations(), tau);
             tau *= temperatureDecay;
             #endif
 
             // Laufe die Variante durch und speichere die Bewertung des Blattknotens
-            for(Move m : bestVar)
+            for(Move m : sampledVar)
                 board.makeMove(m);
 
             double evaluation = neutralEvaluator.evaluate();
@@ -215,13 +213,14 @@ Result Simulation::simulateSingleGame(Board& board) {
                 evaluation = -evaluation;
             result.leafEvaluations.push_back(evaluation);
             result.leafFENs.push_back(board.toFEN());
+            result.logProbs.push_back(logProb);
 
             // Mache die Züge wieder rückgängig
-            for(size_t i = 0; i < bestVar.size(); i++)
+            for(size_t i = 0; i < sampledVar.size(); i++)
                 board.undoMove();
 
-            Move bestMove = bestVar[0];
-            board.makeMove(bestMove);
+            Move chosenMove = sampledVar[0];
+            board.makeMove(chosenMove);
 
             btime -= std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
             btime = std::max(btime, 0);
@@ -267,7 +266,7 @@ void Simulation::run() {
             Board& board = startingPositions[index];
             lock.unlock();
 
-            Result result = simulateSingleGame(board);
+            Result result = simulateSingleGame(board, currentParams, currentParams);
             results[index] = result;
             completedGames.fetch_add(1);
 
@@ -307,4 +306,114 @@ void Simulation::run() {
     std::cout << " | White wins: " << std::setw(7) << whiteWins.load();
     std::cout << " | Black wins: " << std::setw(7) << blackWins.load();
     std::cout << " | Draws: " << std::setw(7) << draws.load() << std::endl;
+}
+
+void Simulation::run(EloTableType& eloTable, double playerChoiceTemperature) {
+    std::cout << "Refining Elo ratings with " << startingPositions.size() << " games ("
+              << timeControl / 1000.0 << "s + " << increment / 1000.0 << "s increment) "
+              << "with " << numThreads << " threads..." << std::endl;
+
+    // Bestimme die Matchups
+    std::vector<std::pair<std::string, std::string>> matchups(startingPositions.size());
+    for(size_t i = 0; i < startingPositions.size(); i++) {
+        std::string player1 = eloTable.getRandomPlayerName(playerChoiceTemperature);
+        std::string player2 = eloTable.getRandomPlayerNameExcluding(player1, playerChoiceTemperature);
+        matchups[i] = {player1, player2};
+    }
+
+    results.resize(startingPositions.size() * 2); // Platz für Hin- und Rückspiel
+
+    std::cout << "Remaining games: " << std::left << std::setw(7) << startingPositions.size();
+    std::cout << std::right << " | Last Result: " << std::setw(40) << "N/A" << std::flush;
+
+    std::mutex lock;
+    std::atomic_int64_t currentIdx = startingPositions.size() - 1;
+    std::atomic_uint64_t completedGames = 0;
+
+    auto threadFunction = [&]() {
+        lock.lock();
+        while(true) {
+            if(currentIdx.load() < 0) {
+                lock.unlock();
+                break;
+            }
+
+            size_t index = currentIdx.fetch_sub(1);
+            Board board1 = startingPositions[index];
+            Board board2 = startingPositions[index];
+            std::string player1 = matchups[index].first;
+            std::string player2 = matchups[index].second;
+            lock.unlock();
+
+            Parameters params1 = eloTable.getData(player1);
+            Parameters params2 = eloTable.getData(player2);
+
+            // Hinspiel
+            Result result1 = simulateSingleGame(board1, params1, params2);
+            results[index * 2] = result1;
+
+            // Rückspiel
+            Result result2 = simulateSingleGame(board2, params2, params1);
+            results[index * 2 + 1] = result2;
+
+            // Sieger bestimmen
+            float score1 = 0.0f, score2 = 0.0f;
+            switch(result1.result) {
+                case WHITE_WIN:
+                    score1 += 1.0f;
+                    break;
+                case BLACK_WIN:
+                    score2 += 1.0f;
+                    break;
+                case DRAW:
+                    score1 += 0.5f;
+                    score2 += 0.5f;
+                    break;
+            }
+
+            switch(result2.result) {
+                case WHITE_WIN:
+                    score2 += 1.0f;
+                    break;
+                case BLACK_WIN:
+                    score1 += 1.0f;
+                    break;
+                case DRAW:
+                    score1 += 0.5f;
+                    score2 += 0.5f;
+                    break;
+            }
+
+            GameResult finalResult;
+            if(score1 > score2)
+                finalResult = WHITE_WIN;
+            else if(score2 > score1)
+                finalResult = BLACK_WIN;
+            else
+                finalResult = DRAW;
+
+            completedGames.fetch_add(1);
+            lock.lock();
+            eloTable.addGameResult(player1, player2, finalResult);
+
+            std::stringstream resultSS;
+            resultSS << player1 << "(" << score1 << ") vs " << player2 << "(" << score2 << ")";
+
+            std::stringstream ss;
+            ss << "\rRemaining games: " << std::left << std::setw(7) << startingPositions.size() - completedGames;
+            ss << std::right << " | Last Result: " << std::setw(40) << resultSS.str();
+            std::cout << ss.str() << std::flush;
+        }
+
+        lock.unlock();
+    };
+
+    std::vector<std::thread> threads;
+    for(size_t i = 0; i < numThreads; i++)
+        threads.push_back(std::thread(threadFunction));
+
+    for(size_t i = 0; i < numThreads; i++)
+        threads[i].join();
+
+    std::cout << std::endl;
 }

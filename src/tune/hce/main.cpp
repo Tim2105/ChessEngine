@@ -1,5 +1,6 @@
 #include "core/chess/Board.h"
 #include "core/utils/magics/Magics.h"
+#include "core/utils/Random.h"
 #include "tune/Simulation.h"
 #include "tune/Definitions.h"
 #include "tune/hce/Tune.h"
@@ -114,7 +115,7 @@ void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, bool useN
     startingPositions.reserve(n);
     startingMoves.reserve(n);
 
-    std::mt19937 generator(std::time(0));
+    std::mt19937& generator = Random::generator<7>();
     std::uniform_int_distribution openingBookMoves(openingBookMovesMin.get<size_t>(), openingBookMovesMax.get<size_t>());
     std::uniform_int_distribution randomMoves(randomMovesMin.get<size_t>(), randomMovesMax.get<size_t>());
 
@@ -198,7 +199,8 @@ void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, bool useN
             startingPositions[i].undoMove();
 
             std::stringstream ss;
-            ss << startingPositions[i].toFEN() << ";" << results[i].leafFENs[j] << ";" << results[i].leafEvaluations[j] << ";" << finalResult;
+            ss << startingPositions[i].toFEN() << ";" << results[i].leafFENs[j] << ";" <<
+                results[i].leafEvaluations[j] << ";" << finalResult << ";" << results[i].logProbs[j];
             output[j] = ss.str();
         }
 
@@ -227,17 +229,8 @@ void calculateTDTargets(std::vector<DataPoint>& dest, std::vector<DataPoint>& ra
     double tdTarget = terminalValue;
     double currentLambda = lambda.get<double>();
     double currentDiscount = discount.get<double>();
-    int mateScore = virtualMateScore.get<int>();
 
     for(int j = (int)rawData.size() - 1; j >= 0; j--) {
-        int virtualizedEval = rawData[j].leafEvaluation;
-        if(virtualizedEval > mateScore)
-            virtualizedEval = mateScore;
-        else if(virtualizedEval < -mateScore)
-            virtualizedEval = -mateScore;
-
-        rawData[j].leafEvaluation = virtualizedEval;
-
         double nextSearchValue;
         if(j == (int)rawData.size() - 1)
             nextSearchValue = terminalValue;
@@ -246,7 +239,7 @@ void calculateTDTargets(std::vector<DataPoint>& dest, std::vector<DataPoint>& ra
 
         tdTarget = currentDiscount * ((1.0 - currentLambda) * nextSearchValue + currentLambda * tdTarget);
 
-        dest.push_back({rawData[j].board, rawData[j].leafBoard, rawData[j].leafEvaluation, finalResult, tdTarget});
+        dest.push_back({rawData[j].board, rawData[j].leafBoard, rawData[j].leafEvaluation, finalResult, rawData[j].logProb, tdTarget});
     }
 }
 
@@ -280,15 +273,16 @@ std::vector<DataPoint> loadData(std::istream& resultFile, size_t n) {
         while(std::getline(ss, segment, ';'))
             parts.push_back(segment);
 
-        if(parts.size() < 4)
+        if(parts.size() < 5)
             continue;
 
         Board board(parts[0]);
         Board leafBoard(parts[1]);
         int leafEvaluation = std::stoi(parts[2]);
         int finalResult = std::stoi(parts[3]);
+        double logProb = std::stod(parts[4]);
 
-        currentGame.push_back({board, leafBoard, leafEvaluation, finalResult, 0.0});
+        currentGame.push_back({board, leafBoard, leafEvaluation, finalResult, logProb, 0.0});
     }
 
     calculateTDTargets(data, currentGame);
