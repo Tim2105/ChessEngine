@@ -545,6 +545,9 @@ void PVSEngine::search(const UCI::SearchParams& params) {
 
         std::cout << std::endl;
     }
+
+    // Sortiere strikt nach Bewertung, damit die beste Variante immer an erster Stelle steht.
+    std::stable_sort(variations.begin(), variations.end(), std::greater<Variation>());
 }
 
 void PVSEngine::calculateTimeLimits(const UCI::SearchParams& params) {

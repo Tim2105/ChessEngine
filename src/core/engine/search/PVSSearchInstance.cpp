@@ -124,11 +124,17 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
         int depthReduction = calculateNullMoveReduction(depth, searchStack[ply].preliminaryScore, beta);
         if(depthReduction > 1 && depth - depthReduction > 0) {
             Move nullMove = Move::nullMove();
+
+            // Halte Evaluator und Brettstatus auch bei Nullzügen synchron.
+            evaluator.updateBeforeMove(nullMove);
             board.makeMove(nullMove);
+            evaluator.updateAfterMove();
 
             int score = -pvs(depth - depthReduction, ply + 1, -beta, -beta + 1, CUT_NODE, NULL_MOVE_COOLDOWN, std::max(singularExtCooldown - 1, 1), false);
 
+            evaluator.updateBeforeUndo();
             board.undoMove();
+            evaluator.updateAfterUndo(nullMove);
 
             if(score >= beta) {
                 if(!verifyNullMove() || depth + 1 <= depthReduction)

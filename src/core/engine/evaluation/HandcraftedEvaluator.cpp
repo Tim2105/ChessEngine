@@ -6,6 +6,9 @@
 void HandcraftedEvaluator::updateBeforeMove(Move m) {
     evaluationHistory.push_back(evaluationVars);
 
+    if(m.isNullMove())
+        return;
+
     Score psqtDelta{0, 0};
     int pieceValueDelta = 0;
 
@@ -155,6 +158,9 @@ void HandcraftedEvaluator::updateBeforeMove(Move m) {
 
 void HandcraftedEvaluator::updateAfterMove() {
     Move m = board.getLastMove();
+
+    if(m.isNullMove())
+        return;
 
     int movedPiece = TYPEOF(board.pieceAt(m.getDestination()));
     int capturedPiece = TYPEOF(board.getLastMoveHistoryEntry().capturedPiece);
