@@ -47,12 +47,12 @@ namespace NNUE {
      * @brief Kapselt die Master-Parameter eines NNUE-Netzwerks.
      */
     struct MasterWeights {
-        static constexpr float HALF_KP_MIN = std::numeric_limits<int16_t>::min() / 64.0f;
-        static constexpr float HALF_KP_MAX = std::numeric_limits<int16_t>::max() / 64.0f;
-        static constexpr float DENSE_BIAS_MIN = std::numeric_limits<int32_t>::min() / (64.0f * 64.0f);
-        static constexpr float DENSE_BIAS_MAX = (std::numeric_limits<int32_t>::max() - 65) / (64.0f * 64.0f);
-        static constexpr float DENSE_WEIGHT_MIN = std::numeric_limits<int8_t>::min() / 64.0f;
-        static constexpr float DENSE_WEIGHT_MAX = std::numeric_limits<int8_t>::max() / 64.0f;
+        static constexpr float HALF_KP_MIN = std::numeric_limits<int16_t>::min() / 128.0f;
+        static constexpr float HALF_KP_MAX = std::numeric_limits<int16_t>::max() / 128.0f;
+        static constexpr float DENSE_BIAS_MIN = std::numeric_limits<int32_t>::min() / (128.0f * 128.0f);
+        static constexpr float DENSE_BIAS_MAX = (std::numeric_limits<int32_t>::max() - 65) / (128.0f * 128.0f);
+        static constexpr float DENSE_WEIGHT_MIN = std::numeric_limits<int8_t>::min() / 128.0f;
+        static constexpr float DENSE_WEIGHT_MAX = std::numeric_limits<int8_t>::max() / 128.0f;
 
         // Master-Parameter des HalfKP-Layers
         std::vector<float> exactHalfKPBiases = std::vector<float>(NNUE::Network::SINGLE_SUBNET_SIZE, 0);

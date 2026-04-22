@@ -8,12 +8,12 @@ NNUE::MasterWeights::MasterWeights(const NNUE::Network& network) : MasterWeights
 
     // Biases, dequantisiert
     for(size_t i = 0; i < NNUE::Network::SINGLE_SUBNET_SIZE; i++)
-        exactHalfKPBiases[i] = halfKP.getBias(i) / 64.0f;
+        exactHalfKPBiases[i] = halfKP.getBias(i) / 128.0f;
 
     // Gewichte, dequantisiert
     for(size_t i = 0; i < NNUE::Network::INPUT_SIZE; i++) {
         for(size_t j = 0; j < NNUE::Network::SINGLE_SUBNET_SIZE; j++)
-            exactHalfKP[i * NNUE::Network::SINGLE_SUBNET_SIZE + j] = halfKP.getWeight(i, j) / 64.0f;
+            exactHalfKP[i * NNUE::Network::SINGLE_SUBNET_SIZE + j] = halfKP.getWeight(i, j) / 128.0f;
     }
 
     const auto& layer1 = network.getLayer1();
@@ -21,24 +21,24 @@ NNUE::MasterWeights::MasterWeights(const NNUE::Network& network) : MasterWeights
     const auto& layer3 = network.getLayer3();
 
     for(size_t i = 0; i < NNUE::Network::LAYER_SIZES[1]; i++) {
-        exactDenseLayerBiases[0][i] = layer1.getBias(i) / (64.0f * 64.0f);
+        exactDenseLayerBiases[0][i] = layer1.getBias(i) / (128.0f * 128.0f);
 
         for(size_t j = 0; j < NNUE::Network::LAYER_SIZES[0]; j++)
-            exactDenseLayerWeights[0][i * NNUE::Network::LAYER_SIZES[0] + j] = layer1.getWeight(j, i) / 64.0f;
+            exactDenseLayerWeights[0][i * NNUE::Network::LAYER_SIZES[0] + j] = layer1.getWeight(j, i) / 128.0f;
     }
 
     for(size_t i = 0; i < NNUE::Network::LAYER_SIZES[2]; i++) {
-        exactDenseLayerBiases[1][i] = layer2.getBias(i) / (64.0f * 64.0f);
+        exactDenseLayerBiases[1][i] = layer2.getBias(i) / (128.0f * 128.0f);
 
         for(size_t j = 0; j < NNUE::Network::LAYER_SIZES[1]; j++)
-            exactDenseLayerWeights[1][i * NNUE::Network::LAYER_SIZES[1] + j] = layer2.getWeight(j, i) / 64.0f;
+            exactDenseLayerWeights[1][i * NNUE::Network::LAYER_SIZES[1] + j] = layer2.getWeight(j, i) / 128.0f;
     }
 
     for(size_t i = 0; i < NNUE::Network::LAYER_SIZES[3]; i++) {
-        exactDenseLayerBiases[2][i] = layer3.getBias(i) / (64.0f * 64.0f);
+        exactDenseLayerBiases[2][i] = layer3.getBias(i) / (128.0f * 128.0f);
 
         for(size_t j = 0; j < NNUE::Network::LAYER_SIZES[2]; j++)
-            exactDenseLayerWeights[2][i * NNUE::Network::LAYER_SIZES[2] + j] = layer3.getWeight(j, i) / 64.0f;
+            exactDenseLayerWeights[2][i * NNUE::Network::LAYER_SIZES[2] + j] = layer3.getWeight(j, i) / 128.0f;
     }
 }
 
@@ -49,12 +49,12 @@ NNUE::Network* NNUE::MasterWeights::toNetwork() const {
 
     int16_t* biasPtrHalfKP = (int16_t*)halfKP.getBiasPtr();
     for(size_t i = 0; i < NNUE::Network::SINGLE_SUBNET_SIZE; i++)
-        biasPtrHalfKP[i] = (int16_t)(std::round(exactHalfKPBiases[i] * 64.0f));
+        biasPtrHalfKP[i] = (int16_t)(std::round(exactHalfKPBiases[i] * 128.0f));
 
     for(size_t i = 0; i < NNUE::Network::INPUT_SIZE; i++) {
         int16_t* weightPtr = (int16_t*)halfKP.getWeightPtr(i);
         for(size_t j = 0; j < NNUE::Network::SINGLE_SUBNET_SIZE; j++)
-            weightPtr[j] = (int16_t)(std::round(exactHalfKP[i * NNUE::Network::SINGLE_SUBNET_SIZE + j] * 64.0f));
+            weightPtr[j] = (int16_t)(std::round(exactHalfKP[i * NNUE::Network::SINGLE_SUBNET_SIZE + j] * 128.0f));
     }
 
     auto& layer1 = network->getLayer1();
@@ -64,40 +64,40 @@ NNUE::Network* NNUE::MasterWeights::toNetwork() const {
     int32_t* biasPtr = (int32_t*)layer1.getBiasPtr();
     int8_t* weightPtr;
     for(size_t i = 0; i < NNUE::Network::LAYER_SIZES[1]; i++) {
-        biasPtr[i] = (int32_t)(std::round(exactDenseLayerBiases[0][i] * 64.0f * 64.0f));
+        biasPtr[i] = (int32_t)(std::round(exactDenseLayerBiases[0][i] * 128.0f * 128.0f));
 
         weightPtr = (int8_t*)layer1.getWeightPtr(i);
         for(size_t j = 0; j < NNUE::Network::LAYER_SIZES[0]; j++)
-            weightPtr[j] = (int8_t)(std::round(exactDenseLayerWeights[0][i * NNUE::Network::LAYER_SIZES[0] + j] * 64.0f));
+            weightPtr[j] = (int8_t)(std::round(exactDenseLayerWeights[0][i * NNUE::Network::LAYER_SIZES[0] + j] * 128.0f));
     }
 
     biasPtr = (int32_t*)layer2.getBiasPtr();
     for(size_t i = 0; i < NNUE::Network::LAYER_SIZES[2]; i++) {
-        biasPtr[i] = (int32_t)(std::round(exactDenseLayerBiases[1][i] * 64.0f * 64.0f));
+        biasPtr[i] = (int32_t)(std::round(exactDenseLayerBiases[1][i] * 128.0f * 128.0f));
 
         weightPtr = (int8_t*)layer2.getWeightPtr(i);
         for(size_t j = 0; j < NNUE::Network::LAYER_SIZES[1]; j++)
-            weightPtr[j] = (int8_t)(std::round(exactDenseLayerWeights[1][i * NNUE::Network::LAYER_SIZES[1] + j] * 64.0f));
+            weightPtr[j] = (int8_t)(std::round(exactDenseLayerWeights[1][i * NNUE::Network::LAYER_SIZES[1] + j] * 128.0f));
     }
 
     biasPtr = (int32_t*)layer3.getBiasPtr();
     for(size_t i = 0; i < NNUE::Network::LAYER_SIZES[3]; i++) {
-        biasPtr[i] = (int32_t)(std::round(exactDenseLayerBiases[2][i] * 64.0f * 64.0f));
+        biasPtr[i] = (int32_t)(std::round(exactDenseLayerBiases[2][i] * 128.0f * 128.0f));
 
         weightPtr = (int8_t*)layer3.getWeightPtr(i);
         for(size_t j = 0; j < NNUE::Network::LAYER_SIZES[2]; j++)
-            weightPtr[j] = (int8_t)(std::round(exactDenseLayerWeights[2][i * NNUE::Network::LAYER_SIZES[2] + j] * 64.0f));
+            weightPtr[j] = (int8_t)(std::round(exactDenseLayerWeights[2][i * NNUE::Network::LAYER_SIZES[2] + j] * 128.0f));
     }
 
     return network;
 }
 
 constexpr float clippedReLU(float x) {
-    return std::clamp(x, 0.0f, (float)(std::numeric_limits<int8_t>::max() / 64.0));
+    return std::clamp(x, 0.0f, (float)(std::numeric_limits<int8_t>::max() / 128.0f));
 }
 
 constexpr bool clippedReLUMask(float x) {
-    return (x > 0.0f && x < (float)(std::numeric_limits<int8_t>::max() / 64.0f));
+    return (x > 0.0f && x < (float)(std::numeric_limits<int8_t>::max() / 128.0f));
 }
 
 constexpr float clippedReLUGrad(float x) {
@@ -115,7 +115,7 @@ namespace Quantization {
          * @param maxVal Das Maximum des Intervalls.
          * @param scale Der Skalierungsfaktor der Quantisierung.
          */
-        constexpr float operator()(float x, float minVal, float maxVal, float scale = 64.0f) const {
+        constexpr float operator()(float x, float minVal, float maxVal, float scale = 128.0f) const {
             return std::clamp(std::round(x * scale) / scale, minVal, maxVal);
         }
     };
@@ -125,7 +125,7 @@ namespace Quantization {
          * @brief Identitätsfunktion, die als Quantisierungsfunktion verwendet werden kann,
          * wenn keine Quantisierung durchgeführt werden soll.
          */
-        constexpr float operator()(float x, float, float, float = 64.0f) const {
+        constexpr float operator()(float x, float, float, float = 128.0f) const {
             return x;
         }
     };
@@ -175,7 +175,7 @@ NNUE::NetworkActivations NNUE::MasterWeights::forwardImpl(const Board& board, Q 
     for(size_t i = 0; i < NNUE::Network::LAYER_SIZES[1]; i++)
         activations.denseLayerOutputs[0][i] = q(exactDenseLayerBiases[0][i],
                                     NNUE::MasterWeights::DENSE_BIAS_MIN,
-                                    NNUE::MasterWeights::DENSE_BIAS_MAX, 64.0f * 64.0f);
+                                    NNUE::MasterWeights::DENSE_BIAS_MAX, 128.0f * 128.0f);
 
     for(size_t i = 0; i < NNUE::Network::LAYER_SIZES[1]; i++) {
         for(size_t j = 0; j < NNUE::Network::LAYER_SIZES[0]; j++)
@@ -184,12 +184,12 @@ NNUE::NetworkActivations NNUE::MasterWeights::forwardImpl(const Board& board, Q 
                 activations.halfKPOutputs[j];
 
         activations.denseLayerOutputs[0][i] = clippedReLU(activations.denseLayerOutputs[0][i]);
-        activations.denseLayerOutputs[0][i] = q(activations.denseLayerOutputs[0][i], 0.0f, 127.0f / 64.0f, 64.0f);
+        activations.denseLayerOutputs[0][i] = q(activations.denseLayerOutputs[0][i], 0.0f, 127.0f / 128.0f);
     }
 
     // Biases
     for(size_t i = 0; i < NNUE::Network::LAYER_SIZES[2]; i++)
-        activations.denseLayerOutputs[1][i] = q(exactDenseLayerBiases[1][i], NNUE::MasterWeights::DENSE_BIAS_MIN, NNUE::MasterWeights::DENSE_BIAS_MAX, 64.0f * 64.0f);
+        activations.denseLayerOutputs[1][i] = q(exactDenseLayerBiases[1][i], NNUE::MasterWeights::DENSE_BIAS_MIN, NNUE::MasterWeights::DENSE_BIAS_MAX, 128.0f * 128.0f);
 
     for(size_t i = 0; i < NNUE::Network::LAYER_SIZES[2]; i++) {
         for(size_t j = 0; j < NNUE::Network::LAYER_SIZES[1]; j++)
@@ -199,14 +199,14 @@ NNUE::NetworkActivations NNUE::MasterWeights::forwardImpl(const Board& board, Q 
                                             activations.denseLayerOutputs[0][j];
 
         activations.denseLayerOutputs[1][i] = clippedReLU(activations.denseLayerOutputs[1][i]);
-        activations.denseLayerOutputs[1][i] = q(activations.denseLayerOutputs[1][i], 0.0f, 127.0f / 64.0f, 64.0f);
+        activations.denseLayerOutputs[1][i] = q(activations.denseLayerOutputs[1][i], 0.0f, 127.0f / 128.0f);
     }
 
     // Biases
     for(size_t i = 0; i < NNUE::Network::LAYER_SIZES[3]; i++)
         activations.denseLayerOutputs[2][i] = q(exactDenseLayerBiases[2][i],
                                     NNUE::MasterWeights::DENSE_BIAS_MIN,
-                                    NNUE::MasterWeights::DENSE_BIAS_MAX, 64.0f * 64.0f);
+                                    NNUE::MasterWeights::DENSE_BIAS_MAX, 128.0f * 128.0f);
 
     for(size_t i = 0; i < NNUE::Network::LAYER_SIZES[3]; i++) {
         for(size_t j = 0; j < NNUE::Network::LAYER_SIZES[2]; j++)

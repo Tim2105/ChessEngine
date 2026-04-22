@@ -37,7 +37,7 @@ constexpr double mse(double x, double y) {
 }
 
 double networkOutputToCentipawns(float output) {
-    return (output * (64.0 * 64.0) * 100.0 / 3328.0);
+    return (output * (128.0 * 128.0) * 100.0 / 6656.0);
 }
 
 double Train::loss(std::vector<DataPoint>& data, const NNUE::MasterWeights& masterWeights, double k, double kappa) {
@@ -158,7 +158,7 @@ NNUE::Gradients Train::gradient(std::vector<DataPoint>& data, const std::vector<
                 double prediction = tanh(cp, k);
                 double target = (1.0 - kappa) * tanh(dp.tdTarget, k) + kappa * (double)dp.finalResult;
 
-                double errorGrad = 2.0 * (prediction - target) * (1.0 - prediction * prediction) * k * 100.0 * (4096.0 / 3328.0);
+                double errorGrad = 2.0 * (prediction - target) * (1.0 - prediction * prediction) * k * 100.0 * (16384.0 / 6656.0);
 
                 // Berechne die Gradienten für die Master-Parameter und addiere sie zum Thread-Gradienten
                 NNUE::Gradients dpGrad = masterWeights.backward(dp.board, activations, errorGrad, true);

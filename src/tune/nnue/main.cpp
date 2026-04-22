@@ -339,7 +339,10 @@ void gradientDescent() {
     std::vector<DataPoint> data = loadData(samplesFile);
     samplesFile.close();
 
-    Train::trainingSession = Train::TrainingSession(NNUE::DEFAULT_NETWORK);
+    if(startFromScratch.get<bool>())
+        Train::kaimingInitialization(Train::trainingSession.masterWeights);
+    else
+        Train::trainingSession = Train::TrainingSession(NNUE::DEFAULT_NETWORK);
 
     NNUE::Network* network = Train::adamW(data, numEpochs.get<size_t>(), learningRate.get<double>(), kappa.get<double>());
 

@@ -26,7 +26,7 @@ int Instance::evaluate(int color) const noexcept {
     network.getLayer2().forward(layer1Output, layer2Output);
     network.getLayer3().forward(layer2Output, output);
 
-    return (int)((int64_t)output[0] * 100 / 3328);
+    return (int)((int64_t)output[0] * 100 / 6656);
 }
 
 void Instance::initializeFromBoard(const Board& board, int color) noexcept {

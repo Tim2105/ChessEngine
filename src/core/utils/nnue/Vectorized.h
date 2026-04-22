@@ -202,7 +202,7 @@ inline void halfKPOutputForwardI16ToI8(const int16_t* in, const int8_t* weights,
         __m128i resVec = m256_haddx4(a, b, c, d, biasVec);
 
         // Scaled Clipped ReLU
-        resVec = _mm_srai_epi32(resVec, 6);
+        resVec = _mm_srai_epi32(resVec, 7);
         resVec = _mm_packs_epi32(resVec, resVec);
         resVec = _mm_max_epi8(
             _mm_packs_epi16(resVec, resVec),
@@ -238,7 +238,7 @@ inline void linearReLUI8ToI8(const int8_t* in, const int8_t* weights,
         __m128i resVec = m256_haddx4(a, b, c, d, biasVec);
 
         // Scaled Clipped ReLU
-        resVec = _mm_srai_epi32(resVec, 6);
+        resVec = _mm_srai_epi32(resVec, 7);
         resVec = _mm_packs_epi32(resVec, resVec);
         resVec = _mm_max_epi8(
             _mm_packs_epi16(resVec, resVec),
@@ -441,7 +441,7 @@ inline void halfKPOutputForwardI16ToI8(const int16_t* in, const int8_t* weights,
         __m128i resVec = m128_haddx4(a, b, c, d, biasVec);
 
         // Scaled Clipped ReLU
-        resVec = _mm_srai_epi32(resVec, 6);
+        resVec = _mm_srai_epi32(resVec, 7);
         resVec = _mm_packs_epi32(resVec, resVec);
         resVec = _mm_max_epi8(
             _mm_packs_epi16(resVec, resVec),
@@ -476,7 +476,7 @@ inline void linearReLUI8ToI8(const int8_t* in, const int8_t* weights,
         __m128i resVec = m128_haddx4(a, b, c, d, biasVec);
 
         // Scaled Clipped ReLU
-        resVec = _mm_srai_epi32(resVec, 6);
+        resVec = _mm_srai_epi32(resVec, 7);
         resVec = _mm_packs_epi32(resVec, resVec);
         resVec = _mm_max_epi8(
             _mm_packs_epi16(resVec, resVec),
@@ -556,7 +556,7 @@ inline void halfKPOutputForwardI16ToI8(const int16_t* in, const int8_t* weights,
             acc += inVal * weights[i * IN_SIZE + j];
         }
 
-        out[i] = (int8_t)std::clamp(acc >> 6, (int32_t)0, (int32_t)127);
+        out[i] = (int8_t)std::clamp(acc >> 7, (int32_t)0, (int32_t)127);
     }
 }
 
@@ -571,7 +571,7 @@ inline void linearReLUI8ToI8(const int8_t* in, const int8_t* weights,
             int32_t inVal = (int32_t)in[j];
             acc += inVal * weights[i * IN_SIZE + j];
         }
-        out[i] = (int8_t)std::clamp(acc >> 6, (int32_t)0, (int32_t)127);
+        out[i] = (int8_t)std::clamp(acc >> 7, (int32_t)0, (int32_t)127);
     }
 }
 
