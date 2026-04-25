@@ -512,7 +512,7 @@ int PVSSearchInstance::quiescence(int ply, int alpha, int beta) {
 
     // Wenn die maximale Suchdistanz erreicht wurde,
     // gib die statische Bewertung zurück.
-    if(ply >= MAX_PLY)
+    if(ply >= MAX_PLY || ply > currentSearchDepth * 3 + 2)
         return evaluator.evaluate();
 
     /**
