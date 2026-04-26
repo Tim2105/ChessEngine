@@ -20,6 +20,8 @@ namespace NNUE {
     constexpr int castlingIdx = 32 * 11 * 64; // Nach allen regulären HalfKP-Features
     constexpr int enPassantIdx = 32 * 11 * 64 + 4; // Nach allen regulären HalfKP-Features + Castling-Features
 
+    constexpr size_t INPUT_SIZE = 32 * 11 * 64 + 12;
+
     template <int COLOR>
     constexpr int getHalfKPIndex(int kingSq, int pieceSq, int piece) noexcept {
         int pieceType = TYPEOF(piece);

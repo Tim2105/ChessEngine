@@ -6,77 +6,46 @@
 #include <iostream>
 
 #include "core/utils/ren/Math.h"
+#include "core/utils/ren/Quantization.h"
 
 using namespace REN;
 
-constexpr float clippedReLU(float x, float maxVal) {
-    return std::clamp(x, 0.0f, maxVal);
-}
-
-constexpr bool clippedReLUDerivative(float x, float maxVal) {
-    return x > 0.0f && x < maxVal;
-}
-
-namespace Quantization {
-    struct FakeQuantization {
-        constexpr static float ONE = 128.0f;
-        constexpr static float MIN_VALUE = std::numeric_limits<int8_t>::min() / ONE;
-        constexpr static float MAX_VALUE = std::numeric_limits<int8_t>::max() / ONE;
-        constexpr static float CLIPPED_RELU_MAX = (std::numeric_limits<int8_t>::max() / ONE);
-
-        /**
-         * @brief Quantisierungsfunktion,
-         * die einen Wert auf einen darstellbaren Wert im quantisierten Format rundet.
-         * 
-         * @param x Der Wert.
-         * @param minVal Das Minimum des Intervalls.
-         * @param maxVal Das Maximum des Intervalls.
-         * @param scale Der Skalierungsfaktor der Quantisierung.
-         */
-        constexpr float operator()(float x) const {
-            return std::clamp(std::round(x * ONE) / ONE, MIN_VALUE, MAX_VALUE);
-        }
-    };
-
-    struct Identity {
-        constexpr static float CLIPPED_RELU_MAX = FakeQuantization::CLIPPED_RELU_MAX;
-
-        /**
-         * @brief Identitätsfunktion, die als Quantisierungsfunktion verwendet werden kann,
-         * wenn keine Quantisierung durchgeführt werden soll.
-         */
-        constexpr float operator()(float x) const {
-            return x;
-        }
-    };
-}
-
 void RENLayer::constructTransform() {
-    
+    // W_r = -Q Q^T + diag((1 - epsilon) * tanh(gamma_raw))
+    for(size_t i = 0; i < size; i++) {
+        for(size_t j = 0; j < size; j++) {
+            float sum = 0.0f;
+            for(size_t k = 0; k < size; k++)
+                sum += surrogateWeights.q(i, k) * surrogateWeights.q(j, k);
+
+            float val = -sum;
+            if(i == j)
+                val += (1.0f - epsilon) * std::tanh(surrogateWeights.gammaRaw(i));
+
+            transform(i, j) = val;
+            transform(j, i) = val; // Symmetrie ausnutzen
+        }
+    }
 }
 
 template <typename Q>
-std::tuple<Vector, float> RENLayer::forwardImpl(const Vector& h_t, const Vector& z_0, float alpha, Q q) const {
+Vector RENLayer::forwardImpl(const Vector& h_t, const Vector& z_0, Q q) const {
     Vector result(size);
-    float residualSq = 0.0f;
 
     for(size_t i = 0; i < size; i++) {
         float sum = z_0(i) + q(bias(i));
         for(size_t j = 0; j < size; j++)
             sum += q(transform(i, j)) * h_t(j);
 
-        float z_i = q((1 - alpha) * h_t(i) + alpha * clippedReLU(sum, Q::CLIPPED_RELU_MAX));
-        result(i) = z_i;
-        float res = z_i - h_t(i);
-        residualSq += res * res;
+        result(i) = sum;
     }
 
-    return {result, std::sqrt(residualSq)};
+    return result;
 };
 
 template <typename Q>
-RENLayer::Gradients RENLayer::backwardImpl(const Vector& h_opt, const Vector& z_opt, const Vector& h_0, const Vector& inputGrad, float tol, Q q) const {
-    Gradients grads;
+RENLayer::Gradients RENLayer::backwardImpl(const Vector& h_opt, const Vector& z_opt, const Vector& inputGrad, float tol, Q q) const {
+    Gradients grads(size);
 
     // System I - W_r^T * diag(clippedReLU'(z_opt)) aufstellen
     Matrix system(size);
@@ -96,10 +65,8 @@ RENLayer::Gradients RENLayer::backwardImpl(const Vector& h_opt, const Vector& z_
         v(i) *= (float)clippedReLUDerivative(z_opt(i), Q::CLIPPED_RELU_MAX);
 
     // Gradient für bias und Ausgabe
-    for(size_t i = 0; i < size; i++) {
-        grads.bias(i) = v(i);
-        grads.outputGrad(i) = v(i);
-    }
+    grads.bias = v;
+    grads.inputGrad = v;
 
     // Gradient für gammaRaw
     for(size_t i = 0; i < size; i++) {
@@ -130,35 +97,51 @@ RENLayer::Gradients RENLayer::backwardImpl(const Vector& h_opt, const Vector& z_
     return grads;
 }
 
-void RENLayer::testSolver() const {
-    size_t testSize = size;
-    Matrix a(testSize);
-    Vector b(testSize);
+template <typename Q>
+inline float activate(float z_i, float h_i, float alpha) {
+    float act = clippedReLU(z_i, Q::CLIPPED_RELU_MAX);
+    return (1.0f - alpha) * h_i + alpha * act;
+}
 
-    for(size_t i = 0; i < testSize; i++) {
-        b(i) = i / (float)testSize + 1.0f;
-        for(size_t j = 0; j < testSize; j++) {
-            a(i, j) = (i == j) ? 2.0f : 1.0f;
+RENLayer::ForwardResult RENLayer::forward(const Vector& h_0, bool fakeQuant, float alpha, size_t maxIterations, float tol) const {
+    ForwardResult result(h_0);
+
+    float residual = std::numeric_limits<float>::max();
+    for(size_t iter = 0; iter < maxIterations; iter++) {
+        residual = 0.0f;
+
+        if(fakeQuant) {
+            result.z_opt = forwardImpl(result.h_opt, h_0, Quantization::FakeQuantizationI8());
+            for(size_t i = 0; i < size; i++) {
+                float h_next_i = activate<Quantization::FakeQuantizationI8>(result.z_opt(i), result.h_opt(i), alpha);
+                float diff = h_next_i - result.h_opt(i);
+                residual += diff * diff;
+                result.h_opt(i) = h_next_i;
+            }
+        } else {
+            result.z_opt = forwardImpl(result.h_opt, h_0, Quantization::Identity());
+            for(size_t i = 0; i < size; i++) {
+                float h_next_i = activate<Quantization::Identity>(result.z_opt(i), result.h_opt(i), alpha);
+                float diff = h_next_i - result.h_opt(i);
+                residual += diff * diff;
+                result.h_opt(i) = h_next_i;
+            }
         }
+
+        residual = std::sqrt(residual);
+        result.residual = residual;
+        result.iterations = iter + 1;
+
+        if(residual < tol)
+            break;
     }
 
-    std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
-    Vector x = REN::gmresRestarted(a, b, 50, 10, 1e-5f);
-    std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
-    std::chrono::microseconds duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    std::cout << "GMRES löste das Testproblem in " << duration.count() << " Mikrosekunden." << std::endl;
+    return result;
+}
 
-    // Berechne den mittleren absoluten Fehler der Lösung
-    double error = 0.0f;
-    for(size_t i = 0; i < testSize; i++) {
-        double expected = b(i);
-        double actual = 0.0f;
-        for(size_t j = 0; j < testSize; j++) {
-            actual += a(i, j) * x(j);
-        }
-        error += std::abs(expected - actual);
-    }
-
-    error /= testSize;
-    std::cout << "Mittlerer absoluter Fehler der Lösung: " << error << std::endl;
+RENLayer::Gradients RENLayer::backward(const ForwardResult& f, const Vector& inputGrad, bool fakeQuant, float tol) const {
+    if(fakeQuant)
+        return backwardImpl(f.h_opt, f.z_opt, inputGrad, tol, Quantization::FakeQuantizationI8());
+    else
+        return backwardImpl(f.h_opt, f.z_opt, inputGrad, tol, Quantization::Identity());
 }
