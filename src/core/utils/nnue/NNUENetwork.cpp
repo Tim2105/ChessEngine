@@ -14,7 +14,7 @@ struct membuf : std::streambuf {
 };
 
 Network::Network() {
-    #if not defined(USE_HCE)
+    #ifdef USE_NNUE
         membuf buf(_binary_resources_network_nnue_start, _binary_resources_network_nnue_end);
         std::istream is(&buf);
 
