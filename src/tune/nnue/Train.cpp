@@ -163,18 +163,14 @@ NNUE::Gradients Train::gradient(std::vector<DataPoint>& data, const std::vector<
                 // Berechne die Gradienten für die Master-Parameter und addiere sie zum Thread-Gradienten
                 NNUE::Gradients dpGrad = masterWeights.backward(dp.board, activations, errorGrad, true);
 
-                for(size_t j = 0; j < grads.halfKPBiases.size(); j++)
-                    grads.halfKPBiases[j] += dpGrad.halfKPBiases[j];
+                grads.halfKAGradients.bias += dpGrad.halfKAGradients.bias;
 
-                for(const auto& [feature, value] : dpGrad.halfKPWeights)
-                    grads.halfKPWeights[feature] += value;
+                for(const auto& [feature, value] : dpGrad.halfKAGradients.weights)
+                    grads.halfKAGradients.weights[feature] += value;
 
                 for(size_t layer = 0; layer < NNUE::Network::NUM_LAYERS; layer++) {
-                    for(size_t j = 0; j < grads.denseLayerBiases[layer].size(); j++)
-                        grads.denseLayerBiases[layer][j] += dpGrad.denseLayerBiases[layer][j];
-
-                    for(size_t j = 0; j < grads.denseLayerWeights[layer].size(); j++)
-                        grads.denseLayerWeights[layer][j] += dpGrad.denseLayerWeights[layer][j];
+                    grads.denseLayerGradients[layer].bias += dpGrad.denseLayerGradients[layer].bias;
+                    grads.denseLayerGradients[layer].weights += dpGrad.denseLayerGradients[layer].weights;
                 }
             }
 
@@ -196,35 +192,26 @@ NNUE::Gradients Train::gradient(std::vector<DataPoint>& data, const std::vector<
     // Durchschnittsbildung
     NNUE::Gradients totalGrad;
 
-    for(size_t i = 0; i < totalGrad.halfKPBiases.size(); i++) {
-        for(size_t t = 0; t < numThreads; t++)
-            totalGrad.halfKPBiases[i] += threadGradientAccum[t].halfKPBiases[i];
+    for(size_t i = 0; i < numThreads; i++) {
+        totalGrad.halfKAGradients.bias += threadGradientAccum[i].halfKAGradients.bias;
 
-        totalGrad.halfKPBiases[i] = totalGrad.halfKPBiases[i] / indices.size();
+        for(const auto& [feature, value] : threadGradientAccum[i].halfKAGradients.weights)
+            totalGrad.halfKAGradients.weights[feature] += value;
     }
 
-    for(size_t t = 0; t < numThreads; t++)
-        for(const auto& [feature, value] : threadGradientAccum[t].halfKPWeights)
-            totalGrad.halfKPWeights[feature] += value;
+    totalGrad.halfKAGradients.bias /= indices.size();
 
-    for(const auto& [feature, value] : totalGrad.halfKPWeights) {
-        totalGrad.halfKPWeights[feature] = totalGrad.halfKPWeights[feature] / indices.size();
-    }
+    for(const auto& [feature, value] : totalGrad.halfKAGradients.weights)
+        totalGrad.halfKAGradients.weights[feature] = totalGrad.halfKAGradients.weights[feature] / indices.size();
 
     for(size_t layer = 0; layer < NNUE::Network::NUM_LAYERS; layer++) {
-        for(size_t i = 0; i < totalGrad.denseLayerBiases[layer].size(); i++) {
-            for(size_t t = 0; t < numThreads; t++)
-                totalGrad.denseLayerBiases[layer][i] += threadGradientAccum[t].denseLayerBiases[layer][i];
-
-            totalGrad.denseLayerBiases[layer][i] = totalGrad.denseLayerBiases[layer][i] / indices.size();
+        for(size_t i = 0; i < numThreads; i++) {
+            totalGrad.denseLayerGradients[layer].bias += threadGradientAccum[i].denseLayerGradients[layer].bias;
+            totalGrad.denseLayerGradients[layer].weights += threadGradientAccum[i].denseLayerGradients[layer].weights;
         }
 
-        for(size_t i = 0; i < totalGrad.denseLayerWeights[layer].size(); i++) {
-            for(size_t t = 0; t < numThreads; t++)
-                totalGrad.denseLayerWeights[layer][i] += threadGradientAccum[t].denseLayerWeights[layer][i];
-
-            totalGrad.denseLayerWeights[layer][i] = totalGrad.denseLayerWeights[layer][i] / indices.size();
-        }
+        totalGrad.denseLayerGradients[layer].bias /= indices.size();
+        totalGrad.denseLayerGradients[layer].weights /= indices.size();
     }
 
     return totalGrad;
@@ -303,81 +290,79 @@ NNUE::Network* Train::adamW(std::vector<DataPoint>& data, size_t numEpochs, doub
         NNUE::Gradients grad = Train::gradient(data, indices, masterWeights, k.get<double>(), kappa);
 
         // Aktualisiere die ersten und zweiten Momente
-        for(size_t i = 0; i < masterWeights.exactHalfKPBiases.size(); i++) {
-            trainingSession.mHalfKPBiases[i] = beta1.get<double>() * trainingSession.mHalfKPBiases[i] + (1.0 - beta1.get<double>()) * grad.halfKPBiases[i];
-            trainingSession.vHalfKPBiases[i] = beta2.get<double>() * trainingSession.vHalfKPBiases[i] + (1.0 - beta2.get<double>()) * grad.halfKPBiases[i] * grad.halfKPBiases[i];
+        for(size_t i = 0; i < grad.halfKAGradients.bias.size; i++) {
+            trainingSession.mHalfKPBiases[i] = beta1.get<double>() * trainingSession.mHalfKPBiases[i] + (1.0 - beta1.get<double>()) * grad.halfKAGradients.bias(i);
+            trainingSession.vHalfKPBiases[i] = beta2.get<double>() * trainingSession.vHalfKPBiases[i] + (1.0 - beta2.get<double>()) * grad.halfKAGradients.bias(i) * grad.halfKAGradients.bias(i);
         }
 
-        for(const auto& [feature, value] : grad.halfKPWeights) {
-            // Anzahl der verpassten Momentum-Schritte
-            size_t tDelta = trainingSession.epoch - trainingSession.lastUpdateHalfKPWeights[feature];
+        double wd = weightDecay.get<double>();
+        for(const auto& [feature, value] : grad.halfKAGradients.weights) {
+            // Anzahl der Schritte seit dem letzten Update dieses Features (inklusive aktuellem Schritt)
+            size_t tDelta = trainingSession.epoch - trainingSession.lastUpdateHalfKPWeights[feature] + 1;
             trainingSession.lastUpdateHalfKPWeights[feature] = trainingSession.epoch + 1;
 
-            trainingSession.mHalfKPWeights[feature] = std::pow(beta1.get<double>(), tDelta + 1) * trainingSession.mHalfKPWeights[feature] + (1.0 - beta1.get<double>()) * value;
-            trainingSession.vHalfKPWeights[feature] = std::pow(beta2.get<double>(), tDelta + 1) * trainingSession.vHalfKPWeights[feature] + (1.0 - beta2.get<double>()) * value * value;
+            trainingSession.mHalfKPWeights[feature] = std::pow(beta1.get<double>(), tDelta) * trainingSession.mHalfKPWeights[feature] + (1.0 - beta1.get<double>()) * value;
+            trainingSession.vHalfKPWeights[feature] = std::pow(beta2.get<double>(), tDelta) * trainingSession.vHalfKPWeights[feature] + (1.0 - beta2.get<double>()) * value * value;
+
+            double mHat = trainingSession.mHalfKPWeights[feature] / (1.0 - std::pow(beta1.get<double>(), trainingSession.epoch + 1));
+            double vHat = trainingSession.vHalfKPWeights[feature] / (1.0 - std::pow(beta2.get<double>(), trainingSession.epoch + 1));
+
+            // Lazy AdamW: trage den verpassten Decay exakt nach, bevor der Gradienten-Schritt angewendet wird.
+            double decayFactor = std::pow(1.0 - learningRate * wd, tDelta);
+            masterWeights.halfKPLayer.weights(feature) = masterWeights.halfKPLayer.weights(feature) * decayFactor
+                - learningRate * mHat / (std::sqrt(vHat) + epsilon.get<double>());
+
+            masterWeights.halfKPLayer.weights(feature) = std::clamp(masterWeights.halfKPLayer.weights(feature),
+                NNUE::MasterWeights::HALF_KP_MIN, NNUE::MasterWeights::HALF_KP_MAX);
         }
 
         for(size_t layer = 0; layer < NNUE::Network::NUM_LAYERS; layer++) {
-            for(size_t i = 0; i < masterWeights.exactDenseLayerBiases[layer].size(); i++) {
-                trainingSession.mDenseLayerBiases[layer][i] = beta1.get<double>() * trainingSession.mDenseLayerBiases[layer][i] + (1.0 - beta1.get<double>()) * grad.denseLayerBiases[layer][i];
-                trainingSession.vDenseLayerBiases[layer][i] = beta2.get<double>() * trainingSession.vDenseLayerBiases[layer][i] + (1.0 - beta2.get<double>()) * grad.denseLayerBiases[layer][i] * grad.denseLayerBiases[layer][i];
+            for(size_t i = 0; i < masterWeights.denseLayers[layer].bias.size; i++) {
+                trainingSession.mDenseLayerBiases[layer][i] = beta1.get<double>() * trainingSession.mDenseLayerBiases[layer][i] + (1.0 - beta1.get<double>()) * grad.denseLayerGradients[layer].bias(i);
+                trainingSession.vDenseLayerBiases[layer][i] = beta2.get<double>() * trainingSession.vDenseLayerBiases[layer][i] + (1.0 - beta2.get<double>()) * grad.denseLayerGradients[layer].bias(i) * grad.denseLayerGradients[layer].bias(i);
             }
 
-            for(size_t i = 0; i < masterWeights.exactDenseLayerWeights[layer].size(); i++) {
-                trainingSession.mDenseLayerWeights[layer][i] = beta1.get<double>() * trainingSession.mDenseLayerWeights[layer][i] + (1.0 - beta1.get<double>()) * grad.denseLayerWeights[layer][i];
-                trainingSession.vDenseLayerWeights[layer][i] = beta2.get<double>() * trainingSession.vDenseLayerWeights[layer][i] + (1.0 - beta2.get<double>()) * grad.denseLayerWeights[layer][i] * grad.denseLayerWeights[layer][i];
+            for(size_t i = 0; i < masterWeights.denseLayers[layer].weights.size; i++) {
+                trainingSession.mDenseLayerWeights[layer][i] = beta1.get<double>() * trainingSession.mDenseLayerWeights[layer][i] + (1.0 - beta1.get<double>()) * grad.denseLayerGradients[layer].weights(i);
+                trainingSession.vDenseLayerWeights[layer][i] = beta2.get<double>() * trainingSession.vDenseLayerWeights[layer][i] + (1.0 - beta2.get<double>()) * grad.denseLayerGradients[layer].weights(i) * grad.denseLayerGradients[layer].weights(i);
             }
         }
 
         // Aktualisiere die Master-Parameter mit AdamW
-        double wd = weightDecay.get<double>();
-        for(size_t i = 0; i < masterWeights.exactHalfKPBiases.size(); i++) {
+        for(size_t i = 0; i < masterWeights.halfKPLayer.bias.size; i++) {
             double mHat = trainingSession.mHalfKPBiases[i] / (1.0 - std::pow(beta1.get<double>(), trainingSession.epoch + 1));
             double vHat = trainingSession.vHalfKPBiases[i] / (1.0 - std::pow(beta2.get<double>(), trainingSession.epoch + 1));
             
             // AdamW: Weight Decay wird direkt bei der Parameter-Aktualisierung angewendet
-            masterWeights.exactHalfKPBiases[i] = masterWeights.exactHalfKPBiases[i] * (1.0 - learningRate * wd) 
+            masterWeights.halfKPLayer.bias(i) = masterWeights.halfKPLayer.bias(i) * (1.0 - learningRate * wd) 
                 - learningRate * mHat / (std::sqrt(vHat) + epsilon.get<double>());
 
-            masterWeights.exactHalfKPBiases[i] = std::clamp(masterWeights.exactHalfKPBiases[i],
+            masterWeights.halfKPLayer.bias(i) = std::clamp(masterWeights.halfKPLayer.bias(i),
                 NNUE::MasterWeights::HALF_KP_MIN, NNUE::MasterWeights::HALF_KP_MAX);
         }
 
-        // Aktualisiere nur die Gewichte, für die Gradienten != 0 existieren (sparse Update)
-        for(const auto& [feature, value] : grad.halfKPWeights) {
-             double mHat = trainingSession.mHalfKPWeights[feature] / (1.0 - std::pow(beta1.get<double>(), trainingSession.epoch + 1));
-             double vHat = trainingSession.vHalfKPWeights[feature] / (1.0 - std::pow(beta2.get<double>(), trainingSession.epoch + 1));
-             
-             // AdamW: Weight Decay wird direkt bei der Parameter-Aktualisierung angewendet
-             masterWeights.exactHalfKP[feature] = masterWeights.exactHalfKP[feature] * (1.0 - learningRate * wd)
-                 - learningRate * mHat / (std::sqrt(vHat) + epsilon.get<double>());
-
-             masterWeights.exactHalfKP[feature] = std::clamp(masterWeights.exactHalfKP[feature],
-                 NNUE::MasterWeights::HALF_KP_MIN, NNUE::MasterWeights::HALF_KP_MAX);
-        }
-
         for(size_t layer = 0; layer < NNUE::Network::NUM_LAYERS; layer++) {
-            for(size_t i = 0; i < masterWeights.exactDenseLayerBiases[layer].size(); i++) {
+            for(size_t i = 0; i < masterWeights.denseLayers[layer].bias.size; i++) {
                 double mHat = trainingSession.mDenseLayerBiases[layer][i] / (1.0 - std::pow(beta1.get<double>(), trainingSession.epoch + 1));
                 double vHat = trainingSession.vDenseLayerBiases[layer][i] / (1.0 - std::pow(beta2.get<double>(), trainingSession.epoch + 1));
                 
                 // AdamW: Weight Decay wird direkt bei der Parameter-Aktualisierung angewendet
-                masterWeights.exactDenseLayerBiases[layer][i] = masterWeights.exactDenseLayerBiases[layer][i] * (1.0 - learningRate * wd)
+                masterWeights.denseLayers[layer].bias(i) = masterWeights.denseLayers[layer].bias(i) * (1.0 - learningRate * wd)
                     - learningRate * mHat / (std::sqrt(vHat) + epsilon.get<double>());
 
-                masterWeights.exactDenseLayerBiases[layer][i] = std::clamp(masterWeights.exactDenseLayerBiases[layer][i],
+                masterWeights.denseLayers[layer].bias(i) = std::clamp(masterWeights.denseLayers[layer].bias(i),
                     NNUE::MasterWeights::DENSE_BIAS_MIN, NNUE::MasterWeights::DENSE_BIAS_MAX);
             }
 
-            for(size_t i = 0; i < masterWeights.exactDenseLayerWeights[layer].size(); i++) {
+            for(size_t i = 0; i < masterWeights.denseLayers[layer].weights.size; i++) {
                 double mHat = trainingSession.mDenseLayerWeights[layer][i] / (1.0 - std::pow(beta1.get<double>(), trainingSession.epoch + 1));
                 double vHat = trainingSession.vDenseLayerWeights[layer][i] / (1.0 - std::pow(beta2.get<double>(), trainingSession.epoch + 1));
                 
                 // AdamW: Weight Decay wird direkt bei der Parameter-Aktualisierung angewendet
-                masterWeights.exactDenseLayerWeights[layer][i] = masterWeights.exactDenseLayerWeights[layer][i] * (1.0 - learningRate * wd)
+                masterWeights.denseLayers[layer].weights(i) = masterWeights.denseLayers[layer].weights(i) * (1.0 - learningRate * wd)
                     - learningRate * mHat / (std::sqrt(vHat) + epsilon.get<double>());
 
-                masterWeights.exactDenseLayerWeights[layer][i] = std::clamp(masterWeights.exactDenseLayerWeights[layer][i],
+                masterWeights.denseLayers[layer].weights(i) = std::clamp(masterWeights.denseLayers[layer].weights(i),
                     NNUE::MasterWeights::DENSE_WEIGHT_MIN, NNUE::MasterWeights::DENSE_WEIGHT_MAX);
             }
         }
@@ -415,12 +400,12 @@ void Train::kaimingInitialization(NNUE::MasterWeights& masterWeights) {
 
     // Initialisiere Half-KP-Gewichte mit Kaiming-Initialisierung
     std::normal_distribution<float> halfKPDist(0.0f, 2.0f / std::sqrt(NNUE::Network::INPUT_SIZE));
-    for(size_t i = 0; i < masterWeights.exactHalfKP.size(); i++)
-        masterWeights.exactHalfKP[i] = halfKPDist(rng);
+    for(size_t i = 0; i < masterWeights.halfKPLayer.weights.size; i++)
+        masterWeights.halfKPLayer.weights(i) = halfKPDist(rng);
 
     // Initialisiere Half-KP-Biases mit 0.1
-    for(size_t i = 0; i < masterWeights.exactHalfKPBiases.size(); i++)
-        masterWeights.exactHalfKPBiases[i] = 0.1f;
+    for(size_t i = 0; i < masterWeights.halfKPLayer.bias.size; i++)
+        masterWeights.halfKPLayer.bias(i) = 0.1f;
 
     // Initialisiere Dense-Gewichte mit Kaiming-Initialisierung
     for(size_t layer = 0; layer < NNUE::Network::NUM_LAYERS; layer++) {
@@ -428,12 +413,12 @@ void Train::kaimingInitialization(NNUE::MasterWeights& masterWeights) {
         float stddev = std::sqrt(2.0f / fanIn);
         std::normal_distribution<float> dist(0.0f, stddev);
 
-        for(size_t i = 0; i < masterWeights.exactDenseLayerWeights[layer].size(); i++)
-            masterWeights.exactDenseLayerWeights[layer][i] = dist(rng);
+        for(size_t i = 0; i < masterWeights.denseLayers[layer].weights.size; i++)
+            masterWeights.denseLayers[layer].weights(i) = dist(rng);
     }
 
     // Initialisiere alle Dense-Biases mit 0
     for(size_t layer = 0; layer < NNUE::Network::NUM_LAYERS; layer++)
-        for(size_t i = 0; i < masterWeights.exactDenseLayerBiases[layer].size(); i++)
-            masterWeights.exactDenseLayerBiases[layer][i] = 0;
+        for(size_t i = 0; i < masterWeights.denseLayers[layer].bias.size; i++)
+            masterWeights.denseLayers[layer].bias(i) = 0;
 }

@@ -1,5 +1,5 @@
-#ifndef REN_QUANTIZATION_H
-#define REN_QUANTIZATION_H
+#ifndef ML_QUANTIZATION_H
+#define ML_QUANTIZATION_H
 
 #include <algorithm>
 #include <cmath>
@@ -14,7 +14,7 @@ constexpr bool clippedReLUDerivative(float x, float maxVal) {
     return x > 0.0f && x < maxVal;
 }
 
-namespace Quantization {
+namespace ML {
     struct FakeQuantizationI8 {
         constexpr static float ONE = 128.0f;
         constexpr static float MIN_VALUE = std::numeric_limits<int8_t>::min() / ONE;

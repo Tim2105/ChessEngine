@@ -1,12 +1,13 @@
-#include "core/utils/ren/Math.h"
+#include "tune/ml/Math.h"
 
+#include <cassert>
 #include <tuple>
 
-using namespace REN;
+using namespace ML;
 
 std::tuple<Vector, float> gmres(const Matrix& a, const Vector& b, Vector x0, size_t maxIter, float tol, float eps = 1e-8f) {
-    if(b.size != a.cols)
-        throw std::invalid_argument("Matrix and vector size must match.");
+    assert(b.size == a.innerDim);
+    assert(x0.size == b.size);
 
     size_t size = b.size;
 
@@ -20,23 +21,23 @@ std::tuple<Vector, float> gmres(const Matrix& a, const Vector& b, Vector x0, siz
 
     // Orthonormale Basis des Krylov-Unterraums
     const size_t stride = maxIter + 1;
-    Matrix q(stride, size);
-    q(0) = r0 / beta;
-    float* pq = std::assume_aligned<REQUIRED_ALIGNMENT>(q.w.data());
+    Matrix q(size, stride);
+    q.col(0) = r0 / beta;
+    float* pq = std::assume_aligned<REQUIRED_ALIGNMENT>(q.data());
 
     // Hessenberg-Matrix im Column-Major-Layout
-    Matrix h(maxIter, stride);
-    float* __restrict ph = std::assume_aligned<REQUIRED_ALIGNMENT>(h.w.data());
+    Matrix h(stride, maxIter);
+    float* __restrict ph = std::assume_aligned<REQUIRED_ALIGNMENT>(h.data());
 
     // Givens-Rotationen
     Vector cs(maxIter);
-    float* __restrict pcs = std::assume_aligned<REQUIRED_ALIGNMENT>(cs.x.data());
+    float* __restrict pcs = std::assume_aligned<REQUIRED_ALIGNMENT>(cs.data());
     Vector sn(maxIter);
-    float* __restrict psn = std::assume_aligned<REQUIRED_ALIGNMENT>(sn.x.data());
+    float* __restrict psn = std::assume_aligned<REQUIRED_ALIGNMENT>(sn.data());
 
     // Rechte Seite des reduzierten Problems
     Vector g(maxIter + 1);
-    float* __restrict pg = std::assume_aligned<REQUIRED_ALIGNMENT>(g.x.data());
+    float* __restrict pg = std::assume_aligned<REQUIRED_ALIGNMENT>(g.data());
     pg[0] = beta;
 
     size_t convergedIter = maxIter;
@@ -44,14 +45,14 @@ std::tuple<Vector, float> gmres(const Matrix& a, const Vector& b, Vector x0, siz
 
         // Arnoldi-Iteration
         Vector w(size);
-        float* pw = std::assume_aligned<REQUIRED_ALIGNMENT>(w.x.data());
+        float* pw = std::assume_aligned<REQUIRED_ALIGNMENT>(w.data());
 
         for(size_t i = 0; i < size; i++)
-            pw[i] = a(i).dot(q(iter));
+            pw[i] = a.col(i).dot(q.col(iter));
 
         for(size_t j = 0; j <= iter; j++) {
-            float h_ij = w.dot(q(j));
-            w -= h_ij * q(j);
+            float h_ij = w.dot(q.col(j));
+            w -= h_ij * q.col(j);
             ph[iter * stride + j] = h_ij;
         }
 
@@ -94,12 +95,12 @@ std::tuple<Vector, float> gmres(const Matrix& a, const Vector& b, Vector x0, siz
             break;
         }
 
-        q(iter + 1) = w / h_next;
+        q.col(iter + 1) = w / h_next;
     }
 
     // Rückwärtssubstitution
     Vector y(convergedIter);
-    float* __restrict py = std::assume_aligned<REQUIRED_ALIGNMENT>(y.x.data());
+    float* __restrict py = std::assume_aligned<REQUIRED_ALIGNMENT>(y.data());
     for(int32_t i = (int32_t)(convergedIter - 1); i >= 0; i--) {
         float sum = pg[i];
         for(size_t j = i + 1; j < convergedIter; j++)
@@ -109,9 +110,9 @@ std::tuple<Vector, float> gmres(const Matrix& a, const Vector& b, Vector x0, siz
     }
 
     // Berechnung der Lösung x = x0 + Q * y
-    float* __restrict px0 = std::assume_aligned<REQUIRED_ALIGNMENT>(x0.x.data());
+    float* __restrict px0 = std::assume_aligned<REQUIRED_ALIGNMENT>(x0.data());
     Vector x(size);
-    float* __restrict px = std::assume_aligned<REQUIRED_ALIGNMENT>(x.x.data());
+    float* __restrict px = std::assume_aligned<REQUIRED_ALIGNMENT>(x.data());
     for(size_t i = 0; i < size; i++) {
         float sum = 0.0f;
         for(size_t j = 0; j < convergedIter; j++)
@@ -123,7 +124,7 @@ std::tuple<Vector, float> gmres(const Matrix& a, const Vector& b, Vector x0, siz
     return std::make_tuple(x, std::abs(pg[convergedIter]));
 }
 
-Vector REN::gmresRestarted(const Matrix& a, const Vector& b, size_t m, size_t maxRestarts, float tol) {
+Vector ML::gmresRestarted(const Matrix& a, const Vector& b, size_t m, size_t maxRestarts, float tol) {
     // Anfangsapproximation x0 = b
     Vector x = b;
 

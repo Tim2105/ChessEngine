@@ -1,13 +1,13 @@
-#ifndef REN_HALFKAV2_HM_H
-#define REN_HALFKAV2_HM_H
+#ifndef ML_HALFKAV2_HM_H
+#define ML_HALFKAV2_HM_H
 
 #include <unordered_map>
 
 #include "core/chess/Board.h"
 #include "core/utils/nnue/NNUEUtils.h"
-#include "core/utils/ren/Math.h"
+#include "tune/ml/Math.h"
 
-namespace REN {
+namespace ML {
     /**
      * @brief Ein HalfKAv2_hmLayer mit Gewichten in voller Präzision.
      */
@@ -16,7 +16,7 @@ namespace REN {
             struct Gradients {
                 // Map (Index -> Gewicht), da die meisten Gradienten 0 sind
                 std::unordered_map<size_t, float> weights;
-                REN::Vector bias;
+                Vector bias;
 
                 inline Gradients(size_t outputSize) : bias(outputSize) {}
             };
@@ -28,13 +28,13 @@ namespace REN {
                 inline ForwardResult(size_t s) : preActivations(s), output(s) {}
             };
 
-            REN::Matrix weights;
-            REN::Vector bias;
+            Matrix weights;
+            Vector bias;
             constexpr static size_t INPUT_SIZE = NNUE::INPUT_SIZE;
             size_t subnetSize;
 
             inline HalfKAv2_hmLayer(size_t outputSize) :
-                weights(INPUT_SIZE, outputSize / 2), bias(outputSize / 2), subnetSize(outputSize / 2) {
+                weights(outputSize / 2, INPUT_SIZE), bias(outputSize / 2), subnetSize(outputSize / 2) {
 
                 assert(outputSize % 2 == 0);
             }

@@ -1,7 +1,7 @@
-#include "core/utils/ren/HalfKAv2_hm.h"
-#include "core/utils/ren/Quantization.h"
+#include "tune/ml/HalfKAv2_hm.h"
+#include "tune/ml/Quantization.h"
 
-using namespace REN;
+using namespace ML;
 
 template <typename Q>
 HalfKAv2_hmLayer::ForwardResult HalfKAv2_hmLayer::forwardImpl(const Board& board, Q q) const {
@@ -70,16 +70,16 @@ HalfKAv2_hmLayer::Gradients HalfKAv2_hmLayer::backwardImpl(const Board& board,
 
 HalfKAv2_hmLayer::ForwardResult HalfKAv2_hmLayer::forward(const Board& board, bool fakeQuant) const {
     if(fakeQuant)
-        return forwardImpl(board, Quantization::FakeQuantizationI16());
+        return forwardImpl(board, ML::FakeQuantizationI16());
     else
-        return forwardImpl(board, Quantization::Identity());
+        return forwardImpl(board, ML::Identity());
 }
 
-REN::HalfKAv2_hmLayer::Gradients REN::HalfKAv2_hmLayer::backward(const Board& board,
-    const REN::HalfKAv2_hmLayer::ForwardResult& forwardResult, const REN::Vector& outputGrad, bool fakeQuant) const {
+HalfKAv2_hmLayer::Gradients HalfKAv2_hmLayer::backward(const Board& board,
+    const HalfKAv2_hmLayer::ForwardResult& forwardResult, const Vector& outputGrad, bool fakeQuant) const {
 
     if(fakeQuant)
-        return backwardImpl<Quantization::FakeQuantizationI16>(board, forwardResult, outputGrad);
+        return backwardImpl<ML::FakeQuantizationI16>(board, forwardResult, outputGrad);
     else
-        return backwardImpl<Quantization::Identity>(board, forwardResult, outputGrad);
+        return backwardImpl<ML::Identity>(board, forwardResult, outputGrad);
 }

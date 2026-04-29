@@ -1,7 +1,7 @@
-#include "core/utils/ren/DenseLayer.h"
-#include "core/utils/ren/Quantization.h"
+#include "tune/ml/DenseLayer.h"
+#include "tune/ml/Quantization.h"
 
-using namespace REN;
+using namespace ML;
 
 template <bool UseActivation, typename Q>
 DenseLayer::ForwardResult DenseLayer::forwardImpl(const Vector& input, Q q) const {
@@ -50,27 +50,27 @@ DenseLayer::Gradients DenseLayer::backwardImpl(const Vector& input,
 DenseLayer::ForwardResult DenseLayer::forward(const Vector& input, bool fakeQuant) const {
     if(fakeQuant) {
         if(useActivation)
-            return forwardImpl<true>(input, Quantization::FakeQuantizationI8());
+            return forwardImpl<true>(input, ML::FakeQuantizationI8());
         else
-            return forwardImpl<false>(input, Quantization::FakeQuantizationI8());
+            return forwardImpl<false>(input, ML::FakeQuantizationI8());
     } else {
         if(useActivation)
-            return forwardImpl<true>(input, Quantization::Identity());
+            return forwardImpl<true>(input, ML::Identity());
         else
-            return forwardImpl<false>(input, Quantization::Identity());
+            return forwardImpl<false>(input, ML::Identity());
     }
 }
 
 DenseLayer::Gradients DenseLayer::backward(const Vector& input, const ForwardResult& forwardResult, const Vector& outputGrad, bool fakeQuant) const {
     if(fakeQuant) {
         if(useActivation)
-            return backwardImpl<true>(input, forwardResult, outputGrad, Quantization::FakeQuantizationI8());
+            return backwardImpl<true>(input, forwardResult, outputGrad, ML::FakeQuantizationI8());
         else
-            return backwardImpl<false>(input, forwardResult, outputGrad, Quantization::FakeQuantizationI8());
+            return backwardImpl<false>(input, forwardResult, outputGrad, ML::FakeQuantizationI8());
     } else {
         if(useActivation)
-            return backwardImpl<true>(input, forwardResult, outputGrad, Quantization::Identity());
+            return backwardImpl<true>(input, forwardResult, outputGrad, ML::Identity());
         else
-            return backwardImpl<false>(input, forwardResult, outputGrad, Quantization::Identity());
+            return backwardImpl<false>(input, forwardResult, outputGrad, ML::Identity());
     }
 }

@@ -1,12 +1,12 @@
-#include "core/utils/ren/RENLayer.h"
+#include "tune/ren/RENLayer.h"
 
 #include <algorithm>
 #include <chrono>
 #include <limits>
 #include <iostream>
 
-#include "core/utils/ren/Math.h"
-#include "core/utils/ren/Quantization.h"
+#include "tune/ml/Math.h"
+#include "tune/ml/Quantization.h"
 
 using namespace REN;
 
@@ -29,8 +29,8 @@ void RENLayer::constructTransform() {
 }
 
 template <typename Q>
-Vector RENLayer::forwardImpl(const Vector& h_t, const Vector& z_0, Q q) const {
-    Vector result(size);
+ML::Vector RENLayer::forwardImpl(const ML::Vector& h_t, const ML::Vector& z_0, Q q) const {
+    ML::Vector result(size);
 
     for(size_t i = 0; i < size; i++) {
         float sum = z_0(i) + q(bias(i));
@@ -44,11 +44,11 @@ Vector RENLayer::forwardImpl(const Vector& h_t, const Vector& z_0, Q q) const {
 };
 
 template <typename Q>
-RENLayer::Gradients RENLayer::backwardImpl(const Vector& h_opt, const Vector& z_opt, const Vector& inputGrad, float tol, Q q) const {
+RENLayer::Gradients RENLayer::backwardImpl(const ML::Vector& h_opt, const ML::Vector& z_opt, const ML::Vector& inputGrad, float tol, Q q) const {
     Gradients grads(size);
 
     // System I - W_r^T * diag(clippedReLU'(z_opt)) aufstellen
-    Matrix system(size);
+    ML::Matrix system(size);
     for(size_t i = 0; i < size; i++) {
         for(size_t j = 0; j < size; j++) {
             float val = q(transform(j, i)) * (float)clippedReLUDerivative(z_opt(j), Q::CLIPPED_RELU_MAX);
@@ -58,7 +58,7 @@ RENLayer::Gradients RENLayer::backwardImpl(const Vector& h_opt, const Vector& z_
 
     constexpr size_t M = 50; // Krylov-Unterraumgröße für GMRES
     size_t restarts = (size_t)std::ceil(size / (double)M); // Maximale Anzahl der Restarts
-    Vector v = REN::gmresRestarted(system, inputGrad, M, restarts, tol);
+    ML::Vector v = ML::gmresRestarted(system, inputGrad, M, restarts, tol);
 
     // Berechne v' = diag(clippedReLU'(z_opt)) * v
     for(size_t i = 0; i < size; i++)
@@ -78,7 +78,7 @@ RENLayer::Gradients RENLayer::backwardImpl(const Vector& h_opt, const Vector& z_
     // g_q = -(v h_opt^T + h_opt v^T) * q
     
     // Berechne Hilfsvektoren h_opt^T * q und v^T * q
-    Vector hq(size), vq(size);
+    ML::Vector hq(size), vq(size);
     for(size_t i = 0; i < size; i++) {
         float hq_i = 0.0f, vq_i = 0.0f;
         for(size_t j = 0; j < size; j++) {
@@ -103,7 +103,7 @@ inline float activate(float z_i, float h_i, float alpha) {
     return (1.0f - alpha) * h_i + alpha * act;
 }
 
-RENLayer::ForwardResult RENLayer::forward(const Vector& h_0, bool fakeQuant, float alpha, size_t maxIterations, float tol) const {
+RENLayer::ForwardResult RENLayer::forward(const ML::Vector& h_0, bool fakeQuant, float alpha, size_t maxIterations, float tol) const {
     ForwardResult result(h_0);
 
     float residual = std::numeric_limits<float>::max();
@@ -111,17 +111,17 @@ RENLayer::ForwardResult RENLayer::forward(const Vector& h_0, bool fakeQuant, flo
         residual = 0.0f;
 
         if(fakeQuant) {
-            result.z_opt = forwardImpl(result.h_opt, h_0, Quantization::FakeQuantizationI8());
+            result.z_opt = forwardImpl(result.h_opt, h_0, ML::FakeQuantizationI8());
             for(size_t i = 0; i < size; i++) {
-                float h_next_i = activate<Quantization::FakeQuantizationI8>(result.z_opt(i), result.h_opt(i), alpha);
+                float h_next_i = activate<ML::FakeQuantizationI8>(result.z_opt(i), result.h_opt(i), alpha);
                 float diff = h_next_i - result.h_opt(i);
                 residual += diff * diff;
                 result.h_opt(i) = h_next_i;
             }
         } else {
-            result.z_opt = forwardImpl(result.h_opt, h_0, Quantization::Identity());
+            result.z_opt = forwardImpl(result.h_opt, h_0, ML::Identity());
             for(size_t i = 0; i < size; i++) {
-                float h_next_i = activate<Quantization::Identity>(result.z_opt(i), result.h_opt(i), alpha);
+                float h_next_i = activate<ML::Identity>(result.z_opt(i), result.h_opt(i), alpha);
                 float diff = h_next_i - result.h_opt(i);
                 residual += diff * diff;
                 result.h_opt(i) = h_next_i;
@@ -139,9 +139,9 @@ RENLayer::ForwardResult RENLayer::forward(const Vector& h_0, bool fakeQuant, flo
     return result;
 }
 
-RENLayer::Gradients RENLayer::backward(const ForwardResult& f, const Vector& inputGrad, bool fakeQuant, float tol) const {
+RENLayer::Gradients RENLayer::backward(const ForwardResult& f, const ML::Vector& inputGrad, bool fakeQuant, float tol) const {
     if(fakeQuant)
-        return backwardImpl(f.h_opt, f.z_opt, inputGrad, tol, Quantization::FakeQuantizationI8());
+        return backwardImpl(f.h_opt, f.z_opt, inputGrad, tol, ML::FakeQuantizationI8());
     else
-        return backwardImpl(f.h_opt, f.z_opt, inputGrad, tol, Quantization::Identity());
+        return backwardImpl(f.h_opt, f.z_opt, inputGrad, tol, ML::Identity());
 }

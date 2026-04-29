@@ -1,14 +1,14 @@
-#ifndef REN_MATH_H
-#define REN_MATH_H
+#ifndef ML_MATH_H
+#define ML_MATH_H
 
 #include <cassert>
 #include <cmath>
 #include <vector>
 
-#include "core/utils/ren/AlignedAllocator.h"
-#include "core/utils/ren/MathImpl.h"
+#include "tune/ml/AlignedAllocator.h"
+#include "tune/ml/MathImpl.h"
 
-namespace REN {
+namespace ML {
 
     enum class ContainerType {
         Owning,
@@ -149,6 +149,14 @@ namespace REN {
             return x[idx];
         }
 
+        inline const float* data() const {
+            return x.data();
+        }
+
+        inline float* data() {
+            return x.data();
+        }
+
         template <ContainerType otherCT>
         inline Vector operator+(const VectorImpl<otherCT>& other) const {
             assert(size == other.size);
@@ -242,57 +250,75 @@ namespace REN {
 
     struct Matrix {
         std::vector<float, AlignedAllocator<float, REQUIRED_ALIGNMENT>> w;
-        size_t cols, rows;
+        size_t outerDim, innerDim, size;
 
-        inline Matrix(size_t s) : w(s * s, 0.0f), cols(s), rows(s) {}
-        inline Matrix(size_t c, size_t r) : w(c * r, 0.0f), cols(c), rows(r) {}
+        inline Matrix(size_t s) : w(s * s, 0.0f), outerDim(s), innerDim(s), size(s * s) {}
+        inline Matrix(size_t r, size_t c) : w(c * r, 0.0f), outerDim(r), innerDim(c), size(c * r) {}
 
         inline float operator()(size_t c, size_t r) const {
-            assert(c < cols && r < rows);
-            return w[r * cols + c];
+            assert(c < innerDim && r < outerDim);
+            return w[r * innerDim + c];
         }
 
         inline float& operator()(size_t c, size_t r) {
-            assert(c < cols && r < rows);
-            return w[r * cols + c];
+            assert(c < innerDim && r < outerDim);
+            return w[r * innerDim + c];
         }
 
-        inline VectorView operator()(size_t c) {
-            assert(c < cols);
-            return VectorView(w.data() + c * rows, rows);
+        inline float operator()(size_t idx) const {
+            assert(idx < innerDim * outerDim);
+            return w[idx];
         }
 
-        inline ConstVectorView operator()(size_t c) const {
-            assert(c < cols);
-            return ConstVectorView(w.data() + c * rows, rows);
+        inline float& operator()(size_t idx) {
+            assert(idx < innerDim * outerDim);
+            return w[idx];
+        }
+
+        inline const float* data() const {
+            return w.data();
+        }
+
+        inline float* data() {
+            return w.data();
+        }
+
+        inline VectorView col(size_t c) {
+            assert(c < innerDim);
+            return VectorView(w.data() + c * outerDim, outerDim);
+        }
+
+        inline ConstVectorView col(size_t c) const {
+            assert(c < innerDim);
+            return ConstVectorView(w.data() + c * outerDim, outerDim);
         }
 
         inline Matrix operator+(const Matrix& other) const {
-            assert(cols == other.cols && rows == other.rows);
-            Matrix result(cols, rows);
+            assert(innerDim == other.innerDim && outerDim == other.outerDim);
+            Matrix result(innerDim, outerDim);
             if(this == &other)
-                __unsafe_mul(result.w.data(), w.data(), 2.0f, cols * rows);
+                __unsafe_mul(result.w.data(), w.data(), 2.0f, innerDim * outerDim);
             else
-                __unsafe_add(result.w.data(), w.data(), other.w.data(), cols * rows);
+                __unsafe_add(result.w.data(), w.data(), other.w.data(), innerDim * outerDim);
 
             return result;
         }
 
         inline Matrix& operator+=(const Matrix& other) {
-            assert(cols == other.cols && rows == other.rows);
+            assert(innerDim == other.innerDim && outerDim == other.outerDim);
             if(this == &other)
-                __unsafe_mul_self(w.data(), 2.0f, cols * rows);
+                __unsafe_mul_self(w.data(), 2.0f, innerDim * outerDim);
             else
-                __unsafe_add_self(w.data(), other.w.data(), cols * rows);
+                __unsafe_add_self(w.data(), other.w.data(), innerDim * outerDim);
 
             return *this;
         }
 
         inline Matrix operator-(const Matrix& other) const {
-            assert(cols == other.cols && rows == other.rows);
-            Matrix result(cols, rows);
+            assert(innerDim == other.innerDim && outerDim == other.outerDim);
+            Matrix result(innerDim, outerDim);
             if(this != &other)
-                __unsafe_sub(result.w.data(), w.data(), other.w.data(), cols * rows);
+                __unsafe_sub(result.w.data(), w.data(), other.w.data(), innerDim * outerDim);
 
             // Ergebnis ist 0 und Matrizen werden mit 0 initialisiert (wenn this == &other)
 
@@ -300,18 +326,18 @@ namespace REN {
         }
 
         inline Matrix& operator-=(const Matrix& other) {
-            assert(cols == other.cols && rows == other.rows);
+            assert(innerDim == other.innerDim && outerDim == other.outerDim);
             if(this == &other)
-                __unsafe_set_zero(w.data(), cols * rows);
+                __unsafe_set_zero(w.data(), innerDim * outerDim);
             else
-                __unsafe_sub_self(w.data(), other.w.data(), cols * rows);
+                __unsafe_sub_self(w.data(), other.w.data(), innerDim * outerDim);
 
             return *this;
         }
 
         inline Matrix operator*(float scalar) const {
-            Matrix result(cols, rows);
-            __unsafe_mul(result.w.data(), w.data(), scalar, cols * rows);
+            Matrix result(innerDim, outerDim);
+            __unsafe_mul(result.w.data(), w.data(), scalar, innerDim * outerDim);
             return result;
         }
 
@@ -320,26 +346,26 @@ namespace REN {
         }
 
         inline Matrix& operator*=(float scalar) {
-            __unsafe_mul_self(w.data(), scalar, cols * rows);
+            __unsafe_mul_self(w.data(), scalar, innerDim * outerDim);
             return *this;
         }
 
         inline Matrix operator/(float scalar) const {
-            Matrix result(cols, rows);
-            __unsafe_div(result.w.data(), w.data(), scalar, cols * rows);
+            Matrix result(innerDim, outerDim);
+            __unsafe_div(result.w.data(), w.data(), scalar, innerDim * outerDim);
             return result;
         }
 
         inline Matrix& operator/=(float scalar) {
-            __unsafe_div_self(w.data(), scalar, cols * rows);
+            __unsafe_div_self(w.data(), scalar, innerDim * outerDim);
             return *this;
         }
 
         template <ContainerType otherCT>
         inline Vector operator*(const VectorImpl<otherCT>& vec) const {
-            assert(cols == vec.size);
-            Vector result(rows);
-            __unsafe_gemv(result.x.data(), w.data(), vec.x.data(), rows, cols);
+            assert(innerDim == vec.size);
+            Vector result(outerDim);
+            __unsafe_gemv(result.x.data(), w.data(), vec.x.data(), outerDim, innerDim);
             return result;
         }
     };

@@ -1,15 +1,15 @@
-#ifndef REN_DENSE_LAYER_H
-#define REN_DENSE_LAYER_H
+#ifndef ML_DENSE_LAYER_H
+#define ML_DENSE_LAYER_H
 
-#include "core/utils/ren/Math.h"
+#include "tune/ml/Math.h"
 
-namespace REN {
+namespace ML {
     class DenseLayer {
         public:
             struct Gradients {
-                REN::Matrix weights;
-                REN::Vector bias;
-                REN::Vector inputGrad;
+                Matrix weights;
+                Vector bias;
+                Vector inputGrad;
 
                 inline Gradients(size_t inputSize, size_t outputSize) :
                     weights(inputSize, outputSize), bias(outputSize), inputGrad(inputSize) {}
@@ -22,14 +22,14 @@ namespace REN {
                 inline ForwardResult(size_t s) : preActivations(s), output(s) {}
             };
 
-            REN::Matrix weights;
-            REN::Vector bias;
+            Matrix weights;
+            Vector bias;
             size_t inputSize;
             size_t outputSize;
             bool useActivation;
 
             inline DenseLayer(size_t inputSize, size_t outputSize, bool useActivation = true) :
-                weights(outputSize, inputSize), bias(outputSize), inputSize(inputSize),
+                weights(inputSize, outputSize), bias(outputSize), inputSize(inputSize),
                 outputSize(outputSize), useActivation(useActivation) {}
 
             ForwardResult forward(const Vector& input, bool fakeQuant) const;

@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <stddef.h>
 
-#include "core/utils/ren/Math.h"
+#include "tune/ml/Math.h"
 
 namespace REN {
     /**
@@ -15,37 +15,37 @@ namespace REN {
     class RENLayer {
         public:
             struct SurrogateWeights {
-                REN::Matrix q;
-                REN::Vector gammaRaw;
+                ML::Matrix q;
+                ML::Vector gammaRaw;
                 size_t size;
 
                 inline SurrogateWeights(size_t s) : q(s), gammaRaw(s), size(s) {}
             };
 
             struct Gradients {
-                REN::Matrix q;
-                REN::Vector gammaRaw;
-                REN::Vector bias;
-                REN::Vector inputGrad;
+                ML::Matrix q;
+                ML::Vector gammaRaw;
+                ML::Vector bias;
+                ML::Vector inputGrad;
                 size_t size;
 
                 inline Gradients(size_t s) : q(s), gammaRaw(s), bias(s), inputGrad(s), size(s) {}
             };
 
             struct ForwardResult {
-                Vector h_opt;
-                Vector z_opt;
+                ML::Vector h_opt;
+                ML::Vector z_opt;
                 size_t iterations;
                 float residual;
 
                 inline ForwardResult(size_t s) : h_opt(s), z_opt(s), iterations(0), residual(0.0f) {}
-                inline ForwardResult(const Vector& h) :
+                inline ForwardResult(const ML::Vector& h) :
                     h_opt(h), z_opt(h.size), iterations(0), residual(0.0f) {}
             };
 
             SurrogateWeights surrogateWeights;
-            REN::Matrix transform;
-            REN::Vector bias;
+            ML::Matrix transform;
+            ML::Vector bias;
             size_t size;
             float epsilon;
 
@@ -60,11 +60,11 @@ namespace REN {
                 constructTransform();
             }
 
-            inline RENLayer(const SurrogateWeights& mw, const Matrix& rt, const Vector& b, float eps = 0.01) :
+            inline RENLayer(const SurrogateWeights& mw, const ML::Matrix& rt, const ML::Vector& b, float eps = 0.01) :
                 surrogateWeights(mw), transform(rt), bias(b), size(mw.size), epsilon(eps) {
 
                 // Konsistenzprüfung
-                if(rt.rows != size || rt.cols != size)
+                if(rt.innerDim != size || rt.outerDim != size)
                     throw std::invalid_argument("Dimension mismatch between MasterWeights and transform matrix.");
 
                 if(b.size != size)
@@ -87,7 +87,7 @@ namespace REN {
              * @param maxIterations Die maximale Anzahl an Iterationen, bevor abgebrochen wird.
              * @param tol Die Toleranz für die Konvergenz.
              */
-            ForwardResult forward(const Vector& h_0, bool fakeQuant, float alpha = 0.5f,
+            ForwardResult forward(const ML::Vector& h_0, bool fakeQuant, float alpha = 0.5f,
                 size_t maxIterations = std::numeric_limits<size_t>::max(), float tol = 1e-4f) const;
 
             /**
@@ -98,7 +98,7 @@ namespace REN {
              * @param fakeQuant Ob die Fake-Quantisierung verwendet werden soll.
              * @param tol Die Toleranz für den Löser des linearen Systems.
              */
-            Gradients backward(const ForwardResult& forwardResult, const Vector& inputGrad, bool fakeQuant, float tol = 1e-4f) const;
+            Gradients backward(const ForwardResult& forwardResult, const ML::Vector& inputGrad, bool fakeQuant, float tol = 1e-4f) const;
     
         private:
 
@@ -110,7 +110,7 @@ namespace REN {
              * @param q Die Quantisierungsstrategie.
              */
             template <typename Q>
-            Vector forwardImpl(const Vector& h_t, const Vector& h_0, Q q) const;
+            ML::Vector forwardImpl(const ML::Vector& h_t, const ML::Vector& h_0, Q q) const;
 
             /**
              * @brief Führt einen Rückwärtspass durch das REN durch und berechnet die Gradienten für die Master-Parameter.
@@ -122,7 +122,7 @@ namespace REN {
              * @param q Die Quantisierungsstrategie.
              */
             template <typename Q>
-            Gradients backwardImpl(const Vector& h_opt, const Vector& z_opt, const Vector& inputGrad, float tol, Q q) const;
+            Gradients backwardImpl(const ML::Vector& h_opt, const ML::Vector& z_opt, const ML::Vector& inputGrad, float tol, Q q) const;
     };
 
 }

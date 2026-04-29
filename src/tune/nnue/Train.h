@@ -2,9 +2,9 @@
 #define TRAIN_H
 
 #include "core/utils/nnue/NNUENetwork.h"
-#include "core/utils/nnue/NNUEMasterWeights.h"
 #include "tune/Definitions.h"
 #include "tune/EloTable.h"
+#include "tune/nnue/NNUEMasterWeights.h"
 
 #include <cmath>
 #include <fstream>
@@ -73,11 +73,11 @@ namespace Train {
 
         os.write(reinterpret_cast<const char*>(session.lastUpdateHalfKPWeights.data()), session.lastUpdateHalfKPWeights.size() * sizeof(size_t));
 
-        os.write(reinterpret_cast<const char*>(session.masterWeights.exactHalfKPBiases.data()), session.masterWeights.exactHalfKPBiases.size() * sizeof(float));
-        os.write(reinterpret_cast<const char*>(session.masterWeights.exactHalfKP.data()), session.masterWeights.exactHalfKP.size() * sizeof(float));
+        os.write(reinterpret_cast<const char*>(session.masterWeights.halfKPLayer.bias.data()), session.masterWeights.halfKPLayer.bias.size * sizeof(float));
+        os.write(reinterpret_cast<const char*>(session.masterWeights.halfKPLayer.weights.data()), session.masterWeights.halfKPLayer.weights.size * sizeof(float));
         for(size_t i = 0; i < NNUE::Network::NUM_LAYERS; i++) {
-            os.write(reinterpret_cast<const char*>(session.masterWeights.exactDenseLayerBiases[i].data()), session.masterWeights.exactDenseLayerBiases[i].size() * sizeof(float));
-            os.write(reinterpret_cast<const char*>(session.masterWeights.exactDenseLayerWeights[i].data()), session.masterWeights.exactDenseLayerWeights[i].size() * sizeof(float));
+            os.write(reinterpret_cast<const char*>(session.masterWeights.denseLayers[i].bias.data()), session.masterWeights.denseLayers[i].bias.size * sizeof(float));
+            os.write(reinterpret_cast<const char*>(session.masterWeights.denseLayers[i].weights.data()), session.masterWeights.denseLayers[i].weights.size * sizeof(float));
         }
 
         // Speichere die Elo-Tabellen-Einträge (Name und Elo, nicht die Netzwerke)
@@ -118,11 +118,11 @@ namespace Train {
 
         is.read(reinterpret_cast<char*>(session.lastUpdateHalfKPWeights.data()), session.lastUpdateHalfKPWeights.size() * sizeof(size_t));
 
-        is.read(reinterpret_cast<char*>(session.masterWeights.exactHalfKPBiases.data()), session.masterWeights.exactHalfKPBiases.size() * sizeof(float));
-        is.read(reinterpret_cast<char*>(session.masterWeights.exactHalfKP.data()), session.masterWeights.exactHalfKP.size() * sizeof(float));
+        is.read(reinterpret_cast<char*>(session.masterWeights.halfKPLayer.bias.data()), session.masterWeights.halfKPLayer.bias.size * sizeof(float));
+        is.read(reinterpret_cast<char*>(session.masterWeights.halfKPLayer.weights.data()), session.masterWeights.halfKPLayer.weights.size * sizeof(float));
         for(size_t i = 0; i < NNUE::Network::NUM_LAYERS; i++) {
-            is.read(reinterpret_cast<char*>(session.masterWeights.exactDenseLayerBiases[i].data()), session.masterWeights.exactDenseLayerBiases[i].size() * sizeof(float));
-            is.read(reinterpret_cast<char*>(session.masterWeights.exactDenseLayerWeights[i].data()), session.masterWeights.exactDenseLayerWeights[i].size() * sizeof(float));
+            is.read(reinterpret_cast<char*>(session.masterWeights.denseLayers[i].bias.data()), session.masterWeights.denseLayers[i].bias.size * sizeof(float));
+            is.read(reinterpret_cast<char*>(session.masterWeights.denseLayers[i].weights.data()), session.masterWeights.denseLayers[i].weights.size * sizeof(float));
         }
 
         // Lade die Elo-Tabellen-Einträge (Namen und Elos)

@@ -2,6 +2,8 @@
 #define NNUE_MASTER_WEIGHTS_H
 
 #include "core/utils/nnue/NNUENetwork.h"
+#include "tune/ml/HalfKAv2_hm.h"
+#include "tune/ml/DenseLayer.h"
 
 #include <cmath>
 #include <limits>
@@ -13,33 +15,27 @@ namespace NNUE {
      * @brief Kapselt die Gradienten eines Rückwärtspasses durch das Netzwerk mit Master-Parametern.
      */
     struct Gradients {
-        std::vector<float> halfKPBiases = std::vector<float>(NNUE::Network::SINGLE_SUBNET_SIZE, 0);
-        std::unordered_map<size_t, float> halfKPWeights;
-        std::array<std::vector<float>, NNUE::Network::NUM_LAYERS> denseLayerBiases;
-        std::array<std::vector<float>, NNUE::Network::NUM_LAYERS> denseLayerWeights;
-
-        inline Gradients() {
-            for(size_t i = 0; i < NNUE::Network::NUM_LAYERS; i++) {
-                denseLayerBiases[i] = std::vector<float>(NNUE::Network::LAYER_SIZES[i + 1], 0);
-                denseLayerWeights[i] = std::vector<float>(NNUE::Network::LAYER_SIZES[i] * NNUE::Network::LAYER_SIZES[i + 1], 0);
-            }
-        }
+        ML::HalfKAv2_hmLayer::Gradients halfKAGradients{NNUE::Network::SINGLE_SUBNET_SIZE};
+        ML::DenseLayer::Gradients denseLayerGradients[NNUE::Network::NUM_LAYERS] {
+            ML::DenseLayer::Gradients(NNUE::Network::LAYER_SIZES[0], NNUE::Network::LAYER_SIZES[1]),
+            ML::DenseLayer::Gradients(NNUE::Network::LAYER_SIZES[1], NNUE::Network::LAYER_SIZES[2]),
+            ML::DenseLayer::Gradients(NNUE::Network::LAYER_SIZES[2], NNUE::Network::LAYER_SIZES[3])
+        };
     };
 
     /**
      * @brief Kapselt die Aktivierungen eines Vorwärtspasses durch das Netzwerk mit Master-Parametern.
      */
     struct NetworkActivations {
-        std::vector<float> halfKPOutputs = std::vector<float>(NNUE::Network::LAYER_SIZES[0], 0);
-        std::array<std::vector<float>, NNUE::Network::NUM_LAYERS> denseLayerOutputs;
-
-        inline NetworkActivations() {
-            for(size_t i = 0; i < NNUE::Network::NUM_LAYERS; i++)
-                denseLayerOutputs[i] = std::vector<float>(NNUE::Network::LAYER_SIZES[i + 1], 0);
-        }
+        ML::HalfKAv2_hmLayer::ForwardResult halfKPActivations{NNUE::Network::LAYER_SIZES[0]};
+        ML::DenseLayer::ForwardResult denseLayerOutputs[NNUE::Network::NUM_LAYERS] {
+            ML::DenseLayer::ForwardResult(NNUE::Network::LAYER_SIZES[1]),
+            ML::DenseLayer::ForwardResult(NNUE::Network::LAYER_SIZES[2]),
+            ML::DenseLayer::ForwardResult(NNUE::Network::LAYER_SIZES[3])
+        };
 
         inline float output() const noexcept {
-            return denseLayerOutputs[NNUE::Network::NUM_LAYERS - 1][0];
+            return denseLayerOutputs[NNUE::Network::NUM_LAYERS - 1].output(0);
         }
     };
 
@@ -55,19 +51,16 @@ namespace NNUE {
         static constexpr float DENSE_WEIGHT_MAX = std::numeric_limits<int8_t>::max() / 128.0f;
 
         // Master-Parameter des HalfKP-Layers
-        std::vector<float> exactHalfKPBiases = std::vector<float>(NNUE::Network::SINGLE_SUBNET_SIZE, 0);
-        std::vector<float> exactHalfKP = std::vector<float>(NNUE::Network::INPUT_SIZE * NNUE::Network::SINGLE_SUBNET_SIZE, 0);
+        ML::HalfKAv2_hmLayer halfKPLayer{NNUE::Network::LAYER_SIZES[0]};
 
         // Master-Parameter der Dense-Layer
-        std::array<std::vector<float>, NNUE::Network::NUM_LAYERS> exactDenseLayerBiases;
-        std::array<std::vector<float>, NNUE::Network::NUM_LAYERS> exactDenseLayerWeights;
+        ML::DenseLayer denseLayers[NNUE::Network::NUM_LAYERS] {
+            ML::DenseLayer(NNUE::Network::LAYER_SIZES[0], NNUE::Network::LAYER_SIZES[1]),
+            ML::DenseLayer(NNUE::Network::LAYER_SIZES[1], NNUE::Network::LAYER_SIZES[2]),
+            ML::DenseLayer(NNUE::Network::LAYER_SIZES[2], NNUE::Network::LAYER_SIZES[3], false)
+        };
 
-        inline MasterWeights() {
-            for(size_t i = 0; i < NNUE::Network::NUM_LAYERS; i++) {
-                exactDenseLayerBiases[i] = std::vector<float>(NNUE::Network::LAYER_SIZES[i + 1], 0);
-                exactDenseLayerWeights[i] = std::vector<float>(NNUE::Network::LAYER_SIZES[i] * NNUE::Network::LAYER_SIZES[i + 1], 0);
-            }
-        }
+        MasterWeights() = default;
 
         MasterWeights(const NNUE::Network& network);
 
@@ -97,12 +90,6 @@ namespace NNUE {
          * Andernfalls werden die genauen Werte der Master-Parameter verwendet.
          */
         Gradients backward(const Board& board, const NetworkActivations& activations, float outputGrad, bool fakeQuantization) const;
-
-        private:
-            template <typename Q>
-            NetworkActivations forwardImpl(const Board& board, Q q) const;
-            template <typename Q>
-            Gradients backwardImpl(const Board& board, const NetworkActivations& activations, float outputGrad, Q q) const;
     };
 }
 
