@@ -28,7 +28,7 @@ LD = ld
 
 # Compilerflags (Header Dependency Tracking hinzugefügt: -MMD -MP)
 DEPFLAGS = -MMD -MP
-CFLAGS_BASE = -Wall -Wextra -Werror -std=c++20 -Isrc -Ofast -flto=auto -march=native $(DEPFLAGS)
+CFLAGS_BASE = -Wall -Wextra -Werror -std=c++20 -Isrc -Ofast -flto=auto -march=native $(DEPFLAGS) -DNDEBUG
 CFLAGS_HCE = $(CFLAGS_BASE) -DUSE_HCE
 CFLAGS_NNUE = $(CFLAGS_BASE) -DUSE_NNUE
 CFLAGS_REN = $(CFLAGS_BASE) -DUSE_REN
@@ -50,9 +50,7 @@ LDLIBS =
 PROFILING_ARGS = "go movetime 3000"
 
 # Ausgabe der verwendeten Compilerflags
-ifeq ($(MAKECMDGOALS),all)
-$(info [INFO] Compiling with $(CC) $(CFLAGS_BASE))
-else ifeq ($(MAKECMDGOALS),engines)
+ifneq ($(MAKECMDGOALS),clean)
 $(info [INFO] Compiling with $(CC) $(CFLAGS_BASE))
 endif
 
@@ -220,5 +218,10 @@ endif
 # --- Dependency Inclusion ---
 # Finde alle .d Dateien, die vom Compiler generiert wurden und binde sie ein
 DEP_FILES = $(patsubst src/%.cpp,bin/obj_nnue/%.d,$(SRC)) \
-            $(patsubst src/%.cpp,bin/obj_hce/%.d,$(SRC))
+            $(patsubst src/%.cpp,bin/obj_hce/%.d,$(SRC)) \
+			$(patsubst src/%.cpp,bin/obj_ren/%.d,$(SRC)) \
+			$(patsubst resources/%,bin/embed_nnue/%.d,$(RES_NNUE)) \
+			$(patsubst resources/%,bin/embed_hce/%.d,$(RES_HCE)) \
+			$(patsubst resources/%,bin/embed_ren/%.d,$(RES_REN))
+
 -include $(DEP_FILES)
