@@ -84,10 +84,11 @@ namespace REN {
              * @param h_0 Der initiale Zustand.
              * @param fakeQuant Ob die Fake-Quantisierung verwendet werden soll.
              * @param alpha Der Gewichtungsfaktor für die Krasnoselskii-Mann Iteration.
+             * @param stepSizeBacktracking Verringert die Schrittweite alpha wenn die Residuen größer werden, um die Konvergenz zu stabilisieren.
              * @param maxIterations Die maximale Anzahl an Iterationen, bevor abgebrochen wird.
              * @param tol Die Toleranz für die Konvergenz.
              */
-            ForwardResult forward(const ML::Vector& h_0, bool fakeQuant, float alpha = 0.5f,
+            ForwardResult forward(const ML::Vector& h_0, bool fakeQuant, float alpha = 1.0f, bool stepSizeBacktracking = true,
                 size_t maxIterations = std::numeric_limits<size_t>::max(), float tol = 1e-4f) const;
 
             /**

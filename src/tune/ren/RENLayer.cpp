@@ -103,10 +103,11 @@ inline float activate(float z_i, float h_i, float alpha) {
     return (1.0f - alpha) * h_i + alpha * act;
 }
 
-RENLayer::ForwardResult RENLayer::forward(const ML::Vector& h_0, bool fakeQuant, float alpha, size_t maxIterations, float tol) const {
+RENLayer::ForwardResult RENLayer::forward(const ML::Vector& h_0, bool fakeQuant, float alpha, bool stepSizeBacktracking, size_t maxIterations, float tol) const {
     ForwardResult result(h_0);
+    result.residual = std::numeric_limits<float>::max();
 
-    float residual = std::numeric_limits<float>::max();
+    float residual;
     for(size_t iter = 0; iter < maxIterations; iter++) {
         residual = 0.0f;
 
@@ -129,6 +130,10 @@ RENLayer::ForwardResult RENLayer::forward(const ML::Vector& h_0, bool fakeQuant,
         }
 
         residual = std::sqrt(residual);
+
+        if(stepSizeBacktracking && residual >= result.residual)
+            alpha *= 0.5f;
+
         result.residual = residual;
         result.iterations = iter + 1;
 

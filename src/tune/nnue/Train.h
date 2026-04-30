@@ -1,5 +1,5 @@
-#ifndef TRAIN_H
-#define TRAIN_H
+#ifndef NNUE_TRAIN_H
+#define NNUE_TRAIN_H
 
 #include "core/utils/nnue/NNUENetwork.h"
 #include "tune/Definitions.h"
@@ -8,7 +8,6 @@
 
 #include <cmath>
 #include <fstream>
-#include <unordered_map>
 #include <vector>
 
 namespace Train {
