@@ -61,6 +61,8 @@ double Train::loss(std::vector<DataPoint>& data, const NNUE::MasterWeights& mast
                 float networkOutput = masterWeights.forward(dp.board, true).output();
                 double prediction = tanh(networkOutputToCentipawns(networkOutput), k);
                 double target = (1.0 - kappa) * tanh(dp.tdTarget, k) + kappa * (double)dp.finalResult;
+                if(dp.board.getSideToMove() == BLACK)
+                    prediction = -prediction;
 
                 sum.fetch_add(mse(prediction, target));
             }
@@ -107,6 +109,8 @@ double Train::loss(std::vector<DataPoint>& data, const NNUE::Network& network, d
 
                 double prediction = tanh(evaluator.evaluate(), k);
                 double target = (1.0 - kappa) * tanh(dp.tdTarget, k) + kappa * (double)dp.finalResult;
+                if(dp.board.getSideToMove() == BLACK)
+                    prediction = -prediction;
 
                 sum.fetch_add(mse(prediction, target));
             }
@@ -156,7 +160,10 @@ NNUE::Gradients Train::gradient(std::vector<DataPoint>& data, const std::vector<
                 float networkOutput = activations.output();
                 double cp = networkOutputToCentipawns(networkOutput);
                 double prediction = tanh(cp, k);
+
                 double target = (1.0 - kappa) * tanh(dp.tdTarget, k) + kappa * (double)dp.finalResult;
+                if(dp.board.getSideToMove() == BLACK)
+                    target = -target;
 
                 double errorGrad = 2.0 * (prediction - target) * (1.0 - prediction * prediction) * k * 100.0 * (16384.0 / 6656.0);
 

@@ -212,7 +212,7 @@ namespace Train {
      * @param numEpochs Die Anzahl der Epochen.
      * @param learningRate Die Lernrate.
      * @param kappa Bestimmt, wie stark das finale Ergebnis in das Ziel einfließen soll.
-     * @return HCEParameters Die verbesserten Parameter.
+     * @return NNUE::Network* Die verbesserten Parameter.
      */
     NNUE::Network* adamW(std::vector<DataPoint>& data, size_t numEpochs, double learningRate, double kappa);
 

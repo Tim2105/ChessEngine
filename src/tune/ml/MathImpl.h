@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <immintrin.h>
 #include <memory>
+#include <new>
 
 namespace ML {
 
@@ -140,6 +141,41 @@ namespace ML {
         }
 
         #endif
+    }
+
+    inline float __unsafe_spectral_radius(const float* __restrict m, size_t size, size_t maxIterations = 400, float tol = 1e-5f) {
+        // Power-Iteration zur Berechnung der Spektralradius
+        float* __restrict b_k = new (std::align_val_t(REQUIRED_ALIGNMENT)) float[size];
+        for(size_t i = 0; i < size; i++)
+            b_k[i] = 1.0f; // Startvektor
+
+        float* __restrict b_k1 = new (std::align_val_t(REQUIRED_ALIGNMENT)) float[size];
+        float eigenvalue = 0.0f;
+        for(size_t iter = 0; iter < maxIterations; iter++) {
+            // Matrix-Vektor-Produkt: b_k1 = m * b_k
+            __unsafe_gemv(b_k1, m, b_k, size, size);
+
+            // Normalisieren
+            float invNorm = 1.0f / std::sqrt(__unsafe_dot(b_k1, b_k1, size));
+            for(size_t i = 0; i < size; i++)
+                b_k[i] = b_k1[i] * invNorm;
+
+            // Rayleigh-Quotient als Eigenwertschätzung
+            float new_eigenvalue = __unsafe_dot(b_k, b_k1, size);
+
+            // Konvergenz prüfen
+            if(std::abs(new_eigenvalue - eigenvalue) < tol) {
+                eigenvalue = new_eigenvalue;
+                break;
+            }
+
+            eigenvalue = new_eigenvalue;
+        }
+
+        delete[] b_k;
+        delete[] b_k1;
+
+        return std::abs(eigenvalue);
     }
 
 }

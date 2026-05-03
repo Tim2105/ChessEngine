@@ -10,6 +10,15 @@
 
 using namespace REN;
 
+constexpr float sigmoid(float x) {
+    return 1.0f / (1.0f + std::exp(-x));
+}
+
+constexpr float sigmoidDerivative(float x) {
+    float s = sigmoid(x);
+    return s * (1.0f - s);
+}
+
 void RENLayer::constructTransform() {
     // W_r = -Q Q^T + diag((1 - epsilon) * tanh(gamma_raw))
     for(size_t i = 0; i < size; i++) {
@@ -20,7 +29,7 @@ void RENLayer::constructTransform() {
 
             float val = -sum;
             if(i == j)
-                val += (1.0f - epsilon) * std::tanh(surrogateWeights.gammaRaw(i));
+                val += (1.0f - epsilon) * sigmoid(surrogateWeights.gammaRaw(i));
 
             transform(i, j) = val;
             transform(j, i) = val; // Symmetrie ausnutzen
@@ -28,12 +37,29 @@ void RENLayer::constructTransform() {
     }
 }
 
+void RENLayer::normalize(float maxSpectralRadius) {
+    float norm = spectralRadius();
+    if(norm > maxSpectralRadius) {
+        float minGamma = 1.0f;
+        for(size_t i = 0; i < size; i++)
+            minGamma = std::min(minGamma, (1.0f - epsilon) * sigmoid(surrogateWeights.gammaRaw(i)));
+
+        float scale = std::sqrt(maxSpectralRadius + minGamma) / std::sqrt(norm + minGamma);
+        surrogateWeights.q *= scale;
+        constructTransform();
+    }
+}
+
+float RENLayer::spectralRadius(size_t maxIterations, float tol) const {
+    return transform.spectralRadius(maxIterations, tol);
+}
+
 template <typename Q>
-ML::Vector RENLayer::forwardImpl(const ML::Vector& h_t, const ML::Vector& z_0, Q q) const {
+ML::Vector RENLayer::forwardImpl(const ML::Vector& h_t, const ML::Vector& h_0, Q q) const {
     ML::Vector result(size);
 
     for(size_t i = 0; i < size; i++) {
-        float sum = z_0(i) + q(bias(i));
+        float sum = h_0(i) + q(bias(i));
         for(size_t j = 0; j < size; j++)
             sum += q(transform(i, j)) * h_t(j);
 
@@ -69,10 +95,8 @@ RENLayer::Gradients RENLayer::backwardImpl(const ML::Vector& h_opt, const ML::Ve
     grads.inputGrad = v;
 
     // Gradient für gammaRaw
-    for(size_t i = 0; i < size; i++) {
-        float tanh_val = std::tanh(surrogateWeights.gammaRaw(i));
-        grads.gammaRaw(i) = v(i) * h_opt(i) * (1.0f - epsilon) * (1.0f - tanh_val * tanh_val);
-    }
+    for(size_t i = 0; i < size; i++)
+        grads.gammaRaw(i) = v(i) * h_opt(i) * (1.0f - epsilon) * sigmoidDerivative(surrogateWeights.gammaRaw(i));
 
     // Gradient für q
     // g_q = -(v h_opt^T + h_opt v^T) * q
@@ -103,7 +127,7 @@ inline float activate(float z_i, float h_i, float alpha) {
     return (1.0f - alpha) * h_i + alpha * act;
 }
 
-RENLayer::ForwardResult RENLayer::forward(const ML::Vector& h_0, bool fakeQuant, float alpha, bool stepSizeBacktracking, size_t maxIterations, float tol) const {
+RENLayer::ForwardResult RENLayer::forward(const ML::Vector& h_0, bool fakeQuant, size_t maxIterations, float tol, float alpha, bool stepSizeBacktracking) const {
     ForwardResult result(h_0);
     result.residual = std::numeric_limits<float>::max();
 

@@ -40,7 +40,7 @@ template <typename Q>
 HalfKAv2_hmLayer::Gradients HalfKAv2_hmLayer::backwardImpl(const Board& board,
     const HalfKAv2_hmLayer::ForwardResult& forwardResult, const Vector& outputGrad) const {
 
-    Gradients grads(subnetSize);
+    Gradients grads(subnetSize * 2);
 
     Vector preActivationGrad(subnetSize * 2);
     for(size_t i = 0; i < subnetSize * 2; i++)

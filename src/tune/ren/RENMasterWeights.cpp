@@ -2,29 +2,52 @@
 
 #include <cmath>
 
-REN::NetworkActivations REN::MasterWeights::forward(const Board& board, bool fakeQuantization) const {
+REN::NetworkActivations REN::MasterWeights::forward(const Board& board, bool fakeQuantization,
+    size_t maxIterations, float tol) const {
+
     NetworkActivations activations;
 
     activations.halfKPActivations = halfKAv2Layer.forward(board, fakeQuantization);
-    activations.renActivations = renLayer.forward(activations.halfKPActivations.output, fakeQuantization);
+    activations.encoderActivations = encoderLayer.forward(activations.halfKPActivations.output, fakeQuantization);
+    activations.renActivations = renLayer.forward(activations.encoderActivations.output, fakeQuantization, maxIterations, tol);
     activations.outputLayerActivations = outputLayer.forward(activations.renActivations.h_opt, fakeQuantization);
 
     return activations;
 }
 
-REN::Gradients REN::MasterWeights::backward(const Board& board, const NetworkActivations& activations, float outputGrad, bool fakeQuantization) const {
-    ML::Vector outputGradVec(1);
-    outputGradVec(0) = outputGrad;
+REN::Gradients REN::MasterWeights::backward(const Board& board, const NetworkActivations& activations, const ML::DenseLayer::ForwardResult& encActivations,
+    float outputGrad, float encOutputGrad, bool fakeQuantization) const {
+
     Gradients gradients;
 
+    // Pfad A: outputGrad -> outputLayer -> renLayer -> encoderLayer -> halfKAv2Layer
+    ML::Vector mainGradVec(1);
+    mainGradVec(0) = outputGrad;
+
     gradients.outputLayerGradients = outputLayer.backward(activations.renActivations.h_opt,
-        activations.outputLayerActivations, outputGradVec, fakeQuantization);
+        activations.outputLayerActivations, mainGradVec, fakeQuantization);
 
     gradients.renGradients = renLayer.backward(activations.renActivations,
         gradients.outputLayerGradients.inputGrad, fakeQuantization);
 
+    // Pfad B: encOutputGrad -> outputLayer -> encoderLayer -> halfKAv2Layer
+    ML::Vector encGradVec(1);
+    encGradVec(0) = encOutputGrad;
+
+    ML::DenseLayer::Gradients encOutputLayerGradients = outputLayer.backward(activations.encoderActivations.output,
+        encActivations, encGradVec, fakeQuantization);
+
+    gradients.outputLayerGradients.bias += encOutputLayerGradients.bias;
+    gradients.outputLayerGradients.weights += encOutputLayerGradients.weights;
+
+    // Gradienten für Encoder zusammenführen
+    gradients.renGradients.inputGrad += encOutputLayerGradients.inputGrad;
+
+    gradients.encoderGradients = encoderLayer.backward(activations.halfKPActivations.output,
+        activations.encoderActivations, gradients.renGradients.inputGrad, fakeQuantization);
+
     gradients.halfKAGradients = halfKAv2Layer.backward(board,
-        activations.halfKPActivations, gradients.renGradients.inputGrad, fakeQuantization);
+        activations.halfKPActivations, gradients.encoderGradients.inputGrad, fakeQuantization);
 
     return gradients;
 }

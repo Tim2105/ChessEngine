@@ -18,7 +18,7 @@ namespace ML {
                 std::unordered_map<size_t, float> weights;
                 Vector bias;
 
-                inline Gradients(size_t outputSize) : bias(outputSize) {}
+                inline Gradients(size_t outputSize) : bias(outputSize / 2) {}
             };
 
             struct ForwardResult {

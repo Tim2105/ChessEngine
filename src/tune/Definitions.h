@@ -119,7 +119,7 @@ class Variable {
             return *this;
         }
 
-        inline std::string getAsString() {
+        inline std::string getAsString() const {
             if(type == Type::STRING)
                 return *(std::string*)value;
             else if(type == Type::BOOL)
@@ -140,7 +140,7 @@ class Variable {
 
         template <typename T> requires(std::is_same_v<T, std::string> || std::is_same_v<T, bool> || std::is_same_v<T, char> ||
                                        std::is_unsigned_v<T> || std::is_signed_v<T> || std::is_floating_point_v<T>)
-        inline T get() {
+        inline T get() const {
             if constexpr(std::is_same_v<T, std::string>)
                 return getAsString();
             else if constexpr(std::is_same_v<T, bool>) {
@@ -231,7 +231,7 @@ class Variable {
             }
         }
 
-        inline std::string getTypeString() {
+        inline std::string getTypeString() const {
             if(type == Type::STRING)
                 return "string";
             else if(type == Type::BOOL)
@@ -305,6 +305,9 @@ extern Variable alpha;
 extern Variable beta1;
 extern Variable beta2;
 extern Variable weightDecay;
+
+extern Variable encLossWeight;
+extern Variable maxSpectralRadius;
 
 /**
  * Variablen der Validierung.

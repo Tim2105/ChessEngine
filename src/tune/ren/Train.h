@@ -12,27 +12,33 @@
 namespace Train {
     struct TrainingSession {
         // Erster Moment des HalfKP-Layers
-        std::vector<float> mHalfKPBiases = std::vector<float>(REN::REN_SIZE / 2, 0);
-        std::vector<float> mHalfKPWeights = std::vector<float>(NNUE::Network::INPUT_SIZE * (REN::REN_SIZE / 2), 0);
+        std::vector<float> mHalfKPBiases = std::vector<float>(REN::HALF_KA_OUTPUT_SIZE / 2, 0);
+        std::vector<float> mHalfKPWeights = std::vector<float>(NNUE::Network::INPUT_SIZE * (REN::HALF_KA_OUTPUT_SIZE / 2), 0);
+        std::vector<float> mEncoderBiases = std::vector<float>(REN::REN_SIZE, 0);
+        std::vector<float> mEncoderWeights = std::vector<float>(REN::HALF_KA_OUTPUT_SIZE * REN::REN_SIZE, 0);
 
         // Erster Moment der REN- und Output-Layer
         std::vector<float> mRENBiases = std::vector<float>(REN::REN_SIZE, 0);
-        std::vector<float> mRENWeights = std::vector<float>(REN::REN_SIZE * REN::REN_SIZE, 0);
+        std::vector<float> mRENQWeights = std::vector<float>(REN::REN_SIZE * REN::REN_SIZE, 0);
+        std::vector<float> mRENGammaRawWeights = std::vector<float>(REN::REN_SIZE, 0);
         std::vector<float> mOutputBiases = std::vector<float>(1, 0);
         std::vector<float> mOutputWeights = std::vector<float>(REN::REN_SIZE * 1, 0);
 
         // Zweiter Moment des HalfKP-Layers
-        std::vector<float> vHalfKPBiases = std::vector<float>(REN::REN_SIZE / 2, 0);
-        std::vector<float> vHalfKPWeights = std::vector<float>(NNUE::Network::INPUT_SIZE * (REN::REN_SIZE / 2), 0);
+        std::vector<float> vHalfKPBiases = std::vector<float>(REN::HALF_KA_OUTPUT_SIZE / 2, 0);
+        std::vector<float> vHalfKPWeights = std::vector<float>(NNUE::Network::INPUT_SIZE * (REN::HALF_KA_OUTPUT_SIZE / 2), 0);
+        std::vector<float> vEncoderBiases = std::vector<float>(REN::REN_SIZE, 0);
+        std::vector<float> vEncoderWeights = std::vector<float>(REN::HALF_KA_OUTPUT_SIZE * REN::REN_SIZE, 0);
 
         // Zweiter Moment der REN- und Output-Layer
         std::vector<float> vRENBiases = std::vector<float>(REN::REN_SIZE, 0);
-        std::vector<float> vRENWeights = std::vector<float>(REN::REN_SIZE * REN::REN_SIZE, 0);
+        std::vector<float> vRENQWeights = std::vector<float>(REN::REN_SIZE * REN::REN_SIZE, 0);
+        std::vector<float> vRENGammaRawWeights = std::vector<float>(REN::REN_SIZE, 0);
         std::vector<float> vOutputBiases = std::vector<float>(1, 0);
         std::vector<float> vOutputWeights = std::vector<float>(REN::REN_SIZE * 1, 0);
 
         // Letzte Aktualisierung der Parameter (für sparse Adam)
-        std::vector<size_t> lastUpdateHalfKPWeights = std::vector<size_t>(NNUE::Network::INPUT_SIZE * (REN::REN_SIZE / 2), 0);
+        std::vector<size_t> lastUpdateHalfKPWeights = std::vector<size_t>(NNUE::Network::INPUT_SIZE * (REN::HALF_KA_OUTPUT_SIZE / 2), 0);
 
         REN::MasterWeights masterWeights;
         EloTable<NNUE::Network> eloTable;
@@ -50,15 +56,21 @@ namespace Train {
         os.write(reinterpret_cast<const char*>(&session.averageLoss), sizeof(session.averageLoss));
         os.write(reinterpret_cast<const char*>(session.mHalfKPBiases.data()), session.mHalfKPBiases.size() * sizeof(float));
         os.write(reinterpret_cast<const char*>(session.mHalfKPWeights.data()), session.mHalfKPWeights.size() * sizeof(float));
+        os.write(reinterpret_cast<const char*>(session.mEncoderBiases.data()), session.mEncoderBiases.size() * sizeof(float));
+        os.write(reinterpret_cast<const char*>(session.mEncoderWeights.data()), session.mEncoderWeights.size() * sizeof(float));
         os.write(reinterpret_cast<const char*>(session.mRENBiases.data()), session.mRENBiases.size() * sizeof(float));
-        os.write(reinterpret_cast<const char*>(session.mRENWeights.data()), session.mRENWeights.size() * sizeof(float));
+        os.write(reinterpret_cast<const char*>(session.mRENQWeights.data()), session.mRENQWeights.size() * sizeof(float));
+        os.write(reinterpret_cast<const char*>(session.mRENGammaRawWeights.data()), session.mRENGammaRawWeights.size() * sizeof(float));
         os.write(reinterpret_cast<const char*>(session.mOutputBiases.data()), session.mOutputBiases.size() * sizeof(float));
         os.write(reinterpret_cast<const char*>(session.mOutputWeights.data()), session.mOutputWeights.size() * sizeof(float));
 
         os.write(reinterpret_cast<const char*>(session.vHalfKPBiases.data()), session.vHalfKPBiases.size() * sizeof(float));
         os.write(reinterpret_cast<const char*>(session.vHalfKPWeights.data()), session.vHalfKPWeights.size() * sizeof(float));
+        os.write(reinterpret_cast<const char*>(session.vEncoderBiases.data()), session.vEncoderBiases.size() * sizeof(float));
+        os.write(reinterpret_cast<const char*>(session.vEncoderWeights.data()), session.vEncoderWeights.size() * sizeof(float));
         os.write(reinterpret_cast<const char*>(session.vRENBiases.data()), session.vRENBiases.size() * sizeof(float));
-        os.write(reinterpret_cast<const char*>(session.vRENWeights.data()), session.vRENWeights.size() * sizeof(float));
+        os.write(reinterpret_cast<const char*>(session.vRENQWeights.data()), session.vRENQWeights.size() * sizeof(float));
+        os.write(reinterpret_cast<const char*>(session.vRENGammaRawWeights.data()), session.vRENGammaRawWeights.size() * sizeof(float));
         os.write(reinterpret_cast<const char*>(session.vOutputBiases.data()), session.vOutputBiases.size() * sizeof(float));
         os.write(reinterpret_cast<const char*>(session.vOutputWeights.data()), session.vOutputWeights.size() * sizeof(float));
 
@@ -66,6 +78,9 @@ namespace Train {
 
         os.write(reinterpret_cast<const char*>(session.masterWeights.halfKAv2Layer.bias.data()), session.masterWeights.halfKAv2Layer.bias.size * sizeof(float));
         os.write(reinterpret_cast<const char*>(session.masterWeights.halfKAv2Layer.weights.data()), session.masterWeights.halfKAv2Layer.weights.size * sizeof(float));
+
+        os.write(reinterpret_cast<const char*>(session.masterWeights.encoderLayer.bias.data()), session.masterWeights.encoderLayer.bias.size * sizeof(float));
+        os.write(reinterpret_cast<const char*>(session.masterWeights.encoderLayer.weights.data()), session.masterWeights.encoderLayer.weights.size * sizeof(float));
 
         os.write(reinterpret_cast<const char*>(session.masterWeights.renLayer.surrogateWeights.q.data()), session.masterWeights.renLayer.surrogateWeights.q.size * sizeof(float));
         os.write(reinterpret_cast<const char*>(session.masterWeights.renLayer.surrogateWeights.gammaRaw.data()), session.masterWeights.renLayer.surrogateWeights.gammaRaw.size * sizeof(float));
@@ -97,15 +112,21 @@ namespace Train {
         is.read(reinterpret_cast<char*>(&session.averageLoss), sizeof(session.averageLoss));
         is.read(reinterpret_cast<char*>(session.mHalfKPBiases.data()), session.mHalfKPBiases.size() * sizeof(float));
         is.read(reinterpret_cast<char*>(session.mHalfKPWeights.data()), session.mHalfKPWeights.size() * sizeof(float));
+        is.read(reinterpret_cast<char*>(session.mEncoderBiases.data()), session.mEncoderBiases.size() * sizeof(float));
+        is.read(reinterpret_cast<char*>(session.mEncoderWeights.data()), session.mEncoderWeights.size() * sizeof(float));
         is.read(reinterpret_cast<char*>(session.mRENBiases.data()), session.mRENBiases.size() * sizeof(float));
-        is.read(reinterpret_cast<char*>(session.mRENWeights.data()), session.mRENWeights.size() * sizeof(float));
+        is.read(reinterpret_cast<char*>(session.mRENQWeights.data()), session.mRENQWeights.size() * sizeof(float));
+        is.read(reinterpret_cast<char*>(session.mRENGammaRawWeights.data()), session.mRENGammaRawWeights.size() * sizeof(float));
         is.read(reinterpret_cast<char*>(session.mOutputBiases.data()), session.mOutputBiases.size() * sizeof(float));
         is.read(reinterpret_cast<char*>(session.mOutputWeights.data()), session.mOutputWeights.size() * sizeof(float));
 
         is.read(reinterpret_cast<char*>(session.vHalfKPBiases.data()), session.vHalfKPBiases.size() * sizeof(float));
         is.read(reinterpret_cast<char*>(session.vHalfKPWeights.data()), session.vHalfKPWeights.size() * sizeof(float));
+        is.read(reinterpret_cast<char*>(session.vEncoderBiases.data()), session.vEncoderBiases.size() * sizeof(float));
+        is.read(reinterpret_cast<char*>(session.vEncoderWeights.data()), session.vEncoderWeights.size() * sizeof(float));
         is.read(reinterpret_cast<char*>(session.vRENBiases.data()), session.vRENBiases.size() * sizeof(float));
-        is.read(reinterpret_cast<char*>(session.vRENWeights.data()), session.vRENWeights.size() * sizeof(float));
+        is.read(reinterpret_cast<char*>(session.vRENQWeights.data()), session.vRENQWeights.size() * sizeof(float));
+        is.read(reinterpret_cast<char*>(session.vRENGammaRawWeights.data()), session.vRENGammaRawWeights.size() * sizeof(float));
         is.read(reinterpret_cast<char*>(session.vOutputBiases.data()), session.vOutputBiases.size() * sizeof(float));
         is.read(reinterpret_cast<char*>(session.vOutputWeights.data()), session.vOutputWeights.size() * sizeof(float));
 
@@ -113,6 +134,9 @@ namespace Train {
 
         is.read(reinterpret_cast<char*>(session.masterWeights.halfKAv2Layer.bias.data()), session.masterWeights.halfKAv2Layer.bias.size * sizeof(float));
         is.read(reinterpret_cast<char*>(session.masterWeights.halfKAv2Layer.weights.data()), session.masterWeights.halfKAv2Layer.weights.size * sizeof(float));
+
+        is.read(reinterpret_cast<char*>(session.masterWeights.encoderLayer.bias.data()), session.masterWeights.encoderLayer.bias.size * sizeof(float));
+        is.read(reinterpret_cast<char*>(session.masterWeights.encoderLayer.weights.data()), session.masterWeights.encoderLayer.weights.size * sizeof(float));
 
         is.read(reinterpret_cast<char*>(session.masterWeights.renLayer.surrogateWeights.q.data()), session.masterWeights.renLayer.surrogateWeights.q.size * sizeof(float));
         is.read(reinterpret_cast<char*>(session.masterWeights.renLayer.surrogateWeights.gammaRaw.data()), session.masterWeights.renLayer.surrogateWeights.gammaRaw.size * sizeof(float));
@@ -162,6 +186,11 @@ namespace Train {
 
     extern TrainingSession trainingSession;
 
+    struct LossSummary {
+        double loss;
+        uint64_t avgIterations, minIterations, maxIterations;
+    };
+
     /**
      * @brief Bestimmt den MSE eines unquantisierten Parametersatzes auf einem Datensatz.
      * Diese Funktion betrachtet den gesamten Datensatz. Die Berechnung
@@ -171,9 +200,38 @@ namespace Train {
      * @param masterWeights Die unquantisierten Parameter des Netzwerks.
      * @param k Der Faktor, der mit dem Bewertungswert innerhalb der tanh-Funktion multipliziert wird.
      * @param kappa Bestimmt, wie stark das finale Ergebnis in das TD-Ziel einfließen soll.
+     * @param encLossWeight Bestimmt, wie stark der Fehler des Encodings in den finalen Fehler einfließen soll.
+     * @param maxIterations Die maximale Anzahl von Iterationen für die Berechnung.
      * @return double Der mittlere quadratische Fehler.
      */
-    double loss(std::vector<DataPoint>& data, const REN::MasterWeights& masterWeights, double k, double kappa);
+    LossSummary loss(const std::vector<DataPoint>& data, const REN::MasterWeights& masterWeights, double k,
+        double kappa, double encLossWeight, size_t maxIterations = std::numeric_limits<size_t>::max());
+
+    /**
+     * @brief Berechnet den Gradienten des MSE eines unquantisierten Parametersatzes auf einem Datensatz.
+     * Zusätzlich werden die Indizes der Datenpunkte übergeben,
+     * die für die Berechnung des Gradienten verwendet werden sollen.
+     * 
+     * @param data Der Datensatz.
+     * @param indices Die Indizes der Datenpunkte, die für die Berechnung des Gradienten verwendet werden sollen.
+     * @param masterWeights Die unquantisierten Parameter des Netzwerks.
+     * @param k Der Faktor, der mit dem Bewertungswert innerhalb der tanh-Funktion multipliziert wird.
+     * @param kappa Bestimmt, wie stark das finale Ergebnis in das TD-Ziel einfließen soll.
+     * @param encLossWeight Bestimmt, wie stark der Fehler des Encodings in den finalen Fehler einfließen soll.
+     * @return std::vector<float> Der Gradient.
+     */
+    REN::Gradients gradient(const std::vector<DataPoint>& data, const std::vector<size_t>& indices, const REN::MasterWeights& masterWeights, double k, double kappa, double encLossWeight);
+
+    /**
+     * @brief Verbessert die Parameter eines HCE-Modells über den AdamW-Algorithmus.
+     * 
+     * @param data Der Datensatz.
+     * @param numEpochs Die Anzahl der Epochen.
+     * @param learningRate Die Lernrate.
+     * @param kappa Bestimmt, wie stark das finale Ergebnis in das Ziel einfließen soll.
+     * @param encLossWeight Bestimmt, wie stark der Fehler des Encodings in den finalen Fehler einfließen soll.
+     */
+    void adamW(std::vector<DataPoint>& data, size_t numEpochs, double learningRate, double kappa, double encLossWeight);
 
     /**
      * @brief Initialisiert die Master-Parameter des REN.

@@ -331,32 +331,68 @@ std::vector<DataPoint> loadData(std::istream& resultFile, size_t n) {
     return data;
 }
 
+double networkOutputToCp(float output) {
+    return (output * (128.0 * 128.0) * 100.0 / 6656.0);
+}
+
 void gradientDescent() {
     std::ifstream samplesFile(samplesFilePath.get<std::string>());
     std::vector<DataPoint> data = loadData(samplesFile);
     samplesFile.close();
 
-    // Test-Inferenz von einem zufälligen Datenpunkt
-    if(!data.empty()) {
-        const size_t randomIndex = Random::generator<7>()() % data.size();
-        const DataPoint& dp = data[randomIndex];
-        std::cout << "Testing inference on a random data point " << randomIndex << "..." << std::endl;
+    Train::initializeWeights(Train::trainingSession.masterWeights);
+
+    // Wähle 3 zufällige Datenpunkte
+    std::mt19937& generator = Random::generator<7>();
+    std::uniform_int_distribution<size_t> dataDist(0, data.size() - 1);
+    std::vector<DataPoint> randomData;
+    for(size_t i = 0; i < 3; i++)
+        randomData.push_back(data[dataDist(generator)]);
+
+    // Gib die zufälligen Datenpunkte aus
+    std::cout << "Random data points:" << std::endl;
+    std::cout << "-----------------------------" << std::endl;
+    for(const DataPoint& dp : randomData) {
         std::cout << "Board: " << dp.board.toFEN() << std::endl;
-        std::cout << "Leaf Board: " << dp.leafBoard.toFEN() << std::endl;
-        std::cout << "Leaf Evaluation: " << dp.leafEvaluation << std::endl;
-        std::cout << "Final Result: " << dp.finalResult << std::endl;
-        std::cout << "Log Probability: " << dp.logProb << std::endl;
         std::cout << "TD Target: " << dp.tdTarget << std::endl;
+        std::cout << "-----------------------------" << std::endl;
+    }
 
-        REN::MasterWeights masterWeights;
-        Train::initializeWeights(masterWeights);
+    // Gib die aktuellen Vorhersagen des Netzwerks für die zufälligen Datenpunkte aus
+    std::cout << "Initial predictions:" << std::endl;
+    for(const DataPoint& dp : randomData) {
+        REN::NetworkActivations activations = Train::trainingSession.masterWeights.forward(dp.board, true, 0);
+        float prediction = activations.output();
+        std::cout << "Prediction for " << dp.board.toFEN() << " (0 iterations): " << networkOutputToCp(prediction) << std::endl;
+        activations = Train::trainingSession.masterWeights.forward(dp.board, true, 2);
+        prediction = activations.output();
+        std::cout << "Prediction for " << dp.board.toFEN() << " (2 iterations): " << networkOutputToCp(prediction) << std::endl;
+        activations = Train::trainingSession.masterWeights.forward(dp.board, true, 5);
+        prediction = activations.output();
+        std::cout << "Prediction for " << dp.board.toFEN() << " (5 iterations): " << networkOutputToCp(prediction) << std::endl;
+        activations = Train::trainingSession.masterWeights.forward(dp.board, true);
+        prediction = activations.output();
+        std::cout << "Prediction for " << dp.board.toFEN() << " (max iterations): " << networkOutputToCp(prediction) << std::endl;
+        std::cout << "-----------------------------" << std::endl;
+    }
 
-        double loss = Train::loss(data, masterWeights, k.get<double>(), kappa.get<double>());
-        std::cout << "Initial loss: " << loss << std::endl;
+    Train::adamW(data, numEpochs.get<size_t>(), learningRate.get<double>(), kappa.get<double>(), encLossWeight.get<double>());
 
-        REN::NetworkActivations activations = masterWeights.forward(dp.board, true);
-        std::cout << "Network output: " << activations.output() << std::endl;
-        REN::Gradients gradients = masterWeights.backward(dp.board, activations, dp.tdTarget - activations.output(), true);
-        std::cout << "Calculated gradients." << std::endl;
+    // Gib die Vorhersagen des Netzwerks für die zufälligen Datenpunkte nach dem Training aus
+    std::cout << "Predictions after training:" << std::endl;
+    for(const DataPoint& dp : randomData) {
+        REN::NetworkActivations activations = Train::trainingSession.masterWeights.forward(dp.board, true, 0);
+        float prediction = activations.output();
+        std::cout << "Prediction for " << dp.board.toFEN() << " (0 iterations): " << networkOutputToCp(prediction) << std::endl;
+        activations = Train::trainingSession.masterWeights.forward(dp.board, true, 2);
+        prediction = activations.output();
+        std::cout << "Prediction for " << dp.board.toFEN() << " (2 iterations): " << networkOutputToCp(prediction) << std::endl;
+        activations = Train::trainingSession.masterWeights.forward(dp.board, true, 5);
+        prediction = activations.output();
+        std::cout << "Prediction for " << dp.board.toFEN() << " (5 iterations): " << networkOutputToCp(prediction) << std::endl;
+        activations = Train::trainingSession.masterWeights.forward(dp.board, true);
+        prediction = activations.output();
+        std::cout << "Prediction for " << dp.board.toFEN() << " (max iterations): " << networkOutputToCp(prediction) << std::endl;
+        std::cout << "-----------------------------" << std::endl;
     }
 }

@@ -293,6 +293,15 @@ namespace ML {
             return ConstVectorView(w.data() + c * outerDim, outerDim);
         }
 
+        inline float spectralRadius(size_t maxIterations = 400, float tol = 1e-5f) const {
+            assert(outerDim == innerDim);
+            return __unsafe_spectral_radius(w.data(), outerDim, maxIterations, tol);
+        }
+
+        inline float frobeniusNorm() const {
+            return std::sqrt(__unsafe_norm_sq(w.data(), size));
+        }
+
         inline Matrix operator+(const Matrix& other) const {
             assert(innerDim == other.innerDim && outerDim == other.outerDim);
             Matrix result(innerDim, outerDim);

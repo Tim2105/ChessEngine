@@ -51,8 +51,24 @@ namespace REN {
 
             /**
              * @brief Konstruiert W_r anhand von W_q und gamma_raw.
+             * W_r = -Q Q^T + diag((1 - epsilon) * sigmoid(gamma_raw))
              */
             void constructTransform();
+
+            /**
+             * @brief Normalisiert W_r so, dass der Spektralradius unter einem gegebenen Schwellenwert liegt.
+             * 
+             * @param maxSpectralRadius Der maximale erlaubte Spektralradius.
+             */
+            void normalize(float maxSpectralRadius);
+
+            /**
+             * @brief Berechnet die Spektralradius von W_r.
+             * 
+             * @param maxIterations Maximale Anzahl an Iterationen für die Power-Iteration.
+             * @param tol Toleranz für die Konvergenz der Power-Iteration.
+             */
+            float spectralRadius(size_t maxIterations = 400, float tol = 1e-5f) const;
 
             inline RENLayer(size_t size, float eps = 0.01) :
                 surrogateWeights(size), transform(size), bias(size), size(size), epsilon(eps) {
@@ -83,13 +99,14 @@ namespace REN {
              * 
              * @param h_0 Der initiale Zustand.
              * @param fakeQuant Ob die Fake-Quantisierung verwendet werden soll.
-             * @param alpha Der Gewichtungsfaktor für die Krasnoselskii-Mann Iteration.
-             * @param stepSizeBacktracking Verringert die Schrittweite alpha wenn die Residuen größer werden, um die Konvergenz zu stabilisieren.
              * @param maxIterations Die maximale Anzahl an Iterationen, bevor abgebrochen wird.
              * @param tol Die Toleranz für die Konvergenz.
+             * @param alpha Der Gewichtungsfaktor für die Krasnoselskii-Mann Iteration.
+             * @param stepSizeBacktracking Verringert die Schrittweite alpha wenn die Residuen größer werden, um die Konvergenz zu stabilisieren.
              */
-            ForwardResult forward(const ML::Vector& h_0, bool fakeQuant, float alpha = 1.0f, bool stepSizeBacktracking = true,
-                size_t maxIterations = std::numeric_limits<size_t>::max(), float tol = 1e-4f) const;
+            ForwardResult forward(const ML::Vector& h_0, bool fakeQuant,
+                size_t maxIterations = std::numeric_limits<size_t>::max(), float tol = 1e-4f,
+                float alpha = 0.25f, bool stepSizeBacktracking = true) const;
 
             /**
              * @brief Führt einen Rückwärtspass durch das REN durch und berechnet die Gradienten für die Master-Parameter.
