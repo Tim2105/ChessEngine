@@ -146,9 +146,9 @@ NNUE::Gradients Train::gradient(std::vector<DataPoint>& data, const std::vector<
 
         mutex.lock();
         while(currIndex < indices.size()) {
-            // Bearbeite Blöcke von 64 Datenpunkten
+            // Bearbeite Blöcke von 32 Datenpunkten
             size_t start = currIndex;
-            size_t end = std::min(currIndex + 64, indices.size());
+            size_t end = std::min(currIndex + 32, indices.size());
             currIndex = end;
             mutex.unlock();
 
@@ -241,12 +241,9 @@ NNUE::Network* Train::adamW(std::vector<DataPoint>& data, size_t numEpochs, doub
     }
 
     // Initialisiere den Indexvektor
-    bool useBatch = batchSize.get<size_t>() < data.size();
-    std::vector<size_t> indices(std::min(batchSize.get<size_t>(), data.size()));
-    if(!useBatch) {
-        for(size_t i = 0; i < indices.size(); i++)
-            indices[i] = i;
-    }
+    std::vector<size_t> indices(data.size());
+    for(size_t i = 0; i < indices.size(); i++)
+        indices[i] = i;
 
     std::mt19937& rng = Random::generator<11>();
 
@@ -265,8 +262,8 @@ NNUE::Network* Train::adamW(std::vector<DataPoint>& data, size_t numEpochs, doub
 
         std::cout << "\rEpoch: " << std::left << std::setw(4) << trainingSession.epoch;
         size_t currPrecision = std::cout.precision();
-        std::cout << " Master val loss: " << std::setw(10) << std::setprecision(6) << masterLoss << std::right << std::flush;
-        std::cout << " Quantized val loss: " << std::setw(10) << std::setprecision(6) << networkLoss << std::right << std::flush;
+        std::cout << " Master val loss: " << std::setw(10) << std::setprecision(6) << masterLoss << std::right;
+        std::cout << " Quantized val loss: " << std::setw(10) << std::setprecision(6) << networkLoss << std::right << std::endl;
         std::cout.precision(currPrecision);
 
         // Überprüfe, ob der Fehler besser ist
@@ -286,92 +283,107 @@ NNUE::Network* Train::adamW(std::vector<DataPoint>& data, size_t numEpochs, doub
             break;
         }
 
-        if(useBatch) {
-            // Bestimme zufällige Indizes
-            std::uniform_int_distribution<size_t> dist(0, data.size() - 1);
-            for(size_t& i : indices)
-                i = dist(rng);
-        }
+        // Mische die Trainingsdaten
+        std::shuffle(indices.begin(), indices.end(), rng);
 
-        // Berechne die Gradienten
-        NNUE::Gradients grad = Train::gradient(data, indices, masterWeights, k.get<double>(), kappa);
+        // Zerlege die Trainingsdaten in Batches
+        size_t numBatches = indices.size() / batchSize.get<size_t>();
+        if(indices.size() % batchSize.get<size_t>() != 0)
+            numBatches++;
 
-        // Aktualisiere die ersten und zweiten Momente
-        for(size_t i = 0; i < grad.halfKAGradients.bias.size; i++) {
-            trainingSession.mHalfKPBiases[i] = beta1.get<double>() * trainingSession.mHalfKPBiases[i] + (1.0 - beta1.get<double>()) * grad.halfKAGradients.bias(i);
-            trainingSession.vHalfKPBiases[i] = beta2.get<double>() * trainingSession.vHalfKPBiases[i] + (1.0 - beta2.get<double>()) * grad.halfKAGradients.bias(i) * grad.halfKAGradients.bias(i);
-        }
+        std::vector<std::vector<size_t>> batches(numBatches);
+        for(size_t i = 0; i < indices.size(); i++)
+            batches[i / batchSize.get<size_t>()].push_back(indices[i]);
 
-        double wd = weightDecay.get<double>();
-        for(const auto& [feature, value] : grad.halfKAGradients.weights) {
-            // Anzahl der Schritte seit dem letzten Update dieses Features (inklusive aktuellem Schritt)
-            size_t tDelta = trainingSession.epoch - trainingSession.lastUpdateHalfKPWeights[feature] + 1;
-            trainingSession.lastUpdateHalfKPWeights[feature] = trainingSession.epoch + 1;
+        size_t batchIndex = 0;
 
-            trainingSession.mHalfKPWeights[feature] = std::pow(beta1.get<double>(), tDelta) * trainingSession.mHalfKPWeights[feature] + (1.0 - beta1.get<double>()) * value;
-            trainingSession.vHalfKPWeights[feature] = std::pow(beta2.get<double>(), tDelta) * trainingSession.vHalfKPWeights[feature] + (1.0 - beta2.get<double>()) * value * value;
+        for(const std::vector<size_t>& batchIndices : batches) {
+            // Berechne die Gradienten
+            NNUE::Gradients grad = Train::gradient(data, batchIndices, masterWeights, k.get<double>(), kappa);
 
-            double mHat = trainingSession.mHalfKPWeights[feature] / (1.0 - std::pow(beta1.get<double>(), trainingSession.epoch + 1));
-            double vHat = trainingSession.vHalfKPWeights[feature] / (1.0 - std::pow(beta2.get<double>(), trainingSession.epoch + 1));
-
-            // Lazy AdamW: trage den verpassten Decay exakt nach, bevor der Gradienten-Schritt angewendet wird.
-            double decayFactor = std::pow(1.0 - learningRate * wd, tDelta);
-            masterWeights.halfKPLayer.weights(feature) = masterWeights.halfKPLayer.weights(feature) * decayFactor
-                - learningRate * mHat / (std::sqrt(vHat) + epsilon.get<double>());
-
-            masterWeights.halfKPLayer.weights(feature) = std::clamp(masterWeights.halfKPLayer.weights(feature),
-                NNUE::MasterWeights::HALF_KP_MIN, NNUE::MasterWeights::HALF_KP_MAX);
-        }
-
-        for(size_t layer = 0; layer < NNUE::Network::NUM_LAYERS; layer++) {
-            for(size_t i = 0; i < masterWeights.denseLayers[layer].bias.size; i++) {
-                trainingSession.mDenseLayerBiases[layer][i] = beta1.get<double>() * trainingSession.mDenseLayerBiases[layer][i] + (1.0 - beta1.get<double>()) * grad.denseLayerGradients[layer].bias(i);
-                trainingSession.vDenseLayerBiases[layer][i] = beta2.get<double>() * trainingSession.vDenseLayerBiases[layer][i] + (1.0 - beta2.get<double>()) * grad.denseLayerGradients[layer].bias(i) * grad.denseLayerGradients[layer].bias(i);
+            // Aktualisiere die ersten und zweiten Momente
+            for(size_t i = 0; i < grad.halfKAGradients.bias.size; i++) {
+                trainingSession.mHalfKPBiases[i] = beta1.get<double>() * trainingSession.mHalfKPBiases[i] + (1.0 - beta1.get<double>()) * grad.halfKAGradients.bias(i);
+                trainingSession.vHalfKPBiases[i] = beta2.get<double>() * trainingSession.vHalfKPBiases[i] + (1.0 - beta2.get<double>()) * grad.halfKAGradients.bias(i) * grad.halfKAGradients.bias(i);
             }
 
-            for(size_t i = 0; i < masterWeights.denseLayers[layer].weights.size; i++) {
-                trainingSession.mDenseLayerWeights[layer][i] = beta1.get<double>() * trainingSession.mDenseLayerWeights[layer][i] + (1.0 - beta1.get<double>()) * grad.denseLayerGradients[layer].weights(i);
-                trainingSession.vDenseLayerWeights[layer][i] = beta2.get<double>() * trainingSession.vDenseLayerWeights[layer][i] + (1.0 - beta2.get<double>()) * grad.denseLayerGradients[layer].weights(i) * grad.denseLayerGradients[layer].weights(i);
-            }
-        }
+            double wd = weightDecay.get<double>();
+            for(const auto& [feature, value] : grad.halfKAGradients.weights) {
+                // Anzahl der Schritte seit dem letzten Update dieses Features (inklusive aktuellem Schritt)
+                size_t tDelta = trainingSession.epoch - trainingSession.lastUpdateHalfKPWeights[feature] + 1;
+                trainingSession.lastUpdateHalfKPWeights[feature] = trainingSession.epoch + 1;
 
-        // Aktualisiere die Master-Parameter mit AdamW
-        for(size_t i = 0; i < masterWeights.halfKPLayer.bias.size; i++) {
-            double mHat = trainingSession.mHalfKPBiases[i] / (1.0 - std::pow(beta1.get<double>(), trainingSession.epoch + 1));
-            double vHat = trainingSession.vHalfKPBiases[i] / (1.0 - std::pow(beta2.get<double>(), trainingSession.epoch + 1));
-            
-            // AdamW: Weight Decay wird direkt bei der Parameter-Aktualisierung angewendet
-            masterWeights.halfKPLayer.bias(i) = masterWeights.halfKPLayer.bias(i) * (1.0 - learningRate * wd) 
-                - learningRate * mHat / (std::sqrt(vHat) + epsilon.get<double>());
+                trainingSession.mHalfKPWeights[feature] = std::pow(beta1.get<double>(), tDelta) * trainingSession.mHalfKPWeights[feature] + (1.0 - beta1.get<double>()) * value;
+                trainingSession.vHalfKPWeights[feature] = std::pow(beta2.get<double>(), tDelta) * trainingSession.vHalfKPWeights[feature] + (1.0 - beta2.get<double>()) * value * value;
 
-            masterWeights.halfKPLayer.bias(i) = std::clamp(masterWeights.halfKPLayer.bias(i),
-                NNUE::MasterWeights::HALF_KP_MIN, NNUE::MasterWeights::HALF_KP_MAX);
-        }
+                double mHat = trainingSession.mHalfKPWeights[feature] / (1.0 - std::pow(beta1.get<double>(), trainingSession.epoch + 1));
+                double vHat = trainingSession.vHalfKPWeights[feature] / (1.0 - std::pow(beta2.get<double>(), trainingSession.epoch + 1));
 
-        for(size_t layer = 0; layer < NNUE::Network::NUM_LAYERS; layer++) {
-            for(size_t i = 0; i < masterWeights.denseLayers[layer].bias.size; i++) {
-                double mHat = trainingSession.mDenseLayerBiases[layer][i] / (1.0 - std::pow(beta1.get<double>(), trainingSession.epoch + 1));
-                double vHat = trainingSession.vDenseLayerBiases[layer][i] / (1.0 - std::pow(beta2.get<double>(), trainingSession.epoch + 1));
-                
-                // AdamW: Weight Decay wird direkt bei der Parameter-Aktualisierung angewendet
-                masterWeights.denseLayers[layer].bias(i) = masterWeights.denseLayers[layer].bias(i) * (1.0 - learningRate * wd)
+                // Lazy AdamW: trage den verpassten Decay exakt nach, bevor der Gradienten-Schritt angewendet wird.
+                double decayFactor = std::pow(1.0 - learningRate * wd, tDelta);
+                masterWeights.halfKPLayer.weights(feature) = masterWeights.halfKPLayer.weights(feature) * decayFactor
                     - learningRate * mHat / (std::sqrt(vHat) + epsilon.get<double>());
 
-                masterWeights.denseLayers[layer].bias(i) = std::clamp(masterWeights.denseLayers[layer].bias(i),
-                    NNUE::MasterWeights::DENSE_BIAS_MIN, NNUE::MasterWeights::DENSE_BIAS_MAX);
+                masterWeights.halfKPLayer.weights(feature) = std::clamp(masterWeights.halfKPLayer.weights(feature),
+                    NNUE::MasterWeights::HALF_KP_MIN, NNUE::MasterWeights::HALF_KP_MAX);
             }
 
-            for(size_t i = 0; i < masterWeights.denseLayers[layer].weights.size; i++) {
-                double mHat = trainingSession.mDenseLayerWeights[layer][i] / (1.0 - std::pow(beta1.get<double>(), trainingSession.epoch + 1));
-                double vHat = trainingSession.vDenseLayerWeights[layer][i] / (1.0 - std::pow(beta2.get<double>(), trainingSession.epoch + 1));
+            for(size_t layer = 0; layer < NNUE::Network::NUM_LAYERS; layer++) {
+                for(size_t i = 0; i < masterWeights.denseLayers[layer].bias.size; i++) {
+                    trainingSession.mDenseLayerBiases[layer][i] = beta1.get<double>() * trainingSession.mDenseLayerBiases[layer][i] + (1.0 - beta1.get<double>()) * grad.denseLayerGradients[layer].bias(i);
+                    trainingSession.vDenseLayerBiases[layer][i] = beta2.get<double>() * trainingSession.vDenseLayerBiases[layer][i] + (1.0 - beta2.get<double>()) * grad.denseLayerGradients[layer].bias(i) * grad.denseLayerGradients[layer].bias(i);
+                }
+
+                for(size_t i = 0; i < masterWeights.denseLayers[layer].weights.size; i++) {
+                    trainingSession.mDenseLayerWeights[layer][i] = beta1.get<double>() * trainingSession.mDenseLayerWeights[layer][i] + (1.0 - beta1.get<double>()) * grad.denseLayerGradients[layer].weights(i);
+                    trainingSession.vDenseLayerWeights[layer][i] = beta2.get<double>() * trainingSession.vDenseLayerWeights[layer][i] + (1.0 - beta2.get<double>()) * grad.denseLayerGradients[layer].weights(i) * grad.denseLayerGradients[layer].weights(i);
+                }
+            }
+
+            // Aktualisiere die Master-Parameter mit AdamW
+            for(size_t i = 0; i < masterWeights.halfKPLayer.bias.size; i++) {
+                double mHat = trainingSession.mHalfKPBiases[i] / (1.0 - std::pow(beta1.get<double>(), trainingSession.epoch + 1));
+                double vHat = trainingSession.vHalfKPBiases[i] / (1.0 - std::pow(beta2.get<double>(), trainingSession.epoch + 1));
                 
                 // AdamW: Weight Decay wird direkt bei der Parameter-Aktualisierung angewendet
-                masterWeights.denseLayers[layer].weights(i) = masterWeights.denseLayers[layer].weights(i) * (1.0 - learningRate * wd)
+                masterWeights.halfKPLayer.bias(i) = masterWeights.halfKPLayer.bias(i) * (1.0 - learningRate * wd) 
                     - learningRate * mHat / (std::sqrt(vHat) + epsilon.get<double>());
 
-                masterWeights.denseLayers[layer].weights(i) = std::clamp(masterWeights.denseLayers[layer].weights(i),
-                    NNUE::MasterWeights::DENSE_WEIGHT_MIN, NNUE::MasterWeights::DENSE_WEIGHT_MAX);
+                masterWeights.halfKPLayer.bias(i) = std::clamp(masterWeights.halfKPLayer.bias(i),
+                    NNUE::MasterWeights::HALF_KP_MIN, NNUE::MasterWeights::HALF_KP_MAX);
             }
+
+            for(size_t layer = 0; layer < NNUE::Network::NUM_LAYERS; layer++) {
+                for(size_t i = 0; i < masterWeights.denseLayers[layer].bias.size; i++) {
+                    double mHat = trainingSession.mDenseLayerBiases[layer][i] / (1.0 - std::pow(beta1.get<double>(), trainingSession.epoch + 1));
+                    double vHat = trainingSession.vDenseLayerBiases[layer][i] / (1.0 - std::pow(beta2.get<double>(), trainingSession.epoch + 1));
+                    
+                    // AdamW: Weight Decay wird direkt bei der Parameter-Aktualisierung angewendet
+                    masterWeights.denseLayers[layer].bias(i) = masterWeights.denseLayers[layer].bias(i) * (1.0 - learningRate * wd)
+                        - learningRate * mHat / (std::sqrt(vHat) + epsilon.get<double>());
+
+                    masterWeights.denseLayers[layer].bias(i) = std::clamp(masterWeights.denseLayers[layer].bias(i),
+                        NNUE::MasterWeights::DENSE_BIAS_MIN, NNUE::MasterWeights::DENSE_BIAS_MAX);
+                }
+
+                for(size_t i = 0; i < masterWeights.denseLayers[layer].weights.size; i++) {
+                    double mHat = trainingSession.mDenseLayerWeights[layer][i] / (1.0 - std::pow(beta1.get<double>(), trainingSession.epoch + 1));
+                    double vHat = trainingSession.vDenseLayerWeights[layer][i] / (1.0 - std::pow(beta2.get<double>(), trainingSession.epoch + 1));
+                    
+                    // AdamW: Weight Decay wird direkt bei der Parameter-Aktualisierung angewendet
+                    masterWeights.denseLayers[layer].weights(i) = masterWeights.denseLayers[layer].weights(i) * (1.0 - learningRate * wd)
+                        - learningRate * mHat / (std::sqrt(vHat) + epsilon.get<double>());
+
+                    masterWeights.denseLayers[layer].weights(i) = std::clamp(masterWeights.denseLayers[layer].weights(i),
+                        NNUE::MasterWeights::DENSE_WEIGHT_MIN, NNUE::MasterWeights::DENSE_WEIGHT_MAX);
+                }
+            }
+
+            batchIndex++;
+            double batchProgress = (double)batchIndex / numBatches * 100.0;
+            std::streamsize currPrecision = std::cout.precision();
+            std::cout << "Batch: " << std::setw(3) << (int)batchProgress << "%\r" << std::flush;
+            std::cout.precision(currPrecision);
         }
     }
 
@@ -381,7 +393,7 @@ NNUE::Network* Train::adamW(std::vector<DataPoint>& data, size_t numEpochs, doub
     double networkLoss = Train::loss(validationData, *currentNetwork, k.get<double>(), kappa);
     std::cout << "\rEpoch: " << std::left << std::setw(4) << trainingSession.epoch;
     size_t currPrecision = std::cout.precision();
-    std::cout << " Master val loss: " << std::setw(10) << std::setprecision(6) << masterLoss << std::right << std::flush;
+    std::cout << " Master val loss: " << std::setw(10) << std::setprecision(6) << masterLoss << std::right;
     std::cout << " Quantized val loss: " << std::setw(10) << std::setprecision(6) << networkLoss << std::right << std::endl;
 
     if(networkLoss < bestLoss) {
@@ -406,7 +418,7 @@ void Train::kaimingInitialization(NNUE::MasterWeights& masterWeights) {
     std::mt19937& rng = Random::generator<12>();
 
     // Initialisiere Half-KP-Gewichte mit Kaiming-Initialisierung
-    std::normal_distribution<float> halfKPDist(0.0f, 2.0f / std::sqrt(NNUE::Network::INPUT_SIZE));
+    std::normal_distribution<float> halfKPDist(0.0f, std::sqrt(2.0f / 64.0f));
     for(size_t i = 0; i < masterWeights.halfKPLayer.weights.size; i++)
         masterWeights.halfKPLayer.weights(i) = halfKPDist(rng);
 
