@@ -417,8 +417,10 @@ NNUE::Network* Train::adamW(std::vector<DataPoint>& data, size_t numEpochs, doub
 void Train::kaimingInitialization(NNUE::MasterWeights& masterWeights) {
     std::mt19937& rng = Random::generator<12>();
 
-    // Initialisiere Half-KP-Gewichte mit Kaiming-Initialisierung
-    std::normal_distribution<float> halfKPDist(0.0f, std::sqrt(2.0f / 64.0f));
+    // Initialisiere Half-KP-Gewichte mit Xavier-Initialisierung
+    float fanOut = NNUE::Network::LAYER_SIZES[0];
+    float limit = std::sqrt(6.0f / (64.0f + fanOut));
+    std::uniform_real_distribution<float> halfKPDist(-limit, limit);
     for(size_t i = 0; i < masterWeights.halfKPLayer.weights.size; i++)
         masterWeights.halfKPLayer.weights(i) = halfKPDist(rng);
 
@@ -426,18 +428,19 @@ void Train::kaimingInitialization(NNUE::MasterWeights& masterWeights) {
     for(size_t i = 0; i < masterWeights.halfKPLayer.bias.size; i++)
         masterWeights.halfKPLayer.bias(i) = 0.1f;
 
-    // Initialisiere Dense-Gewichte mit Kaiming-Initialisierung
+    // Initialisiere Dense-Gewichte mit Xavier-Initialisierung
     for(size_t layer = 0; layer < NNUE::Network::NUM_LAYERS; layer++) {
         float fanIn = NNUE::Network::LAYER_SIZES[layer];
-        float stddev = std::sqrt(2.0f / fanIn);
-        std::normal_distribution<float> dist(0.0f, stddev);
+        float fanOut = NNUE::Network::LAYER_SIZES[layer + 1];
+        float limit = std::sqrt(6.0f / (fanIn + fanOut));
+        std::uniform_real_distribution<float> dist(-limit, limit);
 
         for(size_t i = 0; i < masterWeights.denseLayers[layer].weights.size; i++)
             masterWeights.denseLayers[layer].weights(i) = dist(rng);
     }
 
-    // Initialisiere alle Dense-Biases mit 0
+    // Initialisiere alle Dense-Biases mit 0.1
     for(size_t layer = 0; layer < NNUE::Network::NUM_LAYERS; layer++)
         for(size_t i = 0; i < masterWeights.denseLayers[layer].bias.size; i++)
-            masterWeights.denseLayers[layer].bias(i) = 0;
+            masterWeights.denseLayers[layer].bias(i) = 0.1;
 }

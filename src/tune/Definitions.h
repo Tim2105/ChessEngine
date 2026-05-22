@@ -300,7 +300,6 @@ extern Variable batchSize;
 extern Variable epsilon;
 extern Variable discount;
 extern Variable lambda;
-extern Variable useDynamicLambda;
 extern Variable kappa;
 extern Variable alpha;
 extern Variable beta1;

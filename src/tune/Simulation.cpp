@@ -26,6 +26,8 @@ Simulation::Simulation(std::vector<Board>& startingPositions, uint32_t timeContr
     addParameterNoise(false), noiseStdDev(0.0), noiseLinearStdDev(0.0) {
 
     results.resize(startingPositions.size());
+    temperature = 0.0;
+    temperatureDecay = 1.0;
 }
 
 std::pair<double, std::vector<Move>> sampleVariation(const std::vector<Variation>& variations, double temperature) {

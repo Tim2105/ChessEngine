@@ -269,10 +269,8 @@ void calculateTDTargets(std::vector<DataPoint>& dest, std::vector<DataPoint>& ra
         terminalValue = -virtualMateScore.get<double>();
     
     double tdTarget = terminalValue;
-    double lambdaVal = lambda.get<double>();
-    double currentLambda = lambdaVal;
+    double currentLambda = lambda.get<double>();
     double currentDiscount = discount.get<double>();
-    bool useDynamicLambdaVal = useDynamicLambda.get<bool>();
 
     for(int j = (int)rawData.size() - 1; j >= 0; j--) {
         double nextSearchValue;
@@ -282,9 +280,6 @@ void calculateTDTargets(std::vector<DataPoint>& dest, std::vector<DataPoint>& ra
             nextSearchValue = rawData[j + 1].leafEvaluation;
         
         tdTarget = currentDiscount * ((1.0 - currentLambda) * nextSearchValue + currentLambda * tdTarget);
-
-        if(useDynamicLambdaVal)
-            currentLambda = lambdaVal * std::exp(rawData[j].logProb);
 
         dest.push_back({rawData[j].board, rawData[j].leafBoard, rawData[j].leafEvaluation, finalResult, rawData[j].logProb, tdTarget});
     }
