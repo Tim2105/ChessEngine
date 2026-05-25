@@ -79,10 +79,9 @@ namespace Train {
         os.write(reinterpret_cast<const char*>(session.masterWeights.halfKAv2Layer.bias.data()), session.masterWeights.halfKAv2Layer.bias.size * sizeof(float));
         os.write(reinterpret_cast<const char*>(session.masterWeights.halfKAv2Layer.weights.data()), session.masterWeights.halfKAv2Layer.weights.size * sizeof(float));
 
-        os.write(reinterpret_cast<const char*>(session.masterWeights.encoderLayer.bias.data()), session.masterWeights.encoderLayer.bias.size * sizeof(float));
-        os.write(reinterpret_cast<const char*>(session.masterWeights.encoderLayer.weights.data()), session.masterWeights.encoderLayer.weights.size * sizeof(float));
+        for(size_t i = 0; i < session.masterWeights.renLayer.surrogateWeights.q.size(); i++)
+            os.write(reinterpret_cast<const char*>(session.masterWeights.renLayer.surrogateWeights.q[i].data()), session.masterWeights.renLayer.surrogateWeights.q[i].size * sizeof(float));
 
-        os.write(reinterpret_cast<const char*>(session.masterWeights.renLayer.surrogateWeights.q.data()), session.masterWeights.renLayer.surrogateWeights.q.size * sizeof(float));
         os.write(reinterpret_cast<const char*>(session.masterWeights.renLayer.surrogateWeights.gammaRaw.data()), session.masterWeights.renLayer.surrogateWeights.gammaRaw.size * sizeof(float));
         os.write(reinterpret_cast<const char*>(session.masterWeights.renLayer.bias.data()), session.masterWeights.renLayer.bias.size * sizeof(float));
 
@@ -135,10 +134,9 @@ namespace Train {
         is.read(reinterpret_cast<char*>(session.masterWeights.halfKAv2Layer.bias.data()), session.masterWeights.halfKAv2Layer.bias.size * sizeof(float));
         is.read(reinterpret_cast<char*>(session.masterWeights.halfKAv2Layer.weights.data()), session.masterWeights.halfKAv2Layer.weights.size * sizeof(float));
 
-        is.read(reinterpret_cast<char*>(session.masterWeights.encoderLayer.bias.data()), session.masterWeights.encoderLayer.bias.size * sizeof(float));
-        is.read(reinterpret_cast<char*>(session.masterWeights.encoderLayer.weights.data()), session.masterWeights.encoderLayer.weights.size * sizeof(float));
-
-        is.read(reinterpret_cast<char*>(session.masterWeights.renLayer.surrogateWeights.q.data()), session.masterWeights.renLayer.surrogateWeights.q.size * sizeof(float));
+        for(size_t i = 0; i < session.masterWeights.renLayer.surrogateWeights.q.size(); i++)
+            is.read(reinterpret_cast<char*>(session.masterWeights.renLayer.surrogateWeights.q[i].data()), session.masterWeights.renLayer.surrogateWeights.q[i].size * sizeof(float));
+    
         is.read(reinterpret_cast<char*>(session.masterWeights.renLayer.surrogateWeights.gammaRaw.data()), session.masterWeights.renLayer.surrogateWeights.gammaRaw.size * sizeof(float));
         is.read(reinterpret_cast<char*>(session.masterWeights.renLayer.bias.data()), session.masterWeights.renLayer.bias.size * sizeof(float));
 

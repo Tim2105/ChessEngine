@@ -3,23 +3,23 @@
 
 #include "tune/ml/DenseLayer.h"
 #include "tune/ml/HalfKAv2_hm.h"
-#include "tune/ren/RENLayer.h"
+#include "tune/ren/SparseRENLayer.h"
 
 namespace REN {
-    static constexpr size_t HALF_KA_OUTPUT_SIZE = 512;
-    static constexpr size_t REN_SIZE = 32;
+    static constexpr size_t HALF_KA_OUTPUT_SIZE = 1024;
+    static constexpr size_t SQRT_REN_SIZE = 32;
+    static constexpr size_t REN_SIZE = SQRT_REN_SIZE * SQRT_REN_SIZE;
+    static_assert(HALF_KA_OUTPUT_SIZE == REN_SIZE);
 
     struct Gradients {
         ML::HalfKAv2_hmLayer::Gradients halfKAGradients{HALF_KA_OUTPUT_SIZE};
-        ML::DenseLayer::Gradients encoderGradients{HALF_KA_OUTPUT_SIZE, REN_SIZE};
-        RENLayer::Gradients renGradients{REN_SIZE};
+        SparseRENLayer::Gradients renGradients{SQRT_REN_SIZE};
         ML::DenseLayer::Gradients outputLayerGradients{REN_SIZE, 1};
     };
 
     struct NetworkActivations {
         ML::HalfKAv2_hmLayer::ForwardResult halfKPActivations{HALF_KA_OUTPUT_SIZE};
-        ML::DenseLayer::ForwardResult encoderActivations{REN_SIZE};
-        RENLayer::ForwardResult renActivations{REN_SIZE};
+        SparseRENLayer::ForwardResult renActivations{SQRT_REN_SIZE};
         ML::DenseLayer::ForwardResult outputLayerActivations{1};
 
         inline float output() const noexcept {
@@ -29,9 +29,8 @@ namespace REN {
 
     struct MasterWeights {
         ML::HalfKAv2_hmLayer halfKAv2Layer{HALF_KA_OUTPUT_SIZE};
-        ML::DenseLayer encoderLayer{HALF_KA_OUTPUT_SIZE, REN_SIZE};
-        RENLayer renLayer{REN_SIZE};
-        ML::DenseLayer outputLayer{REN_SIZE, 1, false};
+        SparseRENLayer renLayer{SQRT_REN_SIZE};
+        ML::DenseLayer outputLayer{HALF_KA_OUTPUT_SIZE, 1, false};
         
         inline MasterWeights() = default;
 

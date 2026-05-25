@@ -8,8 +8,7 @@ REN::NetworkActivations REN::MasterWeights::forward(const Board& board, bool fak
     NetworkActivations activations;
 
     activations.halfKPActivations = halfKAv2Layer.forward(board, fakeQuantization);
-    activations.encoderActivations = encoderLayer.forward(activations.halfKPActivations.output, fakeQuantization);
-    activations.renActivations = renLayer.forward(activations.encoderActivations.output, fakeQuantization, maxIterations, tol);
+    activations.renActivations = renLayer.forward(activations.halfKPActivations.output, fakeQuantization, maxIterations, tol);
     activations.outputLayerActivations = outputLayer.forward(activations.renActivations.h_opt, fakeQuantization);
 
     return activations;
@@ -20,7 +19,7 @@ REN::Gradients REN::MasterWeights::backward(const Board& board, const NetworkAct
 
     Gradients gradients;
 
-    // Pfad A: outputGrad -> outputLayer -> renLayer -> encoderLayer -> halfKAv2Layer
+    // Pfad A: outputGrad -> outputLayer -> renLayer -> halfKAv2Layer
     ML::Vector mainGradVec(1);
     mainGradVec(0) = outputGrad;
 
@@ -30,11 +29,11 @@ REN::Gradients REN::MasterWeights::backward(const Board& board, const NetworkAct
     gradients.renGradients = renLayer.backward(activations.renActivations,
         gradients.outputLayerGradients.inputGrad, fakeQuantization);
 
-    // Pfad B: encOutputGrad -> outputLayer -> encoderLayer -> halfKAv2Layer
+    // Pfad B: encOutputGrad -> outputLayer -> halfKAv2Layer
     ML::Vector encGradVec(1);
     encGradVec(0) = encOutputGrad;
 
-    ML::DenseLayer::Gradients encOutputLayerGradients = outputLayer.backward(activations.encoderActivations.output,
+    ML::DenseLayer::Gradients encOutputLayerGradients = outputLayer.backward(activations.halfKPActivations.output,
         encActivations, encGradVec, fakeQuantization);
 
     gradients.outputLayerGradients.bias += encOutputLayerGradients.bias;
@@ -43,11 +42,8 @@ REN::Gradients REN::MasterWeights::backward(const Board& board, const NetworkAct
     // Gradienten für Encoder zusammenführen
     gradients.renGradients.inputGrad += encOutputLayerGradients.inputGrad;
 
-    gradients.encoderGradients = encoderLayer.backward(activations.halfKPActivations.output,
-        activations.encoderActivations, gradients.renGradients.inputGrad, fakeQuantization);
-
     gradients.halfKAGradients = halfKAv2Layer.backward(board,
-        activations.halfKPActivations, gradients.encoderGradients.inputGrad, fakeQuantization);
+        activations.halfKPActivations, gradients.renGradients.inputGrad, fakeQuantization);
 
     return gradients;
 }

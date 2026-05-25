@@ -40,8 +40,8 @@ Variable alpha("alpha", "Smoothing factor for the exponential moving average los
 Variable beta1("beta1", "First moment smoothing factor for the AdamW optimizer", 0.9);
 Variable beta2("beta2", "Second moment smoothing factor for the AdamW optimizer", 0.999);
 Variable weightDecay("weightDecay", "Weight decay factor for the AdamW optimizer", 1e-4);
-Variable encLossWeight("encLossWeight", "Weight of the encoder loss in the total loss calculation", 0.3);
-Variable maxSpectralRadius("maxSpectralRadius", "Maximum allowed spectral radius for the REN layer's recurrent weights", 1.2);
+Variable encLossWeight("encLossWeight", "Weight of the encoder loss in the total loss calculation", 0.5);
+Variable maxSpectralRadius("maxSpectralRadius", "Maximum allowed spectral radius for the REN layer's recurrent weights", 1.0);
 Variable eloTableSize("eloTableSize", "Maximum number of stored Elo players/checkpoints", 0ull);
 Variable eloAddPeriod("eloAddPeriod", "Add a new generation snapshot to Elo table every N generations", 50ull);
 Variable eloUpdatePeriod("eloUpdatePeriod", "Update Elo table every N generations", 5ull);

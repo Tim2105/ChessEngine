@@ -64,7 +64,7 @@ Train::LossSummary Train::loss(const std::vector<DataPoint>& data, const REN::Ma
                 float networkOutput = activations.output();
                 double prediction = tanh(networkOutputToCentipawns(networkOutput), k);
 
-                double encPrediction = masterWeights.outputLayer.forward(activations.encoderActivations.output, true).output(0);
+                double encPrediction = masterWeights.outputLayer.forward(activations.halfKPActivations.output, true).output(0);
                 encPrediction = tanh(networkOutputToCentipawns(encPrediction), k);
 
                 double target = (1.0 - kappa) * tanh(dp.tdTarget, k) + kappa * (double)dp.finalResult;
@@ -132,7 +132,7 @@ REN::Gradients Train::gradient(const std::vector<DataPoint>& data, const std::ve
                 double cp = networkOutputToCentipawns(networkOutput);
                 double prediction = tanh(cp, k);
 
-                ML::DenseLayer::ForwardResult encActivations = masterWeights.outputLayer.forward(activations.encoderActivations.output, true);
+                ML::DenseLayer::ForwardResult encActivations = masterWeights.outputLayer.forward(activations.halfKPActivations.output, true);
                 double encOutput = encActivations.output(0);
                 double encCp = networkOutputToCentipawns(encOutput);
                 double encPrediction = tanh(encCp, k);
@@ -152,11 +152,9 @@ REN::Gradients Train::gradient(const std::vector<DataPoint>& data, const std::ve
                 for(const auto& [feature, value] : dpGrad.halfKAGradients.weights)
                     grads.halfKAGradients.weights[feature] += value;
 
-                grads.encoderGradients.bias += dpGrad.encoderGradients.bias;
-                grads.encoderGradients.weights += dpGrad.encoderGradients.weights;
-
                 grads.renGradients.bias += dpGrad.renGradients.bias;
-                grads.renGradients.q += dpGrad.renGradients.q;
+                for(size_t j = 0; j < dpGrad.renGradients.q.size(); j++)
+                    grads.renGradients.q[j] += dpGrad.renGradients.q[j];
                 grads.renGradients.gammaRaw += dpGrad.renGradients.gammaRaw;
 
                 grads.outputLayerGradients.bias += dpGrad.outputLayerGradients.bias;
@@ -186,11 +184,9 @@ REN::Gradients Train::gradient(const std::vector<DataPoint>& data, const std::ve
         for(const auto& [feature, value] : threadGradientAccum[i].halfKAGradients.weights)
             totalGrad.halfKAGradients.weights[feature] += value;
 
-        totalGrad.encoderGradients.bias += threadGradientAccum[i].encoderGradients.bias;
-        totalGrad.encoderGradients.weights += threadGradientAccum[i].encoderGradients.weights;
-
         totalGrad.renGradients.bias += threadGradientAccum[i].renGradients.bias;
-        totalGrad.renGradients.q += threadGradientAccum[i].renGradients.q;
+        for(size_t j = 0; j < threadGradientAccum[i].renGradients.q.size(); j++)
+            totalGrad.renGradients.q[j] += threadGradientAccum[i].renGradients.q[j];
         totalGrad.renGradients.gammaRaw += threadGradientAccum[i].renGradients.gammaRaw;
 
         totalGrad.outputLayerGradients.bias += threadGradientAccum[i].outputLayerGradients.bias;
@@ -201,11 +197,9 @@ REN::Gradients Train::gradient(const std::vector<DataPoint>& data, const std::ve
     for(const auto& [feature, value] : totalGrad.halfKAGradients.weights)
         totalGrad.halfKAGradients.weights[feature] = totalGrad.halfKAGradients.weights[feature] / indices.size();
 
-    totalGrad.encoderGradients.bias /= indices.size();
-    totalGrad.encoderGradients.weights /= indices.size();
-
     totalGrad.renGradients.bias /= indices.size();
-    totalGrad.renGradients.q /= indices.size();
+    for(size_t j = 0; j < totalGrad.renGradients.q.size(); j++)
+        totalGrad.renGradients.q[j] /= indices.size();
     totalGrad.renGradients.gammaRaw /= indices.size();
 
     totalGrad.outputLayerGradients.bias /= indices.size();
@@ -292,7 +286,7 @@ void Train::adamW(std::vector<DataPoint>& data, size_t numEpochs, double learnin
             " Iter (avg/min/max): " << std::setw(12) << ssIter.str() <<
             " Spec rad: " << std::setw(8) << std::setprecision(4) << spectralRadius;
 
-        std::cout << ssOutput.str() << " Batch: " << std::setw(3) << 0 << "%" << std::flush;
+        std::cout << ssOutput.str() << std::endl;
 
         // Berechne die Gradienten für alle Batches und aktualisiere die Master-Parameter mit AdamW
         for(const std::vector<size_t>& batchIndices : batches) {
@@ -300,8 +294,7 @@ void Train::adamW(std::vector<DataPoint>& data, size_t numEpochs, double learnin
 
             batchesProcessed++;
             double batchProgress = (double)batchesProcessed / numBatches * 100.0;
-            std::cout << ssOutput.str() << " Batch: "  << std::setw(3) <<
-                (int)batchProgress << "%" << std::flush;
+            std::cout << "\rBatch: "  << std::setw(3) << (int)batchProgress << "%" << std::flush;
 
             // Aktualisiere die Master-Parameter mit AdamW
 
@@ -340,41 +333,19 @@ void Train::adamW(std::vector<DataPoint>& data, size_t numEpochs, double learnin
                     - learningRate * mHat / (std::sqrt(vHat) + eps);
             }
 
-            // Encoder-Layer
-
-            for(size_t i = 0; i < grad.encoderGradients.weights.size; i++) {
-                trainingSession.mEncoderWeights[i] = b1 * trainingSession.mEncoderWeights[i] + (1.0 - b1) * grad.encoderGradients.weights(i);
-                trainingSession.vEncoderWeights[i] = b2 * trainingSession.vEncoderWeights[i] + (1.0 - b2) * grad.encoderGradients.weights(i) * grad.encoderGradients.weights(i);
-
-                double mHat = trainingSession.mEncoderWeights[i] / (1.0 - std::pow(b1, trainingSession.epoch + 1));
-                double vHat = trainingSession.vEncoderWeights[i] / (1.0 - std::pow(b2, trainingSession.epoch + 1));
-
-                masterWeights.encoderLayer.weights(i) = masterWeights.encoderLayer.weights(i) * (1.0 - learningRate * wd) 
-                    - learningRate * mHat / (std::sqrt(vHat) + eps);
-            }
-
-            for(size_t i = 0; i < grad.encoderGradients.bias.size; i++) {
-                trainingSession.mEncoderBiases[i] = b1 * trainingSession.mEncoderBiases[i] + (1.0 - b1) * grad.encoderGradients.bias(i);
-                trainingSession.vEncoderBiases[i] = b2 * trainingSession.vEncoderBiases[i] + (1.0 - b2) * grad.encoderGradients.bias(i) * grad.encoderGradients.bias(i);
-
-                double mHat = trainingSession.mEncoderBiases[i] / (1.0 - std::pow(b1, trainingSession.epoch + 1));
-                double vHat = trainingSession.vEncoderBiases[i] / (1.0 - std::pow(b2, trainingSession.epoch + 1));
-
-                masterWeights.encoderLayer.bias(i) = masterWeights.encoderLayer.bias(i) * (1.0 - learningRate * wd) 
-                    - learningRate * mHat / (std::sqrt(vHat) + eps);
-            }
-
             // REN-Layer
 
-            for(size_t i = 0; i < grad.renGradients.q.size; i++) {
-                trainingSession.mRENQWeights[i] = b1 * trainingSession.mRENQWeights[i] + (1.0 - b1) * grad.renGradients.q(i);
-                trainingSession.vRENQWeights[i] = b2 * trainingSession.vRENQWeights[i] + (1.0 - b2) * grad.renGradients.q(i) * grad.renGradients.q(i);
+            for(size_t k = 0; k < grad.renGradients.q.size(); k++) {
+                for(size_t i = 0; i < grad.renGradients.q[k].size; i++) {
+                    trainingSession.mRENQWeights[i] = b1 * trainingSession.mRENQWeights[i] + (1.0 - b1) * grad.renGradients.q[k](i);
+                    trainingSession.vRENQWeights[i] = b2 * trainingSession.vRENQWeights[i] + (1.0 - b2) * grad.renGradients.q[k](i) * grad.renGradients.q[k](i);
 
-                double mHat = trainingSession.mRENQWeights[i] / (1.0 - std::pow(b1, trainingSession.epoch + 1));
-                double vHat = trainingSession.vRENQWeights[i] / (1.0 - std::pow(b2, trainingSession.epoch + 1));
+                    double mHat = trainingSession.mRENQWeights[i] / (1.0 - std::pow(b1, trainingSession.epoch + 1));
+                    double vHat = trainingSession.vRENQWeights[i] / (1.0 - std::pow(b2, trainingSession.epoch + 1));
 
-                masterWeights.renLayer.surrogateWeights.q(i) = masterWeights.renLayer.surrogateWeights.q(i) * (1.0 - learningRate * wd) 
-                    - learningRate * mHat / (std::sqrt(vHat) + eps);
+                    masterWeights.renLayer.surrogateWeights.q[k](i) = masterWeights.renLayer.surrogateWeights.q[k](i) * (1.0 - learningRate * wd) 
+                        - learningRate * mHat / (std::sqrt(vHat) + eps);
+                }
             }
 
             for(size_t i = 0; i < grad.renGradients.gammaRaw.size; i++) {
@@ -464,24 +435,19 @@ void Train::adamW(std::vector<DataPoint>& data, size_t numEpochs, double learnin
 }
 
 void Train::initializeWeights(REN::MasterWeights& masterWeights) {
-    // Kaiming-Initialisierung für die HalfKAv2_hm- und Dense-Layer
     std::mt19937& rng = Random::generator<12>();
-    std::normal_distribution<float> distHalfKA(0.0f, std::sqrt(2.0f / 64.0f));
-    std::normal_distribution<float> distEncoder(0.0f, std::sqrt(2.0f / REN::HALF_KA_OUTPUT_SIZE));
-    std::normal_distribution<float> distRENQ(0.0f, 1.0f / (REN::REN_SIZE * REN::REN_SIZE));
-    std::normal_distribution<float> distDense(0.0f, std::sqrt(2.0f / REN::REN_SIZE));
+    float fanIn = 64.0f, fanOut = REN::REN_SIZE;
+    std::normal_distribution<float> distHalfKA(0.0f, std::sqrt(2.0f / (fanIn + fanOut)));
+    fanIn = REN::REN_SIZE;
+    std::normal_distribution<float> distRENQ(0.0f, std::sqrt(2.0f / (fanIn + fanOut)));
+    fanOut = 1.0f;
+    std::normal_distribution<float> distDense(0.0f, std::sqrt(2.0f / (fanIn + fanOut)));
 
     for(size_t i = 0; i < masterWeights.halfKAv2Layer.weights.size; i++)
         masterWeights.halfKAv2Layer.weights(i) = distHalfKA(rng);
 
     for(size_t i = 0; i < masterWeights.halfKAv2Layer.bias.size; i++)
-        masterWeights.halfKAv2Layer.bias(i) = 0.1f;
-
-    for(size_t i = 0; i < masterWeights.encoderLayer.weights.size; i++)
-        masterWeights.encoderLayer.weights(i) = distEncoder(rng);
-
-    for(size_t i = 0; i < masterWeights.encoderLayer.bias.size; i++)
-        masterWeights.encoderLayer.bias(i) = 0.0f;
+        masterWeights.halfKAv2Layer.bias(i) = 0.2f;
 
     for(size_t i = 0; i < masterWeights.outputLayer.weights.size; i++)
         masterWeights.outputLayer.weights(i) = distDense(rng);
@@ -490,8 +456,9 @@ void Train::initializeWeights(REN::MasterWeights& masterWeights) {
         masterWeights.outputLayer.bias(i) = 0.0f;
 
     // Initialisiere die REN-Schicht so, dass sie zu Beginn fast eine Identitätsfunktion darstellt
-    for(size_t i = 0; i < masterWeights.renLayer.surrogateWeights.q.size; i++)
-        masterWeights.renLayer.surrogateWeights.q(i) = distRENQ(rng);
+    for(size_t k = 0; k < masterWeights.renLayer.surrogateWeights.q.size(); k++)
+        for(size_t i = 0; i < masterWeights.renLayer.surrogateWeights.q[k].size; i++)
+            masterWeights.renLayer.surrogateWeights.q[k](i) = distRENQ(rng);
 
     for(size_t i = 0; i < masterWeights.renLayer.surrogateWeights.gammaRaw.size; i++)
         masterWeights.renLayer.surrogateWeights.gammaRaw(i) = -3.0f;
