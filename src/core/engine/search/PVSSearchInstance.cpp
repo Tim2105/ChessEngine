@@ -21,7 +21,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
     // des aktuellen Knotens mit einer Quieszenzsuche.
     if(depth <= 0 || ply >= MAX_PLY) {
         clearPVTable(ply);
-        return quiescence(ply, alpha, beta);
+        return quiescence(ply, alpha, beta, nodeType == PV_NODE);
     }
 
     // Wir betrachten diesen Knoten.
@@ -91,7 +91,17 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
      * in der Transpositionstabelle oder die statische Bewertung,
      * wenn kein Eintrag existiert.
      */
-    searchStack[ply].preliminaryScore = entryExists ? entry.score : evaluator.evaluate();
+
+    Evaluator::EvalType evalType;
+    if(nodeType == PV_NODE) {
+        if(depth >= 4)
+            evalType = Evaluator::EvalType::HIGH_DEPTH;
+        else
+            evalType = Evaluator::EvalType::PV_NODE;
+    } else
+        evalType = Evaluator::EvalType::NULL_WINDOW;
+
+    searchStack[ply].preliminaryScore = entryExists ? entry.score : evaluator.evaluate(evalType);
 
     /**
      * Überprüfe, ob wir uns gegenüber dem letzten Zug verbessert haben.
@@ -494,7 +504,7 @@ int PVSSearchInstance::pvs(int depth, int ply, int alpha, int beta, unsigned int
     return bestScore;
 }
 
-int PVSSearchInstance::quiescence(int ply, int alpha, int beta) {
+int PVSSearchInstance::quiescence(int ply, int alpha, int beta, bool pvNode) {
     // Führe die Checkup-Funktion regelmäßig aus.
     if(localNodeCounter >= NODES_PER_CHECKUP && checkupFunction) {
         localNodeCounter = 0;
@@ -510,10 +520,16 @@ int PVSSearchInstance::quiescence(int ply, int alpha, int beta) {
     if(evaluator.isDraw())
         return DRAW_SCORE;
 
+    Evaluator::EvalType evalType;
+    if(pvNode)
+        evalType = Evaluator::EvalType::PV_NODE;
+    else
+        evalType = Evaluator::EvalType::NULL_WINDOW;
+
     // Wenn die maximale Suchdistanz erreicht wurde,
     // gib die statische Bewertung zurück.
     if(ply >= MAX_PLY || ply > currentSearchDepth * 3 + 2)
-        return evaluator.evaluate();
+        return evaluator.evaluate(evalType);
 
     /**
      * Mate Distance Pruning (wie in der normalen Suche):
@@ -534,7 +550,7 @@ int PVSSearchInstance::quiescence(int ply, int alpha, int beta) {
     // Ermittele die vorläufige Bewertung der Position.
     // In der Quieszenzsuche ist die vorläufige Bewertung die
     // statische Bewertung der Position.
-    searchStack[ply].preliminaryScore = evaluator.evaluate();
+    searchStack[ply].preliminaryScore = evaluator.evaluate(evalType);
 
     // Wir betrachten in der Quieszenzsuche (außer wenn wir im Schach stehen)
     // nicht alle Züge. Wenn wir die Bewertung mit den Zügen, die wir betrachten,
@@ -584,7 +600,7 @@ int PVSSearchInstance::quiescence(int ply, int alpha, int beta) {
         clearPVTable(ply + 1);
 
         // Betrachte den Kindknoten.
-        int score = -quiescence(ply + 1, -beta, -alpha);
+        int score = -quiescence(ply + 1, -beta, -alpha, pvNode);
 
         // Mache den Zug rückgängig und informiere den Evaluator.
         evaluator.updateBeforeUndo();

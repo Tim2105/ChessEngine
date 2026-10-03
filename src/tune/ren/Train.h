@@ -1,7 +1,8 @@
 #ifndef REN_TRAIN_H
 #define REN_TRAIN_H
 
-#include "core/utils/nnue/NNUENetwork.h"
+#include "core/engine/evaluation/Evaluator.h"
+#include "core/utils/ren/RENNetwork.h"
 #include "tune/Definitions.h"
 #include "tune/EloTable.h"
 #include "tune/ren/RENMasterWeights.h"
@@ -13,7 +14,7 @@ namespace Train {
     struct TrainingSession {
         // Erster Moment des HalfKP-Layers
         std::vector<float> mHalfKPBiases = std::vector<float>(REN::HALF_KA_OUTPUT_SIZE / 2, 0);
-        std::vector<float> mHalfKPWeights = std::vector<float>(NNUE::Network::INPUT_SIZE * (REN::HALF_KA_OUTPUT_SIZE / 2), 0);
+        std::vector<float> mHalfKPWeights = std::vector<float>(REN::Network::INPUT_SIZE * (REN::HALF_KA_OUTPUT_SIZE / 2), 0);
         std::vector<float> mEncoderBiases = std::vector<float>(REN::REN_SIZE, 0);
         std::vector<float> mEncoderWeights = std::vector<float>(REN::HALF_KA_OUTPUT_SIZE * REN::REN_SIZE, 0);
 
@@ -26,7 +27,7 @@ namespace Train {
 
         // Zweiter Moment des HalfKP-Layers
         std::vector<float> vHalfKPBiases = std::vector<float>(REN::HALF_KA_OUTPUT_SIZE / 2, 0);
-        std::vector<float> vHalfKPWeights = std::vector<float>(NNUE::Network::INPUT_SIZE * (REN::HALF_KA_OUTPUT_SIZE / 2), 0);
+        std::vector<float> vHalfKPWeights = std::vector<float>(REN::Network::INPUT_SIZE * (REN::HALF_KA_OUTPUT_SIZE / 2), 0);
         std::vector<float> vEncoderBiases = std::vector<float>(REN::REN_SIZE, 0);
         std::vector<float> vEncoderWeights = std::vector<float>(REN::HALF_KA_OUTPUT_SIZE * REN::REN_SIZE, 0);
 
@@ -38,10 +39,10 @@ namespace Train {
         std::vector<float> vOutputWeights = std::vector<float>(REN::REN_SIZE * 1, 0);
 
         // Letzte Aktualisierung der Parameter (für sparse Adam)
-        std::vector<size_t> lastUpdateHalfKPWeights = std::vector<size_t>(NNUE::Network::INPUT_SIZE * (REN::HALF_KA_OUTPUT_SIZE / 2), 0);
+        std::vector<size_t> lastUpdateHalfKPWeights = std::vector<size_t>(REN::Network::INPUT_SIZE * (REN::HALF_KA_OUTPUT_SIZE / 2), 0);
 
         REN::MasterWeights masterWeights;
-        EloTable<NNUE::Network> eloTable;
+        EloTable<REN::Network> eloTable;
 
         size_t generation = 0;
         size_t epoch = 0;
@@ -143,6 +144,8 @@ namespace Train {
         is.read(reinterpret_cast<char*>(session.masterWeights.outputLayer.bias.data()), session.masterWeights.outputLayer.bias.size * sizeof(float));
         is.read(reinterpret_cast<char*>(session.masterWeights.outputLayer.weights.data()), session.masterWeights.outputLayer.weights.size * sizeof(float));
 
+        session.masterWeights.renLayer.constructTransform();
+
         // Lade die Elo-Tabellen-Einträge (Namen und Elos)
         // Die Netzwerke werden aus .nnue-Dateien im data/-Ordner rekonstruiert
         size_t numEloEntries = 0;
@@ -165,7 +168,7 @@ namespace Train {
             std::ifstream networkFile(networkFilePath, std::ios::binary);
             
             if(networkFile.good()) {
-                NNUE::Network* network = new NNUE::Network();
+                REN::Network* network = new REN::Network();
                 networkFile >> *network;
                 networkFile.close();
                 
@@ -206,6 +209,20 @@ namespace Train {
         double kappa, double encLossWeight, size_t maxIterations = std::numeric_limits<size_t>::max());
 
     /**
+     * @brief Bestimmt den MSE eines unquantisierten Parametersatzes auf einem Datensatz.
+     * Diese Funktion betrachtet den gesamten Datensatz. Die Berechnung
+     * wird auf mehrere Threads aufgeteilt.
+     * 
+     * @param data Der Datensatz.
+     * @param network Die quantisierten Parameter des Netzwerks.
+     * @param k Der Faktor, der mit dem Bewertungswert innerhalb der tanh-Funktion multipliziert wird.
+     * @param kappa Bestimmt, wie stark das finale Ergebnis in das TD-Ziel einfließen soll.
+     * @param evalType Bewertungsmodus für die Evaluation.
+     * @return double Der mittlere quadratische Fehler.
+     */
+    double loss(std::vector<DataPoint>& data, const REN::Network& network, double k, double kappa, Evaluator::EvalType evalType);
+
+    /**
      * @brief Berechnet den Gradienten des MSE eines unquantisierten Parametersatzes auf einem Datensatz.
      * Zusätzlich werden die Indizes der Datenpunkte übergeben,
      * die für die Berechnung des Gradienten verwendet werden sollen.
@@ -229,7 +246,7 @@ namespace Train {
      * @param kappa Bestimmt, wie stark das finale Ergebnis in das Ziel einfließen soll.
      * @param encLossWeight Bestimmt, wie stark der Fehler des Encodings in den finalen Fehler einfließen soll.
      */
-    void adamW(std::vector<DataPoint>& data, size_t numEpochs, double learningRate, double kappa, double encLossWeight);
+    REN::Network* adamW(std::vector<DataPoint>& data, size_t numEpochs, double learningRate, double kappa, double encLossWeight);
 
     /**
      * @brief Initialisiert die Master-Parameter des REN.

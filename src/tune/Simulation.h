@@ -6,6 +6,7 @@
 #include "core/chess/Board.h"
 #include "core/utils/hce/HCEParameters.h"
 #include "core/utils/nnue/NNUEInstance.h"
+#include "core/utils/ren/RENInstance.h"
 #include "tune/EloTable.h"
 
 #include <optional>
@@ -24,9 +25,16 @@ class Simulation {
     #ifdef USE_HCE
     using Parameters = HCEParameters;
     using EloTableType = EloTable<HCEParameters>;
-    #else
+    #endif
+
+    #ifdef USE_NNUE
     using Parameters = std::reference_wrapper<const NNUE::Network>;
     using EloTableType = EloTable<NNUE::Network>;
+    #endif
+
+    #ifdef USE_REN
+    using Parameters = std::reference_wrapper<const REN::Network>;
+    using EloTableType = EloTable<REN::Network>;
     #endif
 
     private:
@@ -38,8 +46,14 @@ class Simulation {
 
         #ifdef USE_HCE
         Parameters currentParams;
-        #else
+        #endif
+
+        #ifdef USE_NNUE
         Parameters currentParams = NNUE::DEFAULT_NETWORK;
+        #endif
+
+        #ifdef USE_REN
+        Parameters currentParams = REN::DEFAULT_NETWORK;
         #endif
 
         bool addParameterNoise;

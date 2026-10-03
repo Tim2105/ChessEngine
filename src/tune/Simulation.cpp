@@ -100,8 +100,15 @@ Result Simulation::simulateSingleGame(Board& board, Parameters whiteParameters, 
     }
 
     HandcraftedEvaluator neutralEvaluator(board, currentParams);
-    #else
+    #endif
+
+    #ifdef USE_NNUE
     NNUEEvaluator neutralEvaluator(board, currentParams);
+    double tau = temperature;
+    #endif
+
+    #ifdef USE_REN
+    RENEvaluator neutralEvaluator(board, currentParams);
     double tau = temperature;
     #endif
 
@@ -318,7 +325,12 @@ void Simulation::run(EloTableType& eloTable, double playerChoiceTemperature) {
     // Bestimme die Matchups
     std::vector<std::pair<std::string, std::string>> matchups(startingPositions.size());
     for(size_t i = 0; i < startingPositions.size(); i++) {
-        std::string player1 = eloTable.getRandomPlayerName(playerChoiceTemperature);
+        std::string player1;
+        if(eloTable.hasPlayer("current"))
+            player1 = "current";
+        else
+            player1 = eloTable.getRandomPlayerName(playerChoiceTemperature);
+
         std::string player2 = eloTable.getRandomPlayerNameExcluding(player1, playerChoiceTemperature);
         matchups[i] = {player1, player2};
     }

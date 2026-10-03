@@ -63,6 +63,12 @@ class Evaluator {
 
         virtual ~Evaluator() {}
 
+        enum class EvalType {
+            NULL_WINDOW,
+            PV_NODE,
+            HIGH_DEPTH
+        };
+
         /**
          * @brief Setzt das Spielfeld, auf dem die statische Bewertung ausgeführt werden soll.
          */
@@ -97,6 +103,19 @@ class Evaluator {
          * Eine Bewertung von 0 bedeutet ein ausgeglichenes Spiel.
          */
         virtual int evaluate() = 0;
+
+        /**
+         * @brief Führt eine statische Bewertung der
+         * Spielpositon aus der Sicht des Spielers, der am Zug ist, durch.
+         * 
+         * @param type Der Typ des Knotens der bewertet werden soll.
+         * 
+         * @return Die Bewertung der Spielposition.
+         * Je größer der Wert, desto besser ist die Spielposition für den Spieler der am Zug ist.
+         * Je kleiner der Wert, desto besser ist die Spielposition für den Gegner des Spielers der am Zug ist.
+         * Eine Bewertung von 0 bedeutet ein ausgeglichenes Spiel.
+         */
+        virtual int evaluate(EvalType type) = 0;
 
         /**
          * @brief Führt eine statische Bewertung eines Zugs mit SEE durch.

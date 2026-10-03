@@ -9,10 +9,10 @@ Variable pgnFilePath("pgnFile", "Path to the PGN file for sampling opening posit
 Variable samplesFilePath("samplesFilePath", "Path to the file for storing generated samples", "data/samples.txt");
 unsigned int nThreads = std::thread::hardware_concurrency();
 Variable numThreads("numThreads", "Number of threads to use for the simulation", std::max(1u, (unsigned int)std::round(nThreads * 7.0 / 8)));
-Variable numGames("numGames", "Number of games to simulate at generation 0", 100ull);
+Variable numGames("numGames", "Number of games to simulate at generation 0", 200ull);
 Variable numGamesIncrement("numGamesIncr", "Number of games to simulate more with each generation", 0ull);
-Variable timeControl("timeControl", "Time control in ms at generation 0", 500ull);
-Variable increment("increment", "Time control increment in ms at generation 0", 50ull);
+Variable timeControl("timeControl", "Time control in ms at generation 0", 1000ull);
+Variable increment("increment", "Time control increment in ms at generation 0", 100ull);
 Variable timeGrowth("timeGrowth", "Time control growth factor with each generation", 1.0);
 Variable openingBookMovesMin("openingBookMovesMin", "Minimum number of half moves to play from opening positions before simulation", 0ull);
 Variable openingBookMovesMax("openingBookMovesMax", "Maximum number of half moves to play from opening positions before simulation", 0ull);

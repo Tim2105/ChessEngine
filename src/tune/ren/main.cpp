@@ -1,21 +1,24 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+
 #include <optional>
 #include <random>
 
 #include "core/utils/Random.h"
+#include "core/utils/ren/RENInstance.h"
 #include "tune/Definitions.h"
+#include "tune/FileUtils.h"
 #include "tune/Simulation.h"
 #include "tune/ren/RENMasterWeights.h"
 #include "tune/ren/Train.h"
 #include "uci/Options.h"
 
-void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, const NNUE::Network& network);
-void updateEloTable(size_t n, uint32_t timeControl, uint32_t increment, EloTable<NNUE::Network>& eloTable);
+void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, const REN::Network& network);
+void updateEloTable(size_t n, uint32_t timeControl, uint32_t increment, EloTable<REN::Network>& eloTable);
 
 void generateData() {
-    simulateGames(numGames.get<size_t>(), timeControl.get<uint32_t>(), increment.get<uint32_t>(), NNUE::DEFAULT_NETWORK);
+    simulateGames(numGames.get<size_t>(), timeControl.get<uint32_t>(), increment.get<uint32_t>(), REN::DEFAULT_NETWORK);
 }
 
 std::vector<DataPoint> loadData(std::istream& resultFile, size_t n = std::numeric_limits<size_t>::max());
@@ -23,6 +26,8 @@ std::vector<DataPoint> loadData(std::istream& resultFile, size_t n = std::numeri
 void findOptimalK();
 
 void gradientDescent();
+
+void learn();
 
 void setParameter(std::string parameter, std::string value) {
     try {
@@ -61,12 +66,12 @@ int main() {
 
         if(input == "gen")
             generateData();
-        // else if(input == "findK")
-        //     findOptimalK();
         else if(input == "grad")
             gradientDescent();
         else if(input == "dp")
             displayParameters();
+        else if(input == "learn")
+            learn();
         else {
             size_t pos = input.find("=");
             if(pos != std::string::npos) {
@@ -87,7 +92,7 @@ int main() {
     return 0;
 }
 
-void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, const NNUE::Network& network) {
+void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, const REN::Network& network) {
     std::ifstream pgnFile(pgnFilePath.get<std::string>());
 
     std::vector<Board> startingPositions;
@@ -203,7 +208,7 @@ void simulateGames(size_t n, uint32_t timeControl, uint32_t increment, const NNU
     outFile.close();
 }
 
-void updateEloTable(size_t n, uint32_t timeControl, uint32_t increment, EloTable<NNUE::Network>& eloTable) {
+void updateEloTable(size_t n, uint32_t timeControl, uint32_t increment, EloTable<REN::Network>& eloTable) {
     std::ifstream pgnFile(pgnFilePath.get<std::string>());
 
     std::vector<Board> startingPositions;
@@ -342,57 +347,109 @@ void gradientDescent() {
 
     Train::initializeWeights(Train::trainingSession.masterWeights);
 
-    // Wähle 3 zufällige Datenpunkte
-    std::mt19937& generator = Random::generator<7>();
-    std::uniform_int_distribution<size_t> dataDist(0, data.size() - 1);
-    std::vector<DataPoint> randomData;
-    for(size_t i = 0; i < 3; i++)
-        randomData.push_back(data[dataDist(generator)]);
+    REN::Network* network = Train::adamW(data, numEpochs.get<size_t>(), learningRate.get<double>(), kappa.get<double>(), encLossWeight.get<double>());
 
-    // Gib die zufälligen Datenpunkte aus
-    std::cout << "Random data points:" << std::endl;
-    std::cout << "-----------------------------" << std::endl;
-    for(const DataPoint& dp : randomData) {
-        std::cout << "Board: " << dp.board.toFEN() << std::endl;
-        std::cout << "TD Target: " << dp.tdTarget << std::endl;
-        std::cout << "-----------------------------" << std::endl;
+    std::ofstream networkFile("data/optimized.ren", std::ios::binary);
+    networkFile << *network;
+    networkFile.close();
+
+    delete network;
+}
+
+void learn() {
+    Train::trainingSession.eloTable = EloTable<REN::Network>(eloTableSize.get<size_t>(), eloKFactor.get<double>());
+
+    if(readFileWithTempFallback("data/trainingSessionREN.tsession", Train::trainingSession))
+        std::cout << "Loaded training session from file." << std::endl;
+    else {
+        std::cout << "Starting new training session." << std::endl;
+        Train::initializeWeights(Train::trainingSession.masterWeights);
+
+        writeFileAtomically("data/trainingSessionREN.tsession", Train::trainingSession);
     }
 
-    // Gib die aktuellen Vorhersagen des Netzwerks für die zufälligen Datenpunkte aus
-    std::cout << "Initial predictions:" << std::endl;
-    for(const DataPoint& dp : randomData) {
-        REN::NetworkActivations activations = Train::trainingSession.masterWeights.forward(dp.board, true, 0);
-        float prediction = activations.output();
-        std::cout << "Prediction for " << dp.board.toFEN() << " (0 iterations): " << networkOutputToCp(prediction) << std::endl;
-        activations = Train::trainingSession.masterWeights.forward(dp.board, true, 2);
-        prediction = activations.output();
-        std::cout << "Prediction for " << dp.board.toFEN() << " (2 iterations): " << networkOutputToCp(prediction) << std::endl;
-        activations = Train::trainingSession.masterWeights.forward(dp.board, true, 5);
-        prediction = activations.output();
-        std::cout << "Prediction for " << dp.board.toFEN() << " (5 iterations): " << networkOutputToCp(prediction) << std::endl;
-        activations = Train::trainingSession.masterWeights.forward(dp.board, true);
-        prediction = activations.output();
-        std::cout << "Prediction for " << dp.board.toFEN() << " (max iterations): " << networkOutputToCp(prediction) << std::endl;
-        std::cout << "-----------------------------" << std::endl;
+    REN::Network* network = Train::trainingSession.masterWeights.toNetwork();
+
+    // Füge den initialen "current" Spieler zur Elo-Tabelle hinzu
+    if(!Train::trainingSession.eloTable.hasPlayer("current")) {
+        Train::trainingSession.eloTable.addPlayer("current", eloInitialRandomPlayerElo.get<double>(), *network);
+        
+        // Speichere das initiale Netzwerk als current.ren
+        writeFileAtomically("data/current.ren", *network);
     }
 
-    Train::adamW(data, numEpochs.get<size_t>(), learningRate.get<double>(), kappa.get<double>(), encLossWeight.get<double>());
+    // Füge den Initialspieler zur Elo-Tabelle hinzu
+    if(Train::trainingSession.generation == 0) {
+        std::string playerName = "generation0";
+        double elo = Train::trainingSession.eloTable.getElo("current");
+        
+        if(!Train::trainingSession.eloTable.hasPlayer(playerName))
+            Train::trainingSession.eloTable.addPlayer(playerName, elo, *network);
 
-    // Gib die Vorhersagen des Netzwerks für die zufälligen Datenpunkte nach dem Training aus
-    std::cout << "Predictions after training:" << std::endl;
-    for(const DataPoint& dp : randomData) {
-        REN::NetworkActivations activations = Train::trainingSession.masterWeights.forward(dp.board, true, 0);
-        float prediction = activations.output();
-        std::cout << "Prediction for " << dp.board.toFEN() << " (0 iterations): " << networkOutputToCp(prediction) << std::endl;
-        activations = Train::trainingSession.masterWeights.forward(dp.board, true, 2);
-        prediction = activations.output();
-        std::cout << "Prediction for " << dp.board.toFEN() << " (2 iterations): " << networkOutputToCp(prediction) << std::endl;
-        activations = Train::trainingSession.masterWeights.forward(dp.board, true, 5);
-        prediction = activations.output();
-        std::cout << "Prediction for " << dp.board.toFEN() << " (5 iterations): " << networkOutputToCp(prediction) << std::endl;
-        activations = Train::trainingSession.masterWeights.forward(dp.board, true);
-        prediction = activations.output();
-        std::cout << "Prediction for " << dp.board.toFEN() << " (max iterations): " << networkOutputToCp(prediction) << std::endl;
-        std::cout << "-----------------------------" << std::endl;
+        // Speichere die Parameter als generation0.ren
+        writeFileAtomically("data/" + playerName + ".ren", *network);
     }
+
+    // Durchlaufe Generationen
+    for(size_t i = Train::trainingSession.generation; i < numGenerations.get<size_t>(); i++) {
+        std::cout << "----------Generation " << i + 1 << "/" << numGenerations.get<size_t>() << "----------" << std::endl;
+
+        size_t currentNumGames = numGames.get<size_t>() + numGamesIncrement.get<size_t>() * i;
+        double growthFactor = std::pow(timeGrowth.get<double>(), i);
+        size_t currentTimeControl = timeControl.get<size_t>() * growthFactor;
+        size_t currentIncrement = increment.get<size_t>() * growthFactor;  
+        size_t currentNumEpochs = numEpochs.get<size_t>() + numEpochsIncrement.get<size_t>() * i;
+        double currentLearningRate = learningRate.get<double>() * std::pow(learningRateDecay.get<double>(), i);
+                
+        // Generiere die Datenpunkte
+        simulateGames(currentNumGames, currentTimeControl, currentIncrement, *network);
+
+        // Lade die Datenpunkte
+        std::ifstream samplesFile(samplesFilePath.get<std::string>());
+        std::vector<DataPoint> data = loadData(samplesFile);
+
+        // Führe den Gradientenabstieg durch
+        std::cout << "Optimizing parameters:" << std::endl;
+        delete network;
+        network = Train::adamW(data, currentNumEpochs, currentLearningRate, kappa.get<double>(), encLossWeight.get<double>());
+
+        // Speichere die Parameter als current.ren
+        writeFileAtomically("data/current.ren", *network);
+
+        // Aktualisiere den "current" Spieler in der Elo-Tabelle
+        Train::trainingSession.eloTable.setCurrentData(*network);
+
+        // Alle eloUpdatePeriod Generationen: Aktualisiere die Elo-Werte
+        if((i + 1) % eloUpdatePeriod.get<size_t>() == 0) {
+            std::ifstream pgnFile(pgnFilePath.get<std::string>());
+            updateEloTable(eloNumGamesPerUpdate.get<size_t>(), currentTimeControl, currentIncrement, Train::trainingSession.eloTable);
+            pgnFile.close();
+
+            std::cout << "\nElo Table (Generation " << i + 1 << "):\n";
+            Train::trainingSession.eloTable.write(std::cout);
+            std::cout << "\n";
+
+            std::ofstream eloTableFile("data/eloTable.txt");
+            Train::trainingSession.eloTable.write(eloTableFile);
+            eloTableFile.close();
+        }
+
+        // Alle eloAddPeriod Generationen: Füge einen neuen Spieler hinzu
+        if((i + 1) % eloAddPeriod.get<size_t>() == 0) {
+            std::string playerName = "generation" + std::to_string(i + 1);
+            double elo = Train::trainingSession.eloTable.getElo("current");
+            
+            if(!Train::trainingSession.eloTable.hasPlayer(playerName))
+                Train::trainingSession.eloTable.addPlayer(playerName, elo, *network);
+
+            // Speichere die Parameter als generationX.ren
+            writeFileAtomically("data/" + playerName + ".ren", *network);
+        }
+
+        // Speichere die Trainingssession
+        writeFileAtomically("data/trainingSessionREN.tsession", Train::trainingSession);
+    }
+
+    delete network;
+    std::cout << "Finished training" << std::endl;
 }

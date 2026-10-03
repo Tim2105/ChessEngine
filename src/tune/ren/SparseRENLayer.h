@@ -121,7 +121,7 @@ namespace REN {
              */
             ForwardResult forward(const ML::Vector& h_0, bool fakeQuant,
                 size_t maxIterations = std::numeric_limits<size_t>::max(), float tol = 1e-4f,
-                float alpha = 0.5f, bool stepSizeBacktracking = true) const;
+                float alpha = 1.0f, bool stepSizeBacktracking = true) const;
 
             /**
              * @brief Führt einen Rückwärtspass durch das REN durch und berechnet die Gradienten für die Master-Parameter.

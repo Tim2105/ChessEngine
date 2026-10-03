@@ -68,10 +68,12 @@ SRC_ENGINE = $(filter-out src/tune/%.cpp src/emscripten/%.cpp,$(SRC))
 # Engine-Objekte
 ENGINE_OBJ_NNUE = $(patsubst src/%.cpp,bin/obj_nnue/%.o,$(SRC_ENGINE)) $(patsubst resources/%,bin/embed_nnue/%.o,$(RES_NNUE))
 ENGINE_OBJ_HCE = $(patsubst src/%.cpp,bin/obj_hce/%.o,$(SRC_ENGINE)) $(patsubst resources/%,bin/embed_hce/%.o,$(RES_HCE))
+ENGINE_OBJ_REN = $(patsubst src/%.cpp,bin/obj_ren/%.o,$(SRC_ENGINE)) $(patsubst resources/%,bin/embed_ren/%.o,$(RES_REN))
 
 # Engine-Ziele
 ENGINE_NNUE = bin/nnue_engine
 ENGINE_HCE = bin/hce_engine
+ENGINE_REN = bin/ren_engine
 
 # Tuning-Objekte
 SRC_TUNE_HCE = $(filter-out src/emscripten/%.cpp src/main.cpp src/tune/nnue/%.cpp src/tune/ren/%.cpp,$(SRC))
@@ -93,17 +95,17 @@ release: clean
 .PHONY: all clean profile profile-gen profile-use engines clean-profile clean-nonprofile
 
 # Allgemeines Ziel
-all: $(ENGINE_NNUE) $(ENGINE_HCE) $(TUNE_HCE) $(TUNE_NNUE) $(TUNE_REN)
+all: $(ENGINE_NNUE) $(ENGINE_HCE) $(ENGINE_REN) $(TUNE_HCE) $(TUNE_NNUE) $(TUNE_REN)
 
 # Spezifische Ziele
 nnue: $(ENGINE_NNUE) $(TUNE_NNUE)
 hce: $(ENGINE_HCE) $(TUNE_HCE)
-ren: $(TUNE_REN)
+ren: $(ENGINE_REN) $(TUNE_REN)
 
 # Nur Engines
-engines: $(ENGINE_NNUE) $(ENGINE_HCE)
+engines: $(ENGINE_NNUE) $(ENGINE_HCE) $(ENGINE_REN)
 
-# Engine ohne USE_HCE
+# Engine mit USE_NNUE
 $(ENGINE_NNUE): $(ENGINE_OBJ_NNUE)
 	@echo [LINK][NNUE]     Engine: $@
 	@$(CC) $(CFLAGS_NNUE) $(LDFLAGS) $(LDLIBS) -o $@ $^
@@ -112,6 +114,11 @@ $(ENGINE_NNUE): $(ENGINE_OBJ_NNUE)
 $(ENGINE_HCE): $(ENGINE_OBJ_HCE)
 	@echo [LINK][HCE]     Engine: $@
 	@$(CC) $(CFLAGS_HCE) $(LDFLAGS) $(LDLIBS) -o $@ $^
+
+# Engine mit USE_REN
+$(ENGINE_REN): $(ENGINE_OBJ_REN)
+	@echo [LINK][REN]     Engine: $@
+	@$(CC) $(CFLAGS_REN) $(LDFLAGS) $(LDLIBS) -o $@ $^
 
 # TUNE_HCE
 $(TUNE_HCE): $(TUNE_HCE_OBJ)

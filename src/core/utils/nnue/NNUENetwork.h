@@ -28,7 +28,7 @@ namespace NNUE {
             }();
 
         private:
-            HalfKPLayer<INPUT_SIZE, SINGLE_SUBNET_SIZE> halfKPLayer;
+            HalfKAv2_hmLayer<INPUT_SIZE, SINGLE_SUBNET_SIZE> halfKPLayer;
             DenseLayer<LAYER_SIZES[0], LAYER_SIZES[1]> layer1;
             DenseLayer<LAYER_SIZES[1], LAYER_SIZES[2]> layer2;
             DenseLayer<LAYER_SIZES[2], LAYER_SIZES[3]> layer3;
@@ -40,7 +40,7 @@ namespace NNUE {
             friend std::istream& operator>>(std::istream& is, Network& network);
             friend std::ostream& operator<<(std::ostream& os, const Network& network);
 
-            constexpr const HalfKPLayer<INPUT_SIZE, SINGLE_SUBNET_SIZE>& getHalfKPLayer() const noexcept {
+            constexpr const HalfKAv2_hmLayer<INPUT_SIZE, SINGLE_SUBNET_SIZE>& getHalfKPLayer() const noexcept {
                 return halfKPLayer;
             }
 

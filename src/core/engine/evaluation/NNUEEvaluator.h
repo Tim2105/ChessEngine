@@ -25,6 +25,12 @@ class NNUEEvaluator: public Evaluator {
             return networkInstance.evaluate(board.getSideToMove());
         }
 
+        inline int evaluate(EvalType type) override {
+            UNUSED(type);
+
+            return networkInstance.evaluate(board.getSideToMove());
+        }
+
         inline void updateAfterMove() override {
             networkInstance.updateAfterMove(board);
         }

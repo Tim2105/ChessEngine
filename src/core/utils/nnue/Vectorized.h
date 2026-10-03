@@ -39,6 +39,18 @@ inline void halfKPOutputForwardI16ToI8(const int16_t* in, const int8_t* weights,
 template <size_t IN_SIZE, size_t OUT_SIZE>
 inline void linearReLUI8ToI8(const int8_t* in, const int8_t* weights, const int32_t* biases, int8_t* out) noexcept;
 
+template <size_t IN_SIZE, size_t OUT_SIZE>
+inline void halfKPOutputForwardI16ToI32(const int16_t* in, const int8_t* weights, const int32_t* biases, int32_t* out) noexcept;
+
+template <size_t SIZE>
+inline void halfKPOutputSparseForwardI16ToI8(const int16_t* in, const int8_t* weights, const int32_t* biases, int8_t* out) noexcept;
+
+template <size_t SIZE>
+inline void sparseLinearReLUI8ToI8(const int8_t* in, const int8_t* weights, const int32_t* biases, int8_t* out) noexcept;
+
+template <size_t SIZE>
+inline void reLUI16ToI32Bias(const int16_t* in, const int32_t* biases, int32_t* out) noexcept;
+
 #if defined (__AVX2__)
 
 /**
@@ -159,7 +171,7 @@ inline void linearI8ToI32(const int8_t* in, const int8_t* weights,
         m256_add_dpbusd_epi32(a, inVec, _mm256_load_si256((__m256i*)(weights + j)));
     }
 
-    __m128i biasVec = _mm_load_si128((__m128i*)(biases));
+    __m128i biasVec = _mm_set1_epi32(*biases);
 
     __m128i resVec = m256_haddx4(a, a, a, a, biasVec);
 
@@ -246,6 +258,148 @@ inline void linearReLUI8ToI8(const int8_t* in, const int8_t* weights,
         );
 
         *((int32_t*)(out + i)) = _mm_cvtsi128_si32(resVec);
+    }
+}
+
+template <size_t IN_SIZE, size_t OUT_SIZE>
+inline void halfKPOutputForwardI16ToI32(const int16_t* in, const int8_t* weights,
+                                        const int32_t* biases, int32_t* out)
+                                        noexcept requires(IN_SIZE % 32 == 0 && OUT_SIZE == 1) {
+
+    __m256i a = _mm256_setzero_si256();
+    for(size_t j = 0; j < IN_SIZE; j += 32) {
+        __m256i srcVec1 = _mm256_load_si256((__m256i*)(in + j));
+        __m256i srcVec2 = _mm256_load_si256((__m256i*)(in + j + 16));
+
+        // Clipped ReLU
+        __m256i inVec = _mm256_permute4x64_epi64(
+            _mm256_max_epi8(
+                _mm256_packs_epi16(srcVec1, srcVec2),
+                _mm256_setzero_si256()
+            ),
+            0b11011000
+        );
+
+        // Linear
+        m256_add_dpbusd_epi32(a, inVec, _mm256_load_si256((__m256i*)(weights + j)));
+    }
+
+    __m128i biasVec = _mm_set1_epi32(*biases);
+
+    __m128i resVec = m256_haddx4(a, a, a, a, biasVec);
+
+    *out = _mm_cvtsi128_si32(resVec);
+}
+
+template <size_t SIZE>
+inline void halfKPOutputSparseForwardI16ToI8(const int16_t* in, const int8_t* weights,
+                                             const int32_t* biases, int8_t* out)
+                                             noexcept requires(SIZE % 32 == 0) {
+
+    for(size_t block = 0; block < SIZE; block++) {
+        for(size_t row = 0; row < SIZE; row += 4) {
+            __m256i a = _mm256_setzero_si256();
+            __m256i b = _mm256_setzero_si256();
+            __m256i c = _mm256_setzero_si256();
+            __m256i d = _mm256_setzero_si256();
+
+            for(size_t col = 0; col < SIZE; col += 32) {
+                __m256i srcVec1 = _mm256_load_si256((__m256i*)(in + block * SIZE + col));
+                __m256i srcVec2 = _mm256_load_si256((__m256i*)(in + block * SIZE + col + 16));
+
+                __m256i inVec = _mm256_permute4x64_epi64(
+                    _mm256_max_epi8(
+                        _mm256_packs_epi16(srcVec1, srcVec2),
+                        _mm256_setzero_si256()
+                    ),
+                    0b11011000
+                );
+
+                m256_add_dpbusd_epi32(a, inVec, _mm256_load_si256((__m256i*)(weights + block * SIZE * SIZE + (row + 0) * SIZE + col)));
+                m256_add_dpbusd_epi32(b, inVec, _mm256_load_si256((__m256i*)(weights + block * SIZE * SIZE + (row + 1) * SIZE + col)));
+                m256_add_dpbusd_epi32(c, inVec, _mm256_load_si256((__m256i*)(weights + block * SIZE * SIZE + (row + 2) * SIZE + col)));
+                m256_add_dpbusd_epi32(d, inVec, _mm256_load_si256((__m256i*)(weights + block * SIZE * SIZE + (row + 3) * SIZE + col)));
+            }
+
+            __m128i biasVec = _mm_load_si128((__m128i*)(biases + block * SIZE + row));
+            __m128i resVec = m256_haddx4(a, b, c, d, biasVec);
+
+            resVec = _mm_srai_epi32(resVec, 7);
+            resVec = _mm_packs_epi32(resVec, resVec);
+            resVec = _mm_max_epi8(
+                _mm_packs_epi16(resVec, resVec),
+                _mm_setzero_si128()
+            );
+
+            int32_t packed = _mm_cvtsi128_si32(resVec);
+            out[(row + 0) * SIZE + block] = (int8_t)(packed & 0xFF);
+            out[(row + 1) * SIZE + block] = (int8_t)((packed >> 8) & 0xFF);
+            out[(row + 2) * SIZE + block] = (int8_t)((packed >> 16) & 0xFF);
+            out[(row + 3) * SIZE + block] = (int8_t)((packed >> 24) & 0xFF);
+        }
+    }
+}
+
+template <size_t SIZE>
+inline void sparseLinearReLUI8ToI8(const int8_t* in, const int8_t* weights,
+                                   const int32_t* biases, int8_t* out)
+                                   noexcept requires(SIZE % 32 == 0) {
+
+    for(size_t block = 0; block < SIZE; block++) {
+        for(size_t row = 0; row < SIZE; row += 4) {
+            __m256i a = _mm256_setzero_si256();
+            __m256i b = _mm256_setzero_si256();
+            __m256i c = _mm256_setzero_si256();
+            __m256i d = _mm256_setzero_si256();
+
+            for(size_t col = 0; col < SIZE; col += 32) {
+                __m256i inVec = _mm256_load_si256((__m256i*)(in + block * SIZE + col));
+
+                m256_add_dpbusd_epi32(a, inVec, _mm256_load_si256((__m256i*)(weights + block * SIZE * SIZE + (row + 0) * SIZE + col)));
+                m256_add_dpbusd_epi32(b, inVec, _mm256_load_si256((__m256i*)(weights + block * SIZE * SIZE + (row + 1) * SIZE + col)));
+                m256_add_dpbusd_epi32(c, inVec, _mm256_load_si256((__m256i*)(weights + block * SIZE * SIZE + (row + 2) * SIZE + col)));
+                m256_add_dpbusd_epi32(d, inVec, _mm256_load_si256((__m256i*)(weights + block * SIZE * SIZE + (row + 3) * SIZE + col)));
+            }
+
+            __m128i biasVec = _mm_load_si128((__m128i*)(biases + block * SIZE + row));
+            __m128i resVec = m256_haddx4(a, b, c, d, biasVec);
+
+            resVec = _mm_srai_epi32(resVec, 7);
+            resVec = _mm_packs_epi32(resVec, resVec);
+            resVec = _mm_max_epi8(
+                _mm_packs_epi16(resVec, resVec),
+                _mm_setzero_si128()
+            );
+
+            int32_t packed = _mm_cvtsi128_si32(resVec);
+            out[(row + 0) * SIZE + block] = (int8_t)(packed & 0xFF);
+            out[(row + 1) * SIZE + block] = (int8_t)((packed >> 8) & 0xFF);
+            out[(row + 2) * SIZE + block] = (int8_t)((packed >> 16) & 0xFF);
+            out[(row + 3) * SIZE + block] = (int8_t)((packed >> 24) & 0xFF);
+        }
+    }
+}
+
+template <size_t SIZE>
+inline void reLUI16ToI32Bias(const int16_t* in, const int32_t* biases, int32_t* out)
+                             noexcept requires(SIZE % 32 == 0) {
+
+    const __m256i upperBound = _mm256_set1_epi16(127);
+
+    for(size_t i = 0; i < SIZE; i += 16) {
+        __m256i a = _mm256_load_si256((__m256i*)(in + i));
+        a = _mm256_max_epi16(a, _mm256_setzero_si256());
+        a = _mm256_min_epi16(a, upperBound);
+
+        __m256i resVec1 = _mm256_cvtepi16_epi32(_mm256_castsi256_si128(a));
+        resVec1 = _mm256_slli_epi32(resVec1, 7);
+        resVec1 = _mm256_add_epi32(resVec1, _mm256_load_si256((__m256i*)(biases + i)));
+        __m256i resVec2 = _mm256_cvtepi16_epi32(_mm256_extracti128_si256(a, 1));
+        resVec2 = _mm256_slli_epi32(resVec2, 7);
+        resVec2 = _mm256_add_epi32(resVec2, _mm256_load_si256((__m256i*)(biases + i + 8)));
+
+        _mm256_store_si256((__m256i*)(out + i), resVec1);
+        _mm256_store_si256((__m256i*)(out + i + 8), resVec2);
     }
 }
 
@@ -402,7 +556,7 @@ inline void linearI8ToI32(const int8_t* in, const int8_t* weights,
         m128_add_dpbusd_epi32(a, inVec, _mm_load_si128((__m128i*)(weights + j)));
     }
 
-    __m128i biasVec = _mm_load_si128((__m128i*)(biases));
+    __m128i biasVec = _mm_set1_epi32(*biases);
 
     __m128i resVec = m128_haddx4(a, a, a, a, biasVec);
 
@@ -484,6 +638,142 @@ inline void linearReLUI8ToI8(const int8_t* in, const int8_t* weights,
         );
 
         *((int32_t*)(out + i)) = _mm_cvtsi128_si32(resVec);
+    }
+}
+
+template <size_t IN_SIZE, size_t OUT_SIZE>
+inline void halfKPOutputForwardI16ToI32(const int16_t* in, const int8_t* weights,
+                                        const int32_t* biases, int32_t* out)
+                                        noexcept requires(IN_SIZE % 16 == 0 && OUT_SIZE == 1) {
+
+    __m128i a = _mm_setzero_si128();
+    for(size_t j = 0; j < IN_SIZE; j += 16) {
+        __m128i srcVec1 = _mm_load_si128((__m128i*)(in + j));
+        __m128i srcVec2 = _mm_load_si128((__m128i*)(in + j + 8));
+
+        // Clipped ReLU
+        __m128i inVec = _mm_max_epi8(
+                _mm_packs_epi16(srcVec1, srcVec2),
+                _mm_setzero_si128()
+            );
+
+        // Linear
+        m128_add_dpbusd_epi32(a, inVec, _mm_load_si128((__m128i*)(weights + j)));
+    }
+
+    __m128i biasVec = _mm_set1_epi32(*biases);
+
+    __m128i resVec = m128_haddx4(a, a, a, a, biasVec);
+
+    *out = _mm_cvtsi128_si32(resVec);
+}
+
+template <size_t SIZE>
+inline void halfKPOutputSparseForwardI16ToI8(const int16_t* in, const int8_t* weights,
+                                             const int32_t* biases, int8_t* out)
+                                             noexcept requires(SIZE % 32 == 0) {
+
+    for(size_t block = 0; block < SIZE; block++) {
+        for(size_t row = 0; row < SIZE; row += 4) {
+            __m128i a = _mm_setzero_si128();
+            __m128i b = _mm_setzero_si128();
+            __m128i c = _mm_setzero_si128();
+            __m128i d = _mm_setzero_si128();
+
+            for(size_t col = 0; col < SIZE; col += 16) {
+                __m128i srcVec1 = _mm_load_si128((__m128i*)(in + block * SIZE + col));
+                __m128i srcVec2 = _mm_load_si128((__m128i*)(in + block * SIZE + col + 8));
+
+                __m128i inVec = _mm_max_epi8(
+                    _mm_packs_epi16(srcVec1, srcVec2),
+                    _mm_setzero_si128()
+                );
+
+                m128_add_dpbusd_epi32(a, inVec, _mm_load_si128((__m128i*)(weights + block * SIZE * SIZE + (row + 0) * SIZE + col)));
+                m128_add_dpbusd_epi32(b, inVec, _mm_load_si128((__m128i*)(weights + block * SIZE * SIZE + (row + 1) * SIZE + col)));
+                m128_add_dpbusd_epi32(c, inVec, _mm_load_si128((__m128i*)(weights + block * SIZE * SIZE + (row + 2) * SIZE + col)));
+                m128_add_dpbusd_epi32(d, inVec, _mm_load_si128((__m128i*)(weights + block * SIZE * SIZE + (row + 3) * SIZE + col)));
+            }
+
+            __m128i biasVec = _mm_load_si128((__m128i*)(biases + block * SIZE + row));
+            __m128i resVec = m128_haddx4(a, b, c, d, biasVec);
+
+            resVec = _mm_srai_epi32(resVec, 7);
+            resVec = _mm_packs_epi32(resVec, resVec);
+            resVec = _mm_max_epi8(
+                _mm_packs_epi16(resVec, resVec),
+                _mm_setzero_si128()
+            );
+
+            int32_t packed = _mm_cvtsi128_si32(resVec);
+            out[(row + 0) * SIZE + block] = (int8_t)(packed & 0xFF);
+            out[(row + 1) * SIZE + block] = (int8_t)((packed >> 8) & 0xFF);
+            out[(row + 2) * SIZE + block] = (int8_t)((packed >> 16) & 0xFF);
+            out[(row + 3) * SIZE + block] = (int8_t)((packed >> 24) & 0xFF);
+        }
+    }
+}
+
+template <size_t SIZE>
+inline void sparseLinearReLUI8ToI8(const int8_t* in, const int8_t* weights,
+                                   const int32_t* biases, int8_t* out)
+                                   noexcept requires(SIZE % 32 == 0) {
+
+    for(size_t block = 0; block < SIZE; block++) {
+        for(size_t row = 0; row < SIZE; row += 4) {
+            __m128i a = _mm_setzero_si128();
+            __m128i b = _mm_setzero_si128();
+            __m128i c = _mm_setzero_si128();
+            __m128i d = _mm_setzero_si128();
+
+            for(size_t col = 0; col < SIZE; col += 16) {
+                __m128i inVec = _mm_load_si128((__m128i*)(in + block * SIZE + col));
+
+                m128_add_dpbusd_epi32(a, inVec, _mm_load_si128((__m128i*)(weights + block * SIZE * SIZE + (row + 0) * SIZE + col)));
+                m128_add_dpbusd_epi32(b, inVec, _mm_load_si128((__m128i*)(weights + block * SIZE * SIZE + (row + 1) * SIZE + col)));
+                m128_add_dpbusd_epi32(c, inVec, _mm_load_si128((__m128i*)(weights + block * SIZE * SIZE + (row + 2) * SIZE + col)));
+                m128_add_dpbusd_epi32(d, inVec, _mm_load_si128((__m128i*)(weights + block * SIZE * SIZE + (row + 3) * SIZE + col)));
+            }
+
+            __m128i biasVec = _mm_load_si128((__m128i*)(biases + block * SIZE + row));
+            __m128i resVec = m128_haddx4(a, b, c, d, biasVec);
+
+            resVec = _mm_srai_epi32(resVec, 7);
+            resVec = _mm_packs_epi32(resVec, resVec);
+            resVec = _mm_max_epi8(
+                _mm_packs_epi16(resVec, resVec),
+                _mm_setzero_si128()
+            );
+
+            int32_t packed = _mm_cvtsi128_si32(resVec);
+            out[(row + 0) * SIZE + block] = (int8_t)(packed & 0xFF);
+            out[(row + 1) * SIZE + block] = (int8_t)((packed >> 8) & 0xFF);
+            out[(row + 2) * SIZE + block] = (int8_t)((packed >> 16) & 0xFF);
+            out[(row + 3) * SIZE + block] = (int8_t)((packed >> 24) & 0xFF);
+        }
+    }
+}
+
+template <size_t SIZE>
+inline void reLUI16ToI32Bias(const int16_t* in, const int32_t* biases, int32_t* out)
+                             noexcept requires(SIZE % 32 == 0) {
+
+    const __m128i upperBound = _mm_set1_epi16(127);
+
+    for(size_t i = 0; i < SIZE; i += 16) {
+        __m128i a = _mm_load_si128((__m128i*)(in + i));
+        a = _mm_max_epi16(a, _mm_setzero_si128());
+        a = _mm_min_epi16(a, upperBound);
+
+        __m128i resVec1 = _mm_cvtepi16_epi32(_mm_castsi256_si128(a));
+        resVec1 = _mm_slli_epi32(resVec1, 7);
+        resVec1 = _mm_add_epi32(resVec1, _mm_load_si128((__m128i*)(biases + i)));
+        __m128i resVec2 = _mm_cvtepi16_epi32(_mm_extracti128_si256(a, 1));
+        resVec2 = _mm_slli_epi32(resVec2, 7);
+        resVec2 = _mm_add_epi32(resVec2, _mm_load_si128((__m128i*)(biases + i + 8)));
+
+        _mm_store_si128((__m128i*)(out + i), resVec1);
+        _mm_store_si256((__m256i*)(out + i + 8), resVec2);
     }
 }
 
@@ -572,6 +862,68 @@ inline void linearReLUI8ToI8(const int8_t* in, const int8_t* weights,
             acc += inVal * weights[i * IN_SIZE + j];
         }
         out[i] = (int8_t)std::clamp(acc >> 7, (int32_t)0, (int32_t)127);
+    }
+}
+
+template <size_t IN_SIZE, size_t OUT_SIZE>
+inline void halfKPOutputForwardI16ToI32(const int16_t* in, const int8_t* weights,
+                                        const int32_t* biases, int32_t* out) noexcept {
+
+    // Skalarprodukte
+    for(size_t i = 0; i < OUT_SIZE; i++) {
+        int32_t acc = biases[i];
+        for(size_t j = 0; j < IN_SIZE; j++) {
+            int32_t inVal = (int32_t)std::clamp(in[j], (int16_t)0, (int16_t)127);
+            acc += inVal * weights[i * IN_SIZE + j];
+        }
+        out[i] = acc;
+    }
+}
+
+template <size_t SIZE>
+inline void halfKPOutputSparseForwardI16ToI8(const int16_t* in, const int8_t* weights,
+                                             const int32_t* biases, int8_t* out) noexcept {
+
+    for(size_t block = 0; block < SIZE; block++) {
+        for(size_t row = 0; row < SIZE; row++) {
+            int32_t acc = biases[block * SIZE + row];
+            for(size_t col = 0; col < SIZE; col++) {
+                int32_t inVal = (int32_t)std::clamp(in[block * SIZE + col], (int16_t)0, (int16_t)127);
+                acc += inVal * weights[block * SIZE * SIZE + row * SIZE + col];
+            }
+
+            out[row * SIZE + block] = (int8_t)std::clamp(acc >> 7, (int32_t)0, (int32_t)127);
+        }
+    }
+}
+
+template <size_t SIZE>
+inline void sparseLinearReLUI8ToI8(const int8_t* in, const int8_t* weights,
+                                   const int32_t* biases, int8_t* out) noexcept {
+
+    for(size_t block = 0; block < SIZE; block++) {
+        for(size_t row = 0; row < SIZE; row++) {
+            int32_t acc = biases[block * SIZE + row];
+            for(size_t col = 0; col < SIZE; col++) {
+                int32_t inVal = (int32_t)in[block * SIZE + col];
+                acc += inVal * weights[block * SIZE * SIZE + row * SIZE + col];
+            }
+
+            out[row * SIZE + block] = (int8_t)std::clamp(acc >> 7, (int32_t)0, (int32_t)127);
+        }
+    }
+}
+
+template <size_t SIZE>
+inline void reLUI16ToI32Bias(const int16_t* in, const int32_t* biases, int32_t* out) noexcept {
+
+    for(size_t i = 0; i < SIZE; i++) {
+        int32_t acc = biases[i];
+        for(size_t j = 0; j < SIZE; j++) {
+            int32_t inVal = (int32_t)std::clamp(in[j], (int16_t)0, (int16_t)127);
+            acc += inVal << 7; // Multiplizieren mit 128
+        }
+        out[i] = acc;
     }
 }
 

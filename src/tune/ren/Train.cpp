@@ -1,9 +1,11 @@
 #include "tune/ren/Train.h"
+#include "core/engine/evaluation/RENEvaluator.h"
 #include "core/utils/Random.h"
 
 #include <cmath>
 #include <iomanip>
 #include <iostream>
+#include <mutex>
 #include <thread>
 
 using namespace Train;
@@ -48,9 +50,9 @@ Train::LossSummary Train::loss(const std::vector<DataPoint>& data, const REN::Ma
     auto threadFunc = [&]() {
         mutex.lock();
         while(currIndex < data.size()) {
-            // Bearbeite Blöcke von 16 Datenpunkten
+            // Bearbeite Blöcke von 256 Datenpunkten
             size_t start = currIndex;
-            size_t end = std::min(currIndex + 16, data.size());
+            size_t end = std::min(currIndex + 256, data.size());
             currIndex = end;
             mutex.unlock();
 
@@ -98,6 +100,58 @@ Train::LossSummary Train::loss(const std::vector<DataPoint>& data, const REN::Ma
     return {sum.load() / data.size(), avgIterations.load() / data.size(), minIterations, maxIterations};
 }
 
+double Train::loss(std::vector<DataPoint>& data, const REN::Network& network, double k,
+        double kappa, Evaluator::EvalType evalType) {
+
+    std::atomic<double> sum = 0.0;
+
+    size_t currIndex = 0;
+    std::mutex mutex;
+
+    auto threadFunc = [&]() {
+        Board board;
+        RENEvaluator evaluator(board, network);
+
+        mutex.lock();
+        while(currIndex < data.size()) {
+            // Bearbeite Blöcke von 512 Datenpunkten
+            size_t start = currIndex;
+            size_t end = std::min(currIndex + 512, data.size());
+            currIndex = end;
+            mutex.unlock();
+
+            for(size_t i = start; i < end; i++) {
+                DataPoint& dp = data[i];
+                evaluator.setBoard(dp.board);
+
+                int networkOutput = evaluator.evaluate(evalType);
+                double prediction = tanh((double)networkOutput, k);
+
+                double target = (1.0 - kappa) * tanh(dp.tdTarget, k) + kappa * (double)dp.finalResult;
+                if(dp.board.getSideToMove() == BLACK)
+                    target = -target;
+
+                sum.fetch_add(mse(prediction, target));
+            }
+
+            mutex.lock();
+        }
+
+        mutex.unlock();
+    };
+
+    // Starte die Threads
+    std::vector<std::thread> threads;
+    for(size_t i = 0; i < std::max(std::thread::hardware_concurrency(), 1u); i++)
+        threads.push_back(std::thread(threadFunc));
+
+    // Warte auf die Threads
+    for(std::thread& t : threads)
+        t.join();
+
+    return sum.load() / data.size();
+}
+
 constexpr double lossGrad(double prediction, double target, double k) {
     return 2.0 * (prediction - target) * (1.0 - prediction * prediction) * k * 100.0 * (16384.0 / 6656.0);
 }
@@ -117,9 +171,9 @@ REN::Gradients Train::gradient(const std::vector<DataPoint>& data, const std::ve
 
         mutex.lock();
         while(currIndex < indices.size()) {
-            // Bearbeite Blöcke von 16 Datenpunkten
+            // Bearbeite Blöcke von 128 Datenpunkten
             size_t start = currIndex;
-            size_t end = std::min(currIndex + 16, indices.size());
+            size_t end = std::min(currIndex + 128, indices.size());
             currIndex = end;
             mutex.unlock();
 
@@ -208,7 +262,7 @@ REN::Gradients Train::gradient(const std::vector<DataPoint>& data, const std::ve
     return totalGrad;
 }
 
-void Train::adamW(std::vector<DataPoint>& data, size_t numEpochs, double learningRate, double kappa, double encLossWeight) {
+REN::Network* Train::adamW(std::vector<DataPoint>& data, size_t numEpochs, double learningRate, double kappa, double encLossWeight) {
     REN::MasterWeights& masterWeights = trainingSession.masterWeights;
 
     // Teile die Daten in Trainings- und Validierungsdaten auf
@@ -267,13 +321,18 @@ void Train::adamW(std::vector<DataPoint>& data, size_t numEpochs, double learnin
 
         size_t batchesProcessed = 0;
 
-        float loss0It = Train::loss(validationData, masterWeights, k.get<double>(), kappa, 0.0, 0).loss;
-        float loss2It = Train::loss(validationData, masterWeights, k.get<double>(), kappa, 0.0, 2).loss;
-        float lossOpt = Train::loss(validationData, masterWeights, k.get<double>(), kappa, 0.0).loss;
+        REN::Network* currentNetwork = masterWeights.toNetwork();
+
+        double lossNW = Train::loss(validationData, *currentNetwork, k.get<double>(), kappa, Evaluator::EvalType::NULL_WINDOW);
+        double lossPV = Train::loss(validationData, *currentNetwork, k.get<double>(), kappa, Evaluator::EvalType::PV_NODE);
+        double lossHD = Train::loss(validationData, *currentNetwork, k.get<double>(), kappa, Evaluator::EvalType::HIGH_DEPTH);
+
+        delete currentNetwork;
+
         float spectralRadius = masterWeights.renLayer.spectralRadius();
 
         std::stringstream ssLoss;
-        ssLoss << std::setprecision(6) << loss0It << "/" << loss2It << "/" << lossOpt;
+        ssLoss << std::setprecision(6) << lossNW << "/" << lossPV << "/" << lossHD;
 
         std::stringstream ssIter;
         ssIter << std::setprecision(2) << avgIterations << "/" << minIterations << "/" << maxIterations;
@@ -282,7 +341,7 @@ void Train::adamW(std::vector<DataPoint>& data, size_t numEpochs, double learnin
 
         ssOutput << "\rEpoch: " << std::left << std::setw(6) << trainingSession.epoch <<
             " Val loss: " << std::setw(9) << std::setprecision(6) << masterLossExact <<
-            " Loss (0/2/inf it): " << std::setw(27) << ssLoss.str() <<
+            " Quantized Loss (NW, PV, HD): " << std::setw(27) << ssLoss.str() <<
             " Iter (avg/min/max): " << std::setw(12) << ssIter.str() <<
             " Spec rad: " << std::setw(8) << std::setprecision(4) << spectralRadius;
 
@@ -401,24 +460,23 @@ void Train::adamW(std::vector<DataPoint>& data, size_t numEpochs, double learnin
 
     // Berechne den finalen Fehler
     auto [masterLossExact, avgIterations, minIterations, maxIterations] = Train::loss(validationData, masterWeights, k.get<double>(), kappa, encLossWeight);
-    float loss0It = Train::loss(validationData, masterWeights, k.get<double>(), kappa, 0.0, 0).loss;
-    float loss2It = Train::loss(validationData, masterWeights, k.get<double>(), kappa, 0.0, 2).loss;
-    float lossOpt = Train::loss(validationData, masterWeights, k.get<double>(), kappa, 0.0).loss;
+    double lossNW = Train::loss(validationData, *masterWeights.toNetwork(), k.get<double>(), kappa, Evaluator::EvalType::NULL_WINDOW);
+    double lossPV = Train::loss(validationData, *masterWeights.toNetwork(), k.get<double>(), kappa, Evaluator::EvalType::PV_NODE);
+    double lossHD = Train::loss(validationData, *masterWeights.toNetwork(), k.get<double>(), kappa, Evaluator::EvalType::HIGH_DEPTH);
     float spectralRadius = masterWeights.renLayer.spectralRadius();
     
     std::cout << "\rEpoch: " << std::left << std::setw(6) << trainingSession.epoch;
 
     std::stringstream ssLoss;
-    ssLoss << std::setprecision(6) << loss0It << "/" << loss2It << "/" << lossOpt;
+    ssLoss << std::setprecision(6) << lossNW << "/" << lossPV << "/" << lossHD;
     std::stringstream ssIter;
     ssIter << std::setprecision(2) << avgIterations << "/" << minIterations << "/" << maxIterations;
 
     size_t currPrecision = std::cout.precision();
     std::cout << " Val loss: " << std::setw(9) << std::setprecision(6) << masterLossExact <<
-        " Loss (0/2/inf it): " << std::setw(27) << ssLoss.str() <<
+        " Quantized Loss (NW, PV, HD): " << std::setw(27) << ssLoss.str() <<
         " Iter (avg/min/max): " << std::setw(12) << ssIter.str() <<
-        " Spectral radius: " << std::setw(8) << std::setprecision(4) << spectralRadius <<
-        " Batch: 100%" << std::endl;
+        " Spec rad: " << std::setw(8) << std::setprecision(4) << spectralRadius << std::endl;
 
     std::cout.precision(currPrecision);
 
@@ -432,6 +490,8 @@ void Train::adamW(std::vector<DataPoint>& data, size_t numEpochs, double learnin
 
     std::cout << "Average loss: " << std::setprecision(6) << biasCorrectedLoss << std::endl;
     std::cout.precision(currPrecision);
+
+    return masterWeights.toNetwork();
 }
 
 void Train::initializeWeights(REN::MasterWeights& masterWeights) {

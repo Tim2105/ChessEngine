@@ -35,11 +35,20 @@ class PVSEngine {
          * @brief Die HCE-Parameter, die für die Suche verwendet werden.
          */
         const HCEParameters& hceParams;
-        #else
+        #endif
+
+        #if defined(USE_NNUE)
         /**
          * @brief Das NNUE-Netzwerk, das für die Suche verwendet wird.
          */
         const NNUE::Network& nnueNetwork;
+        #endif
+
+        #if defined(USE_REN)
+        /**
+         * @brief Das REN-Netzwerk, das für die Suche verwendet wird.
+         */
+        const REN::Network& renNetwork;
         #endif
 
         /**
@@ -271,7 +280,9 @@ class PVSEngine {
          */
         PVSEngine(Board& board, const HCEParameters& hceParams, uint64_t checkupInterval = 2, std::function<void()> checkupCallback = nullptr, bool uciOutput = true)
                 : board(board), hceParams(hceParams), checkupInterval(checkupInterval), checkupCallback(checkupCallback), uciOutput(uciOutput) {}
-        #else
+        #endif
+
+        #if defined(USE_NNUE)
         /**
          * @brief Konstruktor
          * 
@@ -298,6 +309,35 @@ class PVSEngine {
          */
         PVSEngine(Board& board, const NNUE::Network& nnueParams, uint64_t checkupInterval = 2, std::function<void()> checkupCallback = nullptr, bool uciOutput = true)
                 : board(board), nnueNetwork(nnueParams), checkupInterval(checkupInterval), checkupCallback(checkupCallback), uciOutput(uciOutput) {}
+        #endif
+
+        #if defined(USE_REN)
+        /**
+         * @brief Konstruktor
+         * 
+         * @param board Das, zu betrachtende, Schachbrett.
+         * @param checkupInterval Die Anzahl an Millisekunden, die zwischen
+         * zwei Checkups vergehen sollen.
+         * @param checkupCallback Die Funktion, die bei jedem Checkup aufgerufen
+         * werden soll. Wenn keine Funktion aufgerufen werden soll, kann dieser
+         * Parameter weggelassen werden.
+         * @param uciOutput Bestimmt, ob nach dem UCI-Protokoll ausgegeben werden soll.
+         */
+        PVSEngine(Board& board, uint64_t checkupInterval = 2, std::function<void()> checkupCallback = nullptr, bool uciOutput = true)
+                : board(board), renNetwork(REN::DEFAULT_NETWORK), checkupInterval(checkupInterval), checkupCallback(checkupCallback), uciOutput(uciOutput) {}
+
+        /**
+         * @brief Konstruktor mit REN-Parametern.
+         * 
+         * @param board Das, zu betrachtende, Schachbrett.
+         * @param renParams Die REN-Parameter, die für die Suche verwendet werden.
+         * @param checkupInterval Die Anzahl an Millisekunden, die zwischen zwei Checkups vergehen sollen.
+         * @param checkupCallback Die Funktion, die bei jedem Checkup aufgerufen
+         * werden soll. Wenn keine Funktion aufgerufen werden soll, kann dieser Parameter weggelassen werden.
+         * @param uciOutput Bestimmt, ob nach dem UCI-Protokoll ausgegeben werden soll.
+         */
+        PVSEngine(Board& board, const REN::Network& renParams, uint64_t checkupInterval = 2, std::function<void()> checkupCallback = nullptr, bool uciOutput = true)
+                : board(board), renNetwork(renParams), checkupInterval(checkupInterval), checkupCallback(checkupCallback), uciOutput(uciOutput) {}
         #endif
 
         PVSEngine(const PVSEngine& other) = delete;

@@ -12,13 +12,13 @@
 namespace NNUE {
 
     template <size_t IN_SIZE, size_t OUT_SIZE>
-    class HalfKPLayer {
+    class HalfKAv2_hmLayer {
         alignas(REQUIRED_ALIGNMENT) int16_t bias[OUT_SIZE] = {0};
         alignas(REQUIRED_ALIGNMENT) int16_t weights[IN_SIZE][OUT_SIZE] = {{0}};
 
         public:
-            constexpr HalfKPLayer() {}
-            constexpr ~HalfKPLayer() {}
+            constexpr HalfKAv2_hmLayer() {}
+            constexpr ~HalfKAv2_hmLayer() {}
 
             inline int16_t getBias(size_t i) const noexcept {
                 return bias[i];
@@ -54,7 +54,7 @@ namespace NNUE {
     };
 
     template <size_t IN_SIZE, size_t OUT_SIZE>
-    inline std::istream& operator>>(std::istream& is, HalfKPLayer<IN_SIZE, OUT_SIZE>& layer) {
+    inline std::istream& operator>>(std::istream& is, HalfKAv2_hmLayer<IN_SIZE, OUT_SIZE>& layer) {
         readLittleEndian(is, layer.getBiasPtr(), OUT_SIZE);
         readLittleEndian(is, layer.getWeightPtr(0), IN_SIZE * OUT_SIZE);
 
@@ -67,7 +67,7 @@ namespace NNUE {
 
 
     template <size_t IN_SIZE, size_t OUT_SIZE>
-    inline std::ostream& operator<<(std::ostream& os, const HalfKPLayer<IN_SIZE, OUT_SIZE>& layer) {
+    inline std::ostream& operator<<(std::ostream& os, const HalfKAv2_hmLayer<IN_SIZE, OUT_SIZE>& layer) {
         writeLittleEndian(os, layer.getBiasPtr(), OUT_SIZE);
         writeLittleEndian(os, layer.getWeightPtr(0), IN_SIZE * OUT_SIZE);
 
@@ -100,6 +100,10 @@ namespace NNUE {
 
             inline void forward(const int16_t input[IN_SIZE], int8_t output[OUT_SIZE]) const noexcept {
                 halfKPOutputForwardI16ToI8<IN_SIZE, OUT_SIZE>(input, (int8_t*)&weights, bias, output);
+            }
+
+            inline void forward(const int16_t input[IN_SIZE], int32_t output[OUT_SIZE]) const noexcept {
+                halfKPOutputForwardI16ToI32<IN_SIZE, OUT_SIZE>(input, (int8_t*)&weights, bias, output);
             }
 
             inline int32_t getBias(size_t i) const noexcept {

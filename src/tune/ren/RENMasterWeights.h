@@ -1,6 +1,8 @@
 #ifndef REN_REN_H
 #define REN_REN_H
 
+#include "core/utils/ren/RENNetwork.h"
+
 #include "tune/ml/DenseLayer.h"
 #include "tune/ml/HalfKAv2_hm.h"
 #include "tune/ren/SparseRENLayer.h"
@@ -33,6 +35,8 @@ namespace REN {
         ML::DenseLayer outputLayer{HALF_KA_OUTPUT_SIZE, 1, false};
         
         inline MasterWeights() = default;
+
+        REN::Network* toNetwork() const;
 
         NetworkActivations forward(const Board& board, bool fakeQuantization,
             size_t maxIterations = std::numeric_limits<size_t>::max(), float tol = 1e-4f) const;

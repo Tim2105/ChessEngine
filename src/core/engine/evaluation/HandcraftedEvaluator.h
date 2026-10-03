@@ -189,6 +189,11 @@ class HandcraftedEvaluator: public Evaluator {
             return evaluation;
         }
 
+        inline int evaluate(EvalType type) override {
+            UNUSED(type);
+            return evaluate();
+        }
+
         inline double getGamePhase() const {
             return evaluationVars.phase;
         }
